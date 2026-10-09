@@ -83,6 +83,8 @@ const FENCES: readonly Fence[] = [
   ['src/ui/lazy-probe.ts', '@/render/svg', false, 'dynamic'],
   ['src/ui/probe.ts', '@phosphor-icons/react', true],
   ['src/ui/named-probe.ts', '@phosphor-icons/react', false, 'named'],
+  ['src/ui/probe.ts', '@phosphor-icons/react/dist/ssr', true],
+  ['src/ui/named-probe.ts', '@phosphor-icons/react/dist/ssr', true, 'named'],
 
   ['src/main.tsx', '@/ui/app', false],
   ['src/main.tsx', 'react', false],

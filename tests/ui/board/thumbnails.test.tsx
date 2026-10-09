@@ -139,24 +139,31 @@ describe('ThumbnailCanvas', () => {
     expect(thumbnailCache.bytes).toBe(bytes);
   });
 
-  test('paints again at the new size when the device pixel ratio changes', async () => {
+  test('paints again at each new size as the device pixel ratio changes twice', async () => {
     const matchMedia = vi.spyOn(window, 'matchMedia');
     const ratio = Object.getOwnPropertyDescriptor(window, 'devicePixelRatio');
     const maze = await repoMaze(REPO_MAZES.classic);
+    const changeRatio = (next: number): void => {
+      const before = `(resolution: ${window.devicePixelRatio}dppx)`;
+      Object.defineProperty(window, 'devicePixelRatio', { configurable: true, value: next });
 
-    try {
-      await render(<ThumbnailCanvas cached={false} height={100} maze={maze} width={100} />);
-      const canvas = document.querySelector('canvas');
-      expect(canvas?.width).toBe(Math.round(100 * window.devicePixelRatio));
-
-      Object.defineProperty(window, 'devicePixelRatio', { configurable: true, value: 2 });
       for (const result of matchMedia.mock.results) {
-        if (result.type === 'return') {
+        if (result.type === 'return' && result.value.media === before) {
           result.value.dispatchEvent(new Event('change'));
         }
       }
+    };
 
+    try {
+      Object.defineProperty(window, 'devicePixelRatio', { configurable: true, value: 1 });
+      await render(<ThumbnailCanvas cached={false} height={100} maze={maze} width={100} />);
+      const canvas = document.querySelector('canvas');
+      expect(canvas?.width).toBe(100);
+
+      changeRatio(2);
       await expect.poll(() => canvas?.width).toBe(200);
+      changeRatio(3);
+      await expect.poll(() => canvas?.width).toBe(300);
     } finally {
       if (ratio !== undefined) {
         Object.defineProperty(window, 'devicePixelRatio', ratio);

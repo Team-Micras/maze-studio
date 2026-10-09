@@ -178,6 +178,10 @@
                 "message": "The UI never imports the entry point; src/main.tsx wires the app together."
               },
               {
+                "regex": "^@phosphor-icons/react/",
+                "message": "Import Phosphor icons by name from @phosphor-icons/react itself, never from its inner paths."
+              },
+              {
                 "group": ["@phosphor-icons/react"],
                 "allowImportNamePattern": "^[A-Z][A-Za-z0-9]*$",
                 "message": "Import Phosphor icons by name, so only the icons used are bundled."
