@@ -232,6 +232,17 @@ describe('A stroke with Shift', () => {
     expect(names(stroke)).toEqual(['h1,2', 'h2,2', 'h3,2', 'h4,2', 'h5,2', 'h6,2']);
   });
 
+  test('locks to the axis of the last segment walked, not of the first edge', () => {
+    let stroke = beginStroke(EMPTY, { direction: 'horizontal', x: 1, y: 2 }, { u: 1.8, v: 2 });
+    stroke = extendStroke(EMPTY, stroke, { u: 2, v: 3.7 });
+
+    expect(stroke.axis).toBe('vertical');
+
+    const locked = extendStroke(EMPTY, stroke, { u: 4.5, v: 4.7 }, { lockAxis: true });
+
+    expect(names(locked)).toEqual(['h1,2', 'v2,2', 'v2,3', 'v2,4']);
+  });
+
   test('stays on the axis of the first edge before any segment', () => {
     const stroke = draw(
       EMPTY,

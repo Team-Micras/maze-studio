@@ -168,19 +168,41 @@ export class ThumbnailCache {
    * The thumbnail of `maze` for a place `pixels` device pixels long, in the smallest band that
    * covers it, from the cache or drawn now.
    *
-   * @param key What identifies the picture: the same key must always mean the same maze and
-   *   diff, such as the maze's compact code.
+   * @param key What identifies the maze: the same key must always mean the same maze, such as its
+   *   compact code.
    */
-  thumbnail(key: string, maze: Maze, pixels: number, diff?: MazeDiff): OffscreenCanvas {
+  thumbnail(key: string, maze: Maze, pixels: number): OffscreenCanvas {
     const band = thumbnailBand(pixels);
-    const bandKey = `${band}:${key}`;
+    return this.#cached(`${band}:${key}`, () => drawThumbnail(maze, band));
+  }
+
+  /**
+   * The thumbnail of `maze` with `diff` drawn on top, kept apart from the plain thumbnail of the
+   * same maze.
+   *
+   * @param key What identifies the maze, as for {@link ThumbnailCache.thumbnail}.
+   * @param diffKey What identifies the diff, such as the compact code of the maze it is taken
+   *   from: the same pair of keys must always mean the same maze and diff.
+   */
+  diffThumbnail(
+    key: string,
+    diffKey: string,
+    maze: Maze,
+    pixels: number,
+    diff: MazeDiff
+  ): OffscreenCanvas {
+    const band = thumbnailBand(pixels);
+    return this.#cached(`${band}:${key}:diff:${diffKey}`, () => drawThumbnail(maze, band, diff));
+  }
+
+  #cached(bandKey: string, draw: () => OffscreenCanvas): OffscreenCanvas {
     const cached = this.#cache.get(bandKey);
 
     if (cached !== undefined) {
       return cached;
     }
 
-    const canvas = drawThumbnail(maze, band, diff);
+    const canvas = draw();
     this.#cache.set(bandKey, canvas, thumbnailBytes(canvas));
     return canvas;
   }

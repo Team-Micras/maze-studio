@@ -1,8 +1,9 @@
-import { describe, expect, test } from 'vitest';
+import { describe, expect, test, vi } from 'vitest';
 import { render } from 'vitest-browser-react';
 
 import { diffMazes, encodeMazeCode, setStart, toggleWall } from '@/maze';
 import { drawThumbnail, ThumbnailCache, thumbnailBytes } from '@/render';
+import { thumbnailCache } from '@/ui/board/thumbnail-cache';
 import { ThumbnailCanvas } from '@/ui/board/thumbnail-canvas';
 import { REPO_MAZES, repoMaze } from '@tests/support/ui/repo-mazes';
 
@@ -18,6 +19,15 @@ function isRed([red = 0, green = 0, blue = 0]: number[]): boolean {
 function isFloor([red = 0, green = 0, blue = 0]: number[]): boolean {
   return red < 30 && green < 30 && blue < 30;
 }
+
+const NO_DIFF = {
+  added: [],
+  removed: [],
+  goalsAdded: [],
+  goalsRemoved: [],
+  startBefore: undefined,
+  startAfter: undefined,
+};
 
 function redShare(canvas: HTMLCanvasElement | null): number {
   const data = canvas?.getContext('2d')?.getImageData(0, 0, canvas.width, canvas.height).data;
@@ -77,6 +87,34 @@ describe('ThumbnailCache', () => {
     expect(cache.bytes).toBe(thumbnailBytes(first) + thumbnailBytes({ width: 512, height: 512 }));
   });
 
+  test('keeps a thumbnail with a diff apart from the plain one and from other diffs', async () => {
+    const maze = await repoMaze(REPO_MAZES.classic);
+    const before = toggleWall(maze, { direction: 'horizontal', x: 5, y: 5 });
+    const other = toggleWall(maze, { direction: 'vertical', x: 9, y: 9 });
+    const cache = new ThumbnailCache();
+    const key = encodeMazeCode(maze);
+    const plain = cache.thumbnail(key, maze, 128);
+    const fromBefore = cache.diffThumbnail(
+      key,
+      encodeMazeCode(before),
+      maze,
+      128,
+      diffMazes(before, maze) ?? NO_DIFF
+    );
+    const fromOther = cache.diffThumbnail(
+      key,
+      encodeMazeCode(other),
+      maze,
+      128,
+      diffMazes(other, maze) ?? NO_DIFF
+    );
+
+    expect(fromBefore).not.toBe(plain);
+    expect(fromOther).not.toBe(fromBefore);
+    expect(cache.diffThumbnail(key, encodeMazeCode(before), maze, 100, NO_DIFF)).toBe(fromBefore);
+    expect(cache.thumbnail(key, maze, 128)).toBe(plain);
+  });
+
   test('drops the least recently used bitmap once past its capacity', async () => {
     const maze = await repoMaze(REPO_MAZES.classic);
     const cache = new ThumbnailCache(2 * thumbnailBytes({ width: 64, height: 64 }));
@@ -91,6 +129,43 @@ describe('ThumbnailCache', () => {
 });
 
 describe('ThumbnailCanvas', () => {
+  test('paints a live maze without leaving a bitmap in the shared cache', async () => {
+    const maze = await repoMaze(REPO_MAZES.taiwan);
+    const bytes = thumbnailCache.bytes;
+    await render(<ThumbnailCanvas cached={false} height={148} maze={maze} width={148} />);
+    const canvas = document.querySelector('canvas');
+
+    await expect.poll(() => redShare(canvas)).toBeGreaterThan(0.05);
+    expect(thumbnailCache.bytes).toBe(bytes);
+  });
+
+  test('paints again at the new size when the device pixel ratio changes', async () => {
+    const matchMedia = vi.spyOn(window, 'matchMedia');
+    const ratio = Object.getOwnPropertyDescriptor(window, 'devicePixelRatio');
+    const maze = await repoMaze(REPO_MAZES.classic);
+
+    try {
+      await render(<ThumbnailCanvas cached={false} height={100} maze={maze} width={100} />);
+      const canvas = document.querySelector('canvas');
+      expect(canvas?.width).toBe(Math.round(100 * window.devicePixelRatio));
+
+      Object.defineProperty(window, 'devicePixelRatio', { configurable: true, value: 2 });
+      for (const result of matchMedia.mock.results) {
+        if (result.type === 'return') {
+          result.value.dispatchEvent(new Event('change'));
+        }
+      }
+
+      await expect.poll(() => canvas?.width).toBe(200);
+    } finally {
+      if (ratio !== undefined) {
+        Object.defineProperty(window, 'devicePixelRatio', ratio);
+      }
+
+      matchMedia.mockRestore();
+    }
+  });
+
   test('shows the thumbnail at its CSS size with device pixels behind it', async () => {
     const maze = await repoMaze(REPO_MAZES.halfsize);
     await render(<ThumbnailCanvas height={148} maze={maze} width={148} />);

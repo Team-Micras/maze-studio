@@ -100,12 +100,14 @@ open borders, which the repository never has.
 - `minimap.ts`: when the minimap shows (past 1.06 times the fit), its frame, the visible area on
   it and the world point under a click.
 - `thumbnails.ts`, `lru-cache.ts`: thumbnails painted on an `OffscreenCanvas` in bands of 64, 128,
-  256 and 512 pixels, the diff on top if asked, in an LRU bounded at 64 MB of bitmaps.
+  256 and 512 pixels, in an LRU bounded at 64 MB of bitmaps; `diffThumbnail` keeps those with a
+  diff on top under their own key. `paintTrack` paints on any 2D context.
 
 `src/ui/board/` turns these into components, mounted alone in the browser tests: `Board` (the
 SVG, a path per layer), `CameraStage` and `useBoardCamera` (the canvas the board lies on, with
-wheel, pinch, Space or middle-button drag and the zoom keys), `Minimap`, `ThumbnailCanvas` with
-the app's one `thumbnailCache`, and `CursorStatus`.
+wheel, pinch, Space or middle-button drag and the zoom keys), `Minimap` (which paints the live
+maze outside the cache), `ThumbnailCanvas` with the app's one `thumbnailCache`, and
+`CursorStatus`.
 
 ## Import rules
 

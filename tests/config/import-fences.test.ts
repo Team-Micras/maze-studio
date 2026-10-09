@@ -10,9 +10,14 @@ const OXLINT = join(ROOT, 'node_modules', '.bin', 'oxlint');
 
 /**
  * A file of the tree, an import it makes, whether the fences of `.oxlintrc.json` refuse it, and
- * whether the import is a dynamic `import()` rather than a static one.
+ * the form of the import: `import * as` unless it is a dynamic `import()` or a named import.
  */
-type Fence = readonly [file: string, specifier: string, refused: boolean, form?: 'dynamic'];
+type Fence = readonly [
+  file: string,
+  specifier: string,
+  refused: boolean,
+  form?: 'dynamic' | 'named',
+];
 
 const FENCES: readonly Fence[] = [
   ['src/maze/probe.ts', './walls', false],
@@ -76,6 +81,8 @@ const FENCES: readonly Fence[] = [
   ['src/ui/probe.ts', '@scripts/bundle-size', true],
   ['src/ui/probe.ts', '../../vendor/mazefiles/README.md', true],
   ['src/ui/lazy-probe.ts', '@/render/svg', false, 'dynamic'],
+  ['src/ui/probe.ts', '@phosphor-icons/react', true],
+  ['src/ui/named-probe.ts', '@phosphor-icons/react', false, 'named'],
 
   ['src/main.tsx', '@/ui/app', false],
   ['src/main.tsx', 'react', false],
@@ -102,10 +109,12 @@ beforeAll(() => {
   const files = new Map<string, string[]>();
   for (const [file, specifier, , form] of FENCES) {
     const index = files.get(file)?.length ?? 0;
-    const line =
-      form === 'dynamic'
-        ? `export const p${index} = () => import('${specifier}');`
-        : `import * as p${index} from '${specifier}';\nexport { p${index} };`;
+    const lines = {
+      dynamic: `export const p${index} = () => import('${specifier}');`,
+      named: `import { SquaresFour as p${index} } from '${specifier}';\nexport { p${index} };`,
+      namespace: `import * as p${index} from '${specifier}';\nexport { p${index} };`,
+    };
+    const line = lines[form ?? 'namespace'];
     files.set(file, [...(files.get(file) ?? []), line]);
   }
 
@@ -124,7 +133,9 @@ beforeAll(() => {
     run.stdout
   );
   for (const { code, filename, message } of report.diagnostics) {
-    const specifier = /^'([^']+)' import is restricted/.exec(message)?.[1];
+    const specifier =
+      /^'([^']+)' import is restricted/.exec(message)?.[1] ??
+      /^\* import is invalid because .* from '([^']+)'/.exec(message)?.[1];
     if (code === 'eslint(no-restricted-imports)' && specifier !== undefined) {
       refused.set(filename, (refused.get(filename) ?? new Set()).add(specifier));
     }
@@ -138,7 +149,11 @@ describe('the import fences of .oxlintrc.json', () => {
     ([file, specifier, expected, form]) =>
       [
         file,
-        form === 'dynamic' ? `import('${specifier}')` : specifier,
+        form === 'dynamic'
+          ? `import('${specifier}')`
+          : form === 'named'
+            ? `{ SquaresFour } from ${specifier}`
+            : specifier,
         expected,
         specifier,
       ] as const

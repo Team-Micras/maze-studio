@@ -153,9 +153,14 @@ The machine's rule is no builds in `/tmp`, so `tests/e2e/pwa.test.ts` builds the
 - **Reference screenshots are committed.** The board's screenshots (16×16, 21×21, 32×32, light and
   dark, with every overlay) are compared with references in `screenshots/` next to the test, named
   `<name>-chromium-linux.png`; the screenshots of failures stay in the ignored `__screenshots__`.
-  The runner's iframe is scaled to 0.8, so a 600 px stage is a 480 px picture. Update them with
-  `vitest run --project browser tests/ui/board/board.test.tsx -u` after a deliberate change of the
-  drawing, and look at them before committing.
+  The runner's iframe is scaled to 0.8, so a 600 px stage is a 480 px picture. A picture may differ
+  from its reference in 0.2 % of its pixels (`allowedMismatchedPixelRatio`). References are made in
+  `mcr.microsoft.com/playwright:v1.63.0`, the image of the pinned Playwright, as AGENTS.md shows;
+  on 09/10 the six made there were byte for byte the ones made on the notebook, and the board tests
+  pass in the image.
+- **Phosphor only by name, enforced.** `no-restricted-imports` in `src/ui` allows only names that
+  start with a capital from `@phosphor-icons/react`, which refuses `import *` and a default import;
+  `tests/config/import-fences.test.ts` checks both forms.
 - **Pointers in browser tests.** Synthetic mouse events can capture pointer 1, so pan and drag tests
   dispatch them; synthetic touches cannot be captured, so the pinch test sends real touches through
   the DevTools protocol (`tests/support/ui/touch.ts`), converting the iframe's points to the
@@ -167,4 +172,13 @@ The machine's rule is no builds in `/tmp`, so `tests/e2e/pwa.test.ts` builds the
   `diffMazes`.
 - **Thumbnails are keyed by the caller.** The cache takes a string key, such as the compact code,
   plus the band; a maze object is not a key, since the library decodes the same maze more than
-  once.
+  once. A thumbnail with a diff is a separate method, `diffThumbnail`, whose `diffKey` names the
+  diff, so a key can never stand for a picture without saying which diff it shows.
+- **Live mazes are painted, not cached.** The minimap paints the maze being edited straight onto
+  its canvas (`ThumbnailCanvas` with `cached={false}`): every edit makes a new code, and caching
+  each would leave bitmaps of up to 1 MB in the shared cache. Thumbnail canvases paint again when
+  the device pixel ratio changes.
+- **Easing curves are tokens.** `--ease`, `--ease-out` and `--ease-drawer` of DESIGN.md 8 live in
+  `src/ui/styles.css`, and components use them (`ease-(--ease)`) rather than writing curves; the
+  camera's animations in `src/render/easing.ts` need the same curves as numbers. The `--chart-*`
+  and `--sidebar-*` tokens of the shadcn template went, since nothing uses them.

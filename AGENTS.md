@@ -18,3 +18,15 @@
   compact code of every file) is the anchor of that hash: the snapshot, the library and the
   format's round-trip tests all trust the commit the submodule pins, and that test is what fails
   when the two drift apart.
+- Reference screenshots (`tests/**/screenshots/`) are made in the Playwright image of the pinned
+  version, `mcr.microsoft.com/playwright:v1.63.0`, so that they match CI and not one notebook.
+  After a deliberate change of the drawing, check the disk with `df -h /` and, from the repository,
+  run under the lock:
+
+  ```sh
+  flock /tmp/maze-studio-tests.lock docker run --rm --user "$(id -u):$(id -g)" \
+    -e HOME=/tmp/home -v "$PWD":/work -w /work mcr.microsoft.com/playwright:v1.63.0 \
+    node_modules/.bin/vitest run --project browser <test file> -u
+  ```
+
+  Look at the pictures before committing them.

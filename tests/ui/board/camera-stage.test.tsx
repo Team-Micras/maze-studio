@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, test } from 'vitest';
 import { page } from 'vitest/browser';
 import { render } from 'vitest-browser-react';
 
-import type { Maze } from '@/maze';
+import { toggleWall, type Maze } from '@/maze';
 import {
   boardGeometry,
   EDITOR_INSETS,
@@ -21,6 +21,7 @@ import { BoardHarness } from '@tests/support/ui/board-harness';
 import { REPO_MAZES, repoMaze } from '@tests/support/ui/repo-mazes';
 import { shownCamera } from '@tests/support/ui/shown-camera';
 import { pinch } from '@tests/support/ui/touch';
+import { thumbnailCache } from '@/ui/board/thumbnail-cache';
 
 let maze: Maze;
 let view: BoardView;
@@ -59,8 +60,10 @@ async function mount(): Promise<Camera> {
   return shownCamera();
 }
 
-function wheel(init: WheelEventInit & { clientX?: number; clientY?: number }): void {
-  stage().dispatchEvent(new WheelEvent('wheel', { bubbles: true, cancelable: true, ...init }));
+function wheel(init: WheelEventInit & { clientX?: number; clientY?: number }): WheelEvent {
+  const event = new WheelEvent('wheel', { bubbles: true, cancelable: true, ...init });
+  stage().dispatchEvent(event);
+  return event;
 }
 
 function pointer(type: string, init: PointerEventInit): void {
@@ -124,6 +127,15 @@ describe('The camera stage', () => {
     const after = toScreen(shownCamera(), under);
     expect(after.x).toBeCloseTo(at.x, 2);
     expect(after.y).toBeCloseTo(at.y, 2);
+  });
+
+  test('keeps the page from scrolling or zooming on the wheel, with or without Ctrl', async () => {
+    await mount();
+
+    expect(
+      wheel({ deltaY: -100, ctrlKey: true, clientX: 500, clientY: 300 }).defaultPrevented
+    ).toBe(true);
+    expect(wheel({ deltaY: 40 }).defaultPrevented).toBe(true);
   });
 
   test('ignores the wheel while the primary button is down', async () => {
@@ -282,7 +294,58 @@ async function zoomIn(times: number): Promise<Camera> {
   return shownCamera();
 }
 
+function onMinimap(type: string, share: number, buttons: number): void {
+  const board = minimapBoard();
+  minimap()?.dispatchEvent(
+    new PointerEvent(type, {
+      bubbles: true,
+      pointerId: 1,
+      pointerType: 'mouse',
+      buttons,
+      clientX: board.left + board.width * share,
+      clientY: board.top + board.height * 0.5,
+    })
+  );
+}
+
 describe('The minimap', () => {
+  test('paints the live maze without leaving bitmaps in the shared cache', async () => {
+    maze = toggleWall(maze, { direction: 'vertical', x: 7, y: 3 });
+    const bytes = thumbnailCache.bytes;
+    await zoomIn(2);
+
+    await expect.poll(() => minimap()?.dataset.minimap).toBe('shown');
+    expect(thumbnailCache.bytes).toBe(bytes);
+  });
+
+  test('ignores a press of the middle button', async () => {
+    const camera = await zoomIn(4);
+    onMinimap('pointerdown', 0.2, 4);
+    onMinimap('pointermove', 0.8, 4);
+    await settled();
+
+    expectCamera(shownCamera(), camera);
+    expect(minimap()?.hasAttribute('data-dragging')).toBe(false);
+  });
+
+  test('grabs while dragging and stops when it loses the pointer', async () => {
+    await zoomIn(4);
+    onMinimap('pointerdown', 0.3, 1);
+    await expect.poll(() => minimap()?.hasAttribute('data-dragging')).toBe(true);
+    expect(minimap()?.className).toContain('cursor-grabbing');
+
+    minimap()?.dispatchEvent(
+      new PointerEvent('lostpointercapture', { bubbles: true, pointerId: 1 })
+    );
+    await expect.poll(() => minimap()?.hasAttribute('data-dragging')).toBe(false);
+    expect(minimap()?.className).toContain('cursor-grab');
+    const stopped = shownCamera();
+    onMinimap('pointermove', 0.8, 1);
+    await settled();
+
+    expectCamera(shownCamera(), stopped);
+  });
+
   test('hides at the fit and shows past 1.06 times it', async () => {
     const fit = await mount();
 

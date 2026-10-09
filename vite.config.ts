@@ -11,9 +11,13 @@ const PERFORMANCE_TESTS = ['tests/**/*-performance.test.{ts,tsx}'];
 
 /**
  * Reference screenshots live next to their test in `screenshots/`, committed, unlike the
- * screenshots of failures, which stay in the ignored `__screenshots__`.
+ * screenshots of failures, which stay in the ignored `__screenshots__`. They are made in the
+ * Playwright image of the pinned version (AGENTS.md), and a picture may differ from its reference
+ * in 0.2 % of its pixels, the antialiasing that differs between machines.
  */
 const SCREENSHOT_REFERENCES = 'screenshots';
+
+const SCREENSHOT_MISMATCH = 0.002;
 
 function chromium() {
   return {
@@ -25,6 +29,8 @@ function chromium() {
     commands: { deflateZeros },
     expect: {
       toMatchScreenshot: {
+        comparatorName: 'pixelmatch' as const,
+        comparatorOptions: { allowedMismatchedPixelRatio: SCREENSHOT_MISMATCH },
         resolveScreenshotPath: ({
           arg,
           browserName,
