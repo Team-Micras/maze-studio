@@ -58,8 +58,14 @@ with no one involved. For that, the GitHub repository needs:
 - a rule for `main` (branch protection or a ruleset) that requires the `check` job of CI to pass
   before merging.
 
-Without the rule nothing makes the merge wait for CI; without auto-merge, the pull request waits
-for a person.
+The workflow also waits for those required checks itself and fails, merging nothing, when `main`
+requires none. Without auto-merge, the pull request waits for a person.
+
+A merge made with the workflow's `GITHUB_TOKEN` starts no other workflow, so it does not run
+`pages.yml`. The site therefore publishes on a schedule too: every Monday at 12:00 UTC, six hours
+after Dependabot's run at 06:00 UTC, and on demand from the Actions tab. To publish at the moment
+of the merge instead, the merge step would need a token that does start workflows: a GitHub App's
+installation token or a fine-grained personal access token, kept as a Dependabot secret.
 
 To understand the code, start with [`ARCHITECTURE.md`](ARCHITECTURE.md).
 

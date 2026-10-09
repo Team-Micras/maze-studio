@@ -276,12 +276,10 @@ The machine's rule is no builds in `/tmp`, so `tests/e2e/pwa.test.ts` builds the
 
 - **Dependabot moves the mazes, CI merges them.** The owner chose to keep the library in step with
   mazefiles through Dependabot's `gitsubmodule` updates, weekly, merged automatically once CI
-  passes (PLAN.md 11). `mazefiles-auto-merge.yml` runs on `pull_request_target`, since a
-  Dependabot `pull_request` gets a read-only token, and so it never checks out or runs the pull
-  request's code: it reads `dependabot/fetch-metadata`'s ecosystem and the changed files through
-  `gh`, and only for a pull request that changes `vendor/mazefiles` alone does it run
-  `gh pr merge --auto --squash`. Its token has `contents: write` and `pull-requests: write` and
-  nothing else; the merge itself waits for the `check` job the protection of `main` requires.
+  passes (PLAN.md 11). `mazefiles-auto-merge.yml` reads `dependabot/fetch-metadata`'s ecosystem
+  and the changed files through `gh`, and only for a pull request that changes `vendor/mazefiles`
+  alone does it run `gh pr merge --auto --squash`. Its token has `contents: write`,
+  `pull-requests: write` and read access to checks and statuses, nothing else.
 - **The snapshot is generated, not committed.** `src/library/snapshot.json` is in `.gitignore`;
   the `pre` scripts of `dev`, `build`, `lint`, `typecheck`, `test`, `test:unit`, `test:browser`,
   `test:performance` and `test:e2e` run `bun run snapshot`, which writes it from the submodule
@@ -350,3 +348,24 @@ The machine's rule is no builds in `/tmp`, so `tests/e2e/pwa.test.ts` builds the
   named Zoom, and its buttons are memoised, so only the percentage re-renders: 0 to 1 % again.
   The minimap of an open maze mounts only once the camera has landed, so the flight's first frame
   does not also paint it.
+
+## 10/10/2026 — Slice 2b review
+
+- **Why `pull_request_target`.** GitHub's documentation (Troubleshooting Dependabot on GitHub
+  Actions) says a Dependabot `pull_request` run gets a read-only `GITHUB_TOKEN` and only Dependabot
+  secrets, and that the `permissions` key can raise the token; GitHub's own auto-merge example uses
+  `pull_request`. So `pull_request_target` is not needed for the token. It is kept because it runs
+  the workflow as it is on `main`, so a pull request cannot change what runs with write access; the
+  job checks out nothing from the pull request either way. `dependabot/fetch-metadata` is pinned
+  to the commit of v2.5.0 (`21025c7`).
+- **The workflow waits for the required checks.** Before turning on auto-merge it runs
+  `gh pr checks --required --watch --fail-fast`, after waiting up to five minutes for the checks to
+  appear; when `main` requires none, that fails and nothing merges, so an unprotected `main` can
+  never merge a bump untested.
+- **Publishing after an automatic merge.** A merge made with `GITHUB_TOKEN` starts no workflow, so
+  neither `ci.yml` nor `pages.yml` runs on `main` after a bump; CI already ran on the pull request,
+  but the site would keep the old mazes. Chosen without secrets: `pages.yml` also runs every
+  Monday at 12:00 UTC, six hours after Dependabot's 06:00 UTC, besides `workflow_dispatch`. For a
+  deploy at the moment of the merge, the merge would need a GitHub App installation token or a
+  fine-grained personal access token, kept as a Dependabot secret; the README says so.
+- **`pretest:watch`** generates the snapshot too, like the other test scripts.

@@ -17,6 +17,7 @@
     "format:check": "oxfmt --check",
     "pretest": "bun run snapshot",
     "test": "vitest run --project unit --project browser",
+    "pretest:watch": "bun run snapshot",
     "test:watch": "vitest",
     "pretest:unit": "bun run snapshot",
     "test:unit": "vitest run --project unit",
