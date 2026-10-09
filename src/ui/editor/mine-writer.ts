@@ -33,13 +33,15 @@ export type MineStore = Pick<MineLibrary, 'list' | 'create' | 'save'>;
 /**
  * Writes the sessions of the editor to Mine, one write at a time. Each maze keeps its latest
  * session waiting, so leaving a maze while a write runs never drops its last change. What the
- * writer learns, the copy's version and the maze last written, belongs to one session, the one
- * that opened on a maze.
+ * writer learns, the copy and the maze last written, belongs to one session, the one that opened
+ * on a maze; the last version this tab wrote of each item outlives the sessions, so a session that
+ * opened on an older copy of the library, as right after leaving the maze, is not refused.
  */
 export class MineWriter {
   readonly #mine: () => Promise<MineStore | undefined>;
   readonly #events: MineWriterEvents;
   readonly #copies = new WeakMap<OpenMaze, NamedCopy>();
+  readonly #versions = new Map<string, number>();
   readonly #written = new WeakMap<OpenMaze, Maze>();
   readonly #refused = new WeakSet<OpenMaze>();
   readonly #waiting = new Map<OpenMaze, EditSession>();
@@ -112,7 +114,8 @@ export class MineWriter {
     }
 
     const mine = await this.#mine();
-    const result = await mine?.save(copy.id, { maze }, copy.version);
+    const version = Math.max(copy.version, this.#versions.get(copy.id) ?? 0);
+    const result = await mine?.save(copy.id, { maze }, version);
 
     if (result === undefined) {
       return;
@@ -126,6 +129,7 @@ export class MineWriter {
 
     const saved = { ...copy, version: result.value.version };
     this.#copies.set(opened, saved);
+    this.#versions.set(saved.id, saved.version);
     this.#written.set(opened, maze);
     this.#events.saved(opened, saved);
   }
@@ -148,6 +152,7 @@ export class MineWriter {
     });
     const copy = { id: item.id, version: item.version, name: item.name };
     this.#copies.set(opened, copy);
+    this.#versions.set(copy.id, copy.version);
     this.#written.set(opened, history.present);
     this.#events.copied(opened, copy, item);
   }

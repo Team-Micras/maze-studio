@@ -185,6 +185,21 @@ describe('The writer of Mine', () => {
     expect(mazesEqual(mine.mazeNamed('b (edited)') ?? EMPTY, wallsOf(2))).toBe(true);
   });
 
+  test('saves a maze reopened on the older version the library still had, without a refusal', async () => {
+    const mine = new FakeMine();
+    const { writer, heard } = writerOn(mine);
+    const stored = await mine.create({ name: 'mine one', maze: EMPTY, profile: 'free' });
+    mine.log.length = 0;
+    writer.write(edited(opened('mine one', { id: stored.id, version: 1 }), 0));
+    await writer.idle();
+    writer.write(edited(opened('mine one', { id: stored.id, version: 1 }), 0, 1));
+    await writer.idle();
+
+    expect(heard.refused).toEqual([]);
+    expect(mine.log).toEqual(['save mine one', 'save mine one']);
+    expect(mazesEqual(mine.mazeNamed('mine one') ?? EMPTY, wallsOf(0, 1))).toBe(true);
+  });
+
   test('stops writing a maze another tab saved since, and says so once', async () => {
     const mine = new FakeMine();
     const { writer, heard } = writerOn(mine);

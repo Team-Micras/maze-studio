@@ -471,3 +471,7 @@ The machine's rule is no builds in `/tmp`, so `tests/e2e/pwa.test.ts` builds the
   which stays at 0 %, holds DESIGN.md 8's 1 %.
 - **For the owner:** "Zoom in to edit" shows in the tool hint, which is `aria-hidden` as DESIGN.md 6
   has it, so a screen reader hears nothing when a touch on small cells does not edit.
+- **Re-review.** The writer keeps the last version this tab saved of each item of Mine, and saves on
+  the larger of it and the session's, so going back at once to a maze whose library entry is still
+  the older version is not refused as a conflict. The platform for ⌘ comes from
+  `navigator.userAgentData`, with `navigator.platform` as the fallback.
