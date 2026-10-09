@@ -1,4 +1,4 @@
-import { expect, test } from 'vitest';
+import { afterEach, expect, test } from 'vitest';
 import { page } from 'vitest/browser';
 import { render } from 'vitest-browser-react';
 
@@ -15,9 +15,16 @@ test('shows the name of the app and credits the mazefiles repository', async () 
   await expect.element(credit).toHaveAttribute('href', MAZEFILES.url);
 });
 
-test('has no serious accessibility violations', async () => {
-  document.documentElement.classList.add('dark');
-  await render(<App />);
-
-  expect(await seriousViolations()).toEqual([]);
+afterEach(() => {
+  document.documentElement.classList.remove('dark');
 });
+
+test.each(['light', 'dark'])(
+  'has no serious accessibility violations in the %s theme',
+  async (theme) => {
+    document.documentElement.classList.toggle('dark', theme === 'dark');
+    await render(<App />);
+
+    expect(await seriousViolations()).toEqual([]);
+  }
+);

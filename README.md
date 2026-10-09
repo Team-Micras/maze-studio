@@ -12,8 +12,9 @@ validation, and sharing as a `.txt` file or a link.
 
 The mazes come from [micromouseonline/mazefiles](https://github.com/micromouseonline/mazefiles),
 a collection of micromouse maze files gathered over many years from many sources by micromouseonline
-and its contributors. maze-studio pins it as the submodule `vendor/mazefiles` and builds its library
-from that commit. Corrections to a maze belong upstream, as an issue on that repository.
+and its contributors. maze-studio pins it as the submodule `vendor/mazefiles`, today at commit
+`548dcde` of `master` (08/10/2026), and builds its library from that commit;
+`git submodule status vendor/mazefiles` prints the commit pinned. Corrections to a maze belong upstream, as an issue on that repository.
 
 ## Requirements
 
@@ -31,15 +32,16 @@ bun run dev
 
 In a clone made without `--recurse-submodules`, run `git submodule update --init` once.
 
-| Script             | What it does                                                          |
-| ------------------ | --------------------------------------------------------------------- |
-| `bun run dev`      | Development server                                                    |
-| `bun run build`    | Typecheck and build into `dist/`; `BASE_PATH=/maze-studio/` for Pages |
-| `bun run preview`  | Serve the built app                                                   |
-| `bun run test`     | Unit tests (Node) and browser tests (Chromium)                        |
-| `bun run test:e2e` | Builds the app and checks the PWA in Chromium                         |
-| `bun run size`     | Gzip size of the build, after `bun run build`                         |
-| `bun run check`    | Lint, format, typecheck, tests, e2e, build and size: what CI runs     |
+| Script                     | What it does                                                          |
+| -------------------------- | --------------------------------------------------------------------- |
+| `bun run dev`              | Development server                                                    |
+| `bun run build`            | Typecheck and build into `dist/`; `BASE_PATH=/maze-studio/` for Pages |
+| `bun run preview`          | Serve the built app                                                   |
+| `bun run test`             | Unit tests (Node) and browser tests (Chromium)                        |
+| `bun run test:performance` | Frame-time tests in Chromium, one file at a time, outside the check   |
+| `bun run test:e2e`         | Builds the app and checks the PWA in Chromium                         |
+| `bun run size`             | Gzip size of the build, after `bun run build`                         |
+| `bun run check`            | Lint, format, typecheck, tests, e2e, build and size: what CI runs     |
 
 To understand the code, start with [`ARCHITECTURE.md`](ARCHITECTURE.md).
 

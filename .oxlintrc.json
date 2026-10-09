@@ -65,8 +65,8 @@
           {
             "patterns": [
               {
-                "regex": "^((@tests|@scripts)|(\\.\\./)+(tests|scripts))(/|$)",
-                "message": "Shipped code never imports tests or scripts."
+                "regex": "^((@tests|@scripts)|(\\.\\./)+(tests|scripts|vendor))(/|$)",
+                "message": "Shipped code never imports tests, scripts or the vendored repositories."
               },
               {
                 "regex": "^react(-dom)?(/.*)?$",
@@ -85,8 +85,8 @@
           {
             "patterns": [
               {
-                "regex": "^((@tests|@scripts)|(\\.\\./)+(tests|scripts))(/|$)",
-                "message": "Shipped code never imports tests or scripts."
+                "regex": "^((@tests|@scripts)|(\\.\\./)+(tests|scripts|vendor))(/|$)",
+                "message": "Shipped code never imports tests, scripts or the vendored repositories."
               },
               {
                 "regex": "^react(-dom)?(/.*)?$",
@@ -99,6 +99,10 @@
               {
                 "regex": "^(\\.\\./)+(library|render|ui|main)(/|$)",
                 "message": "src/maze imports nothing else in maze-studio; import other maze modules by relative path."
+              },
+              {
+                "regex": "^node:",
+                "message": "src/maze runs in the browser and in Node alike; it never imports Node's modules."
               }
             ]
           }
@@ -113,8 +117,8 @@
           {
             "patterns": [
               {
-                "regex": "^((@tests|@scripts)|(\\.\\./)+(tests|scripts))(/|$)",
-                "message": "Shipped code never imports tests or scripts."
+                "regex": "^((@tests|@scripts)|(\\.\\./)+(tests|scripts|vendor))(/|$)",
+                "message": "Shipped code never imports tests, scripts or the vendored repositories."
               },
               {
                 "regex": "^react(-dom)?(/.*)?$",
@@ -137,8 +141,8 @@
           {
             "patterns": [
               {
-                "regex": "^((@tests|@scripts)|(\\.\\./)+(tests|scripts))(/|$)",
-                "message": "Shipped code never imports tests or scripts."
+                "regex": "^((@tests|@scripts)|(\\.\\./)+(tests|scripts|vendor))(/|$)",
+                "message": "Shipped code never imports tests, scripts or the vendored repositories."
               },
               {
                 "regex": "^react(-dom)?(/.*)?$",
@@ -161,8 +165,8 @@
           {
             "patterns": [
               {
-                "regex": "^((@tests|@scripts)|(\\.\\./)+(tests|scripts))(/|$)",
-                "message": "Shipped code never imports tests or scripts."
+                "regex": "^((@tests|@scripts)|(\\.\\./)+(tests|scripts|vendor))(/|$)",
+                "message": "Shipped code never imports tests, scripts or the vendored repositories."
               },
               {
                 "regex": "^(@/main|(\\.\\./)+main)(/|$)",
@@ -181,8 +185,8 @@
           {
             "patterns": [
               {
-                "regex": "^((@tests|@scripts)|(\\.\\./)+(tests|scripts))(/|$)",
-                "message": "Shipped code never imports tests or scripts."
+                "regex": "^((@tests|@scripts)|(\\.\\./)+(tests|scripts|vendor))(/|$)",
+                "message": "Shipped code never imports tests, scripts or the vendored repositories."
               }
             ]
           }

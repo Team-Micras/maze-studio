@@ -20,16 +20,16 @@ browser; there is no server.
 ## Import rules
 
 Checked by `bun run lint` through `no-restricted-imports` in `.oxlintrc.json`, and the rules
-themselves by `tests/config/import-fences.test.ts`, which lints probe files against them.
+themselves by `tests/config/import-fences.test.ts`, which lints probe files, static and dynamic `import()`, against them.
 
-| Folder         | May import                       | Never imports                        |
-| -------------- | -------------------------------- | ------------------------------------ |
-| `src/maze/`    | its own files, by relative path  | anything else of the project, React  |
-| `src/library/` | `src/maze`, its own files        | `src/render`, `src/ui`, React        |
-| `src/render/`  | `src/maze`, its own files        | `src/library`, `src/ui`, React       |
-| `src/ui/`      | all of `src/` but `src/main.tsx` |                                      |
-| `scripts/`     | `src/maze`, `src/library`        | `src/render`, `src/ui`, tests, React |
-| any of `src/`  |                                  | `tests/`, `scripts/`                 |
+| Folder         | May import                       | Never imports                                        |
+| -------------- | -------------------------------- | ---------------------------------------------------- |
+| `src/maze/`    | its own files, by relative path  | anything else of the project, React, `node:` modules |
+| `src/library/` | `src/maze`, its own files        | `src/render`, `src/ui`, React                        |
+| `src/render/`  | `src/maze`, its own files        | `src/library`, `src/ui`, React                       |
+| `src/ui/`      | all of `src/` but `src/main.tsx` |                                                      |
+| `scripts/`     | `src/maze`, `src/library`        | `src/render`, `src/ui`, tests, React                 |
+| any of `src/`  |                                  | `tests/`, `scripts/`, `vendor/`                      |
 
 ## Tests
 

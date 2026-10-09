@@ -8,8 +8,11 @@ import { afterAll, beforeAll, describe, expect, test } from 'vitest';
 const ROOT = join(import.meta.dirname, '..', '..');
 const OXLINT = join(ROOT, 'node_modules', '.bin', 'oxlint');
 
-/** A file of the tree, an import it makes, and whether the fences of `.oxlintrc.json` refuse it. */
-type Fence = readonly [file: string, specifier: string, refused: boolean];
+/**
+ * A file of the tree, an import it makes, whether the fences of `.oxlintrc.json` refuse it, and
+ * whether the import is a dynamic `import()` rather than a static one.
+ */
+type Fence = readonly [file: string, specifier: string, refused: boolean, form?: 'dynamic'];
 
 const FENCES: readonly Fence[] = [
   ['src/maze/probe.ts', './walls', false],
@@ -26,6 +29,10 @@ const FENCES: readonly Fence[] = [
   ['src/maze/probe.ts', '@tests/support/axe-check', true],
   ['src/maze/probe.ts', '../../scripts/bundle-size', true],
   ['src/maze/deep/probe.ts', '../../ui/app', true],
+  ['src/maze/probe.ts', 'node:fs', true],
+  ['src/maze/probe.ts', '../../vendor/mazefiles/README.md', true],
+  ['src/maze/lazy-probe.ts', '../ui/app', true, 'dynamic'],
+  ['src/maze/lazy-probe.ts', './walls', false, 'dynamic'],
 
   ['src/library/probe.ts', '@/maze/walls', false],
   ['src/library/probe.ts', '../maze/walls', false],
@@ -40,6 +47,10 @@ const FENCES: readonly Fence[] = [
   ['src/library/probe.ts', '@scripts/bundle-size', true],
   ['src/library/deep/probe.ts', '../../maze/walls', false],
   ['src/library/deep/probe.ts', '../../render/svg', true],
+  ['src/library/probe.ts', '../../vendor/mazefiles/README.md', true],
+  ['src/library/lazy-probe.ts', '../ui/app', true, 'dynamic'],
+  ['src/library/lazy-probe.ts', '@/render/svg', true, 'dynamic'],
+  ['src/library/lazy-probe.ts', '../maze/walls', false, 'dynamic'],
 
   ['src/render/probe.ts', '@/maze/walls', false],
   ['src/render/probe.ts', '../maze/walls', false],
@@ -63,6 +74,8 @@ const FENCES: readonly Fence[] = [
   ['src/ui/probe.ts', '@tests/support/axe-check', true],
   ['src/ui/probe.ts', '../../tests/support/axe-check', true],
   ['src/ui/probe.ts', '@scripts/bundle-size', true],
+  ['src/ui/probe.ts', '../../vendor/mazefiles/README.md', true],
+  ['src/ui/lazy-probe.ts', '@/render/svg', false, 'dynamic'],
 
   ['src/main.tsx', '@/ui/app', false],
   ['src/main.tsx', 'react', false],
@@ -74,6 +87,7 @@ const FENCES: readonly Fence[] = [
   ['scripts/probe.ts', '../src/ui/app', true],
   ['scripts/probe.ts', 'react', true],
   ['scripts/probe.ts', '../tests/support/axe-check', true],
+  ['scripts/probe.ts', 'node:fs', false],
 ];
 
 const refused = new Map<string, Set<string>>();
@@ -86,15 +100,16 @@ beforeAll(() => {
   writeFileSync(join(dir, '.oxlintrc.json'), JSON.stringify(config));
 
   const files = new Map<string, string[]>();
-  for (const [file, specifier] of FENCES) {
-    files.set(file, [...(files.get(file) ?? []), specifier]);
+  for (const [file, specifier, , form] of FENCES) {
+    const index = files.get(file)?.length ?? 0;
+    const line =
+      form === 'dynamic'
+        ? `export const p${index} = () => import('${specifier}');`
+        : `import * as p${index} from '${specifier}';\nexport { p${index} };`;
+    files.set(file, [...(files.get(file) ?? []), line]);
   }
 
-  for (const [file, specifiers] of files) {
-    const lines = specifiers.map(
-      (specifier, index) => `import * as p${index} from '${specifier}';`
-    );
-    lines.push(`export const probes = [${specifiers.map((_, index) => `p${index}`).join(', ')}];`);
+  for (const [file, lines] of files) {
     mkdirSync(dirname(join(dir, file)), { recursive: true });
     writeFileSync(join(dir, file), `${lines.join('\n')}\n`);
   }
@@ -119,7 +134,17 @@ beforeAll(() => {
 afterAll(() => refused.clear());
 
 describe('the import fences of .oxlintrc.json', () => {
-  test.each(FENCES)('%s importing %s is refused: %s', (file, specifier, expected) => {
+  const cases = FENCES.map(
+    ([file, specifier, expected, form]) =>
+      [
+        file,
+        form === 'dynamic' ? `import('${specifier}')` : specifier,
+        expected,
+        specifier,
+      ] as const
+  );
+
+  test.each(cases)('%s importing %s is refused: %s', (file, _shown, expected, specifier) => {
     expect(refused.get(file)?.has(specifier) ?? false).toBe(expected);
   });
 });
