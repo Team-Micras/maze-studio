@@ -1,67 +1,104 @@
 /**
- * Painting thumbnails a few at a time, only in the browser's idle time, so a zoom that crosses a
- * band or a scroll that mounts a row never paints in a busy frame. Until then a thumbnail keeps its
+ * Painting thumbnails a few at a time, in the browser's idle time, so a zoom that crosses a band
+ * or a scroll that mounts a row never paints in a busy frame. Until then a thumbnail keeps its
  * previous bitmap, scaled, or shows its floor colour (DESIGN.md 12).
  *
  * @module
  */
 
-/** What the queue needs of an idle period. */
-interface IdlePeriod {
+/** A stretch of time the queue may paint in. */
+export interface IdlePeriod {
+  /** How many milliseconds are left. */
   timeRemaining(): number;
+  /** Whether this turn must paint something even when little time is left. */
+  readonly mustProgress: boolean;
+}
+
+/** Calls `run` in the next idle period. */
+export type IdleScheduler = (run: (period: IdlePeriod) => void) => void;
+
+/** A queue of paints. */
+export interface PaintQueue {
+  /** Runs `paint` in a coming idle period; the function returned takes it back if not yet run. */
+  schedule(paint: () => void): () => void;
 }
 
 /**
- * Below this much idle time left, the rest waits for the next idle period: a thumbnail takes 3 to
- * 6 ms to paint on a phone-class CPU, measured at four times throttling.
+ * Below this much idle time left, the rest waits for the next period: a thumbnail takes 3 to 6 ms
+ * to paint on a phone-class CPU, measured at four times throttling.
  */
-const MIN_IDLE_MS = 8;
+export const MIN_IDLE_MS = 8;
 
-/** The time a browser without idle callbacks gives the queue at each turn. */
-const FALLBACK_BUDGET_MS = MIN_IDLE_MS;
+/** The frame a browser without idle callbacks leaves between two turns. */
+export const FALLBACK_FRAME_MS = 16;
 
-const jobs = new Set<() => void>();
-let scheduled = false;
+/** A queue that paints in the periods `whenIdle` gives it, at least one paint when it must. */
+export function createPaintQueue(whenIdle: IdleScheduler): PaintQueue {
+  const jobs = new Set<() => void>();
+  let scheduled = false;
 
-function whenIdle(run: (period: IdlePeriod) => void): void {
-  if (typeof window.requestIdleCallback === 'function') {
-    window.requestIdleCallback(run);
-    return;
-  }
+  const schedule = (): void => {
+    if (!scheduled && jobs.size > 0) {
+      scheduled = true;
+      whenIdle(run);
+    }
+  };
 
-  window.setTimeout(() => {
-    const started = performance.now();
-    run({ timeRemaining: () => Math.max(0, FALLBACK_BUDGET_MS - (performance.now() - started)) });
-  }, 0);
-}
+  function run(period: IdlePeriod): void {
+    scheduled = false;
+    let painted = 0;
 
-function runJobs(period: IdlePeriod): void {
-  scheduled = false;
+    for (const job of jobs) {
+      if (period.timeRemaining() < MIN_IDLE_MS && !(period.mustProgress && painted === 0)) {
+        break;
+      }
 
-  for (const job of jobs) {
-    if (period.timeRemaining() < MIN_IDLE_MS) {
-      break;
+      jobs.delete(job);
+      job();
+      painted++;
     }
 
-    jobs.delete(job);
-    job();
+    schedule();
   }
 
-  schedule();
-}
-
-function schedule(): void {
-  if (!scheduled && jobs.size > 0) {
-    scheduled = true;
-    whenIdle(runJobs);
-  }
-}
-
-/** Runs `paint` in a coming idle period; the function returned takes it back if not yet run. */
-export function schedulePaint(paint: () => void): () => void {
-  jobs.add(paint);
-  schedule();
-  return () => {
-    jobs.delete(paint);
+  return {
+    schedule: (paint) => {
+      jobs.add(paint);
+      schedule();
+      return () => {
+        jobs.delete(paint);
+      };
+    },
   };
+}
+
+/**
+ * The browser's idle periods: `requestIdleCallback` where there is one; elsewhere, as in Safari, a
+ * turn every 16 ms with the budget of one paint, which always paints at least one thumbnail.
+ */
+export function browserIdleScheduler(): IdleScheduler {
+  if (typeof window.requestIdleCallback === 'function') {
+    return (run) =>
+      window.requestIdleCallback((deadline) =>
+        run({ timeRemaining: () => deadline.timeRemaining(), mustProgress: false })
+      );
+  }
+
+  return (run) => {
+    window.setTimeout(() => {
+      const started = performance.now();
+      run({
+        timeRemaining: () => Math.max(0, MIN_IDLE_MS - (performance.now() - started)),
+        mustProgress: true,
+      });
+    }, FALLBACK_FRAME_MS);
+  };
+}
+
+let shared: PaintQueue | undefined;
+
+/** Runs `paint` in a coming idle period of the app's one queue; the function returned takes it back. */
+export function schedulePaint(paint: () => void): () => void {
+  shared ??= createPaintQueue(browserIdleScheduler());
+  return shared.schedule(paint);
 }

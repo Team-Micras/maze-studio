@@ -3,12 +3,13 @@ import { useEffect, useRef, useState } from 'react';
 import { fileStem, type LibraryFilter } from '@/library';
 import { parseMazeText } from '@/maze';
 
+import { CANVAS_ID } from './canvas-id';
 import { useRoute } from './hooks/use-route';
 import { LibraryScreen } from './library/library-screen';
 import { useLibrary } from './library/use-library';
 import { MazeScreen } from './maze/maze-screen';
 import { pushRoute, replaceRoute } from './navigation';
-import { openingOf, type OpenMaze } from './open-maze';
+import { MAX_FILE_BYTES, openingOf, type OpenMaze } from './open-maze';
 import { TooltipProvider } from './primitives/tooltip';
 import { LIBRARY_ROUTE, parseRoute, routeHash, type Route } from './routes';
 import { Toaster } from './toaster';
@@ -18,10 +19,12 @@ import { showToast } from './toasts';
 interface OpenedFile {
   readonly open: OpenMaze;
   readonly at: string;
+  /** Tells two files apart, even with the same name. */
+  readonly id: number;
 }
 
 function focusCanvas(): void {
-  document.querySelector<HTMLElement>('[role="application"]')?.focus();
+  document.getElementById(CANVAS_ID)?.focus();
 }
 
 /**
@@ -70,17 +73,23 @@ export function App() {
   };
 
   const openFile = async (picked: File): Promise<void> => {
+    if (picked.size > MAX_FILE_BYTES) {
+      showToast(`Could not read ${picked.name} (larger than 1 MiB). Pick a mazefiles .txt`);
+      return;
+    }
+
     const parsed = parseMazeText(await picked.text(), picked.name);
 
     if (parsed.ok) {
-      setFile({
+      setFile((before) => ({
         open: {
           maze: parsed.value.maze,
           name: fileStem(picked.name),
           detail: 'Opened from a file',
         },
         at: hash,
-      });
+        id: (before?.id ?? 0) + 1,
+      }));
     } else {
       showToast(`Could not read ${picked.name} (${parsed.error.message}). Pick a mazefiles .txt`);
     }
@@ -90,16 +99,18 @@ export function App() {
 
   return (
     <TooltipProvider delayDuration={350} skipDelayDuration={300}>
-      <a
-        className="fixed top-3 left-3 z-40 -translate-y-[160%] rounded-[10px] bg-primary px-3 py-2 text-[13px] text-primary-foreground focus-visible:translate-y-0"
-        href="#canvas"
-        onClick={(event) => {
-          event.preventDefault();
-          focusCanvas();
-        }}
-      >
-        Skip to the canvas
-      </a>
+      <nav aria-label="Skip link">
+        <a
+          className="fixed top-3 left-3 z-40 -translate-y-[160%] rounded-[10px] bg-primary px-3 py-2 text-[13px] text-primary-foreground focus-visible:translate-y-0"
+          href={`#${CANVAS_ID}`}
+          onClick={(event) => {
+            event.preventDefault();
+            focusCanvas();
+          }}
+        >
+          Skip to the canvas
+        </a>
+      </nav>
       {shownMaze === undefined ? (
         route.kind === 'library' ? (
           <LibraryScreen
@@ -110,7 +121,11 @@ export function App() {
           />
         ) : null
       ) : (
-        <MazeScreen key={shownMaze.name} onLibrary={toLibrary} open={shownMaze} />
+        <MazeScreen
+          key={shownFile === undefined ? hash : `file:${file?.id ?? 0}`}
+          onLibrary={toLibrary}
+          open={shownMaze}
+        />
       )}
       <Toaster />
     </TooltipProvider>

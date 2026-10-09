@@ -137,6 +137,6 @@ describe('the PWA built for GitHub Pages', () => {
     const response = await page.reload();
     expect(response?.fromServiceWorker()).toBe(true);
     await page.getByRole('link', { name: 'micromouseonline/mazefiles' }).waitFor();
-    expect(await page.locator('a[data-artboard]').count()).toBeGreaterThan(0);
+    await page.locator('a[data-artboard]').first().waitFor();
   });
 });

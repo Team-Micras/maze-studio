@@ -50,18 +50,16 @@ test('dragging the 581 mazes keeps the frame budget of DESIGN.md 8 at 4× CPU th
   const start = shownCamera();
   let mounted = 0;
   let travelled = 0;
-  let run = 0;
 
   const median = await throttled(SLOWDOWN, () =>
     medianOfRuns(RUNS, STEPS, (index) => {
       if (index === 0) {
         pointer('pointerdown', 800, 4);
-        run += 1;
       }
 
       mounted = Math.max(mounted, artboards().length);
       travelled = Math.max(travelled, Math.abs(shownCamera().y - start.y));
-      pointer('pointermove', 800 - (index + 1) * 18 + (run % 2 === 0 ? 0 : 0), 4);
+      pointer('pointermove', 800 - (index + 1) * 18, 4);
 
       if (index === STEPS - 1) {
         pointer('pointerup', 800 - STEPS * 18, 0);

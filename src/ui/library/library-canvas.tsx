@@ -10,6 +10,7 @@ import {
   type LibraryGrid,
 } from '@/render';
 import { CameraStage } from '@/ui/board/camera-stage';
+import { CANVAS_ID } from '@/ui/canvas-id';
 import type { CanvasCamera } from '@/ui/board/use-canvas-camera';
 import { useDevicePixelRatio } from '@/ui/board/use-device-pixel-ratio';
 
@@ -87,7 +88,7 @@ export function LibraryCanvas({
   });
 
   return (
-    <CameraStage className={className} controller={controller} label="Maze library">
+    <CameraStage className={className} controller={controller} id={CANVAS_ID} label="Maze library">
       <div
         onBlur={(event) => {
           if (!event.currentTarget.contains(event.relatedTarget)) {

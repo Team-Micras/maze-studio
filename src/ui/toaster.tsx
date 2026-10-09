@@ -22,7 +22,7 @@ export function Toaster() {
           <Toast.Title>{toast.text}</Toast.Title>
         </Toast.Root>
       ))}
-      <Toast.Viewport className="fixed top-[72px] left-1/2 z-30 flex w-max max-w-[calc(100vw-32px)] -translate-x-1/2 flex-col items-center gap-2 outline-none max-[720px]:top-[112px]" />
+      <Toast.Viewport className="fixed top-[72px] left-1/2 z-30 flex w-max max-w-[calc(100vw-32px)] -translate-x-1/2 flex-col items-center gap-2 outline-none max-[720px]:top-safe-28" />
     </Toast.Provider>
   );
 }

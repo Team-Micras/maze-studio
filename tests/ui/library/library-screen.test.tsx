@@ -2,7 +2,7 @@ import { afterEach, describe, expect, test } from 'vitest';
 import { page, userEvent } from 'vitest/browser';
 
 import '@/ui/styles.css';
-import { seriousViolations } from '@tests/support/axe-check';
+import { axeViolations } from '@tests/support/axe-check';
 import { settled } from '@tests/support/ui/animations';
 import { artboards, mountApp } from '@tests/support/ui/library-app';
 
@@ -37,6 +37,10 @@ function rowsOnScreen(): number {
   ).size;
 }
 
+function world(): string | undefined {
+  return document.querySelector<HTMLElement>('[data-world]')?.style.transform;
+}
+
 async function scroll(deltaY: number): Promise<void> {
   stage().dispatchEvent(new WheelEvent('wheel', { bubbles: true, cancelable: true, deltaY }));
   await settled();
@@ -48,12 +52,16 @@ describe('The library canvas', () => {
 
     expect(artboards().length).toBeLessThanOrEqual((rowsOnScreen() + 1) * COLUMNS_AT_1440);
 
+    const before = world();
     await scroll(4000);
-    const first = artboards()[0]?.getAttribute('data-artboard');
+    await expect.poll(world).not.toBe(before);
+    await expect
+      .poll(() => artboards()[0]?.getAttribute('data-artboard'))
+      .not.toBe('repo:classic/001-anomaly-test.txt');
+    await settled();
 
     expect(artboards().length).toBeLessThanOrEqual((rowsOnScreen() + 2) * COLUMNS_AT_1440);
     expect(artboards().length).toBeGreaterThanOrEqual(rowsOnScreen() * COLUMNS_AT_1440);
-    expect(first).not.toBe('repo:classic/001-anomaly-test.txt');
   });
 
   test('names each artboard by maze, competition and size, as a link that opens it', async () => {
@@ -87,8 +95,7 @@ describe('The library canvas', () => {
 
   test('a click on an artboard half below the insets does not move the camera', async () => {
     await mountApp();
-    const world = document.querySelector<HTMLElement>('[data-world]');
-    const before = world?.style.transform;
+    const before = world();
     const cut = artboards().find((board) => {
       const box = board.getBoundingClientRect();
       return (
@@ -105,7 +112,7 @@ describe('The library canvas', () => {
 
     expect(cut).toBeDefined();
     expect(document.activeElement).toBe(cut);
-    expect(world?.style.transform).toBe(before);
+    expect(world()).toBe(before);
   });
 });
 
@@ -181,10 +188,72 @@ describe('Search and filters', () => {
   });
 });
 
+describe('Filtering', () => {
+  test('replaces the history entry as the search is typed, never adds one', async () => {
+    await mountApp();
+    const length = window.history.length;
+    await userEvent.type(page.getByRole('searchbox', { name: 'Search mazes' }), 'japan');
+
+    await expect.poll(() => window.location.hash).toBe('#/?q=japan');
+    expect(window.history.length).toBe(length);
+  });
+
+  test('fits the grid again after the filter changes', async () => {
+    await mountApp();
+    const fitted = world();
+    await scroll(3000);
+    await expect.poll(world).not.toBe(fitted);
+    await userEvent.click(page.getByRole('radio', { name: 'Classic' }));
+
+    await expect.poll(world, { timeout: 2000 }).toBe(fitted);
+  });
+
+  test('slides the artboards that stay mounted to their new places', async () => {
+    await mountApp();
+    const moving = artboards().find(
+      (board) => board.dataset.artboard === 'repo:classic/AAMC15Maze.txt'
+    );
+    await userEvent.fill(page.getByRole('searchbox', { name: 'Search mazes' }), 'AAMC');
+
+    await expect
+      .poll(() =>
+        document
+          .getAnimations()
+          .some(
+            (animation) =>
+              animation instanceof CSSTransition &&
+              animation.transitionProperty === 'transform' &&
+              animation.effect instanceof KeyframeEffect &&
+              animation.effect.target === moving
+          )
+      )
+      .toBe(true);
+    expect(moving === undefined ? false : document.contains(moving)).toBe(true);
+  });
+
+  test('announces an empty result through a live region that was already there', async () => {
+    await mountApp();
+    const region = document.querySelector('p[aria-live="polite"]');
+
+    expect(region?.textContent).toBe('');
+    await userEvent.fill(page.getByRole('searchbox', { name: 'Search mazes' }), 'no such maze');
+    await expect.poll(() => region?.textContent).toBe('No mazes match');
+    expect(document.querySelector('p[aria-live="polite"]')).toBe(region);
+  });
+
+  test('names the search field q, as a form would send it', async () => {
+    await mountApp();
+
+    await expect
+      .element(page.getByRole('searchbox', { name: 'Search mazes' }))
+      .toHaveAttribute('name', 'q');
+  });
+});
+
 describe('The library zoom', () => {
   test('shows the zoom of the fit and changes it with the buttons and the keys', async () => {
     await mountApp();
-    const zoom = page.getByRole('status', { name: 'Zoom' });
+    const zoom = page.getByText(/^Zoom \d+%$/);
 
     await expect.element(zoom).toHaveTextContent('100%');
     await userEvent.click(page.getByRole('button', { name: 'Zoom in' }));
@@ -201,11 +270,11 @@ describe('Accessibility of the library', () => {
     ['notebook', 'dark', 1440, 900],
     ['phone', 'light', 390, 844],
     ['phone', 'dark', 390, 844],
-  ])('has no serious violations on a %s in the %s theme', async (_, theme, width, height) => {
+  ])('has no accessibility violations on a %s in the %s theme', async (_, theme, width, height) => {
     await page.viewport(width, height);
     document.documentElement.classList.toggle('dark', theme === 'dark');
     await mountApp();
 
-    expect(await seriousViolations()).toEqual([]);
+    expect(await axeViolations()).toEqual([]);
   });
 });

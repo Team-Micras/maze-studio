@@ -3,6 +3,7 @@ import { SquaresFour } from '@phosphor-icons/react';
 import { boardGeometry } from '@/render';
 import { Board } from '@/ui/board/board';
 import { CameraStage } from '@/ui/board/camera-stage';
+import { CANVAS_ID } from '@/ui/canvas-id';
 import { useBoardCamera } from '@/ui/board/use-board-camera';
 import { Hint, Island, IslandButton } from '@/ui/islands/island';
 import { ZoomIsland } from '@/ui/islands/zoom-island';
@@ -31,13 +32,14 @@ export function MazeScreen({ open, onLibrary }: MazeScreenProps) {
         <CameraStage
           className="fixed inset-0"
           controller={camera}
+          id={CANVAS_ID}
           label={`${open.name}, maze board`}
         >
           <Board maze={open.maze} />
         </CameraStage>
       </main>
       <header>
-        <Island className="fixed top-4 left-4 h-11 max-w-[calc(50vw-40px)] max-[720px]:top-2 max-[720px]:left-2 max-[720px]:max-w-[calc(100vw-16px)]">
+        <Island className="fixed top-4 left-4 h-11 max-w-[calc(50vw-40px)] max-[720px]:top-safe-2 max-[720px]:left-safe-2 max-[720px]:max-w-[calc(100vw-16px)]">
           <Hint label="Library" side="bottom">
             <IslandButton aria-label="Back to the library" onClick={onLibrary}>
               <SquaresFour aria-hidden size={18} />
@@ -55,7 +57,7 @@ export function MazeScreen({ open, onLibrary }: MazeScreenProps) {
       </header>
       <footer>
         <ZoomIsland
-          className="right-4 bottom-[18px] max-[720px]:right-2 max-[720px]:bottom-3"
+          className="right-4 bottom-[18px] max-[720px]:right-safe-2 max-[720px]:bottom-safe-3"
           percent={zoomPercent(camera)}
           refit={camera.refit}
           zoomBy={camera.zoomBy}

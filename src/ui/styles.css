@@ -103,6 +103,34 @@
   --artboard-shadow: 0 0 0 1px oklch(1 0 0 / 0.06), 0 2px 0 oklch(0 0 0 / 0.5);
 }
 
+/*
+ * Island positions on a phone: their distance from the edge plus the safe-area inset of that edge,
+ * so a notch or a home indicator never covers them (DESIGN.md 5).
+ */
+@utility top-safe-2 {
+  top: calc(0.5rem + env(safe-area-inset-top));
+}
+
+@utility top-safe-16 {
+  top: calc(4rem + env(safe-area-inset-top));
+}
+
+@utility top-safe-28 {
+  top: calc(7rem + env(safe-area-inset-top));
+}
+
+@utility left-safe-2 {
+  left: calc(0.5rem + env(safe-area-inset-left));
+}
+
+@utility right-safe-2 {
+  right: calc(0.5rem + env(safe-area-inset-right));
+}
+
+@utility bottom-safe-3 {
+  bottom: calc(0.75rem + env(safe-area-inset-bottom));
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;

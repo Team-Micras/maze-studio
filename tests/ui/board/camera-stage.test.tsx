@@ -15,7 +15,7 @@ import {
   type Camera,
 } from '@/render';
 import '@/ui/styles.css';
-import { seriousViolations } from '@tests/support/axe-check';
+import { axeViolations } from '@tests/support/axe-check';
 import { settled } from '@tests/support/ui/animations';
 import { BoardHarness } from '@tests/support/ui/board-harness';
 import { REPO_MAZES, repoMaze } from '@tests/support/ui/repo-mazes';
@@ -257,15 +257,12 @@ describe('The camera stage', () => {
     expect(after.y).toBeCloseTo(middle.y, 0);
   });
 
-  test.each(['light', 'dark'])(
-    'has no serious accessibility violations in the %s theme',
-    async (theme) => {
-      document.documentElement.classList.toggle('dark', theme === 'dark');
-      await mount();
+  test.each(['light', 'dark'])('has no accessibility violations in the %s theme', async (theme) => {
+    document.documentElement.classList.toggle('dark', theme === 'dark');
+    await mount();
 
-      expect(await seriousViolations()).toEqual([]);
-    }
-  );
+    expect(await axeViolations()).toEqual([]);
+  });
 });
 
 function minimap(): HTMLElement | null {

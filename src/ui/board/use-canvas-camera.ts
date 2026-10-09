@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 
 import {
   centerOn,
@@ -98,7 +98,7 @@ export function useCanvasCamera({ content, limits: limitsFor }: CanvasCameraOpti
         : constrainCamera(chosen, limits);
   const latest = useRef({ camera, limits, content });
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     latest.current = { camera, limits, content };
   });
 

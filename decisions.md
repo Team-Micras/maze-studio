@@ -222,13 +222,24 @@ The machine's rule is no builds in `/tmp`, so `tests/e2e/pwa.test.ts` builds the
   store, as DESIGN.md 6 asks; no `sonner`.
 - **Thumbnails paint in idle time.** A thumbnail canvas holds the bitmap of its band. Its first
   bitmap shows at once when the cache has it; every other bitmap, and every one the cache lacks,
-  is painted by `paint-queue.ts` in an idle period with at least 8 ms left, never on a timeout:
-  a 16×16 or a 32×32 takes 3 to 6 ms to paint at 4× CPU throttling, enough to drop a frame. Until
-  then the canvas keeps its previous bitmap, scaled, or its floor colour (DESIGN.md 12).
-- **Artboards carry a crisp shadow, not the slab's.** The board's slab shadow (40 px blur) on 30
-  mounted artboards was repainted at every zoom step and cost 1 to 2.5 % of frames past 25 ms at
-  4× throttling; `--artboard-shadow` (a hairline ring and a 2 px drop, no blur) brings that to 0 to
-  0.5 %. The editor's board keeps the slab.
+  is painted by `paint-queue.ts` in an idle period with at least 8 ms left: a 16×16 or a 32×32
+  takes 3 to 6 ms to paint at 4× CPU throttling, enough to drop a frame. Where there is no
+  `requestIdleCallback`, as in Safari, the queue takes a turn every 16 ms and paints at least one
+  thumbnail in each, so it always gets through. Until a paint, the canvas keeps its previous
+  bitmap, scaled, or its floor colour (DESIGN.md 12).
+- **Artboards carry a crisp shadow, not the slab's.** The board's slab shadow (`0 18px 40px -22px`)
+  on 30 mounted artboards is repainted at every zoom step. Three ways to keep its look were
+  measured with the library's performance test, three runs each of the median of three, zooming at
+  4× CPU throttling (frames over 25 ms; the budget is 1 %):
+  - the slab as a CSS `box-shadow`: 1 to 2.5 %;
+  - the same shadow blurred once into a nine-slice image, cast as a `border-image` that scales with
+    the camera (it looks the same as the slab at 400 %): 1.5, 0.5 and 1.0 %, one run failing;
+  - the slab only once the camera has been still for 150 ms, the crisp shadow while it moves:
+    1.0, 1.0 and 1.0 %, the stop and the start each costing a frame;
+  - `--artboard-shadow`, a hairline ring and a 2 px drop with no blur: 0, 0.5 and 0.5 %.
+
+  Only the last one leaves room in the budget, so it stays. The editor's board keeps the slab.
+
 - **How the library was measured.** `tests/ui/library/library-performance.test.tsx` mounts the
   whole app with the 581 mazes at 1440 × 900, slows the CPU 4× through the DevTools protocol
   (`Emulation.setCPUThrottlingRate`), and takes the median of three runs of 200 frames, dragging
@@ -236,7 +247,11 @@ The machine's rule is no builds in `/tmp`, so `tests/e2e/pwa.test.ts` builds the
   test: drag p95 16.7 to 16.8 ms with 0 to 0.5 % of frames over 25 ms, zoom p95 16.7 to 16.8 ms
   with 0 to 0.5 %, and at most 30 artboards mounted. It runs on React's development build:
   switching the performance project to the production build through `define` reached the other
-  browser project, which shares its server, and broke `act` there.
+  browser project, which shares its server, and broke `act` there. The production build is
+  measured in the e2e project instead (`tests/e2e/library-frames.test.ts`, the built app at 4×
+  throttling through a CDP session, the same motions run in the page): over three runs, drag p95
+  16.7 to 16.8 ms with 0 % over 25 ms, zoom p95 16.7 ms with 0 to 0.5 %. It held steady, so it is
+  a gate of the check like the rest of the e2e project.
 - **The bundle.** The first screen now loads 150.1 KB gzip (72.6 KB before): React, Radix's
   tooltip, toggle group, dropdown menu and toast with what they stand on, Phosphor's icons and the
   shell. React and Radix get chunks of their own (`codeSplitting` groups), so the app's own chunk,
@@ -244,3 +259,14 @@ The machine's rule is no builds in `/tmp`, so `tests/e2e/pwa.test.ts` builds the
 - **One build for every e2e file.** `tests/support/e2e/serve-app.ts`, the e2e project's global
   setup, builds the app under `/maze-studio/` into `node_modules/.tmp/` once and serves it; each
   file reads its URL with `inject('appUrl')`.
+- **axe counts every impact.** `axeViolations` fails on any violation, minor and moderate ones
+  included. That found the skip link outside a landmark: it now sits in a `nav` named "Skip link"
+  and points at the canvas's `id`, `canvas`.
+- **Safe areas on a phone.** The phone's islands, the maze screen's islands and the toasts sit 8 px
+  (12 px at the bottom) plus the safe-area inset of their edge, through small utilities in
+  `src/ui/styles.css` (`top-safe-2` and the like).
+- **Quiet zoom, announced emptiness.** The zoom percentage is plain text, not a live region that
+  would speak at every frame of a zoom. An empty library is announced through a live region that
+  is always mounted, since one mounted with its text is not read.
+- **Opened files up to 1 MiB.** A larger `.txt` is refused with a toast before it is read; a 64×64
+  maze is under 40 kB.

@@ -38,7 +38,7 @@ export function SearchField({ value, onChange, className }: SearchFieldProps) {
   return (
     <label
       className={cn(
-        'flex h-9 w-[260px] items-center gap-2 rounded-[10px] pr-2 pl-2.5 text-muted-foreground focus-within:bg-accent max-[720px]:h-10 max-[720px]:w-auto max-[720px]:flex-1',
+        'flex h-9 w-[260px] items-center gap-2 rounded-[10px] pr-2 pl-2.5 text-muted-foreground focus-within:bg-accent has-[input:focus-visible]:ring-2 has-[input:focus-visible]:ring-ring max-[720px]:h-10 max-[720px]:w-auto max-[720px]:flex-1',
         className
       )}
     >
@@ -46,6 +46,7 @@ export function SearchField({ value, onChange, className }: SearchFieldProps) {
       <span className="sr-only">Search mazes</span>
       <input
         autoComplete="off"
+        name="q"
         className="min-w-0 flex-1 bg-transparent text-[13px] text-foreground outline-none placeholder:text-muted-foreground max-[720px]:text-sm [&::-webkit-search-cancel-button]:hidden"
         onChange={(event) => onChange(event.target.value)}
         placeholder="Search mazes…"

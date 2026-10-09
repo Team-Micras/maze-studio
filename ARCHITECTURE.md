@@ -151,7 +151,8 @@ Four Vitest projects, run one after the other: `unit` (`tests/**/*.test.ts`, Nod
 Chromium, one file at a time, outside the check) and `e2e` (`tests/e2e/`, which builds the app
 under `/maze-studio/` into `node_modules/.tmp/` and drives it with Playwright).
 `tests/config/vitest-projects.test.ts` guards that split. The e2e project builds the app once,
-in its global setup (`tests/support/e2e/serve-app.ts`), for all its files.
+in its global setup (`tests/support/e2e/serve-app.ts`), for all its files; one of them,
+`library-frames.test.ts`, measures the built library's frames at 4× CPU throttling.
 
 Browser tests share what is in `tests/support/ui/`: `BoardHarness` mounts a board on its stage
 with the minimap and the cursor status, `frames.ts` measures motion as DESIGN.md 8 says (p95 at or

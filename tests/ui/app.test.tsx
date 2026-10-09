@@ -4,7 +4,7 @@ import { page, userEvent } from 'vitest/browser';
 import { MAZEFILES } from '@/library/mazefiles';
 import { encodeMazeCode } from '@/maze';
 import '@/ui/styles.css';
-import { seriousViolations } from '@tests/support/axe-check';
+import { axeViolations } from '@tests/support/axe-check';
 import { artboards, mountApp } from '@tests/support/ui/library-app';
 import { REPO_MAZES, repoMaze } from '@tests/support/ui/repo-mazes';
 
@@ -114,6 +114,19 @@ describe('Opening a .txt file', () => {
   });
 });
 
+describe('Opening a file too large to be a maze', () => {
+  test('refuses it with a toast, without reading it', async () => {
+    await mountApp();
+    const large = new File([new Uint8Array(1024 * 1024 + 1)], 'huge.txt', { type: 'text/plain' });
+    await userEvent.upload(fileInput(), large);
+
+    await expect
+      .element(page.getByText('Could not read huge.txt (larger than 1 MiB). Pick a mazefiles .txt'))
+      .toBeVisible();
+    expect(artboards().length).toBeGreaterThan(0);
+  });
+});
+
 describe('The shell', () => {
   test('credits the mazefiles repository with its commit', async () => {
     await mountApp();
@@ -154,13 +167,13 @@ describe('The shell', () => {
   });
 
   test.each(['light', 'dark'])(
-    'a maze has no serious accessibility violations in the %s theme',
+    'a maze has no accessibility violations in the %s theme',
     async (theme) => {
       document.documentElement.classList.toggle('dark', theme === 'dark');
       await mountOnMaze('#/repo/classic/AAMC15Maze.txt');
       await expect.element(page.getByRole('heading', { level: 1 })).toBeVisible();
 
-      expect(await seriousViolations()).toEqual([]);
+      expect(await axeViolations()).toEqual([]);
     }
   );
 });

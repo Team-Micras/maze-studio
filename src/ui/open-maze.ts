@@ -10,6 +10,9 @@ import { categoryLabel, sizeLabel } from './labels';
 import type { Library } from './library/use-library';
 import type { Route } from './routes';
 
+/** The largest `.txt` file the app opens, 1 MiB: a 64×64 maze is under 40 kB. */
+export const MAX_FILE_BYTES = 1024 * 1024;
+
 /** A maze open on screen, its name and the line under it (DESIGN.md 9.2). */
 export interface OpenMaze {
   readonly maze: Maze;

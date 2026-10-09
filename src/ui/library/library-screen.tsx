@@ -129,12 +129,12 @@ export function LibraryScreen({ library, filter, onFilter, onOpenFile }: Library
       {phone ? (
         <header>
           <search>
-            <Island className="fixed top-2 right-2 left-2">
+            <Island className="fixed top-safe-2 right-safe-2 left-safe-2">
               {search}
               <PhoneMenu onOpenFile={onOpenFile} />
             </Island>
           </search>
-          <Island className="fixed top-[64px] right-2 left-2 overflow-x-auto">
+          <Island className="fixed top-safe-16 right-safe-2 left-safe-2 overflow-x-auto">
             {source}
             <IslandSeparator />
             {category}
@@ -171,7 +171,7 @@ export function LibraryScreen({ library, filter, onFilter, onOpenFile }: Library
       <footer>
         {library === undefined ? null : (
           <Credit
-            className={phone ? 'bottom-3 left-1/2 -translate-x-1/2' : 'bottom-[18px] left-4'}
+            className={phone ? 'bottom-safe-3 left-1/2 -translate-x-1/2' : 'bottom-[18px] left-4'}
             library={library}
           />
         )}

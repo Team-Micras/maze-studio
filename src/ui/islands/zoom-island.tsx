@@ -14,7 +14,8 @@ export interface ZoomIslandProps extends Pick<CanvasCamera, 'zoomBy' | 'refit'> 
 }
 
 /**
- * Zoom out, the zoom as a percentage of the fit, zoom in and fit (DESIGN.md 9). It takes the
+ * Zoom out, the zoom as a percentage of the fit, zoom in and fit (DESIGN.md 9). The percentage is
+ * plain text, read on demand, not a live region that would speak at every frame of a zoom. It takes the
  * camera's stable actions, not the camera, so a moving camera redraws only the percentage.
  */
 export function ZoomIsland({ zoomBy, refit, percent, className }: ZoomIslandProps) {
@@ -25,12 +26,13 @@ export function ZoomIsland({ zoomBy, refit, percent, className }: ZoomIslandProp
           <Minus aria-hidden size={18} />
         </IslandButton>
       </Hint>
-      <output
-        aria-label="Zoom"
+      <span
         className="min-w-12 text-center font-mono text-xs text-muted-foreground tabular-nums"
+        data-zoom=""
       >
+        <span className="sr-only">Zoom </span>
         {percent}%
-      </output>
+      </span>
       <Hint label="Zoom in" shortcut="+">
         <IslandButton aria-label="Zoom in" onClick={() => zoomBy(KEY_ZOOM_FACTOR)}>
           <Plus aria-hidden size={18} />

@@ -26,6 +26,8 @@ export interface CameraStageProps {
   readonly label: string;
   /** The world: content placed in world units, scaled and moved by the camera. */
   readonly children: ReactNode;
+  /** The element's id, which the skip link points at. */
+  readonly id?: string;
   readonly className?: string;
 }
 
@@ -69,7 +71,7 @@ function pairOf(pointers: ReadonlyMap<number, ScreenPoint>): PointerPair | undef
  * out and fit. It is the `application` the keyboard focuses; whatever else the pointer does on it
  * is left to the content.
  */
-export function CameraStage({ controller, label, children, className }: CameraStageProps) {
+export function CameraStage({ controller, label, children, id, className }: CameraStageProps) {
   const pointers = useRef(new Map<number, ScreenPoint>());
   const gesture = useRef<Gesture | undefined>(undefined);
   const [spaceHeld, setSpaceHeld] = useState(false);
@@ -195,6 +197,7 @@ export function CameraStage({ controller, label, children, className }: CameraSt
         className
       )}
       data-panning={panning ? '' : undefined}
+      id={id}
       onBlur={() => setSpaceHeld(false)}
       onKeyDown={onKeyDown}
       onKeyUp={onKeyUp}
