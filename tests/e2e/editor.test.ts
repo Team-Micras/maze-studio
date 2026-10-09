@@ -349,6 +349,38 @@ describe('The first edit of a maze that is not in Mine', () => {
     }
   });
 
+  test('in a tab whose copy another tab saved since, turns read-only and says so', async () => {
+    const { maze } = await repoContent(CLASSIC);
+    const first = await openMaze(CLASSIC);
+    const click = async (page: Page, edge: Edge): Promise<void> => {
+      const point = await pagePoint(page, maze, edgeMiddle(edge));
+      await page.mouse.click(point.x, point.y);
+    };
+    const a: Edge = { direction: 'horizontal', x: 2, y: 9 };
+    const b: Edge = { direction: 'horizontal', x: 12, y: 9 };
+    const c: Edge = { direction: 'vertical', x: 7, y: 3 };
+    await click(first, a);
+    await expectSaved(first, sameContent(toggleWall(maze, a)));
+    const second = await first.context().newPage();
+    await second.goto(`${app}#/mine/${mineId(first) ?? ''}`);
+    await waitForMode(second, 'editor');
+    await click(second, b);
+    const both = toggleWall(toggleWall(maze, a), b);
+    await expectSaved(second, sameContent(both));
+    await click(first, c);
+
+    await expect
+      .poll(() =>
+        first
+          .locator('p[aria-live="polite"]', { hasText: 'Opened in another tab. Reload to edit.' })
+          .count()
+      )
+      .toBe(1);
+    expect(await first.getByRole('radio', { name: 'Wall' }).isDisabled()).toBe(true);
+    await first.waitForTimeout(300);
+    await expectSaved(first, sameContent(both));
+  });
+
   test('undone to the start, saves the original file byte for byte', async () => {
     const { maze } = await repoContent(CLASSIC);
     const page = await openMaze(CLASSIC);
@@ -524,6 +556,57 @@ describe('Editing on a phone', () => {
         .toBe(true);
     }
   );
+
+  test('in edit mode, a second finger takes back the walls the first one painted', async () => {
+    const { maze } = await repoContent(CLASSIC);
+    const page = await openMaze(CLASSIC, PHONE);
+    await page.getByRole('button', { name: 'Edit' }).tap();
+
+    for (let zoom = 0; zoom < 3; zoom++) {
+      await page.getByRole('button', { name: 'Zoom in' }).tap();
+    }
+
+    const walls = (): Promise<string[]> =>
+      page.evaluate(() =>
+        ['red-walls', 'bare-walls'].map(
+          (name) => document.querySelector(`[data-layer="${name}"]`)?.getAttribute('d') ?? ''
+        )
+      );
+    const untouched = await walls();
+    const session = await page.context().newCDPSession(page);
+    const finger = async (
+      type: 'touchStart' | 'touchMove',
+      points: readonly { u: number; v: number }[]
+    ) => {
+      const touchPoints = await Promise.all(
+        points.map(async (point, index) => ({
+          ...(await pagePoint(page, maze, point)),
+          id: index + 1,
+        }))
+      );
+      await session.send('Input.dispatchTouchEvent', { type, touchPoints });
+    };
+    await finger('touchStart', [{ u: 6.2, v: 8 }]);
+
+    for (let step = 1; step <= 8; step++) {
+      await finger('touchMove', [{ u: 6.2 + step * 0.25, v: 8 }]);
+    }
+
+    await expect.poll(walls).not.toEqual(untouched);
+    await finger('touchStart', [
+      { u: 8.2, v: 8 },
+      { u: 8.2, v: 10 },
+    ]);
+    await finger('touchMove', [
+      { u: 8.2, v: 9 },
+      { u: 8.2, v: 11 },
+    ]);
+    await session.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+    await page.waitForTimeout(300);
+
+    expect(await walls()).toEqual(untouched);
+    expect(new URL(page.url()).hash).toBe(`#/repo/${CLASSIC}`);
+  });
 
   test('in edit mode, a finger previews its slot, and a second one pans and leaves the walls alone', async () => {
     const { maze } = await repoContent(CLASSIC);

@@ -7,12 +7,14 @@ import {
   boardLimits,
   EDITOR_INSETS,
   EDITOR_KEEP,
+  EDITOR_PHONE_EDIT_INSETS,
   EDITOR_PHONE_INSETS,
   EDITOR_ZOOM,
   LIBRARY_INSETS,
   libraryColumns,
   libraryGrid,
   libraryLimits,
+  type Insets,
   type WorldRect,
 } from '@/render';
 import { useCanvasCamera } from '@/ui/board/use-canvas-camera';
@@ -61,6 +63,18 @@ export interface StudioProps {
   readonly onPin: (route: Route) => void;
 }
 
+/**
+ * The editor's insets (DESIGN.md 7): on a phone, 84 px under the board for the tools in edit mode
+ * and 88 px for the Edit button in view mode.
+ */
+function editorInsetsFor(phone: boolean, viewing: boolean): Insets {
+  if (!phone) {
+    return EDITOR_INSETS;
+  }
+
+  return viewing ? EDITOR_PHONE_INSETS : EDITOR_PHONE_EDIT_INSETS;
+}
+
 function routeOf(entry: CatalogEntry): Route {
   return entry.origin === 'mine' && entry.id !== undefined
     ? { kind: 'mine', id: entry.id }
@@ -92,7 +106,7 @@ export function Studio({
   const viewportWidth = useViewportWidth();
   const layout = phone ? 'phone' : 'notebook';
   const insets = LIBRARY_INSETS[layout];
-  const editorInsets = phone ? EDITOR_PHONE_INSETS : EDITOR_INSETS;
+  const editorInsets = editorInsetsFor(phone, state.viewing);
   const shown = library === undefined ? [] : filterCatalog(library.entries, filter, library.index);
   const grid = libraryGrid(shown, libraryColumns(viewportWidth, layout));
   const gridRect: WorldRect = { x: 0, y: 0, width: grid.width, height: grid.height };
@@ -192,7 +206,7 @@ export function Studio({
     grid,
     shown,
     insets,
-    editorInsets,
+    editorInsetsFor: (viewing: boolean) => editorInsetsFor(phone, viewing),
     opened,
     onScreen,
     board,

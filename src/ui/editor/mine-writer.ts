@@ -27,52 +27,66 @@ export interface MineWriterEvents {
   readonly failed: (error: unknown) => void;
 }
 
+/** What the writer needs of Mine. */
+export type MineStore = Pick<MineLibrary, 'list' | 'create' | 'save'>;
+
 /**
- * Writes the sessions of the editor to Mine, one write at a time. What it learns, the copy's
- * version and the maze last written, belongs to one session, the one that opened on a maze.
+ * Writes the sessions of the editor to Mine, one write at a time. Each maze keeps its latest
+ * session waiting, so leaving a maze while a write runs never drops its last change. What the
+ * writer learns, the copy's version and the maze last written, belongs to one session, the one
+ * that opened on a maze.
  */
 export class MineWriter {
-  readonly #mine: () => Promise<MineLibrary | undefined>;
+  readonly #mine: () => Promise<MineStore | undefined>;
   readonly #events: MineWriterEvents;
   readonly #copies = new WeakMap<OpenMaze, NamedCopy>();
   readonly #written = new WeakMap<OpenMaze, Maze>();
   readonly #refused = new WeakSet<OpenMaze>();
-  #latest: EditSession | undefined;
-  #running = false;
+  readonly #waiting = new Map<OpenMaze, EditSession>();
+  #draining: Promise<void> | undefined;
 
-  constructor(mine: () => Promise<MineLibrary | undefined>, events: MineWriterEvents) {
+  constructor(mine: () => Promise<MineStore | undefined>, events: MineWriterEvents) {
     this.#mine = mine;
     this.#events = events;
   }
 
-  /** Writes `session` as soon as the write before it is done, unless a newer one comes first. */
+  /** Writes `session` once the writes before it are done, unless a newer one of its maze comes first. */
   write(session: EditSession): void {
-    this.#latest = session;
+    this.#waiting.delete(session.opened);
+    this.#waiting.set(session.opened, session);
+    this.#draining ??= this.#drain();
+  }
 
-    if (!this.#running) {
-      this.#running = true;
-      void this.#drain();
-    }
+  /** Resolves once every session asked has been written, or has failed to be. */
+  async idle(): Promise<void> {
+    await this.#draining;
   }
 
   async #drain(): Promise<void> {
-    const session = this.#latest;
-    this.#latest = undefined;
+    const next = this.#next();
 
-    if (session === undefined) {
-      this.#running = false;
+    if (next === undefined) {
+      this.#draining = undefined;
       return;
     }
 
     try {
-      await this.#writeOne(session);
+      await this.#writeOne(next);
     } catch (error) {
-      this.#running = false;
       this.#events.failed(error);
-      return;
     }
 
     await this.#drain();
+  }
+
+  #next(): EditSession | undefined {
+    const [first] = this.#waiting.values();
+
+    if (first !== undefined) {
+      this.#waiting.delete(first.opened);
+    }
+
+    return first;
   }
 
   async #writeOne(session: EditSession): Promise<void> {

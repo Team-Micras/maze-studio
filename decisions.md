@@ -448,6 +448,26 @@ The machine's rule is no builds in `/tmp`, so `tests/e2e/pwa.test.ts` builds the
   4×, and there its library zoom spreads from 0 to 1.5 % of frames over 25 ms between runs, as it
   does on the code before this slice: the gate sits at its edge since the tester iframe runs at
   scale 1, and the production gate, with the same throttle, stays at 0 %.
-- **Left for later:** landing on the copy in Mine, with the filter turned to Mine, when leaving an
-  edited maze (PLAN.md 3.4, Flight), and the phone's edit-mode bottom inset of 84 px against view
-  mode's 88 (DESIGN.md 7), which both share now.
+- **Left for slice 5c:** landing on the copy in Mine, with the filter turned to Mine, when leaving
+  an edited maze (PLAN.md 3.4, Flight, and 11).
+
+## 09/10/2026 — Slice 5a review
+
+- **Autosave keeps a session per maze.** With one waiting session for the whole writer, leaving a
+  maze while a write ran dropped its last change (A edited twice, then B once: A's copy lacked the
+  second edit). Each maze now keeps its latest session waiting, the writer empties them all in the
+  order asked, and a write that throws is reported and the others still run; the next change of
+  that maze tries again. Unit tests with a Mine in memory cover the order, the grouping, the switch
+  in the middle of a write, the refusal and the failure; an e2e test opens one copy in two tabs of
+  one context and the tab that saves second turns read-only.
+- **The read-only notice** is spoken by a live region that stays mounted, and the ink island beside
+  it is hidden from screen readers; the toast that also said it is gone.
+- **Undo and redo read ⌘** instead of Ctrl in their tooltips on Apple's systems.
+- **On a phone, edit mode keeps 84 px** under the board for the tools and view mode 88 for the Edit
+  button (DESIGN.md 7); the flight in fits with the inset of the mode it lands in.
+- **The development frame gate allows 2 %.** The browser project's library gate, on the development
+  build in the tester's iframe, spreads from 0 to 1.5 % of frames over 25 ms on the reference
+  notebook, before and after this slice; it now allows 2 %, and the e2e project's production gate,
+  which stays at 0 %, holds DESIGN.md 8's 1 %.
+- **For the owner:** "Zoom in to edit" shows in the tool hint, which is `aria-hidden` as DESIGN.md 6
+  has it, so a screen reader hears nothing when a touch on small cells does not edit.

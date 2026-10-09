@@ -9,6 +9,7 @@ import type { KeyboardEvent, ReactNode } from 'react';
 import { Toolbar } from 'radix-ui';
 
 import { Hint, Island, IslandSeparator } from '@/ui/islands/island';
+import { shortcutLabel } from '@/ui/platform';
 import { cn } from '@/ui/primitives/utils';
 
 import { isArrow, type BoardKey } from './use-board-keys';
@@ -127,7 +128,7 @@ export function ToolsIsland({
           </ToolItem>
         </Toolbar.ToggleGroup>
         <Toolbar.Separator className="mx-1 h-5 w-px flex-none bg-border" />
-        <Hint label="Undo" shortcut="Ctrl Z">
+        <Hint label="Undo" shortcut={shortcutLabel('Ctrl Z')}>
           <Toolbar.Button
             aria-label="Undo"
             className={ITEM}
@@ -137,7 +138,7 @@ export function ToolsIsland({
             <ArrowCounterClockwise aria-hidden size={18} />
           </Toolbar.Button>
         </Hint>
-        <Hint label="Redo" shortcut="Ctrl Shift Z">
+        <Hint label="Redo" shortcut={shortcutLabel('Ctrl Shift Z')}>
           <Toolbar.Button
             aria-label="Redo"
             className={ITEM}

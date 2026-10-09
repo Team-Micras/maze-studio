@@ -1,0 +1,225 @@
+import { describe, expect, test } from 'vitest';
+
+import type { MineChanges, MineDraft, MineMaze, SaveConflict } from '@/library';
+import {
+  createMaze,
+  decodeMazeCode,
+  encodeMazeCode,
+  failure,
+  mazesEqual,
+  success,
+  toggleWall,
+  type Edge,
+  type Maze,
+  type Result,
+} from '@/maze';
+import { changeMaze, openSession, type EditSession } from '@/ui/editor/edit-session';
+import { MineWriter, type MineStore } from '@/ui/editor/mine-writer';
+import type { OpenMaze } from '@/ui/open-maze';
+
+const EMPTY = createMaze({ width: 4, height: 4 });
+
+function edge(x: number): Edge {
+  return { direction: 'horizontal', x, y: 1 };
+}
+
+function opened(name: string, mine?: { id: string; version: number }): OpenMaze {
+  return {
+    key: mine === undefined ? `repo:classic/${name}.txt` : `mine:${mine.id}`,
+    maze: EMPTY,
+    name,
+    detail: '',
+    document: { trailer: '', profile: 'classic', ...(mine === undefined ? {} : { mine }) },
+  };
+}
+
+/** A session on `maze`, with the walls `xs` toggled since it opened. */
+function edited(maze: OpenMaze, ...xs: number[]): EditSession {
+  return changeMaze(
+    openSession(maze),
+    xs.reduce((current, x) => toggleWall(current, edge(x)), maze.maze)
+  );
+}
+
+function wallsOf(...xs: number[]): Maze {
+  return xs.reduce((current, x) => toggleWall(current, edge(x)), EMPTY);
+}
+
+/** Mine in memory, whose writes can be held back and can fail. */
+class FakeMine implements MineStore {
+  readonly items = new Map<string, MineMaze>();
+  readonly log: string[] = [];
+  failures = 0;
+  #held: Promise<void> = Promise.resolve();
+  #release: () => void = () => undefined;
+  #ids = 0;
+
+  hold(): void {
+    this.#held = new Promise((resolve) => {
+      this.#release = resolve;
+    });
+  }
+
+  release(): void {
+    this.#release();
+  }
+
+  list(): Promise<MineMaze[]> {
+    return Promise.resolve([...this.items.values()]);
+  }
+
+  async create(draft: MineDraft): Promise<MineMaze> {
+    await this.#held;
+    this.#ids += 1;
+    const item: MineMaze = {
+      id: `u-${this.#ids}`,
+      name: draft.name,
+      code: encodeMazeCode(draft.maze),
+      profile: draft.profile,
+      createdAt: 0,
+      updatedAt: 0,
+      version: 1,
+    };
+    this.items.set(item.id, item);
+    this.log.push(`create ${draft.name}`);
+    return item;
+  }
+
+  async save(
+    id: string,
+    changes: MineChanges,
+    baseVersion: number
+  ): Promise<Result<MineMaze, SaveConflict>> {
+    await this.#held;
+
+    if (this.failures > 0) {
+      this.failures -= 1;
+      throw new Error('quota');
+    }
+
+    const current = this.items.get(id);
+
+    if (current === undefined || current.version !== baseVersion) {
+      this.log.push(`refuse ${id}`);
+      return failure(
+        current === undefined ? { reason: 'removed' } : { reason: 'newer-version', current }
+      );
+    }
+
+    const saved = {
+      ...current,
+      code: changes.maze === undefined ? current.code : encodeMazeCode(changes.maze),
+      version: current.version + 1,
+    };
+    this.items.set(id, saved);
+    this.log.push(`save ${current.name}`);
+    return success(saved);
+  }
+
+  mazeNamed(name: string): Maze | undefined {
+    const item = [...this.items.values()].find((candidate) => candidate.name === name);
+    const decoded = item === undefined ? undefined : decodeMazeCode(item.code);
+    return decoded?.ok === true ? decoded.value.maze : undefined;
+  }
+}
+
+interface Heard {
+  readonly refused: OpenMaze[];
+  readonly failed: unknown[];
+}
+
+function writerOn(mine: FakeMine): { writer: MineWriter; heard: Heard } {
+  const heard: Heard = { refused: [], failed: [] };
+  const writer = new MineWriter(() => Promise.resolve(mine), {
+    copied: () => undefined,
+    saved: () => undefined,
+    refused: (maze) => heard.refused.push(maze),
+    failed: (error) => heard.failed.push(error),
+  });
+  return { writer, heard };
+}
+
+describe('The writer of Mine', () => {
+  test('copies on the first edit, then saves, in the order asked', async () => {
+    const mine = new FakeMine();
+    const { writer } = writerOn(mine);
+    const maze = opened('a');
+    writer.write(edited(maze, 0));
+    await writer.idle();
+    writer.write(edited(maze, 0, 1));
+    await writer.idle();
+
+    expect(mine.log).toEqual(['create a (edited)', 'save a (edited)']);
+    expect(mazesEqual(mine.mazeNamed('a (edited)') ?? EMPTY, wallsOf(0, 1))).toBe(true);
+  });
+
+  test('writes only the latest of the sessions asked during a write', async () => {
+    const mine = new FakeMine();
+    const { writer } = writerOn(mine);
+    const maze = opened('a');
+    mine.hold();
+    writer.write(edited(maze, 0));
+    writer.write(edited(maze, 0, 1));
+    writer.write(edited(maze, 0, 1, 2));
+    mine.release();
+    await writer.idle();
+
+    expect(mine.log).toEqual(['create a (edited)', 'save a (edited)']);
+    expect(mazesEqual(mine.mazeNamed('a (edited)') ?? EMPTY, wallsOf(0, 1, 2))).toBe(true);
+  });
+
+  test('keeps the last change of a maze left while a write runs', async () => {
+    const mine = new FakeMine();
+    const { writer } = writerOn(mine);
+    const first = opened('a');
+    const second = opened('b');
+    mine.hold();
+    writer.write(edited(first, 0));
+    writer.write(edited(first, 0, 1));
+    writer.write(edited(second, 2));
+    mine.release();
+    await writer.idle();
+
+    expect(mine.log).toEqual(['create a (edited)', 'save a (edited)', 'create b (edited)']);
+    expect(mazesEqual(mine.mazeNamed('a (edited)') ?? EMPTY, wallsOf(0, 1))).toBe(true);
+    expect(mazesEqual(mine.mazeNamed('b (edited)') ?? EMPTY, wallsOf(2))).toBe(true);
+  });
+
+  test('stops writing a maze another tab saved since, and says so once', async () => {
+    const mine = new FakeMine();
+    const { writer, heard } = writerOn(mine);
+    const stored = await mine.create({ name: 'mine one', maze: EMPTY, profile: 'free' });
+    mine.items.set(stored.id, { ...stored, version: 2 });
+    mine.log.length = 0;
+    const maze = opened('mine one', { id: stored.id, version: 1 });
+    writer.write(edited(maze, 0));
+    await writer.idle();
+    writer.write(edited(maze, 0, 1));
+    await writer.idle();
+
+    expect(mine.log).toEqual([`refuse ${stored.id}`]);
+    expect(heard.refused).toEqual([maze]);
+  });
+
+  test('reports a failed write, goes on with the others, and tries again at the next change', async () => {
+    const mine = new FakeMine();
+    const { writer, heard } = writerOn(mine);
+    const first = opened('a');
+    const second = opened('b');
+    writer.write(edited(first, 0));
+    await writer.idle();
+    mine.failures = 1;
+    writer.write(edited(first, 0, 1));
+    writer.write(edited(second, 3));
+    await writer.idle();
+
+    expect(heard.failed).toHaveLength(1);
+    expect(mine.log).toEqual(['create a (edited)', 'create b (edited)']);
+
+    writer.write(edited(first, 0, 1, 2));
+    await writer.idle();
+
+    expect(mine.log.at(-1)).toBe('save a (edited)');
+    expect(mazesEqual(mine.mazeNamed('a (edited)') ?? EMPTY, wallsOf(0, 1, 2))).toBe(true);
+  });
+});

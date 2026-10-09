@@ -4,6 +4,7 @@ import { Island } from '@/ui/islands/island';
 import { Button } from '@/ui/primitives/button';
 
 import { ToolHint, type HintMessage } from './tool-hint';
+import { NEWER_ELSEWHERE } from './use-maze-editor';
 import { ToolsIsland, type ToolsIslandProps } from './tools-island';
 
 /** The props of {@link EditControls}. */
@@ -20,7 +21,7 @@ export interface EditControlsProps extends Omit<ToolsIslandProps, 'onView' | 'cl
 /**
  * The bottom centre of an open maze (DESIGN.md 9.2 and 9.3): the tools, or, in view mode, the Edit
  * button that brings them; and the hint above them. While another tab holds a newer version, an
- * ink island says so and the tools change nothing.
+ * ink island says so, through a live region that stays mounted, and the tools change nothing.
  */
 export function EditControls({
   viewing,
@@ -48,12 +49,16 @@ export function EditControls({
         />
       )}
       {tools.editable ? null : (
-        <Island className="fixed top-[72px] left-4 bg-primary px-3 py-2 text-primary-foreground max-[720px]:top-safe-16 max-[720px]:left-safe-2">
-          <output className="text-[13px] font-medium">
-            Opened in another tab. Reload to edit.
-          </output>
+        <Island
+          aria-hidden
+          className="fixed top-[72px] left-4 bg-primary px-3 py-2 text-[13px] font-medium text-primary-foreground max-[720px]:top-safe-16 max-[720px]:left-safe-2"
+        >
+          {NEWER_ELSEWHERE}
         </Island>
       )}
+      <p aria-live="polite" className="sr-only">
+        {tools.editable ? '' : NEWER_ELSEWHERE}
+      </p>
       <ToolHint
         className="max-[720px]:bottom-[calc(max(10px,env(safe-area-inset-bottom))+66px)]"
         message={hint}

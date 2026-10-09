@@ -13,6 +13,7 @@ export {
   constrainCamera,
   EDITOR_INSETS,
   EDITOR_KEEP,
+  EDITOR_PHONE_EDIT_INSETS,
   EDITOR_PHONE_INSETS,
   EDITOR_ZOOM,
   fitCamera,

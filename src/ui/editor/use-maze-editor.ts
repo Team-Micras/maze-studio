@@ -60,9 +60,10 @@ export interface MazeEditor {
   readonly redo: () => void;
 }
 
-const MAY_BE_CLEARED = 'This browser may clear Mine. Export a backup from the menu.';
+/** What the editor says while another tab holds a newer version (DESIGN.md 12). */
+export const NEWER_ELSEWHERE = 'Opened in another tab. Reload to edit.';
 
-const NEWER_ELSEWHERE = 'Opened in another tab. Reload to edit.';
+const MAY_BE_CLEARED = 'This browser may clear Mine. Export a backup from the menu.';
 
 function sessionFor(
   session: EditSession | undefined,
@@ -120,10 +121,7 @@ export function useMazeEditor(input: MazeEditorInput): MazeEditor {
         });
       },
       saved: () => reloadLibrary(),
-      refused: (opened) => {
-        setRefused((before) => new Set([...before, opened]));
-        showToast(NEWER_ELSEWHERE);
-      },
+      refused: (opened) => setRefused((before) => new Set([...before, opened])),
       failed: (error) => {
         showToast(
           `Could not save to Mine (${error instanceof Error ? error.message : String(error)})`

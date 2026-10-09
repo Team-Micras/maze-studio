@@ -35,7 +35,8 @@ export interface StudioFlightInput {
   /** The entries of the library's grid, in order. */
   readonly shown: readonly CatalogEntry[];
   readonly insets: Insets;
-  readonly editorInsets: Insets;
+  /** The editor's insets in view mode or in edit mode. */
+  readonly editorInsetsFor: (viewing: boolean) => Insets;
   /** The maze the route or a file opens. */
   readonly opened: OpenMaze | undefined;
   /** The maze on the board, a preview included. */
@@ -115,9 +116,10 @@ export function useStudioFlight(input: StudioFlightInput): StudioFlight {
         store.getState().mode === 'library' &&
         view !== undefined &&
         !prefersReducedMotion();
+      const viewing = now.phone || lastPointer.current === 'touch';
       store.setState({
         cell,
-        viewing: now.phone || lastPointer.current === 'touch',
+        viewing,
         touchOpened: lastPointer.current === 'touch',
         tool: 'wall',
         hint: undefined,
@@ -131,7 +133,7 @@ export function useStudioFlight(input: StudioFlightInput): StudioFlight {
         to:
           view === undefined
             ? (from ?? { x: 0, y: 0, k: 1 })
-            : fitCamera(rect, view, now.editorInsets),
+            : fitCamera(rect, view, now.editorInsetsFor(viewing)),
         anchor: rect,
         duration: flies ? FLIGHT_IN_MS : 0,
         easing: EASE_FLIGHT,
