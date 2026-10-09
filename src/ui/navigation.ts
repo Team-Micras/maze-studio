@@ -8,20 +8,28 @@
 
 import { parseRoute, routeHash, type Route } from './routes';
 
-/** Fired on `window` when the route changes without a `hashchange`, as `replaceState` does. */
-export const ROUTE_REPLACED = 'maze-studio:route-replaced';
+/**
+ * Fired on `window` when the app changes the route itself, through the History API, which fires
+ * no `hashchange`; the event comes at once, so the new route renders before the next frame.
+ */
+export const ROUTE_CHANGED = 'maze-studio:route-changed';
+
+function urlOf(route: Route): URL {
+  const url = new URL(window.location.href);
+  url.hash = routeHash(route);
+  return url;
+}
 
 /** Goes to `route`, adding an entry to the history. */
 export function pushRoute(route: Route): void {
-  window.location.hash = routeHash(route);
+  window.history.pushState(null, '', urlOf(route));
+  window.dispatchEvent(new Event(ROUTE_CHANGED));
 }
 
 /** Goes to `route` in place of the current history entry. */
 export function replaceRoute(route: Route): void {
-  const url = new URL(window.location.href);
-  url.hash = routeHash(route);
-  window.history.replaceState(window.history.state, '', url);
-  window.dispatchEvent(new Event(ROUTE_REPLACED));
+  window.history.replaceState(window.history.state, '', urlOf(route));
+  window.dispatchEvent(new Event(ROUTE_CHANGED));
 }
 
 /** The route of the current URL. */

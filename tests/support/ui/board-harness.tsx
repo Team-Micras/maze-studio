@@ -39,7 +39,7 @@ export function BoardHarness({ maze, overlays, insets, size, status = true }: Bo
       <CameraStage className="absolute inset-0" controller={camera} label="Maze board">
         <Board maze={maze} overlays={overlays} />
       </CameraStage>
-      <Minimap className="top-[70px] right-4" controller={camera} maze={maze} />
+      <Minimap board={board} className="top-[70px] right-4" controller={camera} maze={maze} />
       {status && (
         <CursorStatus cell={overlays?.cursor} className="absolute bottom-4 left-4" maze={maze} />
       )}

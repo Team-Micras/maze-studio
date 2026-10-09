@@ -2,7 +2,6 @@ import { FolderOpen, Moon, Plus, Sun } from '@phosphor-icons/react';
 import { useRef } from 'react';
 
 import { MAZEFILES, type LibraryFilter } from '@/library';
-import { usePhoneLayout } from '@/ui/hooks/use-media-query';
 import { Island, IslandButton, IslandSeparator } from '@/ui/islands/island';
 import { ThemeButton } from '@/ui/islands/theme-button';
 import {
@@ -15,18 +14,20 @@ import { useTheme } from '@/ui/theme';
 
 import { CategoryFilter, SourceFilter } from './filter-toggles';
 import { OpenFileButton } from './open-file';
-import { LibraryStage } from './library-stage';
 import { pickedFile } from './picked-file';
 import { SearchField } from './search-field';
 import type { Library } from './use-library';
 
-/** The props of {@link LibraryScreen}. */
-export interface LibraryScreenProps {
+/** The props of {@link LibraryChrome}. */
+export interface LibraryChromeProps {
   /** The library, or `undefined` while it loads. */
   readonly library: Library | undefined;
   readonly filter: LibraryFilter;
   readonly onFilter: (filter: LibraryFilter) => void;
   readonly onOpenFile: (file: File) => void;
+  readonly phone: boolean;
+  /** Whether the islands show; they fade out and leave the keyboard while a maze is open. */
+  readonly visible: boolean;
 }
 
 function Credit({
@@ -96,14 +97,23 @@ function PhoneMenu({ onOpenFile }: { readonly onOpenFile: (file: File) => void }
 }
 
 /**
- * The library (PLAN.md 3.4, DESIGN.md 9.1): every maze on a canvas, the search, source and
- * category in one island, the actions in another, the credit and the zoom at the bottom. A phone
- * stacks the search and the filters at the top and keeps only the credit at the bottom.
+ * The library's islands (DESIGN.md 9.1): the brand, the search, source and category, the actions
+ * and the credit; the zoom island is the studio's, since it changes with every move of the camera.
+ * Its props do not, so a moving camera re-renders none of these. A phone stacks the search and the filters at the top and keeps only the
+ * credit at the bottom.
  */
-export function LibraryScreen({ library, filter, onFilter, onOpenFile }: LibraryScreenProps) {
-  const phone = usePhoneLayout();
+export function LibraryChrome({
+  library,
+  filter,
+  onFilter,
+  onOpenFile,
+  phone,
+  visible,
+}: LibraryChromeProps) {
   const change = (next: Partial<LibraryFilter>): void => onFilter({ ...filter, ...next });
-  const search = <SearchField onChange={(query) => change({ query })} value={filter.query} />;
+  const search = (
+    <SearchField enabled={visible} onChange={(query) => change({ query })} value={filter.query} />
+  );
   const source = (
     <SourceFilter
       mineCount={library?.mineCount ?? 0}
@@ -120,12 +130,12 @@ export function LibraryScreen({ library, filter, onFilter, onOpenFile }: Library
   );
 
   return (
-    <>
-      <main>
-        {library === undefined ? null : (
-          <LibraryStage filter={filter} library={library} phone={phone} />
-        )}
-      </main>
+    <div
+      className="transition-opacity duration-200 ease-(--ease) data-hidden:pointer-events-none data-hidden:opacity-0"
+      data-chrome="library"
+      data-hidden={visible ? undefined : ''}
+      inert={!visible}
+    >
       {phone ? (
         <header>
           <search>
@@ -176,6 +186,6 @@ export function LibraryScreen({ library, filter, onFilter, onOpenFile }: Library
           />
         )}
       </footer>
-    </>
+    </div>
   );
 }

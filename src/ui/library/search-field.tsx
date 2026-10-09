@@ -7,6 +7,8 @@ import { cn } from '@/ui/primitives/utils';
 export interface SearchFieldProps {
   readonly value: string;
   readonly onChange: (value: string) => void;
+  /** Whether `/` reaches the field; off while the library is out of sight. */
+  readonly enabled?: boolean;
   readonly className?: string;
 }
 
@@ -21,10 +23,14 @@ function typingIn(target: EventTarget | null): boolean {
  * The library's search (DESIGN.md 6 and 6.3): borderless inside its island, filled while focused,
  * with `/` to reach it from anywhere but a text field.
  */
-export function SearchField({ value, onChange, className }: SearchFieldProps) {
+export function SearchField({ value, onChange, enabled = true, className }: SearchFieldProps) {
   const input = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
+    if (!enabled) {
+      return undefined;
+    }
+
     const onKey = (event: KeyboardEvent): void => {
       if (event.key === '/' && !event.ctrlKey && !event.metaKey && !typingIn(event.target)) {
         event.preventDefault();
@@ -33,7 +39,7 @@ export function SearchField({ value, onChange, className }: SearchFieldProps) {
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, []);
+  }, [enabled]);
 
   return (
     <label

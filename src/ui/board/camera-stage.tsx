@@ -28,10 +28,27 @@ export interface CameraStageProps {
   readonly children: ReactNode;
   /** The element's id, which the skip link points at. */
   readonly id?: string;
+  /** What the primary button or one finger does; nothing by default. */
+  readonly primaryPan?: PrimaryPan;
   readonly className?: string;
 }
 
+/** How far, in pixels, a press must move before a lazy pan takes it over from a click. */
+const DRAG_THRESHOLD = 5;
+
+/**
+ * What the primary button or one finger does: nothing (`off`), pan at once (`on`), or pan once it
+ * moves past a few pixels, so that a tap or a click still reaches the content (`lazy`).
+ */
+export type PrimaryPan = 'off' | 'on' | 'lazy';
+
 type Gesture =
+  | {
+      readonly kind: 'press';
+      readonly pointer: number;
+      readonly origin: ScreenPoint;
+      readonly from: Camera;
+    }
   | {
       readonly kind: 'pan';
       readonly pointer: number;
@@ -68,11 +85,20 @@ function pairOf(pointers: ReadonlyMap<number, ScreenPoint>): PointerPair | undef
 /**
  * The canvas a board lies on (DESIGN.md 7): the wheel pans, Ctrl or Cmd with the wheel and a
  * pinch zoom, Space with a drag and the middle button pan, and `+` (also `=`), `-` and `0` zoom in,
- * out and fit. It is the `application` the keyboard focuses; whatever else the pointer does on it
- * is left to the content.
+ * out and fit. The primary button and one finger pan as `primaryPan` says; a lazy pan swallows
+ * the click that ends it. It is the `application` the keyboard focuses; whatever else the pointer
+ * does on it is left to the content.
  */
-export function CameraStage({ controller, label, children, id, className }: CameraStageProps) {
+export function CameraStage({
+  controller,
+  label,
+  children,
+  id,
+  primaryPan = 'off',
+  className,
+}: CameraStageProps) {
   const pointers = useRef(new Map<number, ScreenPoint>());
+  const dragged = useRef(false);
   const gesture = useRef<Gesture | undefined>(undefined);
   const [spaceHeld, setSpaceHeld] = useState(false);
   const [panning, setPanning] = useState(false);
@@ -93,9 +119,12 @@ export function CameraStage({ controller, label, children, id, className }: Came
 
   const onPointerDown = (event: PointerEvent<HTMLDivElement>): void => {
     const point = localPoint(event.currentTarget, event);
-    const pans = event.button === MIDDLE_BUTTON || (event.button === PRIMARY_BUTTON && spaceHeld);
+    const primary = event.button === PRIMARY_BUTTON;
+    const pans = event.button === MIDDLE_BUTTON || (primary && (spaceHeld || primaryPan === 'on'));
+    const presses = primary && primaryPan === 'lazy';
+    dragged.current = false;
 
-    if (event.pointerType !== 'mouse' || pans) {
+    if (event.pointerType !== 'mouse' || pans || presses) {
       pointers.current.set(event.pointerId, point);
     }
 
@@ -113,6 +142,8 @@ export function CameraStage({ controller, label, children, id, className }: Came
       event.currentTarget.setPointerCapture(event.pointerId);
       gesture.current = { kind: 'pan', pointer: event.pointerId, origin: point, from: camera };
       setPanning(true);
+    } else if (pointers.current.size === 1 && presses && camera !== undefined) {
+      gesture.current = { kind: 'press', pointer: event.pointerId, origin: point, from: camera };
     }
   };
 
@@ -124,6 +155,17 @@ export function CameraStage({ controller, label, children, id, className }: Came
     const point = localPoint(event.currentTarget, event);
     pointers.current.set(event.pointerId, point);
     const current = gesture.current;
+
+    if (
+      current?.kind === 'press' &&
+      current.pointer === event.pointerId &&
+      Math.hypot(point.x - current.origin.x, point.y - current.origin.y) > DRAG_THRESHOLD
+    ) {
+      event.currentTarget.setPointerCapture(event.pointerId);
+      gesture.current = { ...current, kind: 'pan' };
+      dragged.current = true;
+      setPanning(true);
+    }
 
     if (current?.kind === 'pinch') {
       const pair = pairOf(pointers.current);
@@ -146,7 +188,8 @@ export function CameraStage({ controller, label, children, id, className }: Came
 
     if (
       current?.kind === 'pinch' ||
-      (current?.kind === 'pan' && current.pointer === event.pointerId)
+      ((current?.kind === 'pan' || current?.kind === 'press') &&
+        current.pointer === event.pointerId)
     ) {
       gesture.current = undefined;
       setPanning(false);
@@ -199,6 +242,13 @@ export function CameraStage({ controller, label, children, id, className }: Came
       data-panning={panning ? '' : undefined}
       id={id}
       onBlur={() => setSpaceHeld(false)}
+      onClickCapture={(event) => {
+        if (dragged.current) {
+          dragged.current = false;
+          event.preventDefault();
+          event.stopPropagation();
+        }
+      }}
       onKeyDown={onKeyDown}
       onKeyUp={onKeyUp}
       onPointerCancel={onPointerEnd}

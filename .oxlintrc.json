@@ -50,7 +50,8 @@
         "tests/e2e/**",
         "tests/support/library/browser-deflate.ts",
         "tests/support/ui/frames.ts",
-        "tests/support/ui/touch.ts"
+        "tests/support/ui/touch.ts",
+        "tests/ui/studio/studio-performance.test.tsx"
       ],
       "rules": {
         "no-await-in-loop": "off"

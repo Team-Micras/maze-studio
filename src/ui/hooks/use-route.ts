@@ -1,14 +1,14 @@
 import { useSyncExternalStore } from 'react';
 
-import { ROUTE_REPLACED } from '@/ui/navigation';
+import { ROUTE_CHANGED } from '@/ui/navigation';
 import { parseRoute, type Route } from '@/ui/routes';
 
 function subscribe(onChange: () => void): () => void {
   window.addEventListener('hashchange', onChange);
-  window.addEventListener(ROUTE_REPLACED, onChange);
+  window.addEventListener(ROUTE_CHANGED, onChange);
   return () => {
     window.removeEventListener('hashchange', onChange);
-    window.removeEventListener(ROUTE_REPLACED, onChange);
+    window.removeEventListener(ROUTE_CHANGED, onChange);
   };
 }
 

@@ -12,6 +12,7 @@ import {
   type CameraLimits,
   type Insets,
   type ViewportSize,
+  type WorldPoint,
   type WorldRect,
   type ZoomRange,
 } from './camera';
@@ -70,16 +71,25 @@ export function libraryColumns(viewportWidth: number, layout: 'notebook' | 'phon
   );
 }
 
-/** The artboard of a maze: its longest side 640 units, centred in its slot and on its bottom. */
-function artboard(size: MazeSize, index: number, columns: number): WorldRect {
+/** The top-left corner of the square cell of the grid at `index`, 640 world units a side. */
+export function cellOf(index: number, columns: number): WorldPoint {
+  return {
+    x: (index % columns) * COLUMN_PITCH,
+    y: Math.floor(index / columns) * ROW_PITCH,
+  };
+}
+
+/**
+ * Where an artboard of `size` lies in the cell at `cell`: its longest side 640 units, centred
+ * across the cell and standing on its bottom.
+ */
+export function artboardIn(cell: WorldPoint, size: MazeSize): WorldRect {
   const longest = Math.max(size.width, size.height);
   const width = (ARTBOARD_SIZE * size.width) / longest;
   const height = (ARTBOARD_SIZE * size.height) / longest;
-  const column = index % columns;
-  const row = Math.floor(index / columns);
   return {
-    x: column * COLUMN_PITCH + (ARTBOARD_SIZE - width) / 2,
-    y: row * ROW_PITCH + (ARTBOARD_SIZE - height),
+    x: cell.x + (ARTBOARD_SIZE - width) / 2,
+    y: cell.y + (ARTBOARD_SIZE - height),
     width,
     height,
   };
@@ -93,7 +103,7 @@ export function libraryGrid(sizes: readonly MazeSize[], columns: number): Librar
     rows,
     width: columns * ARTBOARD_SIZE + (columns - 1) * ARTBOARD_GAP_X,
     height: rows * ARTBOARD_SIZE + (rows - 1) * ARTBOARD_GAP_Y,
-    places: sizes.map((size, index) => artboard(size, index, columns)),
+    places: sizes.map((size, index) => artboardIn(cellOf(index, columns), size)),
   };
 }
 

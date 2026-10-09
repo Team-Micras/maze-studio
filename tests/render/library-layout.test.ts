@@ -1,6 +1,8 @@
 import { describe, expect, test } from 'vitest';
 
 import {
+  artboardIn,
+  cellOf,
   constrainCamera,
   LIBRARY_INSETS,
   libraryColumns,
@@ -56,6 +58,18 @@ describe('libraryGrid', () => {
 
   test('has one row even when empty', () => {
     expect(libraryGrid([], 4).rows).toBe(1);
+  });
+});
+
+describe('cellOf and artboardIn', () => {
+  test('put the cell of an index in the grid and the artboard of a size in its cell', () => {
+    expect(cellOf(7, 5)).toEqual({ x: 2 * 840, y: 850 });
+    expect(artboardIn({ x: 100, y: 50 }, { width: 10, height: 5 })).toEqual({
+      x: 100,
+      y: 50 + 320,
+      width: 640,
+      height: 320,
+    });
   });
 });
 

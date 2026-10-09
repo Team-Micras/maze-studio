@@ -121,12 +121,16 @@ maze outside the cache), `ThumbnailCanvas` with the app's one `thumbnailCache`, 
 `src/ui/app.tsx` is the shell: it reads the route from the hash (`routes.ts`, `navigation.ts`,
 `hooks/use-route.ts`), loads the library (`library/use-library.ts`, over `storage.ts`, which opens
 IndexedDB once), and shows the library or the maze the route opens (`open-maze.ts`), with the
-toasts (`toasts.ts`, `toaster.tsx`) and the theme (`theme.ts`).
+toasts (`toasts.ts`, `toaster.tsx`) and the theme (`theme.ts`). The studio flies between the
+library and a maze (DESIGN.md 8); the camera hook (`board/use-canvas-camera.ts`) runs the flight,
+free of the limits while it lasts.
 
-- `library/`: `LibraryScreen` draws the islands (search, source and category, Open, theme,
-  credit); `LibraryStage` owns the library's camera, so only the canvas and the zoom island move
-  with it; `LibraryCanvas` mounts the visible rows of `Artboard`s and reveals the one Tab reaches.
-- `maze/`: `MazeScreen`, a maze on its board, read only, with the title island and the zoom.
+- `studio/`: `Studio` puts the library and the open maze on one canvas under one camera, with the
+  flights between them (`studio-store.ts` holds its mode), the open board (`OpenBoard`), the
+  editor's islands (`EditorChrome`) and the quick list (`MazeList`, `list-order.ts`).
+- `library/`: `LibraryChrome` draws the library's islands (search, source and category, Open,
+  theme, credit); `LibraryCanvas` mounts the visible rows of `Artboard`s, keeps the active one,
+  fades the others while a maze is open, and reveals the one Tab reaches.
 - `islands/`: the island, its buttons, separator and tooltip, the zoom island and the theme button.
 - `board/`: as above, plus `paint-queue.ts`, which paints thumbnails in idle time.
 - `primitives/`: the shadcn components, with Phosphor icons.

@@ -40,6 +40,24 @@ function shapes(name: string): number {
   return layer(name)?.getAttribute('d')?.match(/M/g)?.length ?? 0;
 }
 
+/**
+ * How long a still camera is left before its picture is taken: Chromium may keep a transformed
+ * layer at an intermediate raster scale for a while after its transform changes, and under the
+ * load of other test files that shifts every edge of the board by a fifth of a pixel.
+ */
+const RASTER_SETTLE_MS = 500;
+
+function worldTransform(): string | undefined {
+  return document.querySelector<HTMLElement>('[data-world]')?.style.transform;
+}
+
+/** Whether the camera has a place and keeps it for two frames, so a screenshot catches it still. */
+async function stillCamera(): Promise<boolean> {
+  const before = worldTransform();
+  await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+  return before !== undefined && before !== '' && worldTransform() === before;
+}
+
 /** An edited copy of `maze` and the overlays that show everything at once over it. */
 function edited(maze: Maze): { after: Maze; overlays: BoardOverlays } {
   const edges: Edge[] = [
@@ -148,10 +166,9 @@ describe('Screenshots of the board on its stage', () => {
         status={false}
       />
     );
-    await expect
-      .poll(() => document.querySelector<HTMLElement>('[data-world]')?.style.transform)
-      .toBeTruthy();
+    await expect.poll(stillCamera).toBe(true);
     await settled();
+    await new Promise((resolve) => setTimeout(resolve, RASTER_SETTLE_MS));
 
     await expect.element(page.getByRole('application')).toMatchScreenshot(`${size}-${theme}`);
   });

@@ -85,6 +85,9 @@ export interface BoardView {
 /** The editor's fit insets on a notebook (DESIGN.md 7). */
 export const EDITOR_INSETS: Insets = { top: 80, right: 72, bottom: 108, left: 72 };
 
+/** The editor's fit insets on a phone, in view mode (DESIGN.md 7). */
+export const EDITOR_PHONE_INSETS: Insets = { top: 72, right: 12, bottom: 88, left: 12 };
+
 /** The editor's zoom range: half the fit to ten times it. */
 export const EDITOR_ZOOM: ZoomRange = { min: 0.5, max: 10 };
 

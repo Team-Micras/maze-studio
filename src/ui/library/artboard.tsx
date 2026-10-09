@@ -4,6 +4,7 @@ import type { CatalogEntry } from '@/library';
 import type { Maze } from '@/maze';
 import type { ThumbnailBand, WorldRect } from '@/render';
 import { ThumbnailCanvas } from '@/ui/board/thumbnail-canvas';
+import { pushRoute } from '@/ui/navigation';
 import { routeHash, type Route } from '@/ui/routes';
 
 import { artboardLabel } from './artboard-label';
@@ -16,6 +17,8 @@ export interface ArtboardProps {
   readonly place: WorldRect;
   /** The thumbnail band its size on screen needs. */
   readonly band: ThumbnailBand;
+  /** Whether it fades out and leaves the keyboard and the pointer, as while a maze is open. */
+  readonly hidden?: boolean;
   readonly onFocus: (key: string, event: FocusEvent<HTMLAnchorElement>) => void;
 }
 
@@ -37,21 +40,38 @@ function artboardStyle(place: WorldRect): CSSProperties & Record<'--bw', number>
 /**
  * One maze on the library's canvas (DESIGN.md 7): a link that opens it, its thumbnail, and its
  * name and size above at a constant 12 px whatever the zoom. Hover and keyboard focus ring it.
- * A new place slides there, so a reflow moves the artboards that stay mounted.
+ * A new place slides there, so a reflow moves the artboards that stay mounted. A plain click pushes
+ * the route at once, so the maze opens in the next frame; a modified one opens a new tab.
  */
 export const Artboard = memo(function Artboard({
   entry,
   maze,
   place,
   band,
+  hidden = false,
   onFocus,
 }: ArtboardProps) {
   return (
     <a
       aria-label={artboardLabel(entry)}
-      className="group absolute top-0 left-0 block text-inherit no-underline outline-none transition-transform duration-[360ms] ease-(--ease-out)"
+      aria-hidden={hidden || undefined}
+      className="group absolute top-0 left-0 block text-inherit no-underline outline-none transition-[transform,opacity] duration-[360ms,320ms] ease-(--ease-out) data-hidden:pointer-events-none data-hidden:opacity-0"
+      data-hidden={hidden ? '' : undefined}
+      tabIndex={hidden ? -1 : undefined}
       data-artboard={entry.key}
       href={routeHash(routeOf(entry))}
+      onClick={(event) => {
+        if (
+          !event.defaultPrevented &&
+          !event.ctrlKey &&
+          !event.metaKey &&
+          !event.shiftKey &&
+          !event.altKey
+        ) {
+          event.preventDefault();
+          pushRoute(routeOf(entry));
+        }
+      }}
       onFocus={(event) => onFocus(entry.key, event)}
       style={artboardStyle(place)}
     >

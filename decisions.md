@@ -297,3 +297,56 @@ The machine's rule is no builds in `/tmp`, so `tests/e2e/pwa.test.ts` builds the
   are now read from the snapshot. Tests that open named mazes (`japan2011hef`, `AAMC15Maze`,
   `taiwan2015hef`, `japan2016hef`) would need a look if upstream ever edited or removed those
   files; new mazes never touch them.
+
+## 09/10/2026 — Slice 4b: the flight, the open maze and the quick list
+
+- **`cmdk` 1.1.1 for the quick list**, the monitor's version, as PLAN.md 3 foresaw: its `Command`
+  gives the listbox, the highlight that the arrows move and the selection, and it runs with
+  `shouldFilter={false}`, so the list filters with the library's own `SearchIndex` and passes
+  only the matches. Its own code is about 4.4 KB gzip; it stands on Radix's dialog, which the
+  phone's sheet uses anyway. The first screen loads 161.4 KB gzip after this slice (150.5 KB
+  before), with the studio's code and the sheet.
+- **One canvas for the library and the open maze.** `Studio` replaced the library and maze
+  screens: the artboards and the open maze's board lie in one world under one camera, whose
+  limits are the library's or the board's. Opening an artboard flies the camera 620 ms to the
+  editor fit of the board, which lies in the artboard's own cell, so nothing moves on landing; the
+  camera is free of both limits only while it flies. Leaving flies 520 ms back to the artboard of
+  the maze on screen, starting from the camera that keeps the board where it is on screen. A maze
+  that has no artboard (a link, a file) lies in a cell of its own left of the grid and arrives and
+  leaves without a flight, as does any maze with reduced motion or opened by its route on a fresh
+  load. Its state lives in a small zustand store per studio, which the route changes drive from
+  layout effects.
+- **The route of an artboard is pushed at once.** A plain click calls `pushState` and fires the
+  app's route event, rather than letting the link set the hash, whose `hashchange` comes a task
+  later; so with reduced motion the editor is there in the next frame. A modified click still opens
+  a new tab.
+- **The quick list previews in place.** The highlighted maze takes the board's place in the cell
+  the open maze came from, without a flight and without moving the URL; Enter or a click pins it
+  by replacing the route, Esc puts back the pinned one. Its rows are memoised with a stable pin
+  handler: re-rendering all 580 of them at each preview made 50 ↓ in a row cost three frames each
+  (p95 50 ms); now only the rows whose selection changes render.
+- **View mode.** A maze opened on a phone, or by a touch at any width, is open to look at: one
+  finger pans and a pinch zooms. The Edit button that leaves view mode comes with editing, in
+  slice 5a; until then a notebook's mouse does nothing on the board but the camera's own gestures.
+- **One finger pans the library.** The library's canvas pans with the primary button or one finger
+  once the press moves past 5 px, and swallows the click that ends such a drag, so a tap still
+  opens an artboard. Slice 4a left the phone's library with only the two-finger pan.
+- **Measured.** At 1440 × 900 without throttling, the median of three: the flight in and the
+  flight back at p95 16.7 ms, no frame over 25 ms, worst 16.8 ms; 50 ↓ through the open list at
+  p95 16.7 ms, no frame over 25 ms. In the e2e project, on the production build, the board's
+  centre stays 0.00 px from the straight line through the flight (39 frames), and its box moves
+  less than 0.5 px between landing and 350 ms later.
+- **Screenshots wait for the raster.** Once the studio's heavier browser files ran beside them, the
+  16×16 board screenshots failed about one run in two: the camera, the geometry and the frame were
+  identical (logged), but every edge sat a fifth of a pixel apart, Chromium having kept the
+  transformed layer at an intermediate raster scale. The test now waits for the camera to stay put
+  for two frames and then 500 ms before the picture; eight runs of the browser project in a row
+  passed after that.
+- **The studio keeps the library's zoom cheap.** Moving the camera into `Studio` brought back a
+  regression 4a had fixed: the library's islands re-rendered at every frame (their filter callback
+  followed the whole camera object), and so did the zoom island's three Radix tooltips; the
+  library zoom at 4× throttling fell to 6.5 to 14.5 % of frames over 25 ms. The filter callback is
+  now a `useCallback` over the camera's stable actions, the zoom island sits apart in an `aside`
+  named Zoom, and its buttons are memoised, so only the percentage re-renders: 0 to 1 % again.
+  The minimap of an open maze mounts only once the camera has landed, so the flight's first frame
+  does not also paint it.

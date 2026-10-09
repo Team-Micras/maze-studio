@@ -13,6 +13,7 @@ export {
   constrainCamera,
   EDITOR_INSETS,
   EDITOR_KEEP,
+  EDITOR_PHONE_INSETS,
   EDITOR_ZOOM,
   fitCamera,
   flightPath,
@@ -65,6 +66,8 @@ export {
 export {
   ARTBOARD_GAP_X,
   ARTBOARD_GAP_Y,
+  artboardIn,
+  cellOf,
   LIBRARY_INSETS,
   LIBRARY_ZOOM,
   libraryColumns,

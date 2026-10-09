@@ -1,17 +1,16 @@
 import { useEffect, useRef, useState } from 'react';
 
-import { fileStem, type LibraryFilter } from '@/library';
+import { DEFAULT_FILTER, fileStem, type LibraryFilter } from '@/library';
 import { parseMazeText } from '@/maze';
 
 import { CANVAS_ID } from './canvas-id';
 import { useRoute } from './hooks/use-route';
-import { LibraryScreen } from './library/library-screen';
 import { useLibrary } from './library/use-library';
-import { MazeScreen } from './maze/maze-screen';
 import { pushRoute, replaceRoute } from './navigation';
 import { MAX_FILE_BYTES, openingOf, type OpenMaze } from './open-maze';
 import { TooltipProvider } from './primitives/tooltip';
 import { LIBRARY_ROUTE, parseRoute, routeHash, type Route } from './routes';
+import { Studio } from './studio/studio';
 import { Toaster } from './toaster';
 import { showToast } from './toasts';
 
@@ -28,8 +27,8 @@ function focusCanvas(): void {
 }
 
 /**
- * The whole app: the library, or the maze the route opens, with the toasts on top. A `.txt` file
- * opens without a route of its own; the Library button closes it (PLAN.md 3.4).
+ * The whole app: the studio, showing the library or the maze the route opens, with the toasts on
+ * top. A `.txt` file opens without a route of its own; the Library button closes it (PLAN.md 3.4).
  */
 export function App() {
   const route = useRoute();
@@ -41,6 +40,11 @@ export function App() {
   const previous = useRef<Route>(route);
   const opening = openingOf(route, library);
   const shownFile = file?.at === hash ? file.open : undefined;
+  const [lastFilter, setLastFilter] = useState({ hash: '#/', filter: DEFAULT_FILTER });
+
+  if (route.kind === 'library' && lastFilter.hash !== hash) {
+    setLastFilter({ hash, filter: route.filter });
+  }
 
   const missing =
     route.kind !== 'library' && opening.status === 'missing' ? opening.message : undefined;
@@ -83,6 +87,7 @@ export function App() {
     if (parsed.ok) {
       setFile((before) => ({
         open: {
+          key: `file:${(before?.id ?? 0) + 1}`,
           maze: parsed.value.maze,
           name: fileStem(picked.name),
           detail: 'Opened from a file',
@@ -111,22 +116,15 @@ export function App() {
           Skip to the canvas
         </a>
       </nav>
-      {shownMaze === undefined ? (
-        route.kind === 'library' ? (
-          <LibraryScreen
-            filter={route.filter}
-            library={library}
-            onFilter={(filter: LibraryFilter) => replaceRoute({ kind: 'library', filter })}
-            onOpenFile={(picked) => void openFile(picked)}
-          />
-        ) : null
-      ) : (
-        <MazeScreen
-          key={shownFile === undefined ? hash : `file:${file?.id ?? 0}`}
-          onLibrary={toLibrary}
-          open={shownMaze}
-        />
-      )}
+      <Studio
+        filter={route.kind === 'library' ? route.filter : lastFilter.filter}
+        library={library}
+        onFilter={(filter: LibraryFilter) => replaceRoute({ kind: 'library', filter })}
+        onLibrary={toLibrary}
+        onOpenFile={(picked) => void openFile(picked)}
+        onPin={replaceRoute}
+        opened={shownMaze}
+      />
       <Toaster />
     </TooltipProvider>
   );

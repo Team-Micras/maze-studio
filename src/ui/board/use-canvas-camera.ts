@@ -30,7 +30,34 @@ export interface CanvasCameraOptions {
   readonly limits: (viewport: ViewportSize) => CameraLimits;
 }
 
-/** The camera of a canvas and the ways to move it. Every move stays within the limits. */
+/** A camera placed by a move, and whether it is free of the limits, as during a flight. */
+interface Placed {
+  readonly camera: Camera;
+  readonly free: boolean;
+}
+
+/** An animated move of the camera along the flight path of DESIGN.md 8. */
+export interface Flight {
+  /** Where the camera lands. */
+  readonly to: Camera;
+  /** The world rectangle whose centre moves on a straight line on screen. */
+  readonly anchor: WorldRect;
+  /** In milliseconds; 0 jumps at once. */
+  readonly duration: number;
+  readonly easing: (progress: number) => number;
+  /** After landing, follow the fit of the limits then in force, or keep the camera landed on. */
+  readonly land: 'fit' | 'keep';
+  /** Called at every frame with the progress, 0 to 1. */
+  readonly onProgress?: (progress: number) => void;
+  /** Called in the landing frame, before the camera is handed back to the limits. */
+  readonly onLand?: () => void;
+}
+
+/**
+ * The camera of a canvas and the ways to move it. Every move stays within the limits, except a
+ * flight and a jump, which are free of them until the next move; the user's moves wait for a
+ * flight to land.
+ */
 export interface CanvasCamera {
   /** The camera, or `undefined` until the viewport has been measured. */
   readonly camera: Camera | undefined;
@@ -54,6 +81,10 @@ export interface CanvasCamera {
   readonly pinch: (start: Camera, from: PointerPair, to: PointerPair) => void;
   /** Fits the content, in 260 ms when `animate` is set and the user allows motion. */
   readonly refit: (options?: { readonly animate?: boolean }) => void;
+  /** Flies the camera free of the limits, landing as the flight says. */
+  readonly fly: (flight: Flight) => void;
+  /** Puts the camera at once where given, free of the limits until the next move. */
+  readonly jump: (camera: Camera) => void;
   /** Does what a wheel event at `at` asks (DESIGN.md 7). */
   readonly wheel: (input: WheelInput, at: ScreenPoint) => void;
 }
@@ -70,7 +101,7 @@ function prefersReducedMotion(): boolean {
 export function useCanvasCamera({ content, limits: limitsFor }: CanvasCameraOptions): CanvasCamera {
   const [element, setElement] = useState<HTMLElement | null>(null);
   const [viewport, setViewport] = useState<ViewportSize | undefined>(undefined);
-  const [chosen, setChosen] = useState<Camera | undefined>(undefined);
+  const [placed, setPlaced] = useState<Placed | undefined>(undefined);
   const animation = useRef(0);
 
   useEffect(() => {
@@ -87,16 +118,24 @@ export function useCanvasCamera({ content, limits: limitsFor }: CanvasCameraOpti
     return () => observer.disconnect();
   }, [element]);
 
-  useEffect(() => () => cancelAnimationFrame(animation.current), []);
+  useEffect(
+    () => () => {
+      cancelAnimationFrame(animation.current);
+    },
+    []
+  );
 
   const limits = viewport === undefined ? undefined : limitsFor(viewport);
   const camera =
     limits === undefined
       ? undefined
-      : chosen === undefined
+      : placed === undefined
         ? limits.fit
-        : constrainCamera(chosen, limits);
+        : placed.free
+          ? placed.camera
+          : constrainCamera(placed.camera, limits);
   const latest = useRef({ camera, limits, content });
+  const flying = useRef(false);
 
   useLayoutEffect(() => {
     latest.current = { camera, limits, content };
@@ -105,45 +144,76 @@ export function useCanvasCamera({ content, limits: limitsFor }: CanvasCameraOpti
   const change = useCallback((move: (from: Camera, current: CameraLimits) => Camera): void => {
     const current = latest.current.limits;
 
-    if (current === undefined) {
+    if (current === undefined || flying.current) {
       return;
     }
 
     cancelAnimationFrame(animation.current);
-    setChosen((previous) =>
-      move(previous === undefined ? current.fit : constrainCamera(previous, current), current)
-    );
+    setPlaced((previous) => ({
+      camera: move(
+        previous === undefined ? current.fit : constrainCamera(previous.camera, current),
+        current
+      ),
+      free: false,
+    }));
   }, []);
 
-  const refit = useCallback(({ animate = false }: { readonly animate?: boolean } = {}): void => {
-    const { camera: from, limits: current, content: anchor } = latest.current;
-
-    if (current === undefined) {
-      return;
-    }
-
+  const fly = useCallback((flight: Flight): void => {
+    const from = latest.current.camera;
     cancelAnimationFrame(animation.current);
+    flying.current = false;
 
-    if (!animate || from === undefined || prefersReducedMotion()) {
-      setChosen(undefined);
+    if (from === undefined || flight.duration <= 0) {
+      flight.onLand?.();
+      setPlaced(flight.land === 'fit' ? undefined : { camera: flight.to, free: false });
       return;
     }
 
-    const path = flightPath(from, current.fit, anchor);
+    const path = flightPath(from, flight.to, flight.anchor);
     const started = performance.now();
     const frame = (now: number): void => {
-      const progress = Math.min(1, (now - started) / FIT_DURATION_MS);
+      const progress = Math.min(1, (now - started) / flight.duration);
+      flight.onProgress?.(progress);
 
       if (progress >= 1) {
-        setChosen(undefined);
+        flying.current = false;
+        flight.onLand?.();
+        setPlaced(flight.land === 'fit' ? undefined : { camera: flight.to, free: false });
         return;
       }
 
-      setChosen(path(EASE_OUT(progress)));
+      setPlaced({ camera: path(flight.easing(progress)), free: true });
       animation.current = requestAnimationFrame(frame);
     };
+    flying.current = true;
+    setPlaced({ camera: from, free: true });
     animation.current = requestAnimationFrame(frame);
   }, []);
+
+  const jump = useCallback((next: Camera): void => {
+    cancelAnimationFrame(animation.current);
+    flying.current = false;
+    setPlaced({ camera: next, free: true });
+  }, []);
+
+  const refit = useCallback(
+    ({ animate = false }: { readonly animate?: boolean } = {}): void => {
+      const { limits: current, content: anchor } = latest.current;
+
+      if (current === undefined) {
+        return;
+      }
+
+      fly({
+        to: current.fit,
+        anchor,
+        duration: animate && !prefersReducedMotion() ? FIT_DURATION_MS : 0,
+        easing: EASE_OUT,
+        land: 'fit',
+      });
+    },
+    [fly]
+  );
 
   const set = useCallback(
     (next: Camera) => change((_, current) => constrainCamera(next, current)),
@@ -200,6 +270,8 @@ export function useCanvasCamera({ content, limits: limitsFor }: CanvasCameraOpti
     centerOn: center,
     pinch,
     refit,
+    fly,
+    jump,
     wheel,
   };
 }

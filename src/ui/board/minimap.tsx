@@ -1,7 +1,14 @@
 import { useRef, useState, type PointerEvent } from 'react';
 
 import type { Maze } from '@/maze';
-import { MINIMAP_SIZE, minimapFrame, minimapView, minimapWorldPoint, showsMinimap } from '@/render';
+import {
+  MINIMAP_SIZE,
+  minimapFrame,
+  minimapView,
+  minimapWorldPoint,
+  showsMinimap,
+  type WorldRect,
+} from '@/render';
 import { cn } from '@/ui/primitives/utils';
 
 import { ThumbnailCanvas } from './thumbnail-canvas';
@@ -13,6 +20,8 @@ const PRIMARY_BUTTONS = 1;
 export interface MinimapProps {
   readonly maze: Maze;
   readonly controller: CanvasCamera;
+  /** The board, in world units. */
+  readonly board: WorldRect;
   /** The longest side of its board, in CSS pixels; 148 by default. */
   readonly size?: number;
   readonly className?: string;
@@ -25,28 +34,28 @@ export interface MinimapProps {
  * Pointer only and hidden from screen readers: the zoom keys and the camera's own gestures are
  * the accessible ways to move.
  */
-export function Minimap({ maze, controller, size = MINIMAP_SIZE, className }: MinimapProps) {
-  const board = useRef<HTMLDivElement>(null);
+export function Minimap({ maze, controller, board, size = MINIMAP_SIZE, className }: MinimapProps) {
+  const boardElement = useRef<HTMLDivElement>(null);
   const [dragging, setDragging] = useState(false);
-  const { camera, limits, content } = controller;
+  const { camera, limits } = controller;
 
   if (camera === undefined || limits === undefined) {
     return null;
   }
 
-  const frame = minimapFrame(content, size);
-  const visible = minimapView(camera, limits.viewport, content, frame);
+  const frame = minimapFrame(board, size);
+  const visible = minimapView(camera, limits.viewport, board, frame);
   const shown = showsMinimap(camera.k, limits.fit.k);
 
   const centerAt = (event: PointerEvent<HTMLDivElement>): void => {
-    const box = board.current?.getBoundingClientRect();
+    const box = boardElement.current?.getBoundingClientRect();
 
     if (box === undefined) {
       return;
     }
 
     controller.centerOn(
-      minimapWorldPoint({ x: event.clientX - box.left, y: event.clientY - box.top }, content, frame)
+      minimapWorldPoint({ x: event.clientX - box.left, y: event.clientY - box.top }, board, frame)
     );
   };
 
@@ -85,7 +94,7 @@ export function Minimap({ maze, controller, size = MINIMAP_SIZE, className }: Mi
       <div
         className="relative overflow-hidden rounded-[5px]"
         data-minimap-board=""
-        ref={board}
+        ref={boardElement}
         style={{ width: frame.width, height: frame.height }}
       >
         <ThumbnailCanvas cached={false} height={frame.height} maze={maze} width={frame.width} />
