@@ -51,6 +51,30 @@ It also checks that no file has an `error` under its folder's profile, and pins 
 proof rule fires on. `tests/maze/round-trip-properties.test.ts` does the same over random mazes from a fixed seed, with
 open borders, which the repository never has.
 
+## The library
+
+`src/library/index.ts` is its public face. It imports only `src/maze`.
+
+- `snapshot.ts`, `snapshot.json`: every maze file of the pinned mazefiles commit as path, git blob
+  SHA and compact code, written by `bun run snapshot` (`scripts/snapshot-mazefiles.ts`) and loaded
+  by `loadSnapshot()` from its own chunk. `tests/library/snapshot.test.ts` compares it with the
+  submodule file by file and byte by byte: it is the anchor of the pinned hash.
+- `github-updater.ts`: `updateFromGitHub` asks the branch (with `If-None-Match`), lists the tree of
+  a new commit, downloads only new or changed files from the raw host by commit, checks each blob
+  SHA, skips a file that does not parse, and fails without changing anything on no network, the
+  rate limit, a SHA mismatch or a malformed answer. `isUpdateDue` allows one automatic check a day.
+- `repo-cache.ts`: `RepoCache` shows the snapshot until an update stores a newer commit in
+  IndexedDB, and remembers the last check and its failure.
+- `mine.ts`: `MineLibrary`, the user's mazes with a version per item. A save names the version
+  it was made from and is refused over a newer one or a removed item. Every write is announced on
+  a `BroadcastChannel`, and the first write asks for `navigator.storage.persist()`.
+- `backup.ts`, `zip.ts`, `file-names.ts`: export of Mine as a stored zip of `.txt` files with an
+  index, and import of `.txt` files and zips, deflated ones included.
+- `catalog.ts`, `maze-names.ts`: one entry per maze for search and filters, with the competition
+  and year read from the file name by a fixed list, without guessing.
+- `database.ts`, `settings.ts`: a small IndexedDB wrapper with the stores `repo-files`, `mine`
+  and `settings`, and the preferences and local folder kept in the last.
+
 ## Import rules
 
 Checked by `bun run lint` through `no-restricted-imports` in `.oxlintrc.json`, and the rules

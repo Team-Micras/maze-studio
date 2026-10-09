@@ -18,6 +18,7 @@
     "test:performance": "vitest run --project performance --passWithNoTests",
     "test:e2e": "vitest run --project e2e",
     "size": "bun scripts/bundle-size.ts",
+    "snapshot": "bun scripts/snapshot-mazefiles.ts",
     "check": "bun run lint && bun run format:check && bun run typecheck && bun run test && bun run test:e2e && bun run build && bun run size"
   },
   "dependencies": {

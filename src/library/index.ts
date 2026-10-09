@@ -1,0 +1,56 @@
+/**
+ * The library: the repository's mazes (the built-in snapshot and its updates from GitHub), the
+ * user's own mazes, their backup, the catalog the screens list, and what the browser keeps.
+ *
+ * @module
+ */
+
+export {
+  BACKUP_INDEX,
+  exportMine,
+  readImport,
+  type ImportFile,
+  type ImportReport,
+  type SkippedImport,
+} from './backup';
+export { gitBlobSha } from './blob-sha';
+export { mineCatalog, repoCatalog, type CatalogEntry } from './catalog';
+export { Database, DATABASE_NAME, openDatabase, type StoreName } from './database';
+export { fileStem, uniqueStems } from './file-names';
+export {
+  isUpdateDue,
+  UPDATE_INTERVAL_MS,
+  updateFromGitHub,
+  type Fetch,
+  type RepoState,
+  type SkippedFile,
+  type UpdateFailure,
+  type UpdateResult,
+} from './github-updater';
+export { mazeOrigin, type MazeOrigin } from './maze-names';
+export { MAZEFILES, type MazeRepository } from './mazefiles';
+export {
+  MINE_CHANNEL,
+  mineContent,
+  MineLibrary,
+  type MineChanges,
+  type MineDraft,
+  type MineMaze,
+  type MineNotice,
+  type MineOptions,
+  type MineOrigin,
+  type NoticeChannel,
+  type Persistence,
+  type PersistentStorage,
+  type SaveConflict,
+} from './mine';
+export {
+  RepoCache,
+  type CheckResult,
+  type RepoCacheOptions,
+  type RepoCopy,
+  type RepoMeta,
+} from './repo-cache';
+export { Settings, type Preferences } from './settings';
+export { loadSnapshot, readSnapshot, type RepoFile, type Snapshot } from './snapshot';
+export { crc32, readZip, writeZip, type ZipEntry } from './zip';

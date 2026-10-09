@@ -79,3 +79,32 @@ The machine's rule is no builds in `/tmp`, so `tests/e2e/pwa.test.ts` builds the
 - **Parity at `548dcde`.** No `error` in any of the 581 files under its folder's profile; the proof
   rules fire on 100 files (loose post), 2 (unreachable goal) and 54 (more than one entrance), the
   numbers the plan's reviewer measured.
+
+## 08/10/2026 — Slice 2: library data
+
+- **No zip dependency.** `src/library/zip.ts` writes zips with stored (uncompressed) entries,
+  CRC-32 and UTF-8 names, about 200 lines: maze text is small, and a library such as fflate or
+  JSZip would be the only runtime dependency for one button. Its reader also takes deflated
+  entries through the platform's `DecompressionStream('deflate-raw')`, so a zip of `.txt` files
+  made by another tool imports too. Python's `zipfile` reads our archives (`testzip` clean); the
+  deflated fixture in `tests/support/library/` was made with it.
+- **The backup keeps an index.** Next to the `.txt` files, `maze-studio-backup.json` keeps what a
+  `.txt` cannot (the name as typed, the profile, the creation time, the origin). Without it, as for
+  loose `.txt` files, an import names a maze after its file and gives it the `free` profile.
+- **`snapshot.json` is not formatted by oxfmt.** The script writes one file per line, so a new
+  commit of mazefiles shows as a readable diff; the formatter would make it ten lines per file.
+- **The snapshot wins over an older cached copy.** The cache remembers which built-in snapshot
+  it replaced; when the app ships a new one, the cached copy is dropped and the next check brings
+  it up to date again, so an app update never shows mazes older than its own snapshot.
+- **A failed check counts as the day's check.** It records the time and the reason, so an
+  offline phone does not hammer GitHub on every visit; the update button always checks.
+- **`unicorn/require-post-message-target-origin` is off for `src/library/mine.ts`.** The rule is
+  about `window.postMessage`; `BroadcastChannel.postMessage` takes no target origin.
+- **A folder handle round trip needs a persistent browser context.** Reading a
+  `FileSystemDirectoryHandle` back out of IndexedDB crashes the page in Chromium 1243 under
+  Playwright's default off-the-record contexts, headless shell and full build alike; in a
+  persistent context it works (checked by hand). `Settings` is generic over what it keeps as the
+  folder, so its own logic is tested with a plain stand-in. Slice 6, whose local-folder test keeps
+  an OPFS handle in IndexedDB, needs a persistent context, and should check whether Chrome's
+  incognito windows have the same crash.
+- **Mine's category in the catalog is its profile**, the closest to a repository folder.

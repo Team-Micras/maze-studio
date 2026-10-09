@@ -68,7 +68,7 @@ export {
   type MazeTextSource,
 } from './maze-text';
 export { parseMazeText } from './parse-maze-text';
-export type { Result } from './result';
+export { failure, success, type Result } from './result';
 export { mazeGridText, serializeMazeText } from './serialize-maze-text';
 export {
   profileOfPath,

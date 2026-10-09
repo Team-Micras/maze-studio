@@ -223,6 +223,12 @@
           }
         ]
       }
+    },
+    {
+      "files": ["src/library/mine.ts"],
+      "rules": {
+        "unicorn/require-post-message-target-origin": "off"
+      }
     }
   ]
 }
