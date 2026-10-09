@@ -1,0 +1,3 @@
+[submodule "vendor/mazefiles"]
+	path = vendor/mazefiles
+	url = https://github.com/micromouseonline/mazefiles

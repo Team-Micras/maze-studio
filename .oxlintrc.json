@@ -1,0 +1,224 @@
+{
+  "$schema": "./node_modules/oxlint/configuration_schema.json",
+  "plugins": ["eslint", "typescript", "unicorn", "oxc", "import", "react", "jsx-a11y", "vitest"],
+  "categories": {
+    "correctness": "error",
+    "suspicious": "error",
+    "perf": "warn"
+  },
+  "options": {
+    "typeAware": true,
+    "denyWarnings": true
+  },
+  "env": {
+    "builtin": true,
+    "es2024": true
+  },
+  "ignorePatterns": ["dist/**", "node_modules/**", "vendor/**", ".omc/**"],
+  "rules": {
+    "import/no-cycle": "error",
+    "import/no-unassigned-import": [
+      "error",
+      {
+        "allow": ["**/*.css"]
+      }
+    ],
+    "vitest/expect-expect": [
+      "error",
+      {
+        "assertFunctionNames": ["expect", "expect*"]
+      }
+    ],
+    "react/react-in-jsx-scope": "off",
+    "react/only-export-components": [
+      "error",
+      {
+        "allowConstantExport": true,
+        "allowExportNames": ["buttonVariants", "badgeVariants"]
+      }
+    ]
+  },
+  "overrides": [
+    {
+      "files": ["sw/**"],
+      "rules": {
+        "no-underscore-dangle": "off"
+      }
+    },
+    {
+      "files": ["tests/e2e/**"],
+      "rules": {
+        "no-await-in-loop": "off"
+      }
+    },
+    {
+      "files": ["src/**", "tests/**"],
+      "env": {
+        "browser": true
+      }
+    },
+    {
+      "files": ["src/**"],
+      "rules": {
+        "no-restricted-imports": [
+          "error",
+          {
+            "patterns": [
+              {
+                "regex": "^((@tests|@scripts)|(\\.\\./)+(tests|scripts))(/|$)",
+                "message": "Shipped code never imports tests or scripts."
+              },
+              {
+                "regex": "^react(-dom)?(/.*)?$",
+                "message": "Only src/ui draws with React; keep this folder framework free."
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "files": ["src/maze/**"],
+      "rules": {
+        "no-restricted-imports": [
+          "error",
+          {
+            "patterns": [
+              {
+                "regex": "^((@tests|@scripts)|(\\.\\./)+(tests|scripts))(/|$)",
+                "message": "Shipped code never imports tests or scripts."
+              },
+              {
+                "regex": "^react(-dom)?(/.*)?$",
+                "message": "Only src/ui draws with React; keep this folder framework free."
+              },
+              {
+                "regex": "^@/",
+                "message": "src/maze imports nothing else in maze-studio; import other maze modules by relative path."
+              },
+              {
+                "regex": "^(\\.\\./)+(library|render|ui|main)(/|$)",
+                "message": "src/maze imports nothing else in maze-studio; import other maze modules by relative path."
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "files": ["src/library/**"],
+      "rules": {
+        "no-restricted-imports": [
+          "error",
+          {
+            "patterns": [
+              {
+                "regex": "^((@tests|@scripts)|(\\.\\./)+(tests|scripts))(/|$)",
+                "message": "Shipped code never imports tests or scripts."
+              },
+              {
+                "regex": "^react(-dom)?(/.*)?$",
+                "message": "Only src/ui draws with React; keep this folder framework free."
+              },
+              {
+                "regex": "^(@/(library|render|ui|main)|(\\.\\./)+(render|ui|main))(/|$)",
+                "message": "src/library depends only on src/maze; reach its own files by relative path."
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "files": ["src/render/**"],
+      "rules": {
+        "no-restricted-imports": [
+          "error",
+          {
+            "patterns": [
+              {
+                "regex": "^((@tests|@scripts)|(\\.\\./)+(tests|scripts))(/|$)",
+                "message": "Shipped code never imports tests or scripts."
+              },
+              {
+                "regex": "^react(-dom)?(/.*)?$",
+                "message": "Only src/ui draws with React; keep this folder framework free."
+              },
+              {
+                "regex": "^(@/(library|render|ui|main)|(\\.\\./)+(library|ui|main))(/|$)",
+                "message": "src/render depends only on src/maze; reach its own files by relative path."
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "files": ["src/ui/**"],
+      "rules": {
+        "no-restricted-imports": [
+          "error",
+          {
+            "patterns": [
+              {
+                "regex": "^((@tests|@scripts)|(\\.\\./)+(tests|scripts))(/|$)",
+                "message": "Shipped code never imports tests or scripts."
+              },
+              {
+                "regex": "^(@/main|(\\.\\./)+main)(/|$)",
+                "message": "The UI never imports the entry point; src/main.tsx wires the app together."
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "files": ["src/main.tsx"],
+      "rules": {
+        "no-restricted-imports": [
+          "error",
+          {
+            "patterns": [
+              {
+                "regex": "^((@tests|@scripts)|(\\.\\./)+(tests|scripts))(/|$)",
+                "message": "Shipped code never imports tests or scripts."
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "files": ["scripts/**", "*.config.ts", "tests/e2e/**", "tests/config/**"],
+      "env": {
+        "node": true
+      }
+    },
+    {
+      "files": ["scripts/**"],
+      "rules": {
+        "no-await-in-loop": "off",
+        "no-restricted-imports": [
+          "error",
+          {
+            "patterns": [
+              {
+                "regex": "^(@tests|(\\.\\./)+tests)(/|$)",
+                "message": "Scripts never import tests."
+              },
+              {
+                "regex": "^(@/(render|ui|main)|(\\.\\./)+src/(render|ui|main))(/|$)",
+                "message": "Scripts may only depend on src/maze and src/library."
+              },
+              {
+                "regex": "^react(-dom)?(/.*)?$",
+                "message": "Tools are Node scripts; no React."
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ]
+}

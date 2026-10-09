@@ -1,0 +1,17 @@
+{
+  "extends": "./tsconfig.base.json",
+  "files": [],
+  "compilerOptions": {
+    "paths": {
+      "@/*": ["./src/*"]
+    }
+  },
+  "references": [
+    { "path": "./tsconfig.app.json" },
+    { "path": "./tsconfig.scripts.json" },
+    { "path": "./tsconfig.node.json" },
+    { "path": "./tsconfig.sw.json" },
+    { "path": "./tsconfig.tests.json" },
+    { "path": "./tsconfig.tests-browser.json" }
+  ]
+}
