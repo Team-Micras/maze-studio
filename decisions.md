@@ -125,6 +125,14 @@ The machine's rule is no builds in `/tmp`, so `tests/e2e/pwa.test.ts` builds the
 
 ## 09/10/2026 — Slice 3: drawing and camera
 
+- **Phosphor replaces Lucide.** `@phosphor-icons/react` 2.1.10 (exact, its latest) is the icon set
+  of the approved Studio direction (DESIGN.md D3 and 4): the owner chose the directions drawn with
+  it, and it moves the app away from the default shadcn look. `lucide-react` left `package.json`
+  and `components.json` names `phosphor`; no file imported Lucide yet. Icons are always imported by
+  name. Effect on `bun run size`, measured by importing icons into the app and building: nothing
+  until an icon is used (72.6 KB eager, as before); one icon adds 1.3 KB gzip and twelve add
+  8.8 KB, about 0.7 KB each past the first, since each Phosphor icon carries its six weights. The
+  forty icons of DESIGN.md 4 should stay near 30 KB, well inside the 250 KB target.
 - **The track's colours are values, not theme tokens.** The track looks the same in both themes,
   so `TRACK_COLORS` in `src/render/track-colors.ts` is the one source for the SVG board and the
   canvas thumbnails, which cannot read CSS variables. The UI tokens of DESIGN.md 2.1 (desk,
