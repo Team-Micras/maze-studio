@@ -263,12 +263,22 @@ function readMarks(
   return { start, goals };
 }
 
+const GRID_CHARACTERS = /^[ |SG]+$/;
+
+function looksLikeGrid(next: string, after: string | undefined): boolean {
+  if (next.startsWith(POST) || next.startsWith(VERTICAL_WALL)) {
+    return true;
+  }
+
+  return next.startsWith(BLANK) && (after?.startsWith(POST) === true || GRID_CHARACTERS.test(next));
+}
+
 function readTrailer(lines: readonly string[], gridLines: number, report: Report): string {
   const next = lines[gridLines] ?? '';
   const trailer = lines.slice(gridLines).join('\n');
   const bytes = new TextEncoder().encode(trailer).length;
 
-  if (next.startsWith(POST) || next.startsWith(VERTICAL_WALL)) {
+  if (looksLikeGrid(next, lines[gridLines + 1])) {
     report('ragged-line', gridLines + 1, 1, next);
   }
 

@@ -32,6 +32,10 @@ function refused(text: string): Omit<MazeTextError, 'message'> {
   return { line: result.error.line, column: result.error.column };
 }
 
+function kinds(text: string): string[] | undefined {
+  return parsed(text).source?.irregularities.map(({ kind, line }) => `${kind}@${line}`);
+}
+
 function walls(segment: string): [boolean, number | undefined] {
   const document = parsed(`o${segment}o\n|   |\no---o\n`);
   return [document.maze.horizontal.get(1), document.source?.irregularities.length];
@@ -143,6 +147,22 @@ describe('reading the mazefiles text', () => {
       { kind: 'short-line', line: 4, column: 4, found: '' },
     ]);
     expect(serializeMazeText(document)).toBe(lines.join('\n'));
+  });
+
+  test('reports a trailer line that looks like grid starting with a space', () => {
+    expect(kinds(`${TWO_BY_TWO}  S     # note\no---o---o\n`)).toEqual(['ragged-line@6']);
+    expect(kinds(`${TWO_BY_TWO}  S\no---o--\n`)).toEqual(['ragged-line@6']);
+    expect(kinds(`${TWO_BY_TWO}  S`)).toEqual(['ragged-line@6']);
+    expect(kinds(`${TWO_BY_TWO}  | G |\n`)).toEqual(['ragged-line@6']);
+    expect(kinds(`${TWO_BY_TWO}  indented note\nmore\n`)).toEqual([]);
+    expect(kinds(`${TWO_BY_TWO}\n`)).toEqual([]);
+  });
+
+  test('reads two mazes split by a blank line as one, and reports it', () => {
+    const document = parsed(`${TWO_BY_TWO}\n${TWO_BY_TWO}`);
+
+    expect([document.maze.width, document.maze.height]).toEqual([2, 5]);
+    expect(kinds(`${TWO_BY_TWO}\n${TWO_BY_TWO}`)).toEqual(['short-line@6', 'extra-start@10']);
   });
 
   test('reads an empty cell line as a row with no walls and no marks when posts follow it', () => {

@@ -30,8 +30,11 @@ The machine's rule is no builds in `/tmp`, so `tests/e2e/pwa.test.ts` builds the
   trailing spaces leaves of a maze with an open east border, is part of the grid when a line of
   posts follows it, and reads as if padded with spaces. Without that line of posts it is not, so a
   trailer line starting with a space stays in the trailer.
-- **`ragged-line`.** The line right after the grid starts with `o` or `|`, as the upstream
-  `read_maze` would take for the grid, but breaks its shape; the grid may have ended early.
+- **`ragged-line`.** The line right after the grid looks like more of it but breaks its shape, so
+  the grid may have ended early: it starts with `o` or `|`, as the upstream `read_maze` would take
+  for the grid; or it starts with a space, as a cell line with an open west border does, and
+  either holds only grid characters (spaces, `|`, `S`, `G`) or comes before a line starting with
+  `o`. A file cut right after such a line is reported too.
 - **`long-trailer`.** The trailer has more than 65,535 bytes of UTF-8, counted in bytes, not
   characters. Note for slice 1c: it is a warning of its own, not part of "homogeneous grid"; and
   the check before sharing looks at the trailer itself, since the code cannot carry it.
@@ -40,8 +43,11 @@ The machine's rule is no builds in `/tmp`, so `tests/e2e/pwa.test.ts` builds the
 - **A lone `\r` is a line break.** `\r\n` and a lone `\r` both become `\n`, and `hadCR` says so.
 - **`ignoreBOM: true`.** The code's decoder keeps a leading byte order mark of the trailer or the
   name, so both come back byte for byte.
-- **The remaining ambiguity.** A trailer line exactly as long as the grid's lines that starts with
-  a space or `|`, followed by a line of posts of that length, reads as more grid. Only a file made
-  to look like a taller maze does that; the repository has no trailer but a blank line.
+- **The remaining ambiguity.** What fits the grid's shape is grid, whatever the file meant. A
+  trailer line as long as the grid's lines that starts with a space or `|` and is followed by a
+  line of posts of that length reads as more grid; so does a short or empty line followed by such
+  a line of posts, since a short cell line is accepted. Two 2×2 mazes in one file separated by a
+  blank line read as one 2×5 maze, with the blank line as a `short-line` and the second `S` as an
+  `extra-start`: reported, never silent. The repository has no trailer but a blank line at the end.
 - **Padding bits.** The code's decoder refuses a last wall byte whose padding bits are not zero
   (`non-canonical`), so each maze has one code.

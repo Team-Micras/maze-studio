@@ -22,8 +22,10 @@ export const MAX_TRAILER_BYTES = 65_535;
  * - `extra-start`: an `S` after the first one in reading order; that cell is unmarked.
  * - `short-line`: a cell line shorter than the first line, read as if padded with spaces; `found`
  *   is empty, and `column` is where the line ended.
- * - `ragged-line`: the line right after the grid starts like a grid line (`o` or `|`) but breaks
- *   its shape, so the grid may have ended early.
+ * - `ragged-line`: the line right after the grid looks like more of it but breaks its shape, so
+ *   the grid may have ended early: it starts with `o` or `|`, or it starts with a space and
+ *   either holds only grid characters (spaces, `|`, `S`, `G`) or comes before a line starting
+ *   with `o`.
  * - `long-trailer`: the text after the grid is longer than the 65,535 bytes of UTF-8 a link or
  *   snapshot can carry.
  */
