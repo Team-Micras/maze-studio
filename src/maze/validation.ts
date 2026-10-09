@@ -85,7 +85,16 @@ export function validateMaze(input: ValidationInput): readonly Finding[] {
 
     if (severity !== undefined) {
       for (const problem of MAZE_RULE_CHECKS[rule](input)) {
-        findings.push(Object.freeze({ rule, severity, ...problem }));
+        findings.push(
+          Object.freeze({
+            rule,
+            severity,
+            message: problem.message,
+            cells: Object.freeze([...problem.cells]),
+            edges: Object.freeze([...problem.edges]),
+            posts: Object.freeze([...problem.posts]),
+          })
+        );
       }
     }
   }

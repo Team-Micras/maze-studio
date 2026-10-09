@@ -33,7 +33,19 @@ function fromSource(
   return ({ source, maze }) => (source === undefined ? [] : check(source, maze));
 }
 
+function rowAt(maze: Maze, line: number): Partial<Omit<Problem, 'message'>> {
+  const y = maze.height - line / 2;
+  return {
+    cells: Array.from({ length: maze.width }, (_, x) => ({ x, y })),
+    edges: [{ direction: 'vertical', x: maze.width, y }],
+  };
+}
+
 function pointAt(maze: Maze, irregularity: Irregularity): Partial<Omit<Problem, 'message'>> {
+  if (irregularity.kind === 'short-line') {
+    return rowAt(maze, irregularity.line);
+  }
+
   const { cell, edge } = placeOfText(maze, irregularity.line, irregularity.column);
   return { cells: cell === undefined ? [] : [cell], edges: edge === undefined ? [] : [edge] };
 }
@@ -123,6 +135,7 @@ function startMarks(irregularity: Irregularity): number {
     case 'cell':
       return countStartMarks(irregularity.found.charAt(0) + irregularity.found.charAt(2));
     case 'wall':
+    case 'ragged-line':
       return countStartMarks(irregularity.found);
     default:
       return 0;
@@ -142,10 +155,11 @@ function cellNear(maze: Maze, irregularity: Irregularity): Cell | undefined {
   };
 }
 
-function extraStarts(source: MazeTextSource | undefined, maze: Maze): Cell[] {
+function extraStarts(source: MazeTextSource | undefined, maze: Maze): (Cell | undefined)[] {
   return (source?.irregularities ?? []).flatMap((irregularity) => {
-    const cell = cellNear(maze, irregularity);
-    return cell === undefined ? [] : Array.from({ length: startMarks(irregularity) }, () => cell);
+    const marks = startMarks(irregularity);
+    const cell = irregularity.kind === 'ragged-line' ? undefined : cellNear(maze, irregularity);
+    return Array.from({ length: marks }, () => cell);
   });
 }
 
@@ -156,7 +170,10 @@ function singleStartProblems({ maze, source }: ValidationInput): Problem[] {
     ? []
     : [
         problem(`the grid has ${count} "S" marks; a maze has one start`, {
-          cells: [...(maze.start === undefined ? [] : [maze.start]), ...others],
+          cells: [
+            ...(maze.start === undefined ? [] : [maze.start]),
+            ...others.filter((cell) => cell !== undefined),
+          ],
         }),
       ];
 }
@@ -249,9 +266,17 @@ function classicGoalProblems(maze: Maze): Problem[] {
     maze.goals.length === expected.length &&
     expected.every((cell) => maze.goals.some((goal) => goal.x === cell.x && goal.y === cell.y));
 
+  const misplaced = maze.goals.filter(
+    (goal) => !expected.some((cell) => cell.x === goal.x && cell.y === goal.y)
+  );
+
   return matches
     ? []
-    : [problem('the goal of a classic maze is the 4 cells (7, 7) to (8, 8)', { cells: expected })];
+    : [
+        problem('the goal of a classic maze is the 4 cells (7, 7) to (8, 8)', {
+          cells: [...expected, ...misplaced],
+        }),
+      ];
 }
 
 /** The check of each rule, which finds its problems whatever the profile. */

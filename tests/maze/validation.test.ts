@@ -9,6 +9,7 @@ import {
   paintWalls,
   parseMazeText,
   profileOfPath,
+  RULE_SEVERITIES,
   RULES,
   serializeMazeText,
   setGoals,
@@ -118,12 +119,49 @@ describe('validation', () => {
     expect(profileOfPath('a.txt')).toBe('free');
   });
 
+  test('holds each profile to the table of the plan, rule by rule', () => {
+    const plan = [
+      ['file-name', 'error', 'error', 'error', 'hint'],
+      ['classic-size', 'error', undefined, 'error', undefined],
+      ['homogeneous-grid', 'error', 'error', 'error', 'error'],
+      ['no-carriage-return', 'error', 'error', 'error', 'warning'],
+      ['final-newline', 'error', 'error', 'error', 'warning'],
+      ['trailer-size', 'warning', 'warning', 'warning', 'warning'],
+      ['closed-border', 'error', 'error', 'error', 'warning'],
+      ['single-start', 'error', 'error', 'error', 'error'],
+      ['start-corner', 'error', 'error', undefined, 'hint'],
+      ['goal-area', 'error', 'error', undefined, 'warning'],
+      ['classic-goal', 'error', undefined, undefined, undefined],
+      ['loose-post', 'warning', 'warning', undefined, undefined],
+      ['goal-reachable', 'warning', 'warning', 'warning', 'warning'],
+      ['single-goal-entrance', 'warning', 'warning', undefined, undefined],
+    ] as const;
+
+    expect(RULE_SEVERITIES).toEqual(
+      Object.fromEntries(
+        plan.map(([rule, classic, halfsize, training, free]) => [
+          rule,
+          { classic, halfsize, training, free },
+        ])
+      )
+    );
+    expect(plan.map(([rule]) => rule)).toEqual([...RULES]);
+  });
+
   test('lists findings in the order of the rules, frozen', () => {
     const found = validateMaze({ maze: createMaze({ width: 3, height: 2 }), profile: 'classic' });
     const order = found.map((finding) => RULES.indexOf(finding.rule));
     expect(order).toEqual(order.toSorted((left, right) => left - right));
     expect(Object.isFrozen(found)).toBe(true);
-    expect(found.every((finding) => Object.isFrozen(finding))).toBe(true);
+    expect(
+      found.every(
+        (finding) =>
+          Object.isFrozen(finding) &&
+          Object.isFrozen(finding.cells) &&
+          Object.isFrozen(finding.edges) &&
+          Object.isFrozen(finding.posts)
+      )
+    ).toBe(true);
   });
 
   describe('the rules about the file', () => {
@@ -148,9 +186,12 @@ describe('validation', () => {
     test('count a short or ragged line against the grid', () => {
       const short = opened('o---o---o\n|   |   |\no---o---o\n  S\no---o---o\n', 'a.txt');
       const ragged = opened(`${TWO_BY_TWO}o--\n`, 'a.txt');
-      expect(only(validateMaze({ ...short, profile: 'free' }), 'homogeneous-grid').cells).toEqual([
+      const shortFinding = only(validateMaze({ ...short, profile: 'free' }), 'homogeneous-grid');
+      expect(shortFinding.cells).toEqual([
         { x: 0, y: 0 },
+        { x: 1, y: 0 },
       ]);
+      expect(shortFinding.edges).toEqual([{ direction: 'vertical', x: 2, y: 0 }]);
       expect(only(validateMaze({ ...ragged, profile: 'free' }), 'homogeneous-grid').edges).toEqual(
         []
       );
@@ -240,6 +281,7 @@ describe('validation', () => {
         { x: 1, y: 0 },
       ]);
       expect(startFinding(extra).severity).toBe('error');
+      expect(startFinding(opened(`${TWO_BY_TWO}| S\n`, 'a.txt')).message).toMatch(/2 "S" marks/);
       expect(
         validateMaze({ maze: extra.maze, profile: 'free' }).some(
           (finding) => finding.rule === 'single-start'
@@ -269,6 +311,20 @@ describe('validation', () => {
       expect(rules(findings(setStart(GOOD, { x: 1, y: 0 }), 'training'))).not.toContain(
         'start-corner:error'
       );
+    });
+
+    test('want no open north side of the start in a maze one cell tall, where it is the border', () => {
+      const flat = createMaze({
+        width: 3,
+        height: 1,
+        horizontal: Bits.from(6, () => true),
+        vertical: Bits.from(4, (index) => index !== 2),
+        start: { x: 0, y: 0 },
+        goals: [{ x: 2, y: 0 }],
+      });
+      expect(
+        findings(flat, 'halfsize').filter((finding) => finding.rule === 'start-corner')
+      ).toEqual([]);
     });
 
     test('want goal cells that form a rectangle with no wall inside', () => {
@@ -320,6 +376,7 @@ describe('validation', () => {
         { x: 8, y: 7 },
         { x: 7, y: 8 },
         { x: 8, y: 8 },
+        { x: 0, y: 15 },
       ]);
       expect(
         rules(findings(moved, 'halfsize')).some((rule) => rule.startsWith('classic-goal'))

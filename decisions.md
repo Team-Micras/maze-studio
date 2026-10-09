@@ -66,8 +66,12 @@ The machine's rule is no builds in `/tmp`, so `tests/e2e/pwa.test.ts` builds the
   irregularities. `extra-start` belongs to "single start" and `long-trailer` to its own rule,
   `trailer-size`, a warning under every profile.
 - **Counting `S`.** "Single start" counts the start, every `extra-start`, an `S` beside a cell's
-  mark, and an `S` in a wall position; one in a post column of a cell line points at the cell east
-  of it (west of it on the east border).
+  mark, an `S` in a wall position, and an `S` in a `ragged-line`, which the upstream `read_maze`
+  may read as grid; one in a post column of a cell line points at the cell east of it (west of it
+  on the east border), and one in a ragged line points at nothing.
+- **Where a finding points.** A `short-line` points at the whole row and its east edge, where the
+  text went missing; a misplaced classic goal points at the four cells it should be and at the
+  goal cells that are elsewhere.
 - **The start cell's north side** must be open only when the maze is more than one cell tall; in a
   1-cell-tall maze it is the border.
 - **Goal entrances.** "Single goal entrance" warns when the count is not one, so a sealed goal
