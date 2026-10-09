@@ -56,6 +56,21 @@ export interface ZoomRange {
   readonly max: number;
 }
 
+/**
+ * What keeps a camera in place over some content: the fitted camera, the zoom allowed around it,
+ * and how a camera of an allowed zoom is panned back into place. Each canvas makes its own: the
+ * board's keeps part of the board on screen, the library's scrolls its grid.
+ */
+export interface CameraLimits {
+  readonly viewport: ViewportSize;
+  /** The camera that fits the content. */
+  readonly fit: Camera;
+  /** The zoom allowed, in multiples of the fit. */
+  readonly zoom: ZoomRange;
+  /** The camera panned into place; its zoom is already within the range. */
+  readonly place: (camera: Camera) => Camera;
+}
+
 /** Everything the camera's limits depend on while one board is shown. */
 export interface BoardView {
   /** The board, in world units. */
@@ -76,7 +91,8 @@ export const EDITOR_ZOOM: ZoomRange = { min: 0.5, max: 10 };
 /** How many pixels of the board the editor keeps on screen while panning. */
 export const EDITOR_KEEP = 96;
 
-function clamp(value: number, low: number, high: number): number {
+/** `value` within `low` and `high`, whichever order they come in. */
+export function clamp(value: number, low: number, high: number): number {
   return Math.min(Math.max(value, Math.min(low, high)), Math.max(low, high));
 }
 
@@ -115,29 +131,44 @@ export function fitCamera(rect: WorldRect, viewport: ViewportSize, insets: Inset
   };
 }
 
-/** The fit of the view's board. */
-export function fitOf(view: BoardView): Camera {
-  return fitCamera(view.board, view.viewport, view.insets);
+/**
+ * The limits of one board: fitted between the insets, zoomed within the range, and panned so that
+ * at least `keep` pixels of the board stay on screen on each axis.
+ */
+export function boardLimits(view: BoardView): CameraLimits {
+  const { board, viewport, keep } = view;
+  return {
+    viewport,
+    fit: fitCamera(board, viewport, view.insets),
+    zoom: view.zoom,
+    place: (camera) => ({
+      k: camera.k,
+      x: clamp(
+        camera.x,
+        keep - (board.x + board.width) * camera.k,
+        viewport.width - keep - board.x * camera.k
+      ),
+      y: clamp(
+        camera.y,
+        keep - (board.y + board.height) * camera.k,
+        viewport.height - keep - board.y * camera.k
+      ),
+    }),
+  };
 }
 
 /** How many times the fit the camera is zoomed. */
-export function zoomOf(camera: Camera, view: BoardView): number {
-  return camera.k / fitOf(view).k;
+export function zoomOf(camera: Camera, limits: CameraLimits): number {
+  return camera.k / limits.fit.k;
 }
 
-/**
- * The camera within the view's limits: its zoom inside the range, and panned so that at least
- * `keep` pixels of the board stay on screen on each axis.
- */
-export function constrainCamera(camera: Camera, view: BoardView): Camera {
-  const fit = fitOf(view).k;
-  const k = clamp(camera.k, fit * view.zoom.min, fit * view.zoom.max);
-  const { board, viewport, keep } = view;
-  return {
-    k,
-    x: clamp(camera.x, keep - (board.x + board.width) * k, viewport.width - keep - board.x * k),
-    y: clamp(camera.y, keep - (board.y + board.height) * k, viewport.height - keep - board.y * k),
-  };
+function allowedZoom(k: number, limits: CameraLimits): number {
+  return clamp(k, limits.fit.k * limits.zoom.min, limits.fit.k * limits.zoom.max);
+}
+
+/** The camera within the limits: its zoom inside the range, then panned into place. */
+export function constrainCamera(camera: Camera, limits: CameraLimits): Camera {
+  return limits.place({ ...camera, k: allowedZoom(camera.k, limits) });
 }
 
 /** Zooms by `factor` keeping the world point under `at` where it is, within the limits. */
@@ -145,28 +176,27 @@ export function zoomAround(
   camera: Camera,
   factor: number,
   at: ScreenPoint,
-  view: BoardView
+  limits: CameraLimits
 ): Camera {
-  const fit = fitOf(view).k;
-  const k = clamp(camera.k * factor, fit * view.zoom.min, fit * view.zoom.max);
+  const k = allowedZoom(camera.k * factor, limits);
   const anchor = toWorld(camera, at);
-  return constrainCamera({ k, x: at.x - anchor.x * k, y: at.y - anchor.y * k }, view);
+  return limits.place({ k, x: at.x - anchor.x * k, y: at.y - anchor.y * k });
 }
 
 /** Moves the world by `dx`, `dy` screen pixels, within the limits. */
-export function panCamera(camera: Camera, dx: number, dy: number, view: BoardView): Camera {
-  return constrainCamera({ ...camera, x: camera.x + dx, y: camera.y + dy }, view);
+export function panCamera(camera: Camera, dx: number, dy: number, limits: CameraLimits): Camera {
+  return constrainCamera({ ...camera, x: camera.x + dx, y: camera.y + dy }, limits);
 }
 
 /** Puts a world point at the centre of the viewport, keeping the zoom, within the limits. */
-export function centerOn(camera: Camera, point: WorldPoint, view: BoardView): Camera {
+export function centerOn(camera: Camera, point: WorldPoint, limits: CameraLimits): Camera {
   return constrainCamera(
     {
       k: camera.k,
-      x: view.viewport.width / 2 - point.x * camera.k,
-      y: view.viewport.height / 2 - point.y * camera.k,
+      x: limits.viewport.width / 2 - point.x * camera.k,
+      y: limits.viewport.height / 2 - point.y * camera.k,
     },
-    view
+    limits
   );
 }
 
@@ -193,15 +223,14 @@ export function pinchCamera(
   start: Camera,
   from: PointerPair,
   to: PointerPair,
-  view: BoardView
+  limits: CameraLimits
 ): Camera {
-  const fit = fitOf(view).k;
   const before = spread(from);
   const ratio = before > 0 ? spread(to) / before : 1;
-  const k = clamp(start.k * ratio, fit * view.zoom.min, fit * view.zoom.max);
+  const k = allowedZoom(start.k * ratio, limits);
   const anchor = toWorld(start, midpoint(from));
   const now = midpoint(to);
-  return constrainCamera({ k, x: now.x - anchor.x * k, y: now.y - anchor.y * k }, view);
+  return limits.place({ k, x: now.x - anchor.x * k, y: now.y - anchor.y * k });
 }
 
 /**

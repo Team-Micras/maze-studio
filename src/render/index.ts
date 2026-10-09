@@ -7,13 +7,14 @@
  */
 
 export {
-  constrainCamera,
+  boardLimits,
   centerOn,
+  clamp,
+  constrainCamera,
   EDITOR_INSETS,
   EDITOR_KEEP,
   EDITOR_ZOOM,
   fitCamera,
-  fitOf,
   flightPath,
   panCamera,
   pinchCamera,
@@ -24,6 +25,7 @@ export {
   zoomOf,
   type BoardView,
   type Camera,
+  type CameraLimits,
   type Insets,
   type PointerPair,
   type ScreenPoint,
@@ -60,6 +62,21 @@ export {
   type MazePoint,
   type TrackScale,
 } from './geometry';
+export {
+  ARTBOARD_GAP_X,
+  ARTBOARD_GAP_Y,
+  LIBRARY_INSETS,
+  LIBRARY_ZOOM,
+  libraryColumns,
+  libraryGrid,
+  libraryLimits,
+  mountedRows,
+  revealCamera,
+  rowOf,
+  type LibraryGrid,
+  type MazeSize,
+  type RowRange,
+} from './library-layout';
 export { LruCache } from './lru-cache';
 export { formatLength } from './path';
 export {

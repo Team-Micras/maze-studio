@@ -5,14 +5,14 @@ import { MINIMAP_SIZE, minimapFrame, minimapView, minimapWorldPoint, showsMinima
 import { cn } from '@/ui/primitives/utils';
 
 import { ThumbnailCanvas } from './thumbnail-canvas';
-import type { BoardCamera } from './use-board-camera';
+import type { CanvasCamera } from './use-canvas-camera';
 
 const PRIMARY_BUTTONS = 1;
 
 /** The props of {@link Minimap}. */
 export interface MinimapProps {
   readonly maze: Maze;
-  readonly controller: BoardCamera;
+  readonly controller: CanvasCamera;
   /** The longest side of its board, in CSS pixels; 148 by default. */
   readonly size?: number;
   readonly className?: string;
@@ -28,15 +28,15 @@ export interface MinimapProps {
 export function Minimap({ maze, controller, size = MINIMAP_SIZE, className }: MinimapProps) {
   const board = useRef<HTMLDivElement>(null);
   const [dragging, setDragging] = useState(false);
-  const { camera, view, fit } = controller;
+  const { camera, limits, content } = controller;
 
-  if (camera === undefined || view === undefined || fit === undefined) {
+  if (camera === undefined || limits === undefined) {
     return null;
   }
 
-  const frame = minimapFrame(view.board, size);
-  const visible = minimapView(camera, view.viewport, view.board, frame);
-  const shown = showsMinimap(camera.k, fit.k);
+  const frame = minimapFrame(content, size);
+  const visible = minimapView(camera, limits.viewport, content, frame);
+  const shown = showsMinimap(camera.k, limits.fit.k);
 
   const centerAt = (event: PointerEvent<HTMLDivElement>): void => {
     const box = board.current?.getBoundingClientRect();
@@ -46,11 +46,7 @@ export function Minimap({ maze, controller, size = MINIMAP_SIZE, className }: Mi
     }
 
     controller.centerOn(
-      minimapWorldPoint(
-        { x: event.clientX - box.left, y: event.clientY - box.top },
-        view.board,
-        frame
-      )
+      minimapWorldPoint({ x: event.clientX - box.left, y: event.clientY - box.top }, content, frame)
     );
   };
 

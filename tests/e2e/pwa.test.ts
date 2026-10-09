@@ -1,9 +1,7 @@
-import { execFileSync } from 'node:child_process';
-import { mkdirSync, mkdtempSync, rmSync } from 'node:fs';
-import { join } from 'node:path';
 import { chromium, type Browser, type BrowserContext, type Page } from 'playwright';
-import { preview, type PreviewServer } from 'vite';
-import { afterAll, beforeAll, describe, expect, test } from 'vitest';
+import { afterAll, beforeAll, describe, expect, inject, test } from 'vitest';
+
+import { BASE } from '@tests/support/e2e/serve-app';
 
 interface Icon {
   readonly src: string;
@@ -26,13 +24,7 @@ function isManifest(value: unknown): value is Manifest {
   return typeof value === 'object' && value !== null && 'icons' in value && 'name' in value;
 }
 
-const ROOT = join(import.meta.dirname, '..', '..');
-const BUILDS = join(ROOT, 'node_modules', '.tmp');
-const BASE = '/maze-studio/';
-
-let dist: string;
-let server: PreviewServer;
-let app: string;
+const app = inject('appUrl');
 let browser: Browser;
 const contexts: BrowserContext[] = [];
 
@@ -60,39 +52,20 @@ async function precachedPaths(page: Page): Promise<string[]> {
 }
 
 beforeAll(async () => {
-  mkdirSync(BUILDS, { recursive: true });
-  dist = mkdtempSync(join(BUILDS, 'pwa-e2e-'));
-  execFileSync('bunx', ['vite', 'build', '--outDir', dist, '--emptyOutDir'], {
-    cwd: ROOT,
-    env: { ...process.env, NODE_ENV: 'production', BASE_PATH: BASE },
-    stdio: 'pipe',
-  });
-  server = await preview({
-    configFile: false,
-    root: ROOT,
-    base: BASE,
-    logLevel: 'silent',
-    build: { outDir: dist },
-    preview: { port: 0, host: '127.0.0.1' },
-  });
-  const local = server.resolvedUrls?.local[0] ?? '';
-  app = new URL(BASE, local).href;
   browser = await chromium.launch();
-}, 180_000);
+});
 
 afterAll(async () => {
   await Promise.all(contexts.map((context) => context.close()));
   await browser?.close();
-  await server?.close();
-  rmSync(dist, { recursive: true, force: true });
 });
 
 describe('the PWA built for GitHub Pages', () => {
-  test('opens the page under its base path', async () => {
+  test('opens the library under its base path', async () => {
     const page = await fresh();
     await page.goto(app);
 
-    await page.getByRole('heading', { level: 1, name: 'maze-studio' }).waitFor();
+    await page.locator('a[data-artboard]').first().waitFor();
     expect(await page.title()).toBe('maze-studio');
     expect(
       await page.getByRole('link', { name: 'micromouseonline/mazefiles' }).getAttribute('href')
@@ -131,10 +104,9 @@ describe('the PWA built for GitHub Pages', () => {
 
     const colors = await page
       .locator('meta[name="theme-color"]')
-      .evaluateAll((metas) => metas.map((meta) => meta.getAttribute('media')));
-    expect(colors).toEqual(
-      expect.arrayContaining(['(prefers-color-scheme: dark)', '(prefers-color-scheme: light)'])
-    );
+      .evaluateAll((metas) => metas.map((meta) => meta.getAttribute('content')));
+    expect(colors).toHaveLength(1);
+    expect(['#e3e3e3', '#191919']).toContain(colors[0]);
   });
 
   test('registers the service worker, which precaches the shell and the latin fonts only', async () => {
@@ -164,6 +136,7 @@ describe('the PWA built for GitHub Pages', () => {
     await page.context().setOffline(true);
     const response = await page.reload();
     expect(response?.fromServiceWorker()).toBe(true);
-    await page.getByRole('heading', { level: 1, name: 'maze-studio' }).waitFor();
+    await page.getByRole('link', { name: 'micromouseonline/mazefiles' }).waitFor();
+    expect(await page.locator('a[data-artboard]').count()).toBeGreaterThan(0);
   });
 });

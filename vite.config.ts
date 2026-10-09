@@ -69,6 +69,13 @@ const DARK_COLOR = '#0a0a0a';
  */
 export const CHUNK_SIZE_WARNING_KB = 400;
 
+/**
+ * Radix and the small packages its popovers and menus stand on, kept in a chunk of their own beside
+ * React's, so the app's own chunk shows how much the app itself weighs.
+ */
+const RADIX_MODULES =
+  /node_modules[\\/](@radix-ui|radix-ui|@floating-ui|react-remove-scroll|react-remove-scroll-bar|react-style-singleton|use-callback-ref|use-sidecar|aria-hidden|get-nonce|detect-node-es|tslib)[\\/]/;
+
 /** The GitHub Pages site serves the app from `/maze-studio/`; anywhere else it is the root. */
 const base = process.env.BASE_PATH ?? '/';
 
@@ -126,6 +133,16 @@ export default defineConfig({
   },
   build: {
     chunkSizeWarningLimit: CHUNK_SIZE_WARNING_KB,
+    rolldownOptions: {
+      output: {
+        codeSplitting: {
+          groups: [
+            { name: 'react', test: /node_modules[\\/](react|react-dom|scheduler)[\\/]/ },
+            { name: 'radix', test: RADIX_MODULES },
+          ],
+        },
+      },
+    },
   },
   test: {
     projects: [
@@ -145,6 +162,7 @@ export default defineConfig({
         extends: true,
         test: {
           name: 'e2e',
+          globalSetup: ['tests/support/e2e/serve-app.ts'],
           maxWorkers: WORKERS.e2e,
           sequence: { groupOrder: 3 },
           include: ['tests/e2e/**/*.test.ts'],

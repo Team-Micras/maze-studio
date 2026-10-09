@@ -182,3 +182,65 @@ The machine's rule is no builds in `/tmp`, so `tests/e2e/pwa.test.ts` builds the
   `src/ui/styles.css`, and components use them (`ease-(--ease)`) rather than writing curves; the
   camera's animations in `src/render/easing.ts` need the same curves as numbers. The `--chart-*`
   and `--sidebar-*` tokens of the shadcn template went, since nothing uses them.
+
+## 09/10/2026 — Slice 4a: the shell and the library canvas
+
+- **One camera, two kinds of limits.** `CameraLimits` (fit, zoom range, and how a camera is panned
+  into place) replaced the board-only `BoardView` in the pure camera: `boardLimits` keeps 96 px of
+  the board on screen, `libraryLimits` fits the grid's width and scrolls it. `useCanvasCamera`
+  serves both, and its actions are stable, so a component that only moves the camera does not
+  redraw when the camera moves.
+- **Virtualization by rows.** The library mounts the rows that cross the viewport and one more
+  above and below (`mountedRows`), plus the artboard with the keyboard's focus. Tab onto an
+  artboard outside the insets moves the camera without animation; a click does not, since
+  `:focus-visible` tells them apart, so a click on a half-visible artboard opens it where it is.
+  A new filter fits the grid again in 260 ms. Artboards slide to a new place in 360 ms, which
+  animates only the mounted ones: the reflow of DESIGN.md 7 for free.
+- **Search words.** An entry is found by its whole name, the name's parts split at punctuation
+  and between letters and digits (`japan2011hef` gives `japan`, `2011`, `hef`), the words of its
+  competition, its year and its size; a square size in three spellings, any other only as both
+  sides (`10x5`, `10×5`), so `5` does not find every 10×5. At `548dcde`, `21` finds exactly the six
+  21×21 mazes.
+- **Routes.** Anything the hash does not name, or a path that does not decode, is the library
+  with the default filter; a filter writes only the keys that differ from the default and replaces
+  the history entry. A maze the route names but the library lacks, or a link that does not
+  decode, opens the library with a toast. A `.txt` file opens with no route of its own. The
+  Library button goes back in the history when the maze was opened from the library, so the
+  filter comes back with it, and otherwise goes to the last library route.
+- **What the maze screen is for now.** Opening a maze shows it on its board, read only, with the
+  title island and the zoom; the flight, the maze list and editing come in slices 4b and 5.
+- **What the library leaves for later.** The Folder source (slice 6), New maze and the Mine empty
+  state's New maze button (5b), the Changes chip (5c) and the "Mine and files" menu (6 and 7) are
+  not drawn yet. On a phone the `+` menu holds Open and the theme until then.
+- **Theme before the first paint.** A small script in `index.html` puts `.dark` on the page and the
+  desk colour in the one `<meta name="theme-color">` before React loads, from `?theme=` or the
+  system; `useTheme` (zustand) keeps the session's choice. The manifest's colours stay as slice 0
+  set them until slice 7.
+- **Primitives.** Button, Tooltip and DropdownMenu are the monitor's shadcn copies, with their
+  Lucide icons swapped for Phosphor's (DESIGN.md D3); the monitor has no Toggle or ToggleGroup, so
+  those were written from shadcn's `new-york` source. Toasts are Radix `Toast` with a small zustand
+  store, as DESIGN.md 6 asks; no `sonner`.
+- **Thumbnails paint in idle time.** A thumbnail canvas holds the bitmap of its band. Its first
+  bitmap shows at once when the cache has it; every other bitmap, and every one the cache lacks,
+  is painted by `paint-queue.ts` in an idle period with at least 8 ms left, never on a timeout:
+  a 16×16 or a 32×32 takes 3 to 6 ms to paint at 4× CPU throttling, enough to drop a frame. Until
+  then the canvas keeps its previous bitmap, scaled, or its floor colour (DESIGN.md 12).
+- **Artboards carry a crisp shadow, not the slab's.** The board's slab shadow (40 px blur) on 30
+  mounted artboards was repainted at every zoom step and cost 1 to 2.5 % of frames past 25 ms at
+  4× throttling; `--artboard-shadow` (a hairline ring and a 2 px drop, no blur) brings that to 0 to
+  0.5 %. The editor's board keeps the slab.
+- **How the library was measured.** `tests/ui/library/library-performance.test.tsx` mounts the
+  whole app with the 581 mazes at 1440 × 900, slows the CPU 4× through the DevTools protocol
+  (`Emulation.setCPUThrottlingRate`), and takes the median of three runs of 200 frames, dragging
+  with the middle button and zooming with Ctrl and the wheel. On 09/10, over three runs of the
+  test: drag p95 16.7 to 16.8 ms with 0 to 0.5 % of frames over 25 ms, zoom p95 16.7 to 16.8 ms
+  with 0 to 0.5 %, and at most 30 artboards mounted. It runs on React's development build:
+  switching the performance project to the production build through `define` reached the other
+  browser project, which shares its server, and broke `act` there.
+- **The bundle.** The first screen now loads 150.1 KB gzip (72.6 KB before): React, Radix's
+  tooltip, toggle group, dropdown menu and toast with what they stand on, Phosphor's icons and the
+  shell. React and Radix get chunks of their own (`codeSplitting` groups), so the app's own chunk,
+  42.6 KB gzip, shows what the app weighs; the largest chunk, React's, is 219 kB before gzip.
+- **One build for every e2e file.** `tests/support/e2e/serve-app.ts`, the e2e project's global
+  setup, builds the app under `/maze-studio/` into `node_modules/.tmp/` once and serves it; each
+  file reads its URL with `inject('appUrl')`.

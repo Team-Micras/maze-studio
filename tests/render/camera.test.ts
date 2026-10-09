@@ -7,7 +7,7 @@ import {
   EDITOR_KEEP,
   EDITOR_ZOOM,
   fitCamera,
-  fitOf,
+  boardLimits,
   flightPath,
   panCamera,
   pinchCamera,
@@ -27,6 +27,7 @@ const VIEW: BoardView = {
   zoom: EDITOR_ZOOM,
   keep: EDITOR_KEEP,
 };
+const LIMITS = boardLimits(VIEW);
 
 function screenRect(camera: Camera, view: BoardView = VIEW) {
   const topLeft = toScreen(camera, view.board);
@@ -39,7 +40,7 @@ function screenRect(camera: Camera, view: BoardView = VIEW) {
 
 describe('fitCamera', () => {
   test('fills the room between the editor insets and centres the board in it', () => {
-    const fit = fitOf(VIEW);
+    const fit = LIMITS.fit;
     const rect = screenRect(fit);
 
     expect(fit.k).toBeCloseTo((900 - 80 - 108) / 640, 9);
@@ -79,19 +80,19 @@ describe('Screen and world', () => {
 
 describe('The editor limits', () => {
   test('keep the zoom between half and ten times the fit', () => {
-    const fit = fitOf(VIEW);
+    const fit = LIMITS.fit;
 
-    expect(zoomOf(constrainCamera({ ...fit, k: fit.k * 50 }, VIEW), VIEW)).toBeCloseTo(10, 9);
-    expect(zoomOf(constrainCamera({ ...fit, k: fit.k * 0.1 }, VIEW), VIEW)).toBeCloseTo(0.5, 9);
-    expect(constrainCamera(fit, VIEW)).toEqual(fit);
+    expect(zoomOf(constrainCamera({ ...fit, k: fit.k * 50 }, LIMITS), LIMITS)).toBeCloseTo(10, 9);
+    expect(zoomOf(constrainCamera({ ...fit, k: fit.k * 0.1 }, LIMITS), LIMITS)).toBeCloseTo(0.5, 9);
+    expect(constrainCamera(fit, LIMITS)).toEqual(fit);
   });
 
   test('keep 96 pixels of the board on screen however far it is panned', () => {
-    const fit = fitOf(VIEW);
-    const right = screenRect(constrainCamera({ ...fit, x: 10_000 }, VIEW));
-    const left = screenRect(constrainCamera({ ...fit, x: -10_000 }, VIEW));
-    const down = screenRect(constrainCamera({ ...fit, y: 10_000 }, VIEW));
-    const up = screenRect(constrainCamera({ ...fit, y: -10_000 }, VIEW));
+    const fit = LIMITS.fit;
+    const right = screenRect(constrainCamera({ ...fit, x: 10_000 }, LIMITS));
+    const left = screenRect(constrainCamera({ ...fit, x: -10_000 }, LIMITS));
+    const down = screenRect(constrainCamera({ ...fit, y: 10_000 }, LIMITS));
+    const up = screenRect(constrainCamera({ ...fit, y: -10_000 }, LIMITS));
 
     expect(right.left).toBeCloseTo(1440 - 96, 9);
     expect(left.right).toBeCloseTo(96, 9);
@@ -100,20 +101,20 @@ describe('The editor limits', () => {
   });
 
   test('panCamera moves the world by the pixels given, inside the limits', () => {
-    const fit = fitOf(VIEW);
-    const moved = panCamera(fit, 40, -25, VIEW);
+    const fit = LIMITS.fit;
+    const moved = panCamera(fit, 40, -25, LIMITS);
 
     expect(moved).toEqual({ ...fit, x: fit.x + 40, y: fit.y - 25 });
-    expect(screenRect(panCamera(fit, 5_000, 0, VIEW)).left).toBeCloseTo(1440 - 96, 9);
+    expect(screenRect(panCamera(fit, 5_000, 0, LIMITS)).left).toBeCloseTo(1440 - 96, 9);
   });
 });
 
 describe('zoomAround', () => {
   test('keeps the world point under the pointer where it is', () => {
-    const fit = fitOf(VIEW);
+    const fit = LIMITS.fit;
     const at = { x: 500, y: 300 };
     const under = toWorld(fit, at);
-    const zoomed = zoomAround(fit, 2, at, VIEW);
+    const zoomed = zoomAround(fit, 2, at, LIMITS);
     const after = toScreen(zoomed, under);
 
     expect(zoomed.k).toBeCloseTo(fit.k * 2, 9);
@@ -122,18 +123,18 @@ describe('zoomAround', () => {
   });
 
   test('stops at the zoom limits', () => {
-    const fit = fitOf(VIEW);
+    const fit = LIMITS.fit;
     const center = { x: 720, y: 436 };
 
-    expect(zoomOf(zoomAround(fit, 1000, center, VIEW), VIEW)).toBeCloseTo(10, 9);
-    expect(zoomOf(zoomAround(fit, 0.001, center, VIEW), VIEW)).toBeCloseTo(0.5, 9);
+    expect(zoomOf(zoomAround(fit, 1000, center, LIMITS), LIMITS)).toBeCloseTo(10, 9);
+    expect(zoomOf(zoomAround(fit, 0.001, center, LIMITS), LIMITS)).toBeCloseTo(0.5, 9);
   });
 });
 
 describe('centerOn', () => {
   test('puts the world point at the centre of the viewport, keeping the zoom', () => {
-    const zoomed = { ...fitOf(VIEW), k: fitOf(VIEW).k * 4 };
-    const centered = centerOn(zoomed, { x: 100, y: 500 }, VIEW);
+    const zoomed = { ...LIMITS.fit, k: LIMITS.fit.k * 4 };
+    const centered = centerOn(zoomed, { x: 100, y: 500 }, LIMITS);
 
     expect(centered.k).toBe(zoomed.k);
     expect(toScreen(centered, { x: 100, y: 500 }).x).toBeCloseTo(720, 9);
@@ -143,7 +144,7 @@ describe('centerOn', () => {
 
 describe('pinchCamera', () => {
   test('zooms with the spread of the fingers and keeps the world under their midpoint', () => {
-    const start = fitOf(VIEW);
+    const start = LIMITS.fit;
     const from = [
       { x: 600, y: 400 },
       { x: 700, y: 400 },
@@ -153,7 +154,7 @@ describe('pinchCamera', () => {
       { x: 780, y: 420 },
     ] as const;
     const under = toWorld(start, { x: 650, y: 400 });
-    const pinched = pinchCamera(start, from, to, VIEW);
+    const pinched = pinchCamera(start, from, to, LIMITS);
     const after = toScreen(pinched, under);
 
     expect(pinched.k).toBeCloseTo(start.k * 2, 9);
@@ -162,7 +163,7 @@ describe('pinchCamera', () => {
   });
 
   test('stops at the zoom limits and survives two fingers on one spot', () => {
-    const start = fitOf(VIEW);
+    const start = LIMITS.fit;
     const together = [
       { x: 600, y: 400 },
       { x: 600, y: 400 },
@@ -172,7 +173,7 @@ describe('pinchCamera', () => {
       { x: 1400, y: 400 },
     ] as const;
 
-    expect(zoomOf(pinchCamera(start, together, apart, VIEW), VIEW)).toBeCloseTo(1, 9);
+    expect(zoomOf(pinchCamera(start, together, apart, LIMITS), LIMITS)).toBeCloseTo(1, 9);
     expect(
       zoomOf(
         pinchCamera(
@@ -182,9 +183,9 @@ describe('pinchCamera', () => {
             { x: 701, y: 400 },
           ],
           apart,
-          VIEW
+          LIMITS
         ),
-        VIEW
+        LIMITS
       )
     ).toBeCloseTo(10, 9);
   });

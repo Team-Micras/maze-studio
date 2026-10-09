@@ -2,6 +2,7 @@ import {
   useEffect,
   useRef,
   useState,
+  type CSSProperties,
   type KeyboardEvent,
   type PointerEvent,
   type ReactNode,
@@ -9,7 +10,6 @@ import {
 
 import {
   KEY_ZOOM_FACTOR,
-  pinchCamera,
   zoomKey,
   type Camera,
   type PointerPair,
@@ -17,11 +17,11 @@ import {
 } from '@/render';
 import { cn } from '@/ui/primitives/utils';
 
-import type { BoardCamera } from './use-board-camera';
+import type { CanvasCamera } from './use-canvas-camera';
 
 /** The props of {@link CameraStage}. */
 export interface CameraStageProps {
-  readonly controller: BoardCamera;
+  readonly controller: CanvasCamera;
   /** What a screen reader announces for the canvas. */
   readonly label: string;
   /** The world: content placed in world units, scaled and moved by the camera. */
@@ -40,6 +40,15 @@ type Gesture =
 
 const MIDDLE_BUTTON = 1;
 const PRIMARY_BUTTON = 0;
+
+/** The world layer's transform, and the scale and its inverse for counter-scaled content. */
+function worldStyle(camera: Camera): CSSProperties & Record<'--k' | '--ik', number> {
+  return {
+    transform: `translate(${camera.x}px, ${camera.y}px) scale(${camera.k})`,
+    '--k': camera.k,
+    '--ik': 1 / camera.k,
+  };
+}
 
 function localPoint(
   element: HTMLElement,
@@ -114,11 +123,11 @@ export function CameraStage({ controller, label, children, className }: CameraSt
     pointers.current.set(event.pointerId, point);
     const current = gesture.current;
 
-    if (current?.kind === 'pinch' && controller.view !== undefined) {
+    if (current?.kind === 'pinch') {
       const pair = pairOf(pointers.current);
 
       if (pair !== undefined) {
-        controller.set(pinchCamera(current.start, current.from, pair, controller.view));
+        controller.pinch(current.start, current.from, pair);
       }
     } else if (current?.kind === 'pan' && current.pointer === event.pointerId) {
       controller.set({
@@ -160,7 +169,7 @@ export function CameraStage({ controller, label, children, className }: CameraSt
     } else if (zoom === 'out') {
       controller.zoomBy(1 / KEY_ZOOM_FACTOR);
     } else if (zoom === 'fit') {
-      controller.fitBoard({ animate: true });
+      controller.refit({ animate: true });
     }
 
     if (zoom !== undefined) {
@@ -200,11 +209,7 @@ export function CameraStage({ controller, label, children, className }: CameraSt
       <div
         className={cn('absolute top-0 left-0 origin-top-left', camera === undefined && 'invisible')}
         data-world=""
-        style={
-          camera === undefined
-            ? undefined
-            : { transform: `translate(${camera.x}px, ${camera.y}px) scale(${camera.k})` }
-        }
+        style={camera === undefined ? undefined : worldStyle(camera)}
       >
         {children}
       </div>

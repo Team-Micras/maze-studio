@@ -2,7 +2,7 @@ import { describe, expect, test, vi } from 'vitest';
 import { render } from 'vitest-browser-react';
 
 import { diffMazes, encodeMazeCode, setStart, toggleWall } from '@/maze';
-import { drawThumbnail, ThumbnailCache, thumbnailBytes } from '@/render';
+import { drawThumbnail, ThumbnailCache, thumbnailBand, thumbnailBytes } from '@/render';
 import { thumbnailCache } from '@/ui/board/thumbnail-cache';
 import { ThumbnailCanvas } from '@/ui/board/thumbnail-canvas';
 import { REPO_MAZES, repoMaze } from '@tests/support/ui/repo-mazes';
@@ -173,13 +173,13 @@ describe('ThumbnailCanvas', () => {
     }
   });
 
-  test('shows the thumbnail at its CSS size with device pixels behind it', async () => {
+  test('shows a cached thumbnail at its CSS size with the bitmap of its band behind it', async () => {
     const maze = await repoMaze(REPO_MAZES.halfsize);
     await render(<ThumbnailCanvas height={148} maze={maze} width={148} />);
     const canvas = document.querySelector('canvas');
 
     expect(canvas?.style.width).toBe('148px');
-    expect(canvas?.width).toBe(Math.round(148 * window.devicePixelRatio));
+    await expect.poll(() => canvas?.width).toBe(thumbnailBand(148 * window.devicePixelRatio));
     await expect.poll(() => redShare(canvas)).toBeGreaterThan(0.05);
   });
 });

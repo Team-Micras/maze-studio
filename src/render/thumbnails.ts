@@ -195,6 +195,15 @@ export class ThumbnailCache {
     return this.#cached(`${band}:${key}:diff:${diffKey}`, () => drawThumbnail(maze, band, diff));
   }
 
+  /**
+   * The thumbnail of the maze `key` names for a place `pixels` device pixels long, if it is
+   * already drawn; never draws, so a caller can show what is ready at once and draw the rest
+   * later.
+   */
+  cached(key: string, pixels: number): OffscreenCanvas | undefined {
+    return this.#cache.get(`${thumbnailBand(pixels)}:${key}`);
+  }
+
   #cached(bandKey: string, draw: () => OffscreenCanvas): OffscreenCanvas {
     const cached = this.#cache.get(bandKey);
 

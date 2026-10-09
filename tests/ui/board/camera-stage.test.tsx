@@ -8,7 +8,7 @@ import {
   EDITOR_INSETS,
   EDITOR_KEEP,
   EDITOR_ZOOM,
-  fitOf,
+  boardLimits,
   toScreen,
   toWorld,
   type BoardView,
@@ -93,7 +93,7 @@ describe('The camera stage', () => {
     const camera = await mount();
     const box = document.querySelector('svg[data-board]')?.getBoundingClientRect();
 
-    expectCamera(camera, fitOf(view));
+    expectCamera(camera, boardLimits(view).fit);
     expect(box?.top).toBeCloseTo(EDITOR_INSETS.top, 0);
     expect(box?.bottom).toBeCloseTo(window.innerHeight - EDITOR_INSETS.bottom, 0);
   });

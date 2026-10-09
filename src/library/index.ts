@@ -35,6 +35,17 @@ export {
   type UpdateFailure,
   type UpdateResult,
 } from './github-updater';
+export {
+  DEFAULT_FILTER,
+  filterCatalog,
+  isLibraryCategory,
+  isLibrarySource,
+  LIBRARY_CATEGORIES,
+  LIBRARY_SOURCES,
+  type LibraryCategory,
+  type LibraryFilter,
+  type LibrarySource,
+} from './library-filter';
 export { mazeOrigin, type MazeOrigin } from './maze-names';
 export { MAZEFILES, type MazeRepository } from './mazefiles';
 export {
@@ -59,6 +70,7 @@ export {
   type RepoCopy,
   type RepoMeta,
 } from './repo-cache';
+export { matchesTokens, queryTokens, SearchIndex, searchWords, type SearchWords } from './search';
 export { Settings, type Preferences } from './settings';
 export { loadSnapshot, readSnapshot, type RepoFile, type Snapshot } from './snapshot';
 export { crc32, readZip, writeZip, type ZipEntry } from './zip';

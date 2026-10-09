@@ -76,6 +76,9 @@ open borders, which the repository never has.
   index, and import of `.txt` files and zips, deflated ones included.
 - `catalog.ts`, `maze-names.ts`: one entry per maze for search and filters, with the competition
   and year read from the file name by a fixed list, without guessing.
+- `search.ts`, `library-filter.ts`: the search index of DESIGN.md 6.3 (`SearchIndex`, every token
+  must start a word of the name, competition, year or size) and the library's filter: source,
+  category and query, applied by `filterCatalog`.
 - `database.ts`, `settings.ts`: a small IndexedDB wrapper with the stores `repo-files`, `mine`
   and `settings`, and the preferences and local folder kept in the last.
 
@@ -99,6 +102,9 @@ open borders, which the repository never has.
   or a zoom key asks (DESIGN.md 7).
 - `minimap.ts`: when the minimap shows (past 1.06 times the fit), its frame, the visible area on
   it and the world point under a click.
+- `library-layout.ts`: the library's grid of artboards (640 world units, gaps 200 and 210, 2 to 6
+  columns), its camera limits (fit to the width, scroll down), the rows to keep mounted and the
+  camera that reveals an artboard.
 - `thumbnails.ts`, `lru-cache.ts`: thumbnails painted on an `OffscreenCanvas` in bands of 64, 128,
   256 and 512 pixels, in an LRU bounded at 64 MB of bitmaps; `diffThumbnail` keeps those with a
   diff on top under their own key. `paintTrack` paints on any 2D context.
@@ -108,6 +114,21 @@ SVG, a path per layer), `CameraStage` and `useBoardCamera` (the canvas the board
 wheel, pinch, Space or middle-button drag and the zoom keys), `Minimap` (which paints the live
 maze outside the cache), `ThumbnailCanvas` with the app's one `thumbnailCache`, and
 `CursorStatus`.
+
+## The screens
+
+`src/ui/app.tsx` is the shell: it reads the route from the hash (`routes.ts`, `navigation.ts`,
+`hooks/use-route.ts`), loads the library (`library/use-library.ts`, over `storage.ts`, which opens
+IndexedDB once), and shows the library or the maze the route opens (`open-maze.ts`), with the
+toasts (`toasts.ts`, `toaster.tsx`) and the theme (`theme.ts`).
+
+- `library/`: `LibraryScreen` draws the islands (search, source and category, Open, theme,
+  credit); `LibraryStage` owns the library's camera, so only the canvas and the zoom island move
+  with it; `LibraryCanvas` mounts the visible rows of `Artboard`s and reveals the one Tab reaches.
+- `maze/`: `MazeScreen`, a maze on its board, read only, with the title island and the zoom.
+- `islands/`: the island, its buttons, separator and tooltip, the zoom island and the theme button.
+- `board/`: as above, plus `paint-queue.ts`, which paints thumbnails in idle time.
+- `primitives/`: the shadcn components, with Phosphor icons.
 
 ## Import rules
 
@@ -129,9 +150,12 @@ Four Vitest projects, run one after the other: `unit` (`tests/**/*.test.ts`, Nod
 (`tests/**/*.test.tsx`, Chromium through Playwright), `performance` (`*-performance.test.ts(x)`,
 Chromium, one file at a time, outside the check) and `e2e` (`tests/e2e/`, which builds the app
 under `/maze-studio/` into `node_modules/.tmp/` and drives it with Playwright).
-`tests/config/vitest-projects.test.ts` guards that split.
+`tests/config/vitest-projects.test.ts` guards that split. The e2e project builds the app once,
+in its global setup (`tests/support/e2e/serve-app.ts`), for all its files.
 
 Browser tests share what is in `tests/support/ui/`: `BoardHarness` mounts a board on its stage
 with the minimap and the cursor status, `frames.ts` measures motion as DESIGN.md 8 says (p95 at or
 below 20 ms, at most 1 % of frames over 25 ms, the median of three runs), and `touch.ts` sends real
-touches. Reference screenshots live in `screenshots/` next to their test and are committed.
+touches, `throttle.ts` slows the CPU through the DevTools protocol, and `library-app.tsx` mounts
+the whole app on a route. Reference screenshots live in `screenshots/` next to their test and are
+committed.
