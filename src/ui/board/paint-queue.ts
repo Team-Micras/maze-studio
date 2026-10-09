@@ -74,7 +74,7 @@ export function createPaintQueue(whenIdle: IdleScheduler): PaintQueue {
 
 /**
  * The browser's idle periods: `requestIdleCallback` where there is one; elsewhere, as in Safari, a
- * turn every 16 ms with the budget of one paint, which always paints at least one thumbnail.
+ * turn every 16 ms that knows nothing of idle time and so paints exactly one thumbnail.
  */
 export function browserIdleScheduler(): IdleScheduler {
   if (typeof window.requestIdleCallback === 'function') {
@@ -85,13 +85,7 @@ export function browserIdleScheduler(): IdleScheduler {
   }
 
   return (run) => {
-    window.setTimeout(() => {
-      const started = performance.now();
-      run({
-        timeRemaining: () => Math.max(0, MIN_IDLE_MS - (performance.now() - started)),
-        mustProgress: true,
-      });
-    }, FALLBACK_FRAME_MS);
+    window.setTimeout(() => run({ timeRemaining: () => 0, mustProgress: true }), FALLBACK_FRAME_MS);
   };
 }
 

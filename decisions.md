@@ -224,8 +224,9 @@ The machine's rule is no builds in `/tmp`, so `tests/e2e/pwa.test.ts` builds the
   bitmap shows at once when the cache has it; every other bitmap, and every one the cache lacks,
   is painted by `paint-queue.ts` in an idle period with at least 8 ms left: a 16×16 or a 32×32
   takes 3 to 6 ms to paint at 4× CPU throttling, enough to drop a frame. Where there is no
-  `requestIdleCallback`, as in Safari, the queue takes a turn every 16 ms and paints at least one
-  thumbnail in each, so it always gets through. Until a paint, the canvas keeps its previous
+  `requestIdleCallback`, as in Safari, the queue takes a turn every 16 ms that knows nothing of
+  idle time and paints exactly one thumbnail, so it always gets through;
+  `tests/ui/board/paint-queue-fallback.test.tsx` checks it with `requestIdleCallback` taken away. Until a paint, the canvas keeps its previous
   bitmap, scaled, or its floor colour (DESIGN.md 12).
 - **Artboards carry a crisp shadow, not the slab's.** The board's slab shadow (`0 18px 40px -22px`)
   on 30 mounted artboards is repainted at every zoom step. Three ways to keep its look were
