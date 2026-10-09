@@ -24,7 +24,8 @@ import type { RepoFile } from './snapshot';
 /** How long after a check the next automatic one is due. */
 export const UPDATE_INTERVAL_MS = 24 * 60 * 60 * 1000;
 
-const DOWNLOADS_AT_ONCE = 6;
+/** How many files an update downloads at once. */
+export const DOWNLOADS_AT_ONCE = 6;
 
 /** The repository's maze files as the library has them. */
 export interface RepoState {
@@ -217,16 +218,23 @@ async function mapLimited<T, R>(
 ): Promise<R[]> {
   const results: R[] = [];
   let next = 0;
+  let stopped = false;
   const work = async (): Promise<void> => {
     const index = next;
     next += 1;
     const item = items[index];
 
-    if (index >= items.length || item === undefined) {
+    if (stopped || index >= items.length || item === undefined) {
       return;
     }
 
-    results[index] = await map(item);
+    try {
+      results[index] = await map(item);
+    } catch (error) {
+      stopped = true;
+      throw error;
+    }
+
     await work();
   };
 

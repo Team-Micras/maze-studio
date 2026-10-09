@@ -8,7 +8,8 @@
  * learn early that what they show is out of date.
  *
  * The first write of a session asks the browser to keep the site's storage (`persist()`), so it
- * is not cleared under storage pressure, as Safari does after a week without a visit.
+ * is not cleared under storage pressure, as Safari does after a week without a visit. If the
+ * browser fails to answer, the write goes on and the storage counts as best-effort.
  *
  * @module
  */
@@ -281,7 +282,11 @@ export class MineLibrary {
       return;
     }
 
-    const kept = (await this.#storage.persisted()) || (await this.#storage.persist());
-    this.#persistence = kept ? 'persistent' : 'best-effort';
+    try {
+      const kept = (await this.#storage.persisted()) || (await this.#storage.persist());
+      this.#persistence = kept ? 'persistent' : 'best-effort';
+    } catch {
+      this.#persistence = 'best-effort';
+    }
   }
 }

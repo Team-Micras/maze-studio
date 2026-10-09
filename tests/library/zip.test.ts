@@ -1,12 +1,18 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
+import { deflateRawSync } from 'node:zlib';
 
 import { describe, expect, test } from 'vitest';
 
-import { crc32, readZip, writeZip, type ZipEntry } from '@/library/zip';
+import { crc32, MAX_ENTRY_BYTES, readZip, writeZip, type ZipEntry } from '@/library/zip';
+import { craftZip } from '@tests/support/library/craft-zip';
 
 const encoder = new TextEncoder();
 const decoder = new TextDecoder();
+
+function zeros(length: number): Uint8Array {
+  return new Uint8Array(length);
+}
 
 async function names(bytes: Uint8Array): Promise<Record<string, string>> {
   const read = await readZip(bytes);
@@ -72,6 +78,115 @@ describe('the zip archive of a backup', () => {
     expect(await readZip(corrupted)).toEqual({
       ok: false,
       error: 'the zip entry a.txt does not match its checksum',
+    });
+  });
+
+  describe('refuses a hostile archive before it fills the memory:', () => {
+    const bomb = deflateRawSync(zeros(4 * MAX_ENTRY_BYTES));
+
+    test('an entry that declares more than 1 MiB', async () => {
+      const zip = craftZip([
+        {
+          name: 'bomb.txt',
+          method: 8,
+          data: bomb,
+          size: 4 * MAX_ENTRY_BYTES,
+          crc: crc32(zeros(4 * MAX_ENTRY_BYTES)),
+        },
+      ]);
+      expect(bomb.length).toBeLessThan(8 * 1024);
+      expect(await readZip(zip)).toEqual({
+        ok: false,
+        error: 'the zip entry bomb.txt is larger than a maze file can be',
+      });
+    });
+
+    test('an entry that inflates past the size it declares', async () => {
+      const zip = craftZip([{ name: 'liar.txt', method: 8, data: bomb, size: 1000, crc: 0 }]);
+      expect(await readZip(zip)).toEqual({
+        ok: false,
+        error: 'the zip entry liar.txt is larger than it declares',
+      });
+    });
+
+    test('an entry shorter than it declares, deflated or stored', async () => {
+      const text = encoder.encode('o---o\n| S |\no---o\n');
+      const deflated = craftZip([
+        {
+          name: 'short.txt',
+          method: 8,
+          data: deflateRawSync(text),
+          size: text.length + 5,
+          crc: crc32(text),
+        },
+      ]);
+      const stored = craftZip([
+        { name: 'short.txt', method: 0, data: text, size: text.length + 5, crc: crc32(text) },
+      ]);
+      expect(await readZip(deflated)).toEqual({
+        ok: false,
+        error: 'the zip entry short.txt is not the size it declares',
+      });
+      expect(await readZip(stored)).toEqual({
+        ok: false,
+        error: 'the zip entry short.txt is not the size it declares',
+      });
+    });
+
+    test('more than 32 MiB declared in all', async () => {
+      const megabyte = deflateRawSync(zeros(MAX_ENTRY_BYTES));
+      const crc = crc32(zeros(MAX_ENTRY_BYTES));
+      const zip = craftZip(
+        Array.from({ length: 33 }, (_, index) => ({
+          name: `${index}.txt`,
+          method: 8,
+          data: megabyte,
+          size: MAX_ENTRY_BYTES,
+          crc,
+        }))
+      );
+      expect(zip.length).toBeLessThan(64 * 1024);
+      expect(await readZip(zip)).toEqual({
+        ok: false,
+        error: 'the zip archive holds more than a backup of mazes can',
+      });
+    });
+
+    test('entries that share their data', async () => {
+      const text = encoder.encode('maze');
+      const zip = craftZip([
+        { name: 'one.txt', method: 0, data: text, size: text.length, crc: crc32(text) },
+        {
+          name: 'two.txt',
+          method: 0,
+          data: text,
+          size: text.length,
+          crc: crc32(text),
+          sharesWith: 0,
+        },
+      ]);
+      expect(await readZip(zip)).toEqual({
+        ok: false,
+        error: 'the zip entry two.txt overlaps another one',
+      });
+    });
+
+    test('and still reads an honest crafted archive', async () => {
+      const text = encoder.encode('o---o\n| S |\no---o\n');
+      const zip = craftZip([
+        {
+          name: 'a.txt',
+          method: 8,
+          data: deflateRawSync(text),
+          size: text.length,
+          crc: crc32(text),
+        },
+        { name: 'b.txt', method: 0, data: text, size: text.length, crc: crc32(text) },
+      ]);
+      expect(await names(zip)).toEqual({
+        'a.txt': decoder.decode(text),
+        'b.txt': decoder.decode(text),
+      });
     });
   });
 });

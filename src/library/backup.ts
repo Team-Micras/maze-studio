@@ -79,16 +79,37 @@ function readIndex(entries: readonly ZipEntry[]): Map<string, IndexEntry> {
   }
 }
 
+/** An item the export could not write, and why. */
+export interface SkippedExport {
+  readonly id: string;
+  readonly name: string;
+  readonly message: string;
+}
+
+/** What an export wrote, and what it could not. */
+export interface ExportResult {
+  readonly zip: Uint8Array;
+  readonly skipped: readonly SkippedExport[];
+}
+
 /**
  * A zip of every item, each as `<name>.txt` with a name that passes the repository's rule, and
- * the index.
+ * the index. An item whose stored code does not read is left out of the zip and listed in
+ * `skipped`, so the caller can say so.
  *
  * @param now The time the entries are stamped with.
  */
-export function exportMine(items: readonly MineMaze[], now: Date = new Date()): Uint8Array {
+export function exportMine(items: readonly MineMaze[], now: Date = new Date()): ExportResult {
+  const skipped: SkippedExport[] = [];
   const readable = items.flatMap((item) => {
     const content = mineContent(item);
-    return content.ok ? [{ item, text: serializeMazeText(content.value) }] : [];
+
+    if (!content.ok) {
+      skipped.push({ id: item.id, name: item.name, message: content.error });
+      return [];
+    }
+
+    return [{ item, text: serializeMazeText(content.value) }];
   });
   const stems = uniqueStems(readable.map(({ item }) => item.name));
   const encoder = new TextEncoder();
@@ -104,14 +125,15 @@ export function exportMine(items: readonly MineMaze[], now: Date = new Date()): 
     createdAt: item.createdAt,
     ...(item.origin === undefined ? {} : { origin: item.origin }),
   }));
-
-  return writeZip(
+  const zip = writeZip(
     [
       ...files.map(({ file, bytes }) => ({ name: file, bytes })),
       { name: BACKUP_INDEX, bytes: encoder.encode(`${JSON.stringify(index, null, 2)}\n`) },
     ],
     now
   );
+
+  return { zip, skipped };
 }
 
 function baseName(path: string): string {

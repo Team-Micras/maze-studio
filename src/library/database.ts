@@ -12,6 +12,14 @@
 /** The stores of the database. */
 export type StoreName = 'repo-files' | 'mine' | 'settings';
 
+/** The writes of one transaction of {@link Database.write}. */
+export interface StoreWriter {
+  /** Writes `value`, at `key` for the `settings` store, at its own key for the others. */
+  put(store: StoreName, value: unknown, key?: string): void;
+  /** Deletes every value of a store. */
+  clear(store: StoreName): void;
+}
+
 /** The database's name in the browser. */
 export const DATABASE_NAME = 'maze-studio';
 
@@ -72,17 +80,40 @@ export class Database {
     await finished(transaction);
   }
 
-  /** Replaces every value of a store with `values`, all or nothing. */
-  async replaceAll(store: StoreName, values: readonly unknown[]): Promise<void> {
-    const transaction = this.#database.transaction(store, 'readwrite');
-    const objects = transaction.objectStore(store);
-    objects.clear();
+  /**
+   * Writes to several stores in one transaction, all or nothing: if `run` throws, nothing it
+   * wrote is kept.
+   *
+   * @param run Makes the writes; it may not wait on anything else.
+   */
+  async write(stores: readonly StoreName[], run: (writer: StoreWriter) => void): Promise<void> {
+    const transaction = this.#database.transaction([...stores], 'readwrite');
+    const done = finished(transaction);
 
-    for (const value of values) {
-      objects.put(value);
+    try {
+      run({
+        put: (store, value, key) => {
+          transaction.objectStore(store).put(value, key);
+        },
+        clear: (store) => {
+          transaction.objectStore(store).clear();
+        },
+      });
+    } catch (error) {
+      transaction.abort();
+      await done.catch(() => undefined);
+      throw error;
     }
 
-    await finished(transaction);
+    await done;
+  }
+
+  /** Replaces every value of a store with `values`, all or nothing. */
+  replaceAll(store: StoreName, values: readonly unknown[]): Promise<void> {
+    return this.write([store], (writer) => {
+      writer.clear(store);
+      values.forEach((value) => writer.put(store, value));
+    });
   }
 
   /**

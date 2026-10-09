@@ -21,6 +21,8 @@ export const MAZE_C = 'o---o\n| S |\no---o\n\n';
 
 export interface Served {
   readonly status?: number;
+  /** How long the answer takes, in milliseconds. */
+  readonly delayMs?: number;
   readonly body?: string;
   readonly headers?: Record<string, string>;
 }
@@ -77,6 +79,7 @@ export async function fakeGitHub(
         truncated: false,
         tree: [
           { path: 'classic', type: 'tree', sha: 'c'.repeat(40) },
+          { path: 'classic/old-mazes.txt', type: 'tree', sha: 'e'.repeat(40) },
           { path: 'README.md', type: 'blob', sha: 'd'.repeat(40) },
           ...tree,
         ],
@@ -102,6 +105,11 @@ export async function fakeGitHub(
       }
 
       const answer = served[url] ?? { status: 404, body: 'Not Found' };
+
+      if (answer.delayMs !== undefined) {
+        await new Promise((resolve) => setTimeout(resolve, answer.delayMs));
+      }
+
       return new Response(answer.status === 304 ? null : answer.body, {
         status: answer.status ?? 200,
         headers: answer.headers,

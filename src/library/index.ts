@@ -9,13 +9,21 @@ export {
   BACKUP_INDEX,
   exportMine,
   readImport,
+  type ExportResult,
   type ImportFile,
   type ImportReport,
+  type SkippedExport,
   type SkippedImport,
 } from './backup';
 export { gitBlobSha } from './blob-sha';
 export { mineCatalog, repoCatalog, type CatalogEntry } from './catalog';
-export { Database, DATABASE_NAME, openDatabase, type StoreName } from './database';
+export {
+  Database,
+  DATABASE_NAME,
+  openDatabase,
+  type StoreName,
+  type StoreWriter,
+} from './database';
 export { fileStem, uniqueStems } from './file-names';
 export {
   isUpdateDue,

@@ -81,6 +81,59 @@ describe('the repository cache', () => {
     expect((await cache.current()).source).toBe('github');
   });
 
+  test('stores the files and the commit they belong to together, or neither', async () => {
+    const db = await freshDatabase();
+    const github = await fakeGitHub({ 'classic/a.txt': MAZE_A });
+    const built = await snapshot();
+    const cache = new RepoCache(db, {
+      snapshot: async () => built,
+      fetch: github.fetch,
+      now: () => 1,
+    });
+    const write: Database['write'] = (stores, run) =>
+      db.write(stores, (writer) => {
+        run(writer);
+        writer.put('repo-files', { path: 'classic/broken.txt' }, 'not allowed with a key path');
+      });
+    const failing = new Proxy(db, {
+      get: (target, property) => {
+        const value: unknown = property === 'write' ? write : Reflect.get(target, property);
+        return typeof value === 'function' && property !== 'write' ? value.bind(target) : value;
+      },
+    });
+    const stores: (readonly string[])[] = [];
+    const watching = new Proxy(db, {
+      get: (target, property) => {
+        const value: unknown = Reflect.get(target, property);
+        return typeof value === 'function'
+          ? (...args: unknown[]) => {
+              if (property === 'write' && Array.isArray(args[0])) {
+                stores.push(args[0]);
+              }
+              return Reflect.apply(value, target, args);
+            }
+          : value;
+      },
+    });
+    const broken = new RepoCache(failing, {
+      snapshot: async () => built,
+      fetch: github.fetch,
+      now: () => 1,
+    });
+
+    await expect(broken.check()).rejects.toThrow(/in-line keys/);
+    expect(await cache.current()).toMatchObject({ source: 'snapshot' });
+    expect(await cache.meta()).toEqual({});
+
+    await new RepoCache(watching, {
+      snapshot: async () => built,
+      fetch: github.fetch,
+      now: () => 1,
+    }).check();
+    expect(stores).toEqual([['repo-files', 'settings']]);
+    expect(await cache.current()).toMatchObject({ source: 'github' });
+  });
+
   test('keeps what it has and remembers why when a check fails', async () => {
     const db = await freshDatabase();
     const github = await fakeGitHub({ 'classic/a.txt': MAZE_A });

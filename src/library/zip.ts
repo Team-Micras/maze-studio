@@ -157,11 +157,41 @@ export function writeZip(entries: readonly ZipEntry[], modified: Date = new Date
   return archive.toBytes();
 }
 
-async function inflate(bytes: Uint8Array): Promise<Uint8Array> {
-  const stream = new Blob([bytes.slice()])
+/** The largest file the reader takes out of an archive, as declared or as inflated. */
+export const MAX_ENTRY_BYTES = 1024 * 1024;
+
+/** The most the reader takes out of one archive, all files together. */
+export const MAX_ARCHIVE_BYTES = 32 * 1024 * 1024;
+
+class TooLarge extends Error {}
+
+async function drain(
+  reader: ReadableStreamDefaultReader<Uint8Array>,
+  output: Uint8Array,
+  length: number
+): Promise<number> {
+  const { done, value } = await reader.read();
+
+  if (done) {
+    return length;
+  }
+
+  if (length + value.length > output.length) {
+    await reader.cancel();
+    throw new TooLarge();
+  }
+
+  output.set(value, length);
+  return drain(reader, output, length + value.length);
+}
+
+async function inflate(bytes: Uint8Array, limit: number): Promise<Uint8Array> {
+  const reader = new Blob([bytes.slice()])
     .stream()
-    .pipeThrough(new DecompressionStream('deflate-raw'));
-  return new Uint8Array(await new Response(stream).arrayBuffer());
+    .pipeThrough(new DecompressionStream('deflate-raw'))
+    .getReader();
+  const output = new Uint8Array(limit);
+  return output.slice(0, await drain(reader, output, 0));
 }
 
 function endOfDirectory(view: DataView): number | undefined {
@@ -180,7 +210,19 @@ interface Located {
   readonly name: string;
   readonly method: number;
   readonly crc: number;
+  /** The size of the file once taken out, as the archive declares it. */
+  readonly size: number;
+  readonly local: number;
   readonly data: Uint8Array;
+  readonly dataStart: number;
+}
+
+function overlapping(located: readonly Located[]): Located | undefined {
+  const ordered = located.toSorted((left, right) => left.local - right.local);
+  return ordered.find((entry, index) => {
+    const previous = ordered[index - 1];
+    return previous !== undefined && entry.local < previous.dataStart + previous.data.length;
+  });
 }
 
 function locate(bytes: Uint8Array): Result<Located[], string> {
@@ -195,6 +237,7 @@ function locate(bytes: Uint8Array): Result<Located[], string> {
   let offset = view.getUint32(end + 16, true);
   const located: Located[] = [];
   const decoder = new TextDecoder();
+  let total = 0;
 
   for (let index = 0; index < count; index++) {
     if (
@@ -206,7 +249,8 @@ function locate(bytes: Uint8Array): Result<Located[], string> {
 
     const method = view.getUint16(offset + 10, true);
     const crc = view.getUint32(offset + 16, true);
-    const size = view.getUint32(offset + 20, true);
+    const compressed = view.getUint32(offset + 20, true);
+    const size = view.getUint32(offset + 24, true);
     const nameLength = view.getUint16(offset + 28, true);
     const extraLength = view.getUint16(offset + 30, true);
     const commentLength = view.getUint16(offset + 32, true);
@@ -214,26 +258,67 @@ function locate(bytes: Uint8Array): Result<Located[], string> {
     const name = decoder.decode(
       bytes.subarray(offset + CENTRAL_HEADER_SIZE, offset + CENTRAL_HEADER_SIZE + nameLength)
     );
+    total += size;
+
+    if (size > MAX_ENTRY_BYTES) {
+      return failure(`the zip entry ${name} is larger than a maze file can be`);
+    }
+
+    if (total > MAX_ARCHIVE_BYTES) {
+      return failure('the zip archive holds more than a backup of mazes can');
+    }
 
     if (local + LOCAL_HEADER_SIZE > bytes.length || view.getUint32(local, true) !== LOCAL_HEADER) {
       return failure(`the zip entry ${name} is damaged`);
     }
 
-    const start =
+    const dataStart =
       local +
       LOCAL_HEADER_SIZE +
       view.getUint16(local + 26, true) +
       view.getUint16(local + 28, true);
 
-    if (start + size > bytes.length) {
+    if (dataStart + compressed > bytes.length) {
       return failure(`the zip entry ${name} is cut short`);
     }
 
-    located.push({ name, method, crc, data: bytes.subarray(start, start + size) });
+    located.push({
+      name,
+      method,
+      crc,
+      size,
+      local,
+      dataStart,
+      data: bytes.subarray(dataStart, dataStart + compressed),
+    });
     offset += CENTRAL_HEADER_SIZE + nameLength + extraLength + commentLength;
   }
 
-  return success(located);
+  const shared = overlapping(located);
+  return shared === undefined
+    ? success(located)
+    : failure(`the zip entry ${shared.name} overlaps another one`);
+}
+
+async function contents(entry: Located): Promise<Result<Uint8Array, string>> {
+  if (entry.method === STORED) {
+    return entry.data.length === entry.size
+      ? success(entry.data.slice())
+      : failure(`the zip entry ${entry.name} is not the size it declares`);
+  }
+
+  try {
+    const bytes = await inflate(entry.data, entry.size);
+    return bytes.length === entry.size
+      ? success(bytes)
+      : failure(`the zip entry ${entry.name} is not the size it declares`);
+  } catch (error) {
+    return failure(
+      error instanceof TooLarge
+        ? `the zip entry ${entry.name} is larger than it declares`
+        : `the zip entry ${entry.name} does not inflate`
+    );
+  }
 }
 
 async function extract(entry: Located): Promise<Result<ZipEntry, string>> {
@@ -241,21 +326,22 @@ async function extract(entry: Located): Promise<Result<ZipEntry, string>> {
     return failure(`the zip entry ${entry.name} uses a compression this app does not read`);
   }
 
-  let bytes: Uint8Array;
+  const bytes = await contents(entry);
 
-  try {
-    bytes = entry.method === STORED ? entry.data.slice() : await inflate(entry.data);
-  } catch {
-    return failure(`the zip entry ${entry.name} does not inflate`);
+  if (!bytes.ok) {
+    return bytes;
   }
 
-  return crc32(bytes) === entry.crc
-    ? success({ name: entry.name, bytes })
+  return crc32(bytes.value) === entry.crc
+    ? success({ name: entry.name, bytes: bytes.value })
     : failure(`the zip entry ${entry.name} does not match its checksum`);
 }
 
 /**
- * The files of an archive, folders left out.
+ * The files of an archive, folders left out, one after the other. An entry larger than
+ * {@link MAX_ENTRY_BYTES}, an archive larger than {@link MAX_ARCHIVE_BYTES}, an entry that
+ * inflates past the size it declares and entries that share their data are refused, so a crafted
+ * archive cannot fill the memory.
  *
  * @returns The files, or why the archive cannot be read.
  */
@@ -266,14 +352,19 @@ export async function readZip(bytes: Uint8Array): Promise<Result<ZipEntry[], str
     return located;
   }
 
-  const extracted = await Promise.all(
-    located.value.filter((entry) => !entry.name.endsWith('/')).map(extract)
-  );
-  const broken = extracted.find((entry) => !entry.ok);
+  return located.value
+    .filter((entry) => !entry.name.endsWith('/'))
+    .reduce<Promise<Result<ZipEntry[], string>>>(
+      async (previous, entry) => {
+        const read = await previous;
 
-  if (broken !== undefined && !broken.ok) {
-    return broken;
-  }
+        if (!read.ok) {
+          return read;
+        }
 
-  return success(extracted.flatMap((entry) => (entry.ok ? [entry.value] : [])));
+        const extracted = await extract(entry);
+        return extracted.ok ? success([...read.value, extracted.value]) : extracted;
+      },
+      Promise.resolve(success([]))
+    );
 }

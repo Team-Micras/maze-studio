@@ -114,13 +114,17 @@ export class RepoCache {
     };
 
     if (result.status === 'updated') {
-      await this.#database.replaceAll('repo-files', result.state.files);
-      await this.#save({
+      const updated: RepoMeta = {
         commit: result.state.commit,
         snapshotCommit: snapshot.commit,
         ...(result.state.etag === undefined ? {} : { etag: result.state.etag }),
         checkedAt: now,
         skipped: result.skipped,
+      };
+      await this.#database.write(['repo-files', 'settings'], (writer) => {
+        writer.clear('repo-files');
+        result.state.files.forEach((file) => writer.put('repo-files', file));
+        writer.put('settings', updated, META);
       });
     } else if (result.status === 'unchanged') {
       await this.#save({ ...checked, ...(result.etag === undefined ? {} : { etag: result.etag }) });

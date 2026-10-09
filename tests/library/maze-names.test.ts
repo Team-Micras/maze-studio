@@ -27,6 +27,8 @@ describe('the competition and year of a file name', () => {
     ['japan5', 'Japan', undefined],
     ['oshwdem2019', 'OSHWDEM', 2019],
     ['iee1993-1993', 'IEE', 1993],
+    ['uk-1234', 'UK', undefined],
+    ['japan2100', 'Japan', undefined],
   ])('%s is %s, %s', (stem, competition, year) => {
     expect(mazeOrigin(stem)).toEqual(year === undefined ? { competition } : { competition, year });
   });
@@ -43,6 +45,7 @@ describe('the competition and year of a file name', () => {
     'apecs',
     'korean',
     'bos92',
+    'test-1234',
   ])('%s says nothing it would have to guess', (stem) => {
     expect(mazeOrigin(stem)).toEqual({});
   });

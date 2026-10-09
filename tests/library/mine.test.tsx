@@ -193,6 +193,17 @@ describe('Mine', () => {
     expect(mine.persistence).toBe('best-effort');
   });
 
+  test('still writes when the browser fails to answer about keeping the storage', async () => {
+    const [{ mine }] = await tabs({
+      persisted: () => Promise.reject(new Error('no storage manager')),
+      persist: () => Promise.reject(new Error('no storage manager')),
+    });
+
+    const item = await mine.create({ name: 'Kept anyway', maze: MAZE, profile: 'free' });
+    expect(await mine.get(item.id)).toEqual(item);
+    expect(mine.persistence).toBe('best-effort');
+  });
+
   test('does not ask again when the storage is already kept', async () => {
     const calls: string[] = [];
     const [{ mine }] = await tabs({
@@ -226,7 +237,9 @@ describe('Mine', () => {
       origin: { path: 'classic/x.txt', sha: 'b'.repeat(40) },
     });
     const before = await mine.list();
-    const report = await readImport([{ name: 'backup.zip', bytes: exportMine(before) }]);
+    const exported = exportMine(before);
+    expect(exported.skipped).toEqual([]);
+    const report = await readImport([{ name: 'backup.zip', bytes: exported.zip }]);
     expect(report.skipped).toEqual([]);
 
     const [{ mine: elsewhere }] = await tabs();

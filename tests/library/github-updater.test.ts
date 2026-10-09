@@ -1,6 +1,11 @@
 import { describe, expect, test } from 'vitest';
 
-import { isUpdateDue, UPDATE_INTERVAL_MS, updateFromGitHub } from '@/library/github-updater';
+import {
+  DOWNLOADS_AT_ONCE,
+  isUpdateDue,
+  UPDATE_INTERVAL_MS,
+  updateFromGitHub,
+} from '@/library/github-updater';
 import { decodeMazeCode, serializeMazeText } from '@/maze';
 import {
   API,
@@ -89,6 +94,7 @@ describe('updating from GitHub', () => {
       'classic/b.txt': MAZE_A,
       'halfsize/c d.txt': MAZE_C,
     });
+    expect(github.requests.some((request) => request.url.includes('old-mazes'))).toBe(false);
     expect(
       github.requests.map((request) => request.url).filter((url) => url.startsWith(RAW))
     ).toEqual(
@@ -128,6 +134,32 @@ describe('updating from GitHub', () => {
       reason: 'sha-mismatch',
       message: expect.stringContaining('classic/b.txt'),
     });
+  });
+
+  test('stops downloading once one file fails', async () => {
+    const files = Object.fromEntries(
+      Array.from({ length: 20 }, (_, index) => [
+        `classic/m${String(index).padStart(2, '0')}.txt`,
+        MAZE_A,
+      ])
+    );
+    const slow = Object.fromEntries(
+      Object.keys(files)
+        .slice(1)
+        .map((path) => [`${RAW}/${NEW_COMMIT}/${path}`, { body: MAZE_A, delayMs: 30 }])
+    );
+    const github = await fakeGitHub(files, {
+      ...slow,
+      [`${RAW}/${NEW_COMMIT}/classic/m00.txt`]: { body: MAZE_B },
+    });
+
+    expect(await updateFromGitHub(await state({}), github.fetch)).toMatchObject({
+      reason: 'sha-mismatch',
+    });
+    await new Promise((resolve) => setTimeout(resolve, 100));
+    expect(github.requests.filter((request) => request.url.startsWith(RAW))).toHaveLength(
+      DOWNLOADS_AT_ONCE
+    );
   });
 
   test('fails with no network', async () => {

@@ -32,13 +32,15 @@ function item(id: string, name: string, trailer = ''): MineMaze {
 }
 
 describe('the backup of Mine', () => {
-  test('writes each maze as a .txt with a valid, unique name, and an index', async () => {
-    const zip = exportMine([
+  test('writes each maze as a .txt with a valid, unique name, and an index, and lists what it could not write', async () => {
+    const { zip, skipped } = exportMine([
       item('1', 'My maze ✓', 'notes\n'),
       item('2', 'My maze'),
       { ...item('3', 'bad'), code: '!' },
     ]);
     const read = await readZip(zip);
+
+    expect(skipped).toEqual([{ id: '3', name: 'bad', message: 'the code is not base64url text' }]);
 
     if (!read.ok) {
       throw new Error(read.error);
@@ -69,7 +71,7 @@ describe('the backup of Mine', () => {
 
   test('reads a backup back into drafts with their names, profiles, dates and origins', async () => {
     const report = await readImport([
-      { name: 'backup.zip', bytes: exportMine([item('1', 'My maze ✓', 'notes\n')]) },
+      { name: 'backup.zip', bytes: exportMine([item('1', 'My maze ✓', 'notes\n')]).zip },
     ]);
 
     expect(report.skipped).toEqual([]);

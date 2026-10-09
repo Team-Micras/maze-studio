@@ -108,3 +108,12 @@ The machine's rule is no builds in `/tmp`, so `tests/e2e/pwa.test.ts` builds the
   an OPFS handle in IndexedDB, needs a persistent context, and should check whether Chrome's
   incognito windows have the same crash.
 - **Mine's category in the catalog is its profile**, the closest to a repository folder.
+- **Zip limits.** The reader refuses an entry that declares more than 1 MiB (a 16×16 maze is
+  about 1 kB, a 64×64 under 40 kB), an archive that declares more than 32 MiB in all, entries
+  whose data overlap, and an entry that inflates past or short of the size it declares. It
+  inflates one entry at a time, reading the stream in chunks into a buffer of the declared size
+  and cancelling it the moment it would overflow, so a crafted archive cannot fill the memory.
+- **The export says what it left out.** `exportMine` returns `{ zip, skipped }`: an item whose
+  stored code does not read cannot be written as a `.txt`, so the screen must tell the user which
+  ones were left out rather than drop them silently.
+- **An update stops at its first failure.** Downloads already running finish; no new one starts.
