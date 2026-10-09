@@ -22,6 +22,13 @@ const EXTREME_SIZES = [
 ] as const;
 const TRAILERS = ['', '\n', 'Notes\n', 'Notes', 'ünïcödé ✓\n\n', '  indented\nmore\n'];
 
+function trimmedText(maze: Maze): string {
+  return serializeMazeText({ maze, trailer: '' })
+    .split('\n')
+    .map((line) => line.trimEnd())
+    .join('\n');
+}
+
 function mazes(): Maze[] {
   const random = seededRandom(SEED);
   return [
@@ -60,6 +67,30 @@ describe('round trips over random mazes from a fixed seed', () => {
     });
 
     expect(broken.map((maze) => `${maze.width}×${maze.height}`)).toEqual([]);
+  });
+
+  test('a maze whose lines lost their trailing spaces reads the same, with only short lines reported', () => {
+    const broken = all.filter((maze) => {
+      const canonical = serializeMazeText({ maze, trailer: '' });
+      const result = parseMazeText(trimmedText(maze), 'trimmed.txt');
+      return (
+        !result.ok ||
+        !mazesEqual(result.value.maze, maze) ||
+        result.value.trailer !== '' ||
+        result.value.source?.irregularities.some(
+          (irregularity) => irregularity.kind !== 'short-line'
+        ) !== false ||
+        serializeMazeText(result.value) !== canonical
+      );
+    });
+
+    expect(broken.map((maze) => `${maze.width}×${maze.height}`)).toEqual([]);
+    expect(
+      all.some((maze) => {
+        const result = parseMazeText(trimmedText(maze), 'trimmed.txt');
+        return result.ok && result.value.source?.irregularities.length !== 0;
+      })
+    ).toBe(true);
   });
 
   test('decode(encode(maze)) is the maze, the trailer and the name', () => {

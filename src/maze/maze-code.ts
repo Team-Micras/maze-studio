@@ -47,6 +47,7 @@ export type MazeCodeRejection =
   | 'repeated-goal'
   | 'unordered-goals'
   | 'goal-is-start'
+  | 'non-canonical'
   | 'trailer-past-end'
   | 'invalid-utf8';
 
@@ -192,6 +193,11 @@ function readWalls(
   const verticalCount = verticalEdgeCount(width, height);
   const packed = reader.bytes(Math.ceil((horizontalCount + verticalCount) / 8));
   const bit = (index: number) => ((packed[index >> 3] ?? 0) & (1 << (index & 7))) !== 0;
+  const used = horizontalCount + verticalCount;
+
+  if (used % 8 !== 0 && (packed.at(-1) ?? 0) >> (used % 8) !== 0) {
+    throw new Rejected('non-canonical', 'the padding bits after the last wall are not zero');
+  }
 
   return {
     horizontal: Bits.from(horizontalCount, bit),
@@ -236,7 +242,7 @@ function readContent(reader: ByteReader): MazeCodeContent {
   const trailer = readTrailer(reader);
   const name = utf8(reader.rest(), 'name');
 
-  return {
+  return Object.freeze({
     maze: createMaze({
       width,
       height,
@@ -246,7 +252,7 @@ function readContent(reader: ByteReader): MazeCodeContent {
     }),
     trailer,
     name,
-  };
+  });
 }
 
 /**

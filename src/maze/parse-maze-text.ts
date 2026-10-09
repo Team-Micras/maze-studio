@@ -6,6 +6,9 @@
  * with a space: the first line is a line of posts, an `o` every 4 columns; then lines alternate
  * between cell lines, which start with `|` or a space, and lines of posts, all as long as the
  * first; the grid ends at the first line that breaks that shape, and must end on a line of posts.
+ * A cell line shorter than the first, as when an editor strips the spaces at the end of a line
+ * of a maze whose east border is open, is part of the grid when a line of posts follows it; it is
+ * read as if padded with spaces, and reported.
  * Anything inside that shape that the canonical text writes differently is an irregularity, read
  * in a fixed way and reported; anything outside it refuses the text, with the line and column.
  *
@@ -94,14 +97,52 @@ function firstLineError(line: string): MazeTextError | undefined {
   return undefined;
 }
 
-function fitsGrid(line: string | undefined, index: number, length: number): boolean {
-  if (line?.length !== length) {
+function startsCellLine(line: string): boolean {
+  return line === '' || line[0] === VERTICAL_WALL || line[0] === BLANK;
+}
+
+function isPostLine(line: string | undefined, length: number): boolean {
+  return line?.length === length && misplacedPost(line, length) === undefined;
+}
+
+function isCellLine(lines: readonly string[], index: number, length: number): boolean {
+  const line = lines[index];
+
+  if (line === undefined || line.length > length || !startsCellLine(line)) {
     return false;
   }
 
-  return index % 2 === 0
-    ? misplacedPost(line, length) === undefined
-    : line[0] === VERTICAL_WALL || line[0] === BLANK;
+  return line.length === length || isPostLine(lines[index + 1], length);
+}
+
+function fitsGrid(lines: readonly string[], index: number, length: number): boolean {
+  return index % 2 === 0 ? isPostLine(lines[index], length) : isCellLine(lines, index, length);
+}
+
+function missingCellsError(lines: readonly string[], length: number): MazeTextError {
+  const line = lines[1] ?? '';
+
+  if (startsCellLine(line) && line.length < length && lines[2] !== undefined) {
+    return {
+      line: 3,
+      column: postLineColumn(lines[2], length),
+      message: 'expected a line of posts as long as the first, an `o` every 4 columns',
+    };
+  }
+
+  if (startsCellLine(line) && line.length > length) {
+    return {
+      line: 2,
+      column: length + 1,
+      message: 'a line of cells is no longer than the first line',
+    };
+  }
+
+  return {
+    line: 2,
+    column: 1,
+    message: 'expected a line of cells, starting with `|` or a space',
+  };
 }
 
 function measureGrid(lines: readonly string[]): Result<Grid, MazeTextError> {
@@ -114,7 +155,7 @@ function measureGrid(lines: readonly string[]): Result<Grid, MazeTextError> {
 
   let count = 1;
 
-  while (fitsGrid(lines[count], count, first.length)) {
+  while (fitsGrid(lines, count, first.length)) {
     if (count === lineCount(MAX_SIDE)) {
       return failure({
         line: count + 1,
@@ -127,11 +168,7 @@ function measureGrid(lines: readonly string[]): Result<Grid, MazeTextError> {
   }
 
   if (count === 1) {
-    return failure({
-      line: 2,
-      column: 1,
-      message: 'expected a line of cells as long as the first, starting with `|` or a space',
-    });
+    return failure(missingCellsError(lines, first.length));
   }
 
   if (count % 2 === 0) {
@@ -147,6 +184,19 @@ function measureGrid(lines: readonly string[]): Result<Grid, MazeTextError> {
     width: (first.length - 1) / COLUMNS_PER_CELL,
     height: (count - 1) / 2,
   });
+}
+
+function padShortLines(grid: Grid, report: Report): Grid {
+  const length = lineLength(grid.width);
+  const lines = grid.lines.map((line, index) => {
+    if (line.length < length) {
+      report('short-line', index + 1, line.length + 1, '');
+    }
+
+    return line.padEnd(length, BLANK);
+  });
+
+  return { ...grid, lines };
 }
 
 function readHorizontal({ lines, width, height }: Grid, report: Report): Bits {
@@ -229,7 +279,8 @@ function readTrailer(lines: readonly string[], gridLines: number, report: Report
   return trailer;
 }
 
-function readMaze(grid: Grid, report: Report): Maze {
+function readMaze(measured: Grid, report: Report): Maze {
+  const grid = padShortLines(measured, report);
   return createMaze({
     width: grid.width,
     height: grid.height,
@@ -261,20 +312,24 @@ export function parseMazeText(text: string, fileName: string): Result<MazeText, 
 
   const irregularities: Irregularity[] = [];
   const report: Report = (kind, line, column, found) =>
-    irregularities.push({ kind, line, column, found });
+    irregularities.push(Object.freeze({ kind, line, column, found }));
   const maze = readMaze(measured.value, report);
   const trailer = readTrailer(lines, measured.value.lines.length, report);
 
-  return success({
-    maze,
-    trailer,
-    source: {
-      fileName,
-      irregularities: irregularities.toSorted(
-        (left, right) => left.line - right.line || left.column - right.column
-      ),
-      hadCR,
-      hadFinalNewline,
-    },
-  });
+  return success(
+    Object.freeze({
+      maze,
+      trailer,
+      source: Object.freeze({
+        fileName,
+        irregularities: Object.freeze(
+          irregularities.toSorted(
+            (left, right) => left.line - right.line || left.column - right.column
+          )
+        ),
+        hadCR,
+        hadFinalNewline,
+      }),
+    })
+  );
 }

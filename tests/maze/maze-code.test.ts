@@ -6,6 +6,7 @@ import {
   decodeMazeCode,
   encodeMazeCode,
   mazesEqual,
+  serializeMazeText,
   type MazeCodeContent,
   type MazeCodeRejection,
 } from '@/maze';
@@ -51,6 +52,13 @@ function header(
   return writer;
 }
 
+function padded(lastWallByte: number): Uint8Array {
+  return header(2, 2, 0, [])
+    .bytes(Uint8Array.from([0, lastWallByte]))
+    .u16(0)
+    .toBytes();
+}
+
 function boxed(width: number, height: number, goalSide: number): ReturnType<typeof createMaze> {
   const first = Math.floor((width - goalSide) / 2);
   return createMaze({
@@ -73,6 +81,37 @@ describe('the compact maze code, version 1', () => {
     expect([...(fromBase64Url(code) ?? [])]).toEqual([
       1, 2, 2, 0, 0, 1, 0, 2, 0, 0b1111_1011, 0b0000_1011, 0, 0, 0x61, 0x62,
     ]);
+  });
+
+  test('writes the width before the height, and cell indices as y × width + x', () => {
+    const maze = createMaze({
+      width: 3,
+      height: 2,
+      horizontal: Bits.from(9, (index) => index < 3 || index >= 6),
+      vertical: Bits.from(8, (index) => index % 4 === 0 || index % 4 === 3),
+      start: { x: 2, y: 1 },
+      goals: [{ x: 0, y: 1 }],
+    });
+
+    expect(Array.from(fromBase64Url(encodeMazeCode(maze)) ?? [])).toEqual([
+      1, 3, 2, 5, 0, 1, 0, 3, 0, 0b1100_0111, 0b0011_0011, 0b0000_0001, 0, 0,
+    ]);
+    expect(serializeMazeText({ maze, trailer: '' })).toBe(
+      [
+        'o---o---o---o',
+        '| G       S |',
+        'o   o   o   o',
+        '|           |',
+        'o---o---o---o',
+        '',
+      ].join('\n')
+    );
+  });
+
+  test('gives back frozen content', () => {
+    const content = decoded(encodeMazeCode(TWO_BY_TWO));
+    expect(Object.isFrozen(content)).toBe(true);
+    expect(Object.isFrozen(content.maze)).toBe(true);
   });
 
   test('writes 0xFFFF for no start, and u16 indices past 255', () => {
@@ -145,6 +184,12 @@ describe('the compact maze code, version 1', () => {
       expect(rejection(tail(header(2, 2, 0xffff, [1, 1])))).toBe('repeated-goal');
       expect(rejection(tail(header(2, 2, 0xffff, [2, 1])))).toBe('unordered-goals');
       expect(rejection(tail(header(2, 2, 1, [0, 1])))).toBe('goal-is-start');
+    });
+
+    test('padding bits after the last wall that are not zero', () => {
+      expect(decodeMazeCode(toBase64Url(padded(0b0000_1111))).ok).toBe(true);
+      expect(rejection(padded(0b0001_0000))).toBe('non-canonical');
+      expect(rejection(padded(0b1000_0000))).toBe('non-canonical');
     });
 
     test('a trailer longer than what is left', () => {

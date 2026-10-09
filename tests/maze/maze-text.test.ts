@@ -32,6 +32,11 @@ function refused(text: string): Omit<MazeTextError, 'message'> {
   return { line: result.error.line, column: result.error.column };
 }
 
+function walls(segment: string): [boolean, number | undefined] {
+  const document = parsed(`o${segment}o\n|   |\no---o\n`);
+  return [document.maze.horizontal.get(1), document.source?.irregularities.length];
+}
+
 describe('reading the mazefiles text', () => {
   test('reads walls, start and goals with (0, 0) in the south-west corner', () => {
     const document = parsed(TWO_BY_TWO, 'classic/two.txt');
@@ -124,10 +129,69 @@ describe('reading the mazefiles text', () => {
     );
   });
 
+  test('reads a cell line cut short, as when trailing spaces are stripped, as padded with spaces', () => {
+    const lines = ['o---o---o', '|   |   |', 'o---o---o', '  S      ', 'o---o---o', ''];
+    const document = parsed(lines.map((line) => line.trimEnd()).join('\n'));
+
+    expect(document.maze.width).toBe(2);
+    expect(document.maze.height).toBe(2);
+    expect(document.maze.start).toEqual({ x: 0, y: 0 });
+    expect(document.maze.vertical.get(0)).toBe(false);
+    expect(document.maze.vertical.get(2)).toBe(false);
+    expect(document.trailer).toBe('');
+    expect(document.source?.irregularities).toEqual([
+      { kind: 'short-line', line: 4, column: 4, found: '' },
+    ]);
+    expect(serializeMazeText(document)).toBe(lines.join('\n'));
+  });
+
+  test('reads an empty cell line as a row with no walls and no marks when posts follow it', () => {
+    const document = parsed('o---o\n\no---o\n');
+    expect(document.maze.height).toBe(1);
+    expect(document.maze.vertical.equals(Bits.from(2))).toBe(true);
+    expect(document.source?.irregularities).toEqual([
+      { kind: 'short-line', line: 2, column: 1, found: '' },
+    ]);
+  });
+
+  test('keeps a short line that no line of posts follows in the trailer', () => {
+    const document = parsed(`${TWO_BY_TWO}  indented\nmore\n`);
+    expect(document.maze.height).toBe(2);
+    expect(document.trailer).toBe('  indented\nmore\n');
+    expect(document.source?.irregularities).toEqual([]);
+  });
+
+  test('takes an east–west wall from the middle character of its segment', () => {
+    expect(walls('---')).toEqual([true, 0]);
+    expect(walls('   ')).toEqual([false, 0]);
+    expect(walls(' - ')).toEqual([true, 1]);
+    expect(walls('-- ')).toEqual([true, 1]);
+    expect(walls('-  ')).toEqual([false, 1]);
+    expect(walls('  -')).toEqual([false, 1]);
+  });
+
+  test('gives back frozen documents', () => {
+    const document = parsed(`o-- o\n|   |\no---o\n`);
+    expect(Object.isFrozen(document)).toBe(true);
+    expect(Object.isFrozen(document.source)).toBe(true);
+    expect(Object.isFrozen(document.source?.irregularities)).toBe(true);
+    expect(Object.isFrozen(document.source?.irregularities[0])).toBe(true);
+  });
+
   test('warns about a trailer too long for a link', () => {
     const document = parsed(`${TWO_BY_TWO}${'a'.repeat(70_000)}\n`);
     expect(document.source?.irregularities).toEqual([
       { kind: 'long-trailer', line: 6, column: 1, found: '70001 bytes' },
+    ]);
+  });
+
+  test('counts the trailer in bytes of UTF-8, not in characters', () => {
+    const fits = parsed(`${TWO_BY_TWO}${'é'.repeat(32_767)}`);
+    const over = parsed(`${TWO_BY_TWO}${'é'.repeat(40_000)}`);
+
+    expect(fits.source?.irregularities).toEqual([]);
+    expect(over.source?.irregularities).toEqual([
+      { kind: 'long-trailer', line: 6, column: 1, found: '80001 bytes' },
     ]);
   });
 
@@ -139,6 +203,9 @@ describe('reading the mazefiles text', () => {
     expect(refused('o\n|\no\n')).toEqual({ line: 1, column: 2 });
     expect(refused('o---o\n')).toEqual({ line: 2, column: 1 });
     expect(refused('o---o\n:   |\no---o\n')).toEqual({ line: 2, column: 1 });
+    expect(refused('o---o\n|   |xx\no---o\n')).toEqual({ line: 2, column: 6 });
+    expect(refused('o---o\n|  \nfoo\n')).toEqual({ line: 3, column: 1 });
+    expect(refused('o---o\n|  \no--o\n')).toEqual({ line: 3, column: 5 });
     expect(refused('o---o\n|   |\nfoo\n')).toEqual({ line: 3, column: 1 });
     expect(refused('o---o\n|   |\no---\n')).toEqual({ line: 3, column: 5 });
     expect(refused('o---o\n|   |\no--- o\n')).toEqual({ line: 3, column: 5 });
