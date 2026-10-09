@@ -51,3 +51,25 @@ The machine's rule is no builds in `/tmp`, so `tests/e2e/pwa.test.ts` builds the
   `extra-start`: reported, never silent. The repository has no trailer but a blank line at the end.
 - **Padding bits.** The code's decoder refuses a last wall byte whose padding bits are not zero
   (`non-canonical`), so each maze has one code.
+
+## 08/10/2026 — Slice 1c: validation
+
+- **Findings point at posts too.** Besides cells and edges, a `Finding` lists `posts`, the
+  corners `(0..width, 0..height)`, since a loose post is neither a cell nor an edge.
+- **One finding per problem, not per place.** A rule that fails in many places (loose posts,
+  border openings, goal entrances) gives one finding listing them all, so an empty 32×32 maze has
+  one loose-post finding, not a thousand. Grid irregularities give one finding each, since each
+  has its own line and column.
+- **"Homogeneous grid"** covers the `wall`, `cell`, `short-line` and `ragged-line`
+  irregularities. `extra-start` belongs to "single start" and `long-trailer` to its own rule,
+  `trailer-size`, a warning under every profile.
+- **Counting `S`.** "Single start" counts the start, every `extra-start`, an `S` beside a cell's
+  mark, and an `S` in a wall position; one in a post column of a cell line points at the cell east
+  of it (west of it on the east border).
+- **The start cell's north side** must be open only when the maze is more than one cell tall; in a
+  1-cell-tall maze it is the border.
+- **Goal entrances.** "Single goal entrance" warns when the count is not one, so a sealed goal
+  area is reported too; at the pinned commit no file has zero, and 54 have more than one.
+- **Parity at `548dcde`.** No `error` in any of the 581 files under its folder's profile; the proof
+  rules fire on 100 files (loose post), 2 (unreachable goal) and 54 (more than one entrance), the
+  numbers the plan's reviewer measured.

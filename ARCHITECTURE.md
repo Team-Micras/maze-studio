@@ -37,12 +37,18 @@ browser; there is no server.
 - `history.ts`: undo and redo over immutable values, 500 steps. `record` makes a step;
   between `beginGesture` and `endGesture` it only changes the present, and the end makes one step
   of the whole gesture, such as a drag, or none if it came back to where it began.
+- `validation.ts`, `validation-types.ts`, `validation-rules.ts`, `maze-proofs.ts`:
+  `validateMaze({ maze, profile, source? })` returns findings, never throws. Each `Finding` has
+  a rule, a severity (`error`, `warning` or `hint`, by profile in `RULE_SEVERITIES`), a message and
+  the cells, edges and posts to point at. The file rules read `source` and stop applying once the
+  document is edited; `profileOfPath` gives a repository path its folder's profile.
 - `maze-code.ts`: the compact code, version 1, for links and the snapshot, with `base64url.ts` and
   `bytes.ts`. The decoder refuses with a `MazeCodeRejection` and a message, never by throwing.
 
 `tests/maze/mazefiles-corpus.test.ts` reads every file of `vendor/mazefiles` at the pinned commit:
 blob SHA, byte-for-byte round trip and compact-code round trip.
-`tests/maze/round-trip-properties.test.ts` does the same over random mazes from a fixed seed, with
+It also checks that no file has an `error` under its folder's profile, and pins how many files each
+proof rule fires on. `tests/maze/round-trip-properties.test.ts` does the same over random mazes from a fixed seed, with
 open borders, which the repository never has.
 
 ## Import rules

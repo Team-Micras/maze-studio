@@ -10,13 +10,25 @@ import {
   encodeMazeCode,
   mazesEqual,
   parseMazeText,
+  profileOfPath,
   serializeMazeText,
+  validateMaze,
   type MazeText,
 } from '@/maze';
 
 const MAZEFILES = join(import.meta.dirname, '..', '..', 'vendor', 'mazefiles');
 const PINNED_COMMIT = '548dcdeb359bbd3aca997371f8542ec9644840ce';
 const DOUBLE_NEWLINE = ['halfsize/japan2008hes.txt', 'halfsize/japan2016hef.txt'];
+
+/**
+ * How many files each rule fires on at the pinned commit, with each file's folder as its profile:
+ * only the proof rules, all warnings.
+ */
+const FINDINGS_AT_PINNED_COMMIT = {
+  'loose-post': 100,
+  'goal-reachable': 2,
+  'single-goal-entrance': 54,
+};
 
 /** The size tallies of the pinned commit, by folder: `<folder> <width>×<height>` → files. */
 const SIZES_AT_PINNED_COMMIT = {
@@ -136,5 +148,27 @@ describe('every maze file of the pinned mazefiles commit', () => {
     }
 
     expect(sizes).toEqual(SIZES_AT_PINNED_COMMIT);
+  });
+
+  test('has no error under the profile of its folder, and the proof counts of the pinned commit', () => {
+    const errors: string[] = [];
+    const filesByRule: Record<string, number> = {};
+
+    for (const file of files) {
+      const { maze, source } = parsed(file);
+      const found = validateMaze({ maze, source, profile: profileOfPath(file.path) });
+      errors.push(
+        ...found
+          .filter((finding) => finding.severity === 'error')
+          .map((finding) => `${file.path} ${finding.rule}`)
+      );
+
+      for (const rule of new Set(found.map((finding) => finding.rule))) {
+        filesByRule[rule] = (filesByRule[rule] ?? 0) + 1;
+      }
+    }
+
+    expect(errors).toEqual([]);
+    expect(filesByRule).toEqual(FINDINGS_AT_PINNED_COMMIT);
   });
 });
