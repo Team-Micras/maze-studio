@@ -19,12 +19,20 @@ const SCREENSHOT_REFERENCES = 'screenshots';
 
 const SCREENSHOT_MISMATCH = 0.002;
 
+/**
+ * The viewport of the browser tests, and of the page that holds their iframe. Without the UI,
+ * Vitest shrinks the iframe to fit that page with a CSS scale; at Playwright's default 1280 × 720
+ * that is 0.8, which Chromium rasterises late and not always the same, so the page is as large as
+ * the iframe and the scale stays 1.
+ */
+const BROWSER_VIEWPORT = { width: 1440, height: 900 } as const;
+
 function chromium() {
   return {
     enabled: true,
     headless: true,
-    provider: playwright(),
-    viewport: { width: 1440, height: 900 },
+    provider: playwright({ contextOptions: { viewport: BROWSER_VIEWPORT } }),
+    viewport: BROWSER_VIEWPORT,
     instances: [{ browser: 'chromium' as const }],
     commands: { deflateZeros },
     expect: {

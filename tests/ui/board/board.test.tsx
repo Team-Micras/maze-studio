@@ -41,11 +41,12 @@ function shapes(name: string): number {
 }
 
 /**
- * How long a still camera is left before its picture is taken: Chromium may keep a transformed
- * layer at an intermediate raster scale for a while after its transform changes, and under the
- * load of other test files that shifts every edge of the board by a fifth of a pixel.
+ * The stage of the screenshots: the 640-unit board between 24 px insets fits at exactly k = 1, and
+ * the harness knows the size before it measures, so the first frame already has the final camera.
  */
-const RASTER_SETTLE_MS = 500;
+const SCREENSHOT_STAGE = { width: 688, height: 688 } as const;
+
+const SCREENSHOT_INSETS = { top: 24, right: 24, bottom: 24, left: 24 } as const;
 
 function worldTransform(): string | undefined {
   return document.querySelector<HTMLElement>('[data-world]')?.style.transform;
@@ -159,16 +160,15 @@ describe('Screenshots of the board on its stage', () => {
     document.documentElement.classList.toggle('dark', theme === 'dark');
     await render(
       <BoardHarness
-        insets={{ top: 24, right: 24, bottom: 24, left: 24 }}
+        insets={SCREENSHOT_INSETS}
         maze={after}
         overlays={overlays}
-        size={{ width: 600, height: 600 }}
+        size={SCREENSHOT_STAGE}
         status={false}
       />
     );
     await expect.poll(stillCamera).toBe(true);
     await settled();
-    await new Promise((resolve) => setTimeout(resolve, RASTER_SETTLE_MS));
 
     await expect.element(page.getByRole('application')).toMatchScreenshot(`${size}-${theme}`);
   });

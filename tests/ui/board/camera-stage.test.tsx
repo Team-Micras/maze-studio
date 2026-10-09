@@ -17,6 +17,8 @@ import {
 import '@/ui/styles.css';
 import { axeViolations } from '@tests/support/axe-check';
 import { settled } from '@tests/support/ui/animations';
+import { CameraStage } from '@/ui/board/camera-stage';
+import { useBoardCamera } from '@/ui/board/use-board-camera';
 import { BoardHarness } from '@tests/support/ui/board-harness';
 import { REPO_MAZES, repoMaze } from '@tests/support/ui/repo-mazes';
 import { shownCamera } from '@tests/support/ui/shown-camera';
@@ -74,6 +76,36 @@ function pointer(type: string, init: PointerEventInit): void {
       pointerId: 1,
       pointerType: 'mouse',
       ...init,
+    })
+  );
+}
+
+const LAZY_BOARD = { x: 0, y: 0, width: 640, height: 640 } as const;
+
+/** A stage whose primary press pans lazily, over one button that counts its clicks. */
+function LazyStage({ onClick }: { readonly onClick: () => void }) {
+  const camera = useBoardCamera({ board: LAZY_BOARD });
+
+  return (
+    <CameraStage className="fixed inset-0" controller={camera} label="Lazy stage" primaryPan="lazy">
+      <button className="size-[640px]" onClick={onClick} type="button">
+        Content
+      </button>
+    </CameraStage>
+  );
+}
+
+function press(target: Element, type: string, x: number): void {
+  target.dispatchEvent(
+    new PointerEvent(type, {
+      bubbles: true,
+      cancelable: true,
+      pointerId: 1,
+      pointerType: 'mouse',
+      button: 0,
+      buttons: type === 'pointerup' ? 0 : 1,
+      clientX: x,
+      clientY: 400,
     })
   );
 }
@@ -224,6 +256,30 @@ describe('The camera stage', () => {
     await settled();
 
     expect(shownCamera().x).toBeCloseTo(fit.x + 100, 3);
+  });
+
+  test('lazily swallows the click that ends a drag, and only that one', async () => {
+    let clicks = 0;
+    await render(<LazyStage onClick={() => clicks++} />);
+    await expect.poll(() => shownCamera().k).toBeGreaterThan(0);
+    const content = page.getByRole('button', { name: 'Content' }).element();
+    const fit = shownCamera();
+    press(content, 'pointerdown', 600);
+    press(content, 'pointermove', 603);
+    press(content, 'pointermove', 620);
+    press(content, 'pointermove', 660);
+    press(content, 'pointerup', 660);
+    content.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }));
+
+    await expect.poll(() => shownCamera().x).toBeCloseTo(fit.x + 60, 3);
+    expect(clicks).toBe(0);
+
+    press(content, 'pointerdown', 600);
+    press(content, 'pointermove', 603);
+    press(content, 'pointerup', 603);
+    content.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }));
+
+    expect(clicks).toBe(1);
   });
 
   test('pans with the middle button', async () => {

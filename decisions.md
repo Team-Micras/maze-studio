@@ -334,12 +334,10 @@ The machine's rule is no builds in `/tmp`, so `tests/e2e/pwa.test.ts` builds the
   p95 16.7 ms, no frame over 25 ms. In the e2e project, on the production build, the board's
   centre stays 0.00 px from the straight line through the flight (39 frames), and its box moves
   less than 0.5 px between landing and 350 ms later.
-- **Screenshots wait for the raster.** Once the studio's heavier browser files ran beside them, the
-  16×16 board screenshots failed about one run in two: the camera, the geometry and the frame were
-  identical (logged), but every edge sat a fifth of a pixel apart, Chromium having kept the
-  transformed layer at an intermediate raster scale. The test now waits for the camera to stay put
-  for two frames and then 500 ms before the picture; eight runs of the browser project in a row
-  passed after that.
+- **Screenshots at the iframe's own scale.** Once the studio's heavier browser files ran beside
+  them, the 16×16 board screenshots failed about one run in two, every edge a fifth of a pixel
+  apart. The 4b review corrected the first reading (load) and the 500 ms wait it led to; see the
+  slice 4b review below.
 - **The studio keeps the library's zoom cheap.** Moving the camera into `Studio` brought back a
   regression 4a had fixed: the library's islands re-rendered at every frame (their filter callback
   followed the whole camera object), and so did the zoom island's three Radix tooltips; the
@@ -349,7 +347,7 @@ The machine's rule is no builds in `/tmp`, so `tests/e2e/pwa.test.ts` builds the
   The minimap of an open maze mounts only once the camera has landed, so the flight's first frame
   does not also paint it.
 
-## 10/10/2026 — Slice 2b review
+## 09/10/2026 — Slice 2b review
 
 - **Why `pull_request_target`.** GitHub's documentation (Troubleshooting Dependabot on GitHub
   Actions) says a Dependabot `pull_request` run gets a read-only `GITHUB_TOKEN` and only Dependabot
@@ -358,10 +356,10 @@ The machine's rule is no builds in `/tmp`, so `tests/e2e/pwa.test.ts` builds the
   the workflow as it is on `main`, so a pull request cannot change what runs with write access; the
   job checks out nothing from the pull request either way. `dependabot/fetch-metadata` is pinned
   to the commit of v2.5.0 (`21025c7`).
-- **The workflow waits for the required checks.** Before turning on auto-merge it runs
-  `gh pr checks --required --watch --fail-fast`, after waiting up to five minutes for the checks to
-  appear; when `main` requires none, that fails and nothing merges, so an unprotected `main` can
-  never merge a bump untested.
+- **The workflow waits for the required checks.** Before turning on auto-merge it waits up to 50
+  minutes for the required checks to appear, within the job's 90-minute limit, then runs
+  `gh pr checks --required --watch --fail-fast`; when `main` requires none, that fails and nothing
+  merges, so an unprotected `main` can never merge a bump untested.
 - **Publishing after an automatic merge.** A merge made with `GITHUB_TOKEN` starts no workflow, so
   neither `ci.yml` nor `pages.yml` runs on `main` after a bump; CI already ran on the pull request,
   but the site would keep the old mazes. Chosen without secrets: `pages.yml` also runs every
@@ -369,3 +367,39 @@ The machine's rule is no builds in `/tmp`, so `tests/e2e/pwa.test.ts` builds the
   deploy at the moment of the merge, the merge would need a GitHub App installation token or a
   fine-grained personal access token, kept as a Dependabot secret; the README says so.
 - **`pretest:watch`** generates the snapshot too, like the other test scripts.
+
+## 09/10/2026 — Slice 4b review
+
+- **The board screenshots are deterministic.** The cause was not load but a scale: with the UI off,
+  Vitest shrinks the tester iframe to fit its page with `transform: scale(…)`, and Playwright's
+  default page is 1280 × 720, so the 1440 × 900 iframe ran at 0.8. Chromium rasterises such a
+  layer at a provisional scale and adjusts it a few frames later, and the screenshot caught one or
+  the other (the camera, the geometry and the frame logged identical). The browser context now has
+  the tests' own 1440 × 900 viewport, so the scale is 1 (`@vitest/browser-playwright` leaves this
+  as a TODO), the references are 688 × 688 instead of 551 × 551, and the 500 ms wait is gone.
+  The stage also fits the board at exactly k = 1, and the harness passes its size to the camera, so
+  the first frame has the final camera. Proof, the browser project: before, 3 of 5 runs failed in
+  parallel and 2 of 5 with `--maxWorkers=1`; after, 5 of 5 and 5 of 5 passed.
+- **A drag from an artboard pans.** Writing the test showed that a real mouse drag from an artboard
+  did nothing: the link started the browser's native drag, which cancels the pointer. The artboard
+  is no longer draggable. In Chromium the pan's pointer capture sends the closing click to the
+  stage; the stage still swallows a click that ends a drag, for engines that send it to the link,
+  and a browser test of the stage covers that.
+- **The flight's curve is tested from DESIGN.md's numbers.** The e2e test records each transform of
+  the world with its time, turns the zoom into eased progress and fits the start time;
+  `cubic-bezier(0.45, 0, 0.12, 1)` written in the test, not the app's constant, matches within
+  0.002 to 0.007 over 21 samples, against 0.046 for `EASE_OUT`, 0.109 for `ease-in-out` and 0.231
+  for a linear flight.
+- **The production frame gate is calibrated to the machine.** Before measuring, a fixed JavaScript
+  workload (20 million steps of an LCG and a square root, the median of seven runs after a warm-up)
+  is timed unthrottled in the page; the throttle is `clamp(4 × 27 ms / measured, 1, 4)`. The 27 ms
+  reference is the median on the reference notebook, an i5-12500H with 16 threads, in Chromium of
+  Playwright 1.63, five contexts of 26.8 to 29.3 ms. Slowing the page 2× and 3× gives 55.8 ms and
+  84.4 ms, so rates 1.94 and 1.28: a CI runner with two vCPUs is no more than 4× slower than the
+  notebook in all.
+- **The phone's list focuses the list.** Without autofocus on a phone, so the on-screen keyboard does
+  not cover the list, the sheet focuses cmdk's root instead, and the arrows and Escape still work.
+  On a notebook the filter takes the focus; closing the list gives it back to the element that
+  opened it.
+- **`useStudioFlight`** holds the flights, out of `studio.tsx`; the world layer has
+  `will-change: transform` only while it flies.

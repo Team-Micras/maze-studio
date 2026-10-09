@@ -126,8 +126,9 @@ library and a maze (DESIGN.md 8); the camera hook (`board/use-canvas-camera.ts`)
 free of the limits while it lasts.
 
 - `studio/`: `Studio` puts the library and the open maze on one canvas under one camera, with the
-  flights between them (`studio-store.ts` holds its mode), the open board (`OpenBoard`), the
-  editor's islands (`EditorChrome`) and the quick list (`MazeList`, `list-order.ts`).
+  flights between them (`use-studio-flight.ts` runs them, `studio-store.ts` holds the mode), the
+  open board (`OpenBoard`), the editor's islands (`EditorChrome`) and the quick list (`MazeList`,
+  `list-order.ts`).
 - `library/`: `LibraryChrome` draws the library's islands (search, source and category, Open,
   theme, credit); `LibraryCanvas` mounts the visible rows of `Artboard`s, keeps the active one,
   fades the others while a maze is open, and reveals the one Tab reaches.

@@ -30,6 +30,11 @@ export interface CameraStageProps {
   readonly id?: string;
   /** What the primary button or one finger does; nothing by default. */
   readonly primaryPan?: PrimaryPan;
+  /**
+   * Whether the world layer is promoted (`will-change: transform`), as only during a flight
+   * (DESIGN.md 8): a promoted layer scales a texture instead of repainting, but blurs when zoomed.
+   */
+  readonly promoted?: boolean;
   readonly className?: string;
 }
 
@@ -95,6 +100,7 @@ export function CameraStage({
   children,
   id,
   primaryPan = 'off',
+  promoted = false,
   className,
 }: CameraStageProps) {
   const pointers = useRef(new Map<number, ScreenPoint>());
@@ -262,7 +268,11 @@ export function CameraStage({
       <div
         className={cn('absolute top-0 left-0 origin-top-left', camera === undefined && 'invisible')}
         data-world=""
-        style={camera === undefined ? undefined : worldStyle(camera)}
+        style={
+          camera === undefined
+            ? undefined
+            : { ...worldStyle(camera), willChange: promoted ? 'transform' : undefined }
+        }
       >
         {children}
       </div>

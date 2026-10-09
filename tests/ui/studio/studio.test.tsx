@@ -23,7 +23,7 @@ async function openMaze(index = 6): Promise<void> {
 
 async function openList(): Promise<void> {
   await userEvent.click(page.getByRole('button', { name: 'Maze list' }));
-  await expect.element(page.getByPlaceholder('Filter mazes…')).toHaveFocus();
+  await expect.element(page.getByPlaceholder('Filter mazes…')).toBeVisible();
 }
 
 describe('The quick maze list', () => {
@@ -36,6 +36,16 @@ describe('The quick maze list', () => {
 
     expect(rows.length).toBeGreaterThan(500);
     expect(rows.at(-1)?.querySelector('canvas')).toBeNull();
+  });
+
+  test('focuses the filter on a notebook, and gives the focus back to the button on Escape', async () => {
+    await mountApp();
+    await openMaze();
+    await openList();
+
+    await expect.element(page.getByPlaceholder('Filter mazes…')).toHaveFocus();
+    await userEvent.keyboard('{Escape}');
+    await expect.element(page.getByRole('button', { name: 'Maze list' })).toHaveFocus();
   });
 
   test('highlights the open maze when it opens', async () => {
@@ -57,6 +67,10 @@ describe('The quick maze list', () => {
     await openList();
 
     expect(document.querySelector('[role="dialog"]#maze-list')).not.toBeNull();
+    expect(document.activeElement).not.toBe(page.getByPlaceholder('Filter mazes…').element());
+    await expect
+      .poll(() => document.querySelector('#maze-list')?.contains(document.activeElement))
+      .toBe(true);
     await userEvent.keyboard('{ArrowDown}');
     await expect.poll(() => document.querySelector('h1')?.textContent).not.toBe(title);
     await userEvent.keyboard('{Escape}');

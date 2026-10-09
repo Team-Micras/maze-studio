@@ -1,6 +1,9 @@
 import { chromium, type Browser, type BrowserContext, type Page } from 'playwright';
 import { afterAll, beforeAll, describe, expect, inject, test } from 'vitest';
 
+import { cubicBezier } from '@/render';
+import { FLIGHT_IN_MS } from '@/ui/studio/studio-store';
+
 const app = inject('appUrl');
 
 declare global {
@@ -8,6 +11,7 @@ declare global {
     studioFrames?: Frame[];
     studioRecording?: boolean;
     modeAfterClick?: string | null;
+    worldSamples?: WorldSample[];
   }
 }
 
@@ -17,6 +21,11 @@ const contexts: BrowserContext[] = [];
 interface Frame {
   readonly mode: string;
   readonly board?: { x: number; y: number; width: number; height: number };
+}
+
+interface WorldSample {
+  readonly at: number;
+  readonly transform: string;
 }
 
 interface Camera {
@@ -45,13 +54,64 @@ function mode(page: Page): Promise<string | null> {
   return page.locator('[data-studio-mode]').getAttribute('data-studio-mode');
 }
 
-function camera(page: Page): Promise<Camera> {
-  return page.evaluate(() => {
-    const match = /translate\(([-\d.e]+)px, ([-\d.e]+)px\) scale\(([-\d.e]+)\)/.exec(
-      document.querySelector<HTMLElement>('[data-world]')?.style.transform ?? ''
-    );
-    return { x: Number(match?.[1]), y: Number(match?.[2]), k: Number(match?.[3]) };
+function parseCamera(transform: string): Camera {
+  const match = /translate\(([-\d.e]+)px, ([-\d.e]+)px\) scale\(([-\d.e]+)\)/.exec(transform);
+  return { x: Number(match?.[1]), y: Number(match?.[2]), k: Number(match?.[3]) };
+}
+
+async function camera(page: Page): Promise<Camera> {
+  return parseCamera(
+    await page.evaluate(
+      () => document.querySelector<HTMLElement>('[data-world]')?.style.transform ?? ''
+    )
+  );
+}
+
+/** Records every new transform of the world layer, with the time it was set. */
+async function recordWorld(page: Page): Promise<() => Promise<WorldSample[]>> {
+  await page.evaluate(() => {
+    const world = document.querySelector<HTMLElement>('[data-world]');
+    const samples: WorldSample[] = [];
+    window.worldSamples = samples;
+
+    if (world !== null) {
+      new MutationObserver(() => {
+        if (samples.at(-1)?.transform !== world.style.transform) {
+          samples.push({ at: performance.now(), transform: world.style.transform });
+        }
+      }).observe(world, { attributes: true, attributeFilter: ['style'] });
+    }
   });
+  return () => page.evaluate(() => window.worldSamples ?? []);
+}
+
+/** The flight's curve as DESIGN.md 8 writes it, apart from the constant the app uses. */
+const DESIGN_FLIGHT_CURVE = cubicBezier(0.45, 0, 0.12, 1);
+
+/**
+ * The largest gap between the eased progress seen and the flight's curve over `duration`, at the start
+ * time that fits best; the progress comes from the zoom, which grows geometrically with it.
+ */
+function easingError(samples: readonly WorldSample[], from: Camera, to: Camera, duration: number) {
+  const progress = samples
+    .map((sample) => ({
+      at: sample.at,
+      eased: Math.log(parseCamera(sample.transform).k / from.k) / Math.log(to.k / from.k),
+    }))
+    .filter((sample) => sample.eased > 0.05 && sample.eased < 0.95);
+  const first = progress[0]?.at ?? 0;
+  let best = Number.POSITIVE_INFINITY;
+
+  for (let start = first - duration; start <= first; start += 0.5) {
+    const worst = Math.max(
+      ...progress.map((sample) =>
+        Math.abs(DESIGN_FLIGHT_CURVE(Math.min(1, (sample.at - start) / duration)) - sample.eased)
+      )
+    );
+    best = Math.min(best, worst);
+  }
+
+  return { samples: progress.length, error: best };
 }
 
 /** Records the mode and the open board's box at every frame until `stop` is called. */
@@ -155,6 +215,19 @@ describe('The flight into a maze and back', () => {
     expect(new URL(page.url()).hash).toMatch(/^#\/repo\//);
   });
 
+  test('follows cubic-bezier(0.45, 0, 0.12, 1) over 620 ms', async () => {
+    const page = await open();
+    const from = await camera(page);
+    const stop = await recordWorld(page);
+    await openFirstMaze(page);
+    const to = await camera(page);
+    const { samples, error } = easingError(await stop(), from, to, FLIGHT_IN_MS);
+    console.info(`flight easing: ${samples} samples, at most ${error.toFixed(3)} off the curve`);
+
+    expect(samples).toBeGreaterThan(10);
+    expect(error).toBeLessThan(0.02);
+  });
+
   test('the browser Back flies back and lands on the artboard, focused', async () => {
     const page = await open();
     const key = await openFirstMaze(page);
@@ -192,6 +265,26 @@ describe('The flight into a maze and back', () => {
     const next = await page.evaluate(() => window.modeAfterClick);
 
     expect(next).toBe('editor');
+  });
+});
+
+describe('The library', () => {
+  test('a drag that starts on an artboard pans and does not open it', async () => {
+    const page = await open();
+    const box = await page.locator('a[data-artboard]').nth(6).boundingBox();
+    const start = center(box ?? { x: 0, y: 0, width: 0, height: 0 });
+    const before = await camera(page);
+    await page.mouse.move(start.x, start.y);
+    await page.mouse.down();
+    await page.mouse.move(start.x, start.y - 8, { steps: 2 });
+    await page.mouse.move(start.x, start.y - 60, { steps: 6 });
+    await page.mouse.up();
+    await page.waitForTimeout(300);
+    const after = await camera(page);
+
+    expect(after.y - before.y).toBeCloseTo(-60, 0);
+    expect(new URL(page.url()).hash).toBe('#/');
+    expect(await mode(page)).toBe('library');
   });
 });
 

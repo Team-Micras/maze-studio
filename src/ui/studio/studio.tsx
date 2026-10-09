@@ -5,20 +5,14 @@ import { filterCatalog, type CatalogEntry, type LibraryFilter } from '@/library'
 import {
   artboardIn,
   boardLimits,
-  cellOf,
-  constrainCamera,
-  EASE_FLIGHT,
   EDITOR_INSETS,
   EDITOR_KEEP,
   EDITOR_PHONE_INSETS,
   EDITOR_ZOOM,
-  fitCamera,
   LIBRARY_INSETS,
   libraryColumns,
   libraryGrid,
   libraryLimits,
-  revealCamera,
-  type Camera,
   type WorldRect,
 } from '@/render';
 import { useCanvasCamera } from '@/ui/board/use-canvas-camera';
@@ -38,14 +32,8 @@ import { EditorChrome } from './editor-chrome';
 import { listOrder, steppedKey } from './list-order';
 import { MazeList } from './maze-list';
 import { OpenBoard } from './open-board';
-import {
-  CHROME_IN_AT,
-  createStudioStore,
-  FLIGHT_IN_MS,
-  FLIGHT_OUT_MS,
-  LOOSE_CELL,
-  type StudioState,
-} from './studio-store';
+import { useStudioFlight } from './use-studio-flight';
+import { createStudioStore, type StudioState } from './studio-store';
 
 /** The props of {@link Studio}. */
 export interface StudioProps {
@@ -63,10 +51,6 @@ export interface StudioProps {
   readonly onPin: (route: Route) => void;
 }
 
-function prefersReducedMotion(): boolean {
-  return window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-}
-
 function typingIn(target: EventTarget | null): boolean {
   return (
     target instanceof HTMLElement &&
@@ -78,16 +62,6 @@ function routeOf(entry: CatalogEntry): Route {
   return entry.origin === 'mine' && entry.id !== undefined
     ? { kind: 'mine', id: entry.id }
     : { kind: 'repo', path: entry.path ?? entry.name };
-}
-
-/** The camera that shows `rect` at the same place on screen as `camera` shows `from`. */
-function sameScreenPlace(camera: Camera, from: WorldRect, rect: WorldRect): Camera {
-  const k = (camera.k * from.width) / rect.width;
-  return {
-    k,
-    x: camera.x + from.x * camera.k - rect.x * k,
-    y: camera.y + from.y * camera.k - rect.y * k,
-  };
 }
 
 /**
@@ -143,7 +117,26 @@ export function Studio({
           })
         : libraryLimits(grid, viewport, insets),
   });
-  const latest = useRef({
+  const onScreenKey = useRef(onScreen?.key);
+  const listOpener = useRef<HTMLElement | null>(null);
+
+  useLayoutEffect(() => {
+    onScreenKey.current = onScreen?.key;
+  });
+
+  const openList = useCallback(() => {
+    listOpener.current =
+      document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    store.setState({ listOpen: true, preview: undefined });
+  }, [store]);
+
+  const closeList = (): void => {
+    (listOpener.current ?? camera.element)?.focus({ preventScroll: true });
+    listOpener.current = null;
+  };
+
+  const { notePointer } = useStudioFlight({
+    store,
     camera,
     grid,
     shown,
@@ -153,139 +146,8 @@ export function Studio({
     onScreen,
     board,
     phone,
-  });
-  const lastPointer = useRef('mouse');
-  const libraryCamera = useRef<Camera | undefined>(undefined);
-  const libraryShown = useRef(false);
-  const openKey = opened?.key;
-  const previousKey = useRef<string | undefined>(undefined);
-  const previousShown = useRef<{ onScreen?: OpenMaze; board?: WorldRect }>({});
-
-  useLayoutEffect(() => {
-    latest.current = { camera, grid, shown, insets, editorInsets, opened, onScreen, board, phone };
-  });
-
-  useEffect(() => {
-    if (mode === 'library' && library !== undefined && camera.camera !== undefined) {
-      libraryShown.current = true;
-      libraryCamera.current = camera.camera;
-    }
-  }, [mode, library, camera.camera]);
-
-  useLayoutEffect(() => {
-    const before = previousKey.current;
-    previousKey.current = openKey;
-    const now = latest.current;
-    const view = now.camera.limits?.viewport;
-    const from = now.camera.camera;
-
-    if (openKey === before) {
-      return;
-    }
-
-    if (openKey !== undefined && before === undefined && now.opened !== undefined) {
-      const index = now.shown.findIndex((entry) => entry.key === openKey);
-      const cell = index < 0 ? LOOSE_CELL : cellOf(index, now.grid.columns);
-      const rect = artboardIn(cell, now.opened.maze);
-      const flies =
-        index >= 0 &&
-        libraryShown.current &&
-        store.getState().mode === 'library' &&
-        view !== undefined &&
-        !prefersReducedMotion();
-      store.setState({
-        cell,
-        viewing: now.phone || lastPointer.current === 'touch',
-        libraryZoom: from?.k,
-        leaving: undefined,
-        preview: undefined,
-        chromeIn: false,
-        mode: flies ? 'flying-in' : 'editor',
-      });
-      now.camera.fly({
-        to:
-          view === undefined
-            ? (from ?? { x: 0, y: 0, k: 1 })
-            : fitCamera(rect, view, now.editorInsets),
-        anchor: rect,
-        duration: flies ? FLIGHT_IN_MS : 0,
-        easing: EASE_FLIGHT,
-        land: 'fit',
-        onProgress: (progress) => {
-          if (progress >= CHROME_IN_AT && !store.getState().chromeIn) {
-            store.setState({ chromeIn: true });
-          }
-        },
-        onLand: () => {
-          store.setState({ mode: 'editor', chromeIn: true });
-          now.camera.element?.focus({ preventScroll: true });
-        },
-      });
-      return;
-    }
-
-    if (openKey === undefined && before !== undefined) {
-      const leaving = previousShown.current.onScreen;
-      const leftBoard = previousShown.current.board;
-      const index = now.shown.findIndex((entry) => entry.key === leaving?.key);
-      const back =
-        index < 0 || leaving === undefined
-          ? undefined
-          : artboardIn(cellOf(index, now.grid.columns), leaving.maze);
-      const libraryLanding =
-        view === undefined
-          ? undefined
-          : constrainCamera(
-              back === undefined
-                ? (libraryCamera.current ?? libraryLimits(now.grid, view, now.insets).fit)
-                : revealCamera(
-                    libraryCamera.current ?? libraryLimits(now.grid, view, now.insets).fit,
-                    back,
-                    view,
-                    now.insets
-                  ),
-              libraryLimits(now.grid, view, now.insets)
-            );
-      const start =
-        back === undefined || leftBoard === undefined || from === undefined
-          ? undefined
-          : sameScreenPlace(from, leftBoard, back);
-      const flies =
-        start !== undefined &&
-        libraryLanding !== undefined &&
-        store.getState().mode === 'editor' &&
-        !prefersReducedMotion();
-
-      if (flies) {
-        now.camera.jump(start);
-      }
-
-      store.setState({
-        mode: flies ? 'flying-out' : 'library',
-        cell: back === undefined ? store.getState().cell : cellOf(index, now.grid.columns),
-        leaving: flies ? leaving : undefined,
-        preview: undefined,
-        listOpen: false,
-        chromeIn: false,
-      });
-      now.camera.fly({
-        to: libraryLanding ?? from ?? { x: 0, y: 0, k: 1 },
-        anchor: back ?? leftBoard ?? { x: 0, y: 0, width: 1, height: 1 },
-        duration: flies ? FLIGHT_OUT_MS : 0,
-        easing: EASE_FLIGHT,
-        land: libraryLanding === undefined ? 'fit' : 'keep',
-        onLand: () => {
-          store.setState({ mode: 'library', leaving: undefined });
-          document
-            .querySelector<HTMLElement>(`a[data-artboard="${CSS.escape(leaving?.key ?? '')}"]`)
-            ?.focus({ preventScroll: true });
-        },
-      });
-    }
-  }, [openKey, store]);
-
-  useLayoutEffect(() => {
-    previousShown.current = { onScreen, board };
+    mode,
+    libraryLoaded: library !== undefined,
   });
 
   const pinKey = (key: string): void => {
@@ -311,11 +173,11 @@ export function Studio({
 
       if (event.key === 'l' || event.key === 'L') {
         event.preventDefault();
-        store.setState({ listOpen: true });
+        openList();
       } else if (event.key === '[' || event.key === ']') {
         event.preventDefault();
         const keys = listOrder(library.entries).map((entry) => entry.key);
-        const next = steppedKey(keys, latest.current.onScreen?.key, event.key === ']' ? 1 : -1);
+        const next = steppedKey(keys, onScreenKey.current, event.key === ']' ? 1 : -1);
         const entry = library.entries.find((candidate) => candidate.key === next);
 
         if (entry !== undefined) {
@@ -325,7 +187,7 @@ export function Studio({
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [mode, library, store, onPin]);
+  }, [mode, library, onPin, openList]);
 
   const libraryVisible = mode === 'library' || mode === 'flying-out';
   const editorVisible = mode === 'editor' || (mode === 'flying-in' && state.chromeIn);
@@ -357,11 +219,10 @@ export function Studio({
               inEditor && onScreen !== undefined ? `${onScreen.name}, maze board` : 'Maze library'
             }
             library={library}
-            onArtboardPointer={(pointerType) => {
-              lastPointer.current = pointerType;
-            }}
+            onArtboardPointer={notePointer}
             othersHidden={!libraryVisible}
             primaryPan={primaryPan}
+            promoted={mode === 'flying-in' || mode === 'flying-out'}
           >
             {mode !== 'library' && onScreen !== undefined && board !== undefined ? (
               <OpenBoard maze={onScreen.maze} rect={board} shown={mode !== 'flying-out'} />
@@ -407,7 +268,14 @@ export function Studio({
           landed={mode === 'editor'}
           listOpen={state.listOpen}
           onLibrary={onLibrary}
-          onToggleList={() => store.setState({ listOpen: !state.listOpen, preview: undefined })}
+          onToggleList={() => {
+            if (state.listOpen) {
+              store.setState({ listOpen: false, preview: undefined });
+              closeList();
+            } else {
+              openList();
+            }
+          }}
           open={onScreen}
           phone={phone}
           visible={editorVisible}
@@ -419,11 +287,11 @@ export function Studio({
           library={library}
           onCancel={() => {
             store.setState({ listOpen: false, preview: undefined });
-            camera.element?.focus({ preventScroll: true });
+            closeList();
           }}
           onPin={(key) => {
             pinKey(key);
-            camera.element?.focus({ preventScroll: true });
+            closeList();
           }}
           onPreview={(key) => store.setState({ preview: key })}
           phone={phone}

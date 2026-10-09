@@ -41,7 +41,8 @@ function artboardStyle(place: WorldRect): CSSProperties & Record<'--bw', number>
  * One maze on the library's canvas (DESIGN.md 7): a link that opens it, its thumbnail, and its
  * name and size above at a constant 12 px whatever the zoom. Hover and keyboard focus ring it.
  * A new place slides there, so a reflow moves the artboards that stay mounted. A plain click pushes
- * the route at once, so the maze opens in the next frame; a modified one opens a new tab.
+ * the route at once, so the maze opens in the next frame; a modified one opens a new tab. The link
+ * is not draggable, so a drag that starts on it pans the canvas.
  */
 export const Artboard = memo(function Artboard({
   entry,
@@ -57,6 +58,7 @@ export const Artboard = memo(function Artboard({
       aria-hidden={hidden || undefined}
       className="group absolute top-0 left-0 block text-inherit no-underline outline-none transition-[transform,opacity] duration-[360ms,320ms] ease-(--ease-out) data-hidden:pointer-events-none data-hidden:opacity-0"
       data-hidden={hidden ? '' : undefined}
+      draggable={false}
       tabIndex={hidden ? -1 : undefined}
       data-artboard={entry.key}
       href={routeHash(routeOf(entry))}

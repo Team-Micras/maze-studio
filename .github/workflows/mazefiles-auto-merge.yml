@@ -12,7 +12,7 @@ jobs:
   enable:
     if: github.event.pull_request.user.login == 'dependabot[bot]'
     runs-on: ubuntu-24.04
-    timeout-minutes: 60
+    timeout-minutes: 90
     permissions:
       contents: write
       pull-requests: write
@@ -43,7 +43,7 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           PR_URL: ${{ github.event.pull_request.html_url }}
         run: |
-          for attempt in $(seq 1 30); do
+          for attempt in $(seq 1 300); do
             set +e
             gh pr checks "$PR_URL" --required > /dev/null 2>&1
             status=$?

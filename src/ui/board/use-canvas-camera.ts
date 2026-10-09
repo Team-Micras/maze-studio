@@ -28,6 +28,12 @@ export interface CanvasCameraOptions {
   readonly content: WorldRect;
   /** The limits for a viewport of a given size. */
   readonly limits: (viewport: ViewportSize) => CameraLimits;
+  /**
+   * The viewport's size when it is known before it is measured, as for a stage of fixed size: the
+   * camera then has its place from the first frame, and never changes the world's transform as it
+   * mounts.
+   */
+  readonly viewport?: ViewportSize;
 }
 
 /** A camera placed by a move, and whether it is free of the limits, as during a flight. */
@@ -98,9 +104,13 @@ function prefersReducedMotion(): boolean {
  * fit, also when the viewport or the content changes; after a move it keeps that place within the
  * limits.
  */
-export function useCanvasCamera({ content, limits: limitsFor }: CanvasCameraOptions): CanvasCamera {
+export function useCanvasCamera({
+  content,
+  limits: limitsFor,
+  viewport: knownViewport,
+}: CanvasCameraOptions): CanvasCamera {
   const [element, setElement] = useState<HTMLElement | null>(null);
-  const [viewport, setViewport] = useState<ViewportSize | undefined>(undefined);
+  const [viewport, setViewport] = useState<ViewportSize | undefined>(knownViewport);
   const [placed, setPlaced] = useState<Placed | undefined>(undefined);
   const animation = useRef(0);
 

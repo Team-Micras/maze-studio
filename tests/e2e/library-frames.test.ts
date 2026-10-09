@@ -1,14 +1,15 @@
 import { chromium, type Browser, type Page } from 'playwright';
 import { afterAll, beforeAll, describe, expect, inject, test } from 'vitest';
 
+import { cpuBenchmark, throttleRate } from '@tests/support/e2e/cpu-rate';
 import { FRAME_BUDGET, frameReport, medianRun, type FrameReport } from '@tests/support/ui/frames';
 
 const app = inject('appUrl');
 const STEPS = 200;
 const RUNS = 3;
-const SLOWDOWN = 4;
 
 let browser: Browser;
+let slowdown = 1;
 
 type Motion = 'drag' | 'zoom';
 
@@ -85,7 +86,7 @@ async function measure(motion: Motion): Promise<FrameReport> {
   await page.locator('a[data-artboard]').first().waitFor();
   await page.waitForTimeout(500);
   const session = await context.newCDPSession(page);
-  await session.send('Emulation.setCPUThrottlingRate', { rate: SLOWDOWN });
+  await session.send('Emulation.setCPUThrottlingRate', { rate: slowdown });
   const reports: FrameReport[] = [];
 
   try {
@@ -105,13 +106,22 @@ function describeRun(name: string, report: FrameReport): string {
 
 beforeAll(async () => {
   browser = await chromium.launch();
+  const context = await browser.newContext();
+
+  try {
+    const measured = await cpuBenchmark(await context.newPage());
+    slowdown = throttleRate(measured);
+    console.info(`CPU benchmark ${measured.toFixed(1)} ms, throttled ${slowdown.toFixed(2)}×`);
+  } finally {
+    await context.close();
+  }
 });
 
 afterAll(async () => {
   await browser?.close();
 });
 
-describe('The built library at 4× CPU throttling', () => {
+describe('The built library as slow as the reference notebook at 4× CPU throttling', () => {
   test.each<Motion>(['drag', 'zoom'])(
     '%s keeps the frame budget of DESIGN.md 8',
     async (motion) => {

@@ -4,6 +4,7 @@ import {
   EDITOR_KEEP,
   EDITOR_ZOOM,
   type Insets,
+  type ViewportSize,
   type WorldRect,
   type ZoomRange,
 } from '@/render';
@@ -20,6 +21,8 @@ export interface BoardCameraOptions {
   readonly zoom?: ZoomRange;
   /** How many pixels of the board stay on screen; the editor's 96 by default. */
   readonly keep?: number;
+  /** The viewport's size, when known before it is measured. */
+  readonly viewport?: ViewportSize;
 }
 
 /**
@@ -31,9 +34,11 @@ export function useBoardCamera({
   insets = EDITOR_INSETS,
   zoom = EDITOR_ZOOM,
   keep = EDITOR_KEEP,
+  viewport: knownViewport,
 }: BoardCameraOptions): CanvasCamera {
   return useCanvasCamera({
     content: board,
+    viewport: knownViewport,
     limits: (viewport) => boardLimits({ board, viewport, insets, zoom, keep }),
   });
 }

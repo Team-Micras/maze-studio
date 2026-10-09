@@ -28,7 +28,7 @@ export interface BoardHarnessProps {
 export function BoardHarness({ maze, overlays, insets, size, status = true }: BoardHarnessProps) {
   const geometry = boardGeometry(maze);
   const board = { x: 0, y: 0, width: geometry.width, height: geometry.height };
-  const camera = useBoardCamera({ board, insets });
+  const camera = useBoardCamera({ board, insets, viewport: size });
 
   return (
     <div

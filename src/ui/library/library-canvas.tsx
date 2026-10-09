@@ -40,6 +40,8 @@ export interface LibraryCanvasProps {
   readonly label?: string;
   /** What the primary button and one finger do on the canvas. */
   readonly primaryPan?: PrimaryPan;
+  /** Whether the world layer is promoted, as during a flight. */
+  readonly promoted?: boolean;
   /** Hands on the kind of pointer that pressed an artboard: mouse, pen or touch. */
   readonly onArtboardPointer?: (pointerType: string) => void;
   /** More world content, drawn above the artboards, such as the open board. */
@@ -70,6 +72,7 @@ export function LibraryCanvas({
   activeHidden = false,
   label = 'Maze library',
   primaryPan = 'lazy',
+  promoted = false,
   onArtboardPointer,
   children,
   className,
@@ -123,6 +126,7 @@ export function LibraryCanvas({
       id={CANVAS_ID}
       label={label}
       primaryPan={primaryPan}
+      promoted={promoted}
     >
       <div
         onPointerDownCapture={(event) => onArtboardPointer?.(event.pointerType)}

@@ -106,17 +106,21 @@ const Items = memo(function Items({ entries, library, root, onPin }: ItemsProps)
  * The quick maze list (PLAN.md 3.4, DESIGN.md 6): Mine first, then the repository, filtered by
  * the library's own search. Moving the highlight with the arrows, or with `[` and `]`, which never
  * reach the filter, previews that maze in place; Enter or a click pins it and closes; Esc puts
- * back the pinned one and closes. A drawer at the left on a notebook, a sheet on a phone; row
- * thumbnails are drawn as they scroll into view.
+ * back the pinned one and closes. A drawer at the left on a notebook, with the filter focused; a
+ * sheet on a phone, where the list itself takes the focus, so the arrows work and the on-screen
+ * keyboard does not cover the list until the filter is tapped. Row thumbnails are drawn as they scroll into view.
  */
 export function MazeList({ library, current, phone, onPreview, onPin, onCancel }: MazeListProps) {
   const [query, setQuery] = useState('');
   const [list, setList] = useState<HTMLDivElement | null>(null);
   const input = useRef<HTMLInputElement>(null);
+  const commandRoot = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    input.current?.focus({ preventScroll: true });
-  }, []);
+    if (!phone) {
+      input.current?.focus({ preventScroll: true });
+    }
+  }, [phone]);
   const entries = library.index.search(listOrder(library.entries), query);
   const keys = entries.map((entry) => entry.key);
   const handlers = useRef({ onPin });
@@ -143,14 +147,16 @@ export function MazeList({ library, current, phone, onPreview, onPin, onCancel }
 
   const command = (
     <Command
-      className="h-full bg-transparent"
+      className="h-full bg-transparent outline-none"
       label="Maze list"
       onValueChange={(key) => {
         if (keys.includes(key)) {
           onPreview(key);
         }
       }}
+      ref={commandRoot}
       shouldFilter={false}
+      tabIndex={-1}
       value={current ?? ''}
     >
       <CommandInput
@@ -177,7 +183,14 @@ export function MazeList({ library, current, phone, onPreview, onPin, onCancel }
         }}
         open
       >
-        <SheetContent className="h-[62dvh]" id={MAZE_LIST_ID}>
+        <SheetContent
+          className="h-[62dvh]"
+          id={MAZE_LIST_ID}
+          onOpenAutoFocus={(event) => {
+            event.preventDefault();
+            commandRoot.current?.focus({ preventScroll: true });
+          }}
+        >
           <SheetTitle className="sr-only">Maze list</SheetTitle>
           <SheetDescription className="sr-only">
             Highlight a maze to preview it, Enter to keep it, Escape to go back.
