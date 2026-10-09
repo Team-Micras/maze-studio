@@ -32,3 +32,6 @@ __screenshots__
 
 # oh-my-claudecode state
 .omc/
+
+# Generated from vendor/mazefiles before dev, build and tests
+src/library/snapshot.json

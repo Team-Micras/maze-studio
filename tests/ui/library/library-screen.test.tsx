@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, test } from 'vitest';
 import { page, userEvent } from 'vitest/browser';
 
+import { loadSnapshot, repoCatalog } from '@/library';
 import '@/ui/styles.css';
 import { axeViolations } from '@tests/support/axe-check';
 import { settled } from '@tests/support/ui/animations';
@@ -117,11 +118,15 @@ describe('The library canvas', () => {
 });
 
 describe('Search and filters', () => {
-  test('21 shows the six 21×21 mazes', async () => {
+  test('21 shows every 21×21 maze', async () => {
+    const expected = repoCatalog((await loadSnapshot()).files).filter(
+      (maze) => maze.width === 21 && maze.height === 21
+    ).length;
     await mountApp();
     await userEvent.fill(page.getByRole('searchbox', { name: 'Search mazes' }), '21');
 
-    await expect.poll(() => artboards().length).toBe(6);
+    await expect.poll(() => artboards().length).toBe(expected);
+    expect(expected).toBeGreaterThanOrEqual(6);
     expect(
       artboards().every((board) => board.getAttribute('aria-label')?.endsWith('21 by 21'))
     ).toBe(true);

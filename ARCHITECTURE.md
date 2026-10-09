@@ -50,9 +50,9 @@ browser; there is no server.
   counts written by hand.
 
 `tests/maze/mazefiles-corpus.test.ts` reads every file of `vendor/mazefiles` at the pinned commit:
-blob SHA, byte-for-byte round trip and compact-code round trip.
-It also checks that no file has an `error` under its folder's profile, and pins how many files each
-proof rule fires on. `tests/maze/round-trip-properties.test.ts` does the same over random mazes from a fixed seed, with
+blob SHA, byte-for-byte round trip and compact-code round trip, no irregularity, and no `error`
+under its folder's profile. It fixes no count of one commit, only a floor of 500 files, and logs
+the sizes and how many files each rule fires on. `tests/maze/round-trip-properties.test.ts` does the same over random mazes from a fixed seed, with
 open borders, which the repository never has.
 
 ## The library
@@ -60,8 +60,9 @@ open borders, which the repository never has.
 `src/library/index.ts` is its public face. It imports only `src/maze`.
 
 - `snapshot.ts`, `snapshot.json`: every maze file of the pinned mazefiles commit as path, git blob
-  SHA and compact code, written by `bun run snapshot` (`scripts/snapshot-mazefiles.ts`) and loaded
-  by `loadSnapshot()` from its own chunk. `tests/library/snapshot.test.ts` compares it with the
+  SHA and compact code, generated (never committed) by `bun run snapshot`
+  (`scripts/snapshot-mazefiles.ts`), which the `pre` scripts of `dev`, `build`, `lint`,
+  `typecheck` and the tests run, and loaded by `loadSnapshot()` from its own chunk. `tests/library/snapshot.test.ts` compares it with the
   submodule file by file and byte by byte: it is the anchor of the pinned hash.
 - `github-updater.ts`: `updateFromGitHub` asks the branch (with `If-None-Match`), lists the tree of
   a new commit, downloads only new or changed files from the raw host by commit, checks each blob

@@ -45,7 +45,7 @@ function expectWithinBudget(report: FrameReport): void {
   expect(report.slowShare).toBeLessThanOrEqual(FRAME_BUDGET.slowShare);
 }
 
-test('dragging the 581 mazes keeps the frame budget of DESIGN.md 8 at 4× CPU throttling', async () => {
+test('dragging every maze of the repository keeps the frame budget of DESIGN.md 8 at 4× CPU throttling', async () => {
   await mountApp();
   const start = shownCamera();
   let mounted = 0;
@@ -72,7 +72,7 @@ test('dragging the 581 mazes keeps the frame budget of DESIGN.md 8 at 4× CPU th
   expectWithinBudget(median);
 });
 
-test('zooming the 581 mazes keeps the frame budget of DESIGN.md 8 at 4× CPU throttling', async () => {
+test('zooming every maze of the repository keeps the frame budget of DESIGN.md 8 at 4× CPU throttling', async () => {
   await mountApp();
   const fit = shownCamera().k;
   let mounted = 0;

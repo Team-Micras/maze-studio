@@ -1,0 +1,42 @@
+name: Auto-merge mazefiles updates
+
+# Dependabot's weekly bump of vendor/mazefiles merges itself once CI passes. The workflow runs on
+# pull_request_target so it has a token that can turn on auto-merge, and for that reason it never
+# checks out or runs anything from the pull request: it reads Dependabot's metadata and the list of
+# changed files through the API, and asks GitHub to merge when the required checks pass.
+on: pull_request_target
+
+permissions: {}
+
+jobs:
+  enable:
+    if: github.event.pull_request.user.login == 'dependabot[bot]'
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - id: metadata
+        uses: dependabot/fetch-metadata@v2
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Check that the pull request only moves the submodule
+        if: steps.metadata.outputs.package-ecosystem == 'gitsubmodule'
+        id: scope
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_URL: ${{ github.event.pull_request.html_url }}
+        run: |
+          files="$(gh pr diff "$PR_URL" --name-only)"
+          echo "changed: $files"
+          if [ "$files" = "vendor/mazefiles" ]; then
+            echo "only-submodule=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Merge once CI passes
+        if: steps.scope.outputs.only-submodule == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_URL: ${{ github.event.pull_request.html_url }}
+        run: gh pr merge --auto --squash "$PR_URL"

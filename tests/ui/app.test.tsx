@@ -2,6 +2,7 @@ import { afterEach, describe, expect, test } from 'vitest';
 import { page, userEvent } from 'vitest/browser';
 
 import { MAZEFILES } from '@/library/mazefiles';
+import { loadSnapshot } from '@/library/snapshot';
 import { encodeMazeCode } from '@/maze';
 import '@/ui/styles.css';
 import { axeViolations } from '@tests/support/axe-check';
@@ -134,8 +135,11 @@ describe('The shell', () => {
     await expect
       .element(page.getByRole('link', { name: 'micromouseonline/mazefiles' }))
       .toHaveAttribute('href', MAZEFILES.url);
-    await expect.element(page.getByText(/^581 mazes from/)).toBeVisible();
-    await expect.element(page.getByText('548dcde')).toBeVisible();
+    const snapshot = await loadSnapshot();
+    await expect
+      .element(page.getByText(new RegExp(`^${snapshot.files.length} mazes from`)))
+      .toBeVisible();
+    await expect.element(page.getByText(snapshot.commit.slice(0, 7))).toBeVisible();
   });
 
   test('switches the theme for the session, with the desk colour in theme-color', async () => {

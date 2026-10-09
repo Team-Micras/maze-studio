@@ -1,8 +1,10 @@
-import { writeFileSync, mkdtempSync, rmSync } from 'node:fs';
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 import { chromium, type Browser, type BrowserContext, type Page } from 'playwright';
 import { afterAll, beforeAll, describe, expect, inject, test } from 'vitest';
+
+import { decodeMazeCode } from '@/maze';
 
 const ROOT = join(import.meta.dirname, '..', '..');
 const app = inject('appUrl');
@@ -16,6 +18,17 @@ o---o---o---o
 `;
 
 let browser: Browser;
+
+/** How many mazes of this size the snapshot the app was built with holds. */
+function mazesOfSize(width: number, height: number): number {
+  const snapshot: { files: { code: string }[] } = JSON.parse(
+    readFileSync(join(ROOT, 'src', 'library', 'snapshot.json'), 'utf8')
+  );
+  return snapshot.files.filter((file) => {
+    const decoded = decodeMazeCode(file.code);
+    return decoded.ok && decoded.value.maze.width === width && decoded.value.maze.height === height;
+  }).length;
+}
 const contexts: BrowserContext[] = [];
 
 async function library(hash = '#/'): Promise<Page> {
@@ -66,11 +79,16 @@ describe('The library of the built app', () => {
     expect(found.every((label) => /2011/.test(label))).toBe(true);
   });
 
-  test('21 finds the six 21×21 mazes', async () => {
+  test('21 finds every 21×21 maze', async () => {
+    const expected = mazesOfSize(21, 21);
     const page = await library();
     await page.getByRole('searchbox', { name: 'Search mazes' }).fill('21');
-    await page.waitForFunction(() => document.querySelectorAll('a[data-artboard]').length === 6);
+    await page.waitForFunction(
+      (count) => document.querySelectorAll('a[data-artboard]').length === count,
+      expected
+    );
 
+    expect(expected).toBeGreaterThanOrEqual(6);
     expect((await labels(page)).every((label) => label.endsWith('21 by 21'))).toBe(true);
   });
 

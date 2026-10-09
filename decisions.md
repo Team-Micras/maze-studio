@@ -271,3 +271,29 @@ The machine's rule is no builds in `/tmp`, so `tests/e2e/pwa.test.ts` builds the
   is always mounted, since one mounted with its text is not read.
 - **Opened files up to 1 MiB.** A larger `.txt` is refused with a toast before it is read; a 64×64
   maze is under 40 kB.
+
+## 09/10/2026 — Slice 2b: the snapshot follows the submodule
+
+- **Dependabot moves the mazes, CI merges them.** The owner chose to keep the library in step with
+  mazefiles through Dependabot's `gitsubmodule` updates, weekly, merged automatically once CI
+  passes (PLAN.md 11). `mazefiles-auto-merge.yml` runs on `pull_request_target`, since a
+  Dependabot `pull_request` gets a read-only token, and so it never checks out or runs the pull
+  request's code: it reads `dependabot/fetch-metadata`'s ecosystem and the changed files through
+  `gh`, and only for a pull request that changes `vendor/mazefiles` alone does it run
+  `gh pr merge --auto --squash`. Its token has `contents: write` and `pull-requests: write` and
+  nothing else; the merge itself waits for the `check` job the protection of `main` requires.
+- **The snapshot is generated, not committed.** `src/library/snapshot.json` is in `.gitignore`;
+  the `pre` scripts of `dev`, `build`, `lint`, `typecheck`, `test`, `test:unit`, `test:browser`,
+  `test:performance` and `test:e2e` run `bun run snapshot`, which writes it from the submodule
+  unless it already holds the submodule's commit and the submodule has no local change. CI and
+  `pages.yml` run those scripts, so a bump needs nothing else. The file generated at `548dcde` is
+  byte for byte the one committed before.
+- **Corpus tests check invariants, not one commit's numbers.** Gone: the pinned hash, the 581
+  files, the size tallies (523, 16, 33, 6, 3), the proof-rule counts (100, 2, 54) and the two files
+  that end in two line feeds. Kept: blob SHA, byte-for-byte and compact-code round trips, no
+  irregularity, no `error` under the folder's profile, the submodule checked out at its gitlink,
+  and the snapshot equal to the submodule. A floor of 500 files catches an empty submodule; the
+  sizes and rule counts are logged. Counts elsewhere (the catalog, `21` in the search, the credit)
+  are now read from the snapshot. Tests that open named mazes (`japan2011hef`, `AAMC15Maze`,
+  `taiwan2015hef`, `japan2016hef`) would need a look if upstream ever edited or removed those
+  files; new mazes never touch them.

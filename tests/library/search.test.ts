@@ -76,14 +76,15 @@ describe('The search over the pinned repository', () => {
     expect(found.every((maze) => maze.year === 2011)).toBe(true);
   });
 
-  test('21 finds the six 21×21 mazes and nothing else', () => {
+  test('21 finds every 21×21 maze and nothing else', () => {
     const found = index.search(catalog, '21');
 
-    expect(found).toHaveLength(6);
+    expect(found).toEqual(catalog.filter((maze) => maze.width === 21 && maze.height === 21));
+    expect(found.length).toBeGreaterThanOrEqual(6);
     expect(found.every((maze) => maze.width === 21 && maze.height === 21)).toBe(true);
   });
 
-  test.each(['21x21', '21×21', '21X21'])('%s finds the same six', (query) => {
+  test.each(['21x21', '21×21', '21X21'])('%s finds the same mazes', (query) => {
     expect(names(query)).toEqual(names('21'));
   });
 
@@ -111,7 +112,12 @@ describe('filterCatalog', () => {
     expect(halfsize.length).toBeGreaterThan(0);
     expect(halfsize.every((maze) => maze.category === 'halfsize')).toBe(true);
     expect(mine).toEqual([]);
-    expect(searched).toHaveLength(6);
+    expect(searched).toEqual(
+      catalog.filter(
+        (maze) => maze.category === 'halfsize' && maze.width === 21 && maze.height === 21
+      )
+    );
+    expect(searched.length).toBeGreaterThan(0);
     expect(filterCatalog(catalog, DEFAULT_FILTER, index)).toEqual(catalog);
   });
 });

@@ -17,27 +17,11 @@ import {
 } from '@/maze';
 
 const MAZEFILES = join(import.meta.dirname, '..', '..', 'vendor', 'mazefiles');
-const PINNED_COMMIT = '548dcdeb359bbd3aca997371f8542ec9644840ce';
-const DOUBLE_NEWLINE = ['halfsize/japan2008hes.txt', 'halfsize/japan2016hef.txt'];
-
 /**
- * How many files each rule fires on at the pinned commit, with each file's folder as its profile:
- * only the proof rules, all warnings.
+ * The fewest maze files the repository is expected to hold: a sanity bound, loose enough that new
+ * mazes never break it, tight enough to catch an empty or half-read submodule.
  */
-const FINDINGS_AT_PINNED_COMMIT = {
-  'loose-post': 100,
-  'goal-reachable': 2,
-  'single-goal-entrance': 54,
-};
-
-/** The size tallies of the pinned commit, by folder: `<folder> <width>×<height>` → files. */
-const SIZES_AT_PINNED_COMMIT = {
-  'classic 16×16': 523,
-  'training 16×16': 16,
-  'halfsize 32×32': 33,
-  'halfsize 21×21': 6,
-  'halfsize 16×16': 3,
-};
+const AT_LEAST_FILES = 500;
 
 interface MazeFile {
   readonly path: string;
@@ -83,13 +67,10 @@ beforeAll(() => {
   files = committedMazeFiles();
 });
 
-describe('every maze file of the pinned mazefiles commit', () => {
-  test('is the commit the plan was checked against, with its 581 mazes', () => {
-    expect(git('rev-parse', 'HEAD').trim()).toBe(PINNED_COMMIT);
-    expect(files).toHaveLength(581);
-    expect(new Set(files.map((file) => file.path.split('/')[0]))).toEqual(
-      new Set(['classic', 'halfsize', 'training'])
-    );
+describe('every maze file of the commit the submodule pins', () => {
+  test('is there, at least 500 of them in the repository folders', () => {
+    expect(files.length).toBeGreaterThanOrEqual(AT_LEAST_FILES);
+    expect(files.every((file) => /^[^/]+\/[^/]+\.txt$/.test(file.path))).toBe(true);
   });
 
   test('is read from disk exactly as committed: its git blob SHA matches', () => {
@@ -117,13 +98,6 @@ describe('every maze file of the pinned mazefiles commit', () => {
     expect(rewritten.map((file) => file.path)).toEqual([]);
   });
 
-  test('keeps the second line feed of the two files that end in two', () => {
-    const trailers = files
-      .map((file) => [file.path, parsed(file).trailer] as const)
-      .filter(([, trailer]) => trailer !== '');
-    expect(trailers).toEqual(DOUBLE_NEWLINE.map((path) => [path, '\n']));
-  });
-
   test('round-trips through the compact code with its trailer', () => {
     const broken = files.filter((file) => {
       const { maze, trailer } = parsed(file);
@@ -138,20 +112,9 @@ describe('every maze file of the pinned mazefiles commit', () => {
     expect(broken.map((file) => file.path)).toEqual([]);
   });
 
-  test('has the sizes the plan counted at the pinned commit', () => {
-    const sizes: Record<string, number> = {};
-
-    for (const file of files) {
-      const { maze } = parsed(file);
-      const key = `${file.path.split('/')[0]} ${maze.width}×${maze.height}`;
-      sizes[key] = (sizes[key] ?? 0) + 1;
-    }
-
-    expect(sizes).toEqual(SIZES_AT_PINNED_COMMIT);
-  });
-
-  test('has no error under the profile of its folder, and the proof counts of the pinned commit', () => {
+  test('has no error under the profile of its folder', () => {
     const errors: string[] = [];
+    const sizes: Record<string, number> = {};
     const filesByRule: Record<string, number> = {};
 
     for (const file of files) {
@@ -162,13 +125,20 @@ describe('every maze file of the pinned mazefiles commit', () => {
           .filter((finding) => finding.severity === 'error')
           .map((finding) => `${file.path} ${finding.rule}`)
       );
+      const size = `${file.path.split('/')[0]} ${maze.width}×${maze.height}`;
+      sizes[size] = (sizes[size] ?? 0) + 1;
 
       for (const rule of new Set(found.map((finding) => finding.rule))) {
         filesByRule[rule] = (filesByRule[rule] ?? 0) + 1;
       }
     }
 
+    console.info(
+      `mazefiles at ${git('rev-parse', '--short', 'HEAD').trim()}: ${files.length} files`,
+      sizes,
+      'files per rule',
+      filesByRule
+    );
     expect(errors).toEqual([]);
-    expect(filesByRule).toEqual(FINDINGS_AT_PINNED_COMMIT);
   });
 });

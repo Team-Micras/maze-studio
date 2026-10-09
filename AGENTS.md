@@ -13,11 +13,13 @@
 - A new dependency needs its reason written in [`decisions.md`](decisions.md), which also
   records the other choices made along the way.
 - Code and docs in English. Doc comments on exported APIs; no comments inside function bodies.
-- `vendor/mazefiles` is pinned; update it only on purpose, together with the snapshot. From slice 2
-  on, the test that compares `src/library/snapshot.json` with the submodule (path, git blob SHA and
-  compact code of every file) is the anchor of that hash: the snapshot, the library and the
-  format's round-trip tests all trust the commit the submodule pins, and that test is what fails
-  when the two drift apart.
+- `vendor/mazefiles` is pinned, and Dependabot moves it forward every week with a pull request that
+  merges itself once CI passes. `src/library/snapshot.json` is generated from the submodule by the
+  `pre` scripts and never committed. Tests of the corpus check invariants (blob SHA, byte-for-byte
+  and compact-code round trips, no `error` under the folder's profile, snapshot equal to the
+  submodule), never counts of one commit, so a new maze upstream needs no change here.
+- On GitHub, the repository needs "Allow auto-merge" turned on and a rule for `main` that requires
+  CI's `check` job; see the README. Set them up with the first push.
 - Reference screenshots (`tests/**/screenshots/`) are made in the Playwright image of the pinned
   version, `mcr.microsoft.com/playwright:v1.63.0`, so that they match CI and not one notebook.
   After a deliberate change of the drawing, check the disk with `df -h /` and, from the repository,

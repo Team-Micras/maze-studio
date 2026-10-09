@@ -8,9 +8,10 @@ import { createMaze, encodeMazeCode } from '@/maze';
 
 describe('the catalog', () => {
   test('lists every repository maze with its folder, size, competition and year', async () => {
-    const entries = repoCatalog((await loadSnapshot()).files);
+    const { files } = await loadSnapshot();
+    const entries = repoCatalog(files);
 
-    expect(entries).toHaveLength(581);
+    expect(entries).toHaveLength(files.length);
     expect(entries.find((entry) => entry.name === 'japan2011hef')).toEqual({
       key: 'repo:halfsize/japan2011hef.txt',
       origin: 'repo',
@@ -28,7 +29,7 @@ describe('the catalog', () => {
       year: 2015,
     });
     expect(entries.find((entry) => entry.name === 'killer')).not.toHaveProperty('competition');
-    expect(new Set(entries.map((entry) => entry.key)).size).toBe(581);
+    expect(new Set(entries.map((entry) => entry.key)).size).toBe(files.length);
   });
 
   test('lists the items of Mine by their name and profile, leaving out one that does not read', () => {

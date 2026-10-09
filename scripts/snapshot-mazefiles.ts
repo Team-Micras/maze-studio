@@ -1,12 +1,14 @@
 /**
  * Writes `src/library/snapshot.json` from the `vendor/mazefiles` submodule: the commit it pins
  * and, for every maze file in a folder, its path, git blob SHA and compact code with the text
- * after the grid. Run it with `bun run snapshot` after moving the submodule to a new commit; CI
- * never runs it, and `tests/library/snapshot.test.ts` fails while the two disagree.
+ * after the grid. The file is not committed: the `pre` scripts of `dev`, `build`, `lint`,
+ * `typecheck` and the tests run this first, locally and in CI, so a new submodule commit, such as
+ * a Dependabot bump, needs nothing else. It leaves a snapshot of the submodule's commit alone
+ * while the submodule has no local change; `tests/library/snapshot.test.ts` checks the two agree.
  */
 
 import { execFileSync } from 'node:child_process';
-import { readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 import { encodeMazeCode, parseMazeText } from '@/maze';
@@ -36,6 +38,31 @@ async function snapshotFile(path: string): Promise<RepoFile> {
   };
 }
 
+function current(commit: string): boolean {
+  if (!existsSync(OUTPUT) || git('status', '--porcelain') !== '') {
+    return false;
+  }
+
+  const written: unknown = JSON.parse(readFileSync(OUTPUT, 'utf8'));
+  return (
+    typeof written === 'object' &&
+    written !== null &&
+    'commit' in written &&
+    written.commit === commit
+  );
+}
+
+if (!existsSync(join(MAZEFILES, '.git'))) {
+  throw new Error('vendor/mazefiles is empty: run git submodule update --init');
+}
+
+const commit = git('rev-parse', 'HEAD');
+
+if (current(commit)) {
+  console.log(`snapshot.json is already of ${commit.slice(0, 7)}`);
+  process.exit(0);
+}
+
 const paths = git('ls-tree', '-r', '--name-only', 'HEAD')
   .split('\n')
   .filter((path) => path.includes('/') && path.endsWith('.txt'))
@@ -45,6 +72,6 @@ const lines = files.map((file) => `    ${JSON.stringify(file)}`);
 
 writeFileSync(
   OUTPUT,
-  `{\n  "commit": ${JSON.stringify(git('rev-parse', 'HEAD'))},\n  "files": [\n${lines.join(',\n')}\n  ]\n}\n`
+  `{\n  "commit": ${JSON.stringify(commit)},\n  "files": [\n${lines.join(',\n')}\n  ]\n}\n`
 );
 console.log(`${files.length} mazes at ${git('rev-parse', '--short', 'HEAD')} written to ${OUTPUT}`);
