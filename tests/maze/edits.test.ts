@@ -3,10 +3,11 @@ import { describe, expect, test } from 'vitest';
 import {
   Bits,
   clearArea,
+  clearStart,
   createMaze,
   fillBorder,
   horizontalEdgeCount,
-  moveStart,
+  setStart,
   paintWalls,
   setGoals,
   setWall,
@@ -141,16 +142,17 @@ describe('start and goal edits', () => {
     ],
   });
 
-  test('move the start, or take it away', () => {
-    expect(moveStart(marked, { x: 3, y: 0 }).start).toEqual({ x: 3, y: 0 });
-    expect(moveStart(marked, undefined).start).toBeUndefined();
-    expect(moveStart(marked, { x: 0, y: 0 })).toBe(marked);
-    expect(moveStart(moveStart(marked, undefined), undefined).start).toBeUndefined();
-    expect(() => moveStart(marked, { x: 4, y: 0 })).toThrow(RangeError);
+  test('set the start, or clear it', () => {
+    expect(setStart(marked, { x: 3, y: 0 }).start).toEqual({ x: 3, y: 0 });
+    expect(clearStart(marked).start).toBeUndefined();
+    expect(setStart(marked, { x: 0, y: 0 })).toBe(marked);
+    const cleared = clearStart(marked);
+    expect(clearStart(cleared)).toBe(cleared);
+    expect(() => setStart(marked, { x: 4, y: 0 })).toThrow(RangeError);
   });
 
   test('take a goal out of the goals when the start moves onto it', () => {
-    const moved = moveStart(marked, { x: 2, y: 2 });
+    const moved = setStart(marked, { x: 2, y: 2 });
     expect(moved.start).toEqual({ x: 2, y: 2 });
     expect(moved.goals).toEqual([{ x: 1, y: 1 }]);
   });
@@ -202,7 +204,7 @@ describe('start and goal edits', () => {
 
   test('leave the walls alone', () => {
     const walledMarked = fillBorder(marked);
-    expect(walls(moveStart(walledMarked, { x: 3, y: 3 }))).toEqual(walls(walledMarked));
+    expect(walls(setStart(walledMarked, { x: 3, y: 3 }))).toEqual(walls(walledMarked));
     expect(walls(setGoals(walledMarked, [{ x: 3, y: 3 }]))).toEqual(walls(walledMarked));
   });
 });

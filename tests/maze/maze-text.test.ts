@@ -155,6 +155,10 @@ describe('reading the mazefiles text', () => {
     expect(kinds(`${TWO_BY_TWO}  S`)).toEqual(['ragged-line@6']);
     expect(kinds(`${TWO_BY_TWO}  | G |\n`)).toEqual(['ragged-line@6']);
     expect(kinds(`${TWO_BY_TWO}  indented note\nmore\n`)).toEqual([]);
+    expect(kinds(`${TWO_BY_TWO}  notes\nother\n`)).toEqual([]);
+    expect(kinds(`${TWO_BY_TWO}  notes\no-ring seal\n`)).toEqual([]);
+    expect(kinds(`${TWO_BY_TWO}     \nmore\n`)).toEqual([]);
+    expect(kinds(`${TWO_BY_TWO}     \no   o\n`)).toEqual(['ragged-line@6']);
     expect(kinds(`${TWO_BY_TWO}\n`)).toEqual([]);
   });
 

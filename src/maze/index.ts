@@ -10,10 +10,11 @@ export { Bits } from './bits';
 export { edgeIndex, edgeOfCell, hasWall, isMazeEdge, type CellSide, type Edge } from './edges';
 export {
   clearArea,
+  clearStart,
   fillBorder,
-  moveStart,
   paintWalls,
   setGoals,
+  setStart,
   setWall,
   toggleGoal,
   toggleWall,

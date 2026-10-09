@@ -263,14 +263,15 @@ function readMarks(
   return { start, goals };
 }
 
-const GRID_CHARACTERS = /^[ |SG]+$/;
+const GRID_MARKS = /^[ |SG]*[|SG][ |SG]*$/;
+const POST_LINE_START = /^o(---| {3})o/;
 
 function looksLikeGrid(next: string, after: string | undefined): boolean {
   if (next.startsWith(POST) || next.startsWith(VERTICAL_WALL)) {
     return true;
   }
 
-  return next.startsWith(BLANK) && (after?.startsWith(POST) === true || GRID_CHARACTERS.test(next));
+  return next.startsWith(BLANK) && (POST_LINE_START.test(after ?? '') || GRID_MARKS.test(next));
 }
 
 function readTrailer(lines: readonly string[], gridLines: number, report: Report): string {

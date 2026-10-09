@@ -8,8 +8,10 @@
 /** How many steps can be undone. */
 export const HISTORY_LIMIT = 500;
 
-/** The values before and after the present one, and the gesture in progress, if any. */
-/** A history of values, which are objects so that no value is mistaken for a missing one. */
+/**
+ * The values before and after the present one, and the gesture in progress, if any. The values
+ * are objects, so that no value is mistaken for a missing one.
+ */
 export interface History<T extends object> {
   /** The values that undo goes back to, oldest first, at most `limit` of them. */
   readonly past: readonly T[];
@@ -49,9 +51,9 @@ export function createHistory<T extends object>(
   }
 
   return Object.freeze({
-    past: [],
+    past: Object.freeze([]),
     present,
-    future: [],
+    future: Object.freeze([]),
     limit,
     equals: options.equals ?? Object.is,
   });
@@ -59,9 +61,9 @@ export function createHistory<T extends object>(
 
 function step<T extends object>(history: History<T>, from: T, to: T): History<T> {
   return Object.freeze({
-    past: [...history.past, from].slice(-history.limit),
+    past: Object.freeze([...history.past, from].slice(-history.limit)),
     present: to,
-    future: [],
+    future: Object.freeze([]),
     limit: history.limit,
     equals: history.equals,
   });
@@ -111,9 +113,13 @@ export function endGesture<T extends object>(history: History<T>): History<T> {
   return step(ended, gestureBase, history.present);
 }
 
-/** Whether there is a step to undo, counting a gesture in progress. */
+/** Whether there is a step to undo, counting a gesture in progress that changed something. */
 export function canUndo<T extends object>(history: History<T>): boolean {
-  return history.past.length > 0 || inGesture(history);
+  const { gestureBase } = history;
+  return (
+    history.past.length > 0 ||
+    (gestureBase !== undefined && !history.equals(gestureBase, history.present))
+  );
 }
 
 /** Whether there is a step to redo. */
@@ -132,9 +138,9 @@ export function undo<T extends object>(history: History<T>): History<T> {
 
   return Object.freeze({
     ...ended,
-    past: ended.past.slice(0, -1),
+    past: Object.freeze(ended.past.slice(0, -1)),
     present: previous,
-    future: [ended.present, ...ended.future],
+    future: Object.freeze([ended.present, ...ended.future]),
   });
 }
 
@@ -149,8 +155,8 @@ export function redo<T extends object>(history: History<T>): History<T> {
 
   return Object.freeze({
     ...ended,
-    past: [...ended.past, ended.present],
+    past: Object.freeze([...ended.past, ended.present]),
     present: next,
-    future,
+    future: Object.freeze(future),
   });
 }

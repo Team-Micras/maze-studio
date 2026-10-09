@@ -2,9 +2,10 @@ import { describe, expect, test } from 'vitest';
 
 import {
   Bits,
+  clearStart,
   createMaze,
   horizontalEdgeCount,
-  moveStart,
+  setStart,
   paintWalls,
   parseMazeText,
   profileOfPath,
@@ -247,13 +248,11 @@ describe('validation', () => {
     });
 
     test('want the start in the south-west corner, walled west, east and south, open north', () => {
-      expect(only(findings(moveStart(GOOD, { x: 1, y: 0 })), 'start-corner').cells).toEqual([
+      expect(only(findings(setStart(GOOD, { x: 1, y: 0 })), 'start-corner').cells).toEqual([
         { x: 1, y: 0 },
         { x: 0, y: 0 },
       ]);
-      expect(only(findings(moveStart(GOOD, undefined)), 'start-corner').message).toMatch(
-        /no start/
-      );
+      expect(only(findings(clearStart(GOOD)), 'start-corner').message).toMatch(/no start/);
 
       const walls = paintWalls(
         setWall(GOOD, { direction: 'horizontal', x: 0, y: 1 }, true),
@@ -264,10 +263,10 @@ describe('validation', () => {
         { direction: 'vertical', x: 1, y: 0 },
         { direction: 'horizontal', x: 0, y: 1 },
       ]);
-      expect(rules(findings(moveStart(GOOD, { x: 1, y: 0 }), 'free'))).toContain(
+      expect(rules(findings(setStart(GOOD, { x: 1, y: 0 }), 'free'))).toContain(
         'start-corner:hint'
       );
-      expect(rules(findings(moveStart(GOOD, { x: 1, y: 0 }), 'training'))).not.toContain(
+      expect(rules(findings(setStart(GOOD, { x: 1, y: 0 }), 'training'))).not.toContain(
         'start-corner:error'
       );
     });
@@ -353,7 +352,7 @@ describe('validation', () => {
       expect(only(findings(cut), 'goal-reachable').cells[0]).toEqual({ x: 0, y: 0 });
       expect(only(findings(cut, 'training'), 'goal-reachable').severity).toBe('warning');
       expect(
-        rules(findings(moveStart(cut, undefined))).some((rule) => rule.startsWith('goal-reachable'))
+        rules(findings(clearStart(cut))).some((rule) => rule.startsWith('goal-reachable'))
       ).toBe(false);
     });
 

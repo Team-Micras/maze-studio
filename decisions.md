@@ -33,8 +33,10 @@ The machine's rule is no builds in `/tmp`, so `tests/e2e/pwa.test.ts` builds the
 - **`ragged-line`.** The line right after the grid looks like more of it but breaks its shape, so
   the grid may have ended early: it starts with `o` or `|`, as the upstream `read_maze` would take
   for the grid; or it starts with a space, as a cell line with an open west border does, and
-  either holds only grid characters (spaces, `|`, `S`, `G`) or comes before a line starting with
-  `o`. A file cut right after such a line is reported too.
+  either holds only grid characters (spaces, `|`, `S`, `G`) with at least one that is not a space,
+  or comes before a line that starts like a line of posts (`o---o` or `o   o`). A line of spaces
+  alone, or a note before a line of text, is not reported: they are common in notes and say
+  nothing about a cut grid. A file cut right after such a line is reported too.
 - **`long-trailer`.** The trailer has more than 65,535 bytes of UTF-8, counted in bytes, not
   characters. Note for slice 1c: it is a warning of its own, not part of "homogeneous grid"; and
   the check before sharing looks at the trailer itself, since the code cannot carry it.

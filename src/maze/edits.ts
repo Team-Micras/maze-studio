@@ -137,16 +137,10 @@ export function fillBorder(maze: Maze): Maze {
   });
 }
 
-/**
- * Makes `cell` the start, taking it out of the goals if it was one, or leaves the maze with no
- * start when `cell` is `undefined`.
- */
-export function moveStart(maze: Maze, cell: Cell | undefined): Maze {
-  if (cell !== undefined) {
-    checkCell(maze, cell);
-  }
-
-  const index = cell === undefined ? undefined : cellIndex(maze.width, cell);
+/** Makes `cell` the start, taking it out of the goals if it was one. */
+export function setStart(maze: Maze, cell: Cell): Maze {
+  checkCell(maze, cell);
+  const index = cellIndex(maze.width, cell);
   return unlessEqual(
     maze,
     createMaze({
@@ -155,6 +149,11 @@ export function moveStart(maze: Maze, cell: Cell | undefined): Maze {
       goals: maze.goals.filter((goal) => cellIndex(maze.width, goal) !== index),
     })
   );
+}
+
+/** Leaves the maze with no start. */
+export function clearStart(maze: Maze): Maze {
+  return maze.start === undefined ? maze : createMaze({ ...maze, start: undefined });
 }
 
 /**

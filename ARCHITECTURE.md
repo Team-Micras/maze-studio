@@ -32,7 +32,7 @@ browser; there is no server.
 - `edges.ts`, `edits.ts`: edges by coordinates (`Edge`, `edgeOfCell`, `hasWall`) and the edits
   of the editor as pure functions that return the same maze when nothing changes: `setWall`,
   `toggleWall`, `paintWalls` (a list of edges gets one value; which edges a pointer path crosses
-  is the geometry's job in `src/render`), `wallRectangle`, `clearArea`, `fillBorder`, `moveStart`,
+  is the geometry's job in `src/render`), `wallRectangle`, `clearArea`, `fillBorder`, `setStart`, `clearStart`,
   `setGoals` and `toggleGoal`. The start and the goals never overlap: the last one set wins.
 - `history.ts`: undo and redo over immutable values, 500 steps. `record` makes a step;
   between `beginGesture` and `endGesture` it only changes the present, and the end makes one step

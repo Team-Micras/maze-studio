@@ -5,13 +5,14 @@ import {
   canRedo,
   canUndo,
   clearArea,
+  clearStart,
   createHistory,
   endGesture,
   fillBorder,
   HISTORY_LIMIT,
   inGesture,
   mazesEqual,
-  moveStart,
+  setStart,
   paintWalls,
   parseMazeText,
   record,
@@ -166,11 +167,40 @@ describe('the history', () => {
     expect(present(redo(recordAll(beginGesture(createHistory(value(0))), [3])))).toBe(3);
   });
 
+  test('ends a gesture in progress on redo too', () => {
+    const redone = redo(recordAll(beginGesture(createHistory(value(0))), [3]));
+    expect(inGesture(redone)).toBe(false);
+    expect(present(redone)).toBe(3);
+    expect(canUndo(redone)).toBe(true);
+  });
+
+  test('redoes through a gesture that changed nothing', () => {
+    const before = undo(undo(recordAll(createHistory(value(0), { equals: sameN }), [1, 2])));
+    const gesture = recordAll(beginGesture(before), [8, 0]);
+    expect(canRedo(gesture)).toBe(false);
+
+    const redone = redo(gesture);
+    expect(inGesture(redone)).toBe(false);
+    expect(present(redone)).toBe(1);
+    expect(present(redo(redone))).toBe(2);
+  });
+
+  test('has nothing to undo in a gesture that changed nothing, with no past', () => {
+    const fresh = createHistory(value(0), { equals: sameN });
+    expect(canUndo(beginGesture(fresh))).toBe(false);
+    expect(canUndo(record(beginGesture(fresh), value(1)))).toBe(true);
+    expect(canUndo(recordAll(beginGesture(fresh), [1, 0]))).toBe(false);
+  });
+
   test('gives back frozen histories', () => {
     const history = record(createHistory(value(0)), value(1));
     expect(Object.isFrozen(history)).toBe(true);
     expect(Object.isFrozen(beginGesture(history))).toBe(true);
     expect(Object.isFrozen(undo(history))).toBe(true);
+    expect(Object.isFrozen(history.past)).toBe(true);
+    expect(Object.isFrozen(undo(history).future)).toBe(true);
+    expect(Object.isFrozen(redo(undo(history)).future)).toBe(true);
+    expect(Object.isFrozen(createHistory(value(0)).past)).toBe(true);
   });
 });
 
@@ -211,7 +241,7 @@ function randomEdit(random: Random, maze: Maze): Maze {
     case 4:
       return fillBorder(maze);
     case 5:
-      return moveStart(maze, random() < 0.9 ? randomCell(random, maze) : undefined);
+      return random() < 0.9 ? setStart(maze, randomCell(random, maze)) : clearStart(maze);
     case 6:
       return setGoals(
         maze,

@@ -24,8 +24,8 @@ export const MAX_TRAILER_BYTES = 65_535;
  *   is empty, and `column` is where the line ended.
  * - `ragged-line`: the line right after the grid looks like more of it but breaks its shape, so
  *   the grid may have ended early: it starts with `o` or `|`, or it starts with a space and
- *   either holds only grid characters (spaces, `|`, `S`, `G`) or comes before a line starting
- *   with `o`.
+ *   either holds only grid characters with at least one `|`, `S` or `G`, or comes before a line
+ *   that starts like a line of posts (`o---o` or `o   o`).
  * - `long-trailer`: the text after the grid is longer than the 65,535 bytes of UTF-8 a link or
  *   snapshot can carry.
  */
