@@ -7,7 +7,7 @@
  */
 
 import { uniqueName, type MineLibrary, type MineMaze } from '@/library';
-import { mazesEqual, type Maze } from '@/maze';
+import { mazesEqual, type Maze, type Profile } from '@/maze';
 import type { MineCopy, OpenMaze } from '@/ui/open-maze';
 
 import { copyName, needsCopy, type EditSession } from './edit-session';
@@ -27,6 +27,12 @@ export interface MineWriterEvents {
   readonly failed: (error: unknown) => void;
 }
 
+/** What a session last wrote. */
+interface Written {
+  readonly maze: Maze;
+  readonly profile: Profile;
+}
+
 /** What the writer needs of Mine. */
 export type MineStore = Pick<MineLibrary, 'list' | 'create' | 'save'>;
 
@@ -42,7 +48,7 @@ export class MineWriter {
   readonly #events: MineWriterEvents;
   readonly #copies = new WeakMap<OpenMaze, NamedCopy>();
   readonly #versions = new Map<string, number>();
-  readonly #written = new WeakMap<OpenMaze, Maze>();
+  readonly #written = new WeakMap<OpenMaze, Written>();
   readonly #refused = new WeakSet<OpenMaze>();
   readonly #waiting = new Map<OpenMaze, EditSession>();
   #draining: Promise<void> | undefined;
@@ -109,13 +115,19 @@ export class MineWriter {
       return;
     }
 
-    if (mazesEqual(maze, this.#written.get(opened) ?? opened.maze)) {
+    const { profile } = session;
+    const written = this.#written.get(opened) ?? {
+      maze: opened.maze,
+      profile: opened.document.profile,
+    };
+
+    if (mazesEqual(maze, written.maze) && profile === written.profile) {
       return;
     }
 
     const mine = await this.#mine();
     const version = Math.max(copy.version, this.#versions.get(copy.id) ?? 0);
-    const result = await mine?.save(copy.id, { maze }, version);
+    const result = await mine?.save(copy.id, { maze, profile }, version);
 
     if (result === undefined) {
       return;
@@ -130,7 +142,7 @@ export class MineWriter {
     const saved = { ...copy, version: result.value.version };
     this.#copies.set(opened, saved);
     this.#versions.set(saved.id, saved.version);
-    this.#written.set(opened, maze);
+    this.#written.set(opened, { maze, profile });
     this.#events.saved(opened, saved);
   }
 
@@ -141,19 +153,22 @@ export class MineWriter {
       return;
     }
 
-    const { opened, history } = session;
+    const { opened, history, profile } = session;
     const taken = (await mine.list()).map((item) => item.name);
     const item = await mine.create({
-      name: uniqueName(copyName(opened.name), taken),
+      name: uniqueName(
+        opened.document.created === true ? opened.name : copyName(opened.name),
+        taken
+      ),
       maze: history.present,
       trailer: opened.document.trailer,
-      profile: opened.document.profile,
+      profile,
       ...(opened.document.origin === undefined ? {} : { origin: opened.document.origin }),
     });
     const copy = { id: item.id, version: item.version, name: item.name };
     this.#copies.set(opened, copy);
     this.#versions.set(copy.id, copy.version);
-    this.#written.set(opened, history.present);
+    this.#written.set(opened, { maze: history.present, profile });
     this.#events.copied(opened, copy, item);
   }
 }

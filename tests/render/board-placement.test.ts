@@ -2,9 +2,11 @@ import { describe, expect, test } from 'vitest';
 
 import { createMaze } from '@/maze';
 import {
+  areaInWorld,
   artboardIn,
   boardGeometry,
   cellInWorld,
+  focusArea,
   cellOnScreen,
   mazePointAt,
   toBoardPoint,
@@ -53,5 +55,42 @@ describe('A board placed in the world', () => {
 
     expect(cellOnScreen(geometry, rect, 1)).toBeCloseTo(side, 9);
     expect(cellOnScreen(geometry, rect, 0.5)).toBeCloseTo(side / 2, 9);
+  });
+});
+
+describe('A finding on the board', () => {
+  test('covers its cells, the cells on both sides of its edges and around its posts', () => {
+    const maze = { width: 16, height: 16 };
+
+    expect(
+      focusArea(maze, {
+        cells: [{ x: 3, y: 3 }],
+        edges: [{ direction: 'vertical', x: 6, y: 2 }],
+        posts: [{ x: 4, y: 5 }],
+      })
+    ).toEqual({ from: { x: 3, y: 2 }, to: { x: 6, y: 5 } });
+  });
+
+  test('stays inside the maze at its border, and is nothing when it points at nothing', () => {
+    const maze = { width: 4, height: 4 };
+
+    expect(
+      focusArea(maze, { cells: [], edges: [{ direction: 'horizontal', x: 0, y: 0 }], posts: [] })
+    ).toEqual({ from: { x: 0, y: 0 }, to: { x: 0, y: 0 } });
+    expect(focusArea(maze, { cells: [], edges: [], posts: [] })).toBeUndefined();
+  });
+
+  test('spans the world rectangles of its corner cells', () => {
+    const maze = createMaze({ width: 16, height: 16 });
+    const geometry = boardGeometry(maze);
+    const rect = artboardIn(CELL, maze);
+    const area = areaInWorld(geometry, rect, { from: { x: 2, y: 3 }, to: { x: 1, y: 5 } });
+    const low = cellInWorld(geometry, rect, { x: 1, y: 3 });
+    const high = cellInWorld(geometry, rect, { x: 2, y: 5 });
+
+    expect(area.x).toBeCloseTo(low.x, 9);
+    expect(area.y).toBeCloseTo(high.y, 9);
+    expect(area.width).toBeCloseTo(2 * low.width, 9);
+    expect(area.height).toBeCloseTo(3 * low.height, 9);
   });
 });

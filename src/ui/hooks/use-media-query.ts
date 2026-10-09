@@ -33,3 +33,8 @@ export const PHONE_QUERY = '(max-width: 720px)';
 export function usePhoneLayout(): boolean {
   return useMediaQuery(PHONE_QUERY);
 }
+
+/** Whether the main pointer is a finger, where tooltips and the shortcut help are not offered. */
+export function useCoarsePointer(): boolean {
+  return useMediaQuery('(pointer: coarse)');
+}

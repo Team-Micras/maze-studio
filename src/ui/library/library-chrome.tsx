@@ -4,15 +4,18 @@ import { useRef } from 'react';
 import { MAZEFILES, type LibraryFilter } from '@/library';
 import { Island, IslandButton, IslandSeparator } from '@/ui/islands/island';
 import { ThemeButton } from '@/ui/islands/theme-button';
+import type { NewMazeRequest } from '@/ui/new-maze';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/ui/primitives/dropdown-menu';
 import { useTheme } from '@/ui/theme';
 
 import { CategoryFilter, SourceFilter } from './filter-toggles';
+import { NewMazeDialogs } from './new-maze-menu';
 import { OpenFileButton } from './open-file';
 import { pickedFile } from './picked-file';
 import { SearchField } from './search-field';
@@ -25,6 +28,10 @@ export interface LibraryChromeProps {
   readonly filter: LibraryFilter;
   readonly onFilter: (filter: LibraryFilter) => void;
   readonly onOpenFile: (file: File) => void;
+  /** Opens a new maze in the editor. */
+  readonly onNew: (request: NewMazeRequest) => void;
+  /** The name a new maze gets unless named: "Untitled maze", unique in Mine. */
+  readonly newName: string;
   readonly phone: boolean;
   /** Whether the islands show; they fade out and leave the keyboard while a maze is open. */
   readonly visible: boolean;
@@ -59,40 +66,72 @@ function Credit({
   );
 }
 
-function PhoneMenu({ onOpenFile }: { readonly onOpenFile: (file: File) => void }) {
+interface MenuProps {
+  readonly onOpenFile: (file: File) => void;
+  readonly onNew: (request: NewMazeRequest) => void;
+  readonly newName: string;
+}
+
+function NewMazeMenu({ onNew, newName }: Omit<MenuProps, 'onOpenFile'>) {
+  return (
+    <NewMazeDialogs defaultName={newName} onNew={onNew}>
+      {(items) => (
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <IslandButton variant="default">
+              <Plus aria-hidden size={16} />
+              New maze
+            </IslandButton>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="z-20 min-w-52 rounded-[14px]">
+            {items}
+          </DropdownMenuContent>
+        </DropdownMenu>
+      )}
+    </NewMazeDialogs>
+  );
+}
+
+function PhoneMenu({ onOpenFile, onNew, newName }: MenuProps) {
   const input = useRef<HTMLInputElement>(null);
   const theme = useTheme((state) => state.theme);
   const toggleTheme = useTheme((state) => state.toggle);
 
   return (
-    <>
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <IslandButton aria-label="More">
-            <Plus aria-hidden size={18} />
-          </IslandButton>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="end" className="z-20 min-w-48 rounded-[14px]">
-          <DropdownMenuItem className="rounded-[9px]" onSelect={() => input.current?.click()}>
-            <FolderOpen aria-hidden size={16} />
-            Open a .txt file…
-          </DropdownMenuItem>
-          <DropdownMenuItem className="rounded-[9px]" onSelect={toggleTheme}>
-            {theme === 'dark' ? <Sun aria-hidden size={16} /> : <Moon aria-hidden size={16} />}
-            {theme === 'dark' ? 'Light theme' : 'Dark theme'}
-          </DropdownMenuItem>
-        </DropdownMenuContent>
-      </DropdownMenu>
-      <input
-        accept=".txt,text/plain"
-        aria-hidden
-        className="hidden"
-        onChange={(event) => pickedFile(event, onOpenFile)}
-        ref={input}
-        tabIndex={-1}
-        type="file"
-      />
-    </>
+    <NewMazeDialogs defaultName={newName} onNew={onNew}>
+      {(items) => (
+        <>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <IslandButton aria-label="New maze and more">
+                <Plus aria-hidden size={18} />
+              </IslandButton>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="z-20 min-w-52 rounded-[14px]">
+              {items}
+              <DropdownMenuSeparator />
+              <DropdownMenuItem className="rounded-[9px]" onSelect={() => input.current?.click()}>
+                <FolderOpen aria-hidden size={16} />
+                Open a .txt file…
+              </DropdownMenuItem>
+              <DropdownMenuItem className="rounded-[9px]" onSelect={toggleTheme}>
+                {theme === 'dark' ? <Sun aria-hidden size={16} /> : <Moon aria-hidden size={16} />}
+                {theme === 'dark' ? 'Light theme' : 'Dark theme'}
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+          <input
+            accept=".txt,text/plain"
+            aria-hidden
+            className="hidden"
+            onChange={(event) => pickedFile(event, onOpenFile)}
+            ref={input}
+            tabIndex={-1}
+            type="file"
+          />
+        </>
+      )}
+    </NewMazeDialogs>
   );
 }
 
@@ -107,6 +146,8 @@ export function LibraryChrome({
   filter,
   onFilter,
   onOpenFile,
+  onNew,
+  newName,
   phone,
   visible,
 }: LibraryChromeProps) {
@@ -141,7 +182,7 @@ export function LibraryChrome({
           <search>
             <Island className="fixed top-safe-2 right-safe-2 left-safe-2">
               {search}
-              <PhoneMenu onOpenFile={onOpenFile} />
+              <PhoneMenu newName={newName} onNew={onNew} onOpenFile={onOpenFile} />
             </Island>
           </search>
           <Island className="fixed top-safe-16 right-safe-2 left-safe-2 overflow-x-auto">
@@ -173,6 +214,7 @@ export function LibraryChrome({
           </search>
           <Island className="fixed top-4 right-4 h-11">
             <OpenFileButton onFile={onOpenFile} />
+            <NewMazeMenu newName={newName} onNew={onNew} />
             <IslandSeparator />
             <ThemeButton />
           </Island>

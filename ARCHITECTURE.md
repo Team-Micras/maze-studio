@@ -33,7 +33,10 @@ browser; there is no server.
   of the editor as pure functions that return the same maze when nothing changes: `setWall`,
   `toggleWall`, `paintWalls` (a list of edges gets one value; which edges a pointer path crosses
   is the geometry's job in `src/render`), `wallRectangle`, `clearArea`, `fillBorder`, `setStart`, `clearStart`,
-  `setGoals` and `toggleGoal`. The start and the goals never overlap: the last one set wins.
+  `setGoals`, `setGoalArea` and `toggleGoal`. The start and the goals never overlap: the last one
+  set wins.
+- `new-maze.ts`: the New maze menu's mazes, Classic, Half size and Training, and a bordered maze
+  of any size.
 - `history.ts`: undo and redo over immutable values, 500 steps. `record` makes a step;
   between `beginGesture` and `endGesture` it only changes the present, and the end makes one step
   of the whole gesture, such as a drag, or none if it came back to where it began.
@@ -95,8 +98,9 @@ open borders, which the repository never has.
   overlays as SVG path data, one string per layer in the order of DESIGN.md 2.2 and 2.3, walls and
   posts split red and bare by the paint rule; the same strings feed a canvas `Path2D`.
 - `board-placement.ts`: a board placed in a world rectangle as its SVG is (centred, cells square):
-  the maze point under a world point, a cell's world rectangle, and a cell's side on screen, which
-  must reach 28 px (`MIN_TOUCH_CELL`) for a touch to edit.
+  the maze point under a world point, a cell's or an area's world rectangle, the cells a finding
+  points at (`focusArea`), and a cell's side on screen, which must reach 28 px (`MIN_TOUCH_CELL`)
+  for a touch to edit.
 - `stroke.ts`: the wall stroke of PLAN.md 3.4, walking the post grid with a step of 0.6 cell, with
   turns, the axis lock of Shift and every post of a fast move; `applyStroke` paints it with
   `paintWalls`.
@@ -137,10 +141,15 @@ free of the limits while it lasts.
   gesture, and the copy in Mine the first edit makes; `use-maze-editor.ts` keeps the session in
   `App`, so a route that names a copy just made is never missing, and `mine-writer.ts` copies and
   autosaves, one write at a time. `use-wall-drawing.ts` turns the stage's gestures into strokes,
-  `use-board-keys.ts` runs the cell cursor, `use-editor-shortcuts.ts` the keys on the page, and
-  `ToolsIsland`, `ToolHint` and `EditControls` are the tools, the hint and the phone's Edit button.
+  `use-cell-drawing.ts` the rectangle, clear area, start and goal (`cellEdit` is pure),
+  `use-board-keys.ts` runs the cell cursor and Enter's corners, `use-editor-shortcuts.ts` the keys
+  on the page; `tools.ts` names the tools, and `ToolsIsland`, `ToolHint` and `EditControls` are the
+  tools, the hint and the phone's Edit button. `Checks` (with `checks-summary.ts`) is the chip and
+  the panel, `MoreActions` the ⋯ menu and `ShortcutHelp` the `?` dialog. `studio/use-studio-editing.ts`
+  wires them into the studio.
 - `library/`: `LibraryChrome` draws the library's islands (search, source and category, Open,
-  theme, credit); `LibraryCanvas` mounts the visible rows of `Artboard`s, keeps the active one,
+  New maze with `new-maze-menu.tsx` and its Custom size dialog, theme, credit), and `new-maze.ts`
+  in `src/ui` makes the maze it asks for; `LibraryCanvas` mounts the visible rows of `Artboard`s, keeps the active one,
   fades the others while a maze is open, and reveals the one Tab reaches.
 - `islands/`: the island, its buttons, separator and tooltip, the zoom island and the theme button.
 - `board/`: as above, plus `paint-queue.ts`, which paints thumbnails in idle time.

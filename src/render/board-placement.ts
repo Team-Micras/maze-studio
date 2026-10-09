@@ -6,10 +6,11 @@
  * @module
  */
 
-import type { Cell } from '@/maze';
+import type { Cell, CellArea, Maze } from '@/maze';
 
 import type { WorldPoint, WorldRect } from './camera';
 import { toBoardPoint, toMazePoint, type BoardGeometry, type MazePoint } from './geometry';
+import type { FindingFocus } from './overlay-layers';
 
 /**
  * The smallest side of a cell on screen, in CSS pixels, at which a touch edits (DESIGN.md 10):
@@ -61,4 +62,64 @@ export function cellInWorld(geometry: BoardGeometry, rect: WorldRect, cell: Cell
 /** The side of a cell on screen, in CSS pixels, at the camera's zoom `k`. */
 export function cellOnScreen(geometry: BoardGeometry, rect: WorldRect, k: number): number {
   return geometry.pitch * placement(geometry, rect).scale * k;
+}
+
+/** The world rectangle the cells of `area` cover. */
+export function areaInWorld(geometry: BoardGeometry, rect: WorldRect, area: CellArea): WorldRect {
+  const from = cellInWorld(geometry, rect, area.from);
+  const to = cellInWorld(geometry, rect, area.to);
+  const x = Math.min(from.x, to.x);
+  const y = Math.min(from.y, to.y);
+  return {
+    x,
+    y,
+    width: Math.max(from.x, to.x) + from.width - x,
+    height: Math.max(from.y, to.y) + from.height - y,
+  };
+}
+
+/**
+ * The cells around what a finding points at: its cells, the cells on both sides of its edges and
+ * the cells around its posts, as one rectangle inside the maze; `undefined` when it points at
+ * nothing.
+ */
+export function focusArea(
+  maze: Pick<Maze, 'width' | 'height'>,
+  focus: FindingFocus
+): CellArea | undefined {
+  const cells: Cell[] = [
+    ...focus.cells,
+    ...focus.edges.flatMap((edge) =>
+      edge.direction === 'horizontal'
+        ? [
+            { x: edge.x, y: edge.y - 1 },
+            { x: edge.x, y: edge.y },
+          ]
+        : [
+            { x: edge.x - 1, y: edge.y },
+            { x: edge.x, y: edge.y },
+          ]
+    ),
+    ...focus.posts.flatMap((post) => [
+      { x: post.x - 1, y: post.y - 1 },
+      { x: post.x, y: post.y },
+    ]),
+  ];
+
+  if (cells.length === 0) {
+    return undefined;
+  }
+
+  const clampX = (x: number): number => Math.min(Math.max(x, 0), maze.width - 1);
+  const clampY = (y: number): number => Math.min(Math.max(y, 0), maze.height - 1);
+  return {
+    from: {
+      x: clampX(Math.min(...cells.map((cell) => cell.x))),
+      y: clampY(Math.min(...cells.map((cell) => cell.y))),
+    },
+    to: {
+      x: clampX(Math.max(...cells.map((cell) => cell.x))),
+      y: clampY(Math.max(...cells.map((cell) => cell.y))),
+    },
+  };
 }

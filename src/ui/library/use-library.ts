@@ -55,7 +55,11 @@ function library(commit: string, files: readonly RepoFile[], mine: readonly Mine
       `repo:${file.path}`,
       {
         code: file.code,
-        document: { profile: profileOfPath(file.path), origin: { path: file.path, sha: file.sha } },
+        document: {
+          profile: profileOfPath(file.path),
+          origin: { path: file.path, sha: file.sha },
+          source: { fileName: file.path, irregularities: [], hadCR: false, hadFinalNewline: true },
+        },
       },
     ]),
     ...mine.map((item): [string, Stored] => [

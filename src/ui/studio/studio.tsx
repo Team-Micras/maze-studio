@@ -18,13 +18,12 @@ import {
   type WorldRect,
 } from '@/render';
 import { useCanvasCamera } from '@/ui/board/use-canvas-camera';
+import { Checks } from '@/ui/editor/checks';
 import { EditControls } from '@/ui/editor/edit-controls';
-import type { Tool } from '@/ui/editor/tools-island';
-import { useBoardKeys, type BoardKey } from '@/ui/editor/use-board-keys';
-import { useEditorShortcuts } from '@/ui/editor/use-editor-shortcuts';
+import { MoreActions } from '@/ui/editor/more-actions';
+import { ShortcutHelp } from '@/ui/editor/shortcut-help';
 import type { MazeEditor } from '@/ui/editor/use-maze-editor';
-import { useWallDrawing } from '@/ui/editor/use-wall-drawing';
-import { usePhoneLayout } from '@/ui/hooks/use-media-query';
+import { useCoarsePointer, usePhoneLayout } from '@/ui/hooks/use-media-query';
 import { useViewportWidth } from '@/ui/hooks/use-viewport-width';
 import { ZoomIsland } from '@/ui/islands/zoom-island';
 import { zoomPercent } from '@/ui/islands/zoom-percent';
@@ -35,6 +34,7 @@ import { LibraryChrome } from '@/ui/library/library-chrome';
 import type { Library } from '@/ui/library/use-library';
 import { openEntry, type OpenMaze } from '@/ui/open-maze';
 import { cn } from '@/ui/primitives/utils';
+import type { NewMazeRequest } from '@/ui/new-maze';
 import type { Route } from '@/ui/routes';
 import { typingIn } from '@/ui/typing-in';
 
@@ -42,6 +42,7 @@ import { EditorChrome } from './editor-chrome';
 import { listOrder, steppedKey } from './list-order';
 import { MazeList } from './maze-list';
 import { OpenBoard } from './open-board';
+import { useStudioEditing } from './use-studio-editing';
 import { useStudioFlight } from './use-studio-flight';
 import { createStudioStore, type StudioState } from './studio-store';
 
@@ -57,6 +58,10 @@ export interface StudioProps {
   readonly filter: LibraryFilter;
   readonly onFilter: (filter: LibraryFilter) => void;
   readonly onOpenFile: (file: File) => void;
+  /** Opens a new maze in the editor. */
+  readonly onNew: (request: NewMazeRequest) => void;
+  /** The name a new maze gets unless named. */
+  readonly newName: string;
   /** Leaves the open maze for the library. */
   readonly onLibrary: () => void;
   /** Puts the maze of a catalog entry in the route, in place of the open one. */
@@ -97,6 +102,8 @@ export function Studio({
   filter,
   onFilter,
   onOpenFile,
+  onNew,
+  newName,
   onLibrary,
   onPin,
 }: StudioProps) {
@@ -137,50 +144,19 @@ export function Studio({
           })
         : libraryLimits(grid, viewport, insets),
   });
-  const editorMode = mode === 'editor' && board !== undefined && onScreen !== undefined;
-  const editable = !editor.readOnly;
-  const showHint = useCallback(
-    (text: string) => store.setState({ hint: { text, at: performance.now() } }),
-    [store]
-  );
-  const boardKeys = useBoardKeys({
+  const coarse = useCoarsePointer();
+  const editing = useStudioEditing({
+    store,
+    state,
     editor,
     camera,
-    maze: editorMode && previewed === undefined ? onScreen.maze : undefined,
+    onScreen,
+    previewing: previewed !== undefined,
     board,
     insets: editorInsets,
-    editable: editable && !state.viewing,
+    phone,
+    coarse,
   });
-  const wall = useWallDrawing({
-    editor,
-    camera,
-    maze: onScreen?.maze,
-    board,
-    enabled:
-      editorMode &&
-      previewed === undefined &&
-      !state.listOpen &&
-      !state.viewing &&
-      state.tool === 'wall' &&
-      editable,
-    onTooSmall: () => showHint('Zoom in to edit'),
-    onPress: boardKeys.hide,
-  });
-  const pickTool = useCallback((tool: Tool) => store.setState({ tool }), [store]);
-  const { undo, redo } = editor;
-
-  useEditorShortcuts({
-    active: mode === 'editor' && !state.viewing && !state.listOpen,
-    hand: !phone,
-    onUndo: undo,
-    onRedo: redo,
-    onTool: pickTool,
-  });
-
-  const boardKey = (key: BoardKey): void => {
-    camera.element?.focus({ preventScroll: true });
-    boardKeys.press(key);
-  };
 
   const onScreenKey = useRef(onScreen?.key);
   const listOpener = useRef<HTMLElement | null>(null);
@@ -281,11 +257,11 @@ export function Studio({
             bandScale={libraryVisible ? undefined : state.libraryZoom}
             className={cn(
               'fixed inset-0',
-              wall.drawing !== undefined && 'cursor-crosshair',
+              editing.drawingTool && 'cursor-crosshair',
               mode === 'editor' && !state.viewing && state.tool === 'hand' && 'cursor-grab'
             )}
             controller={camera}
-            drawing={wall.drawing}
+            drawing={editing.drawing}
             entries={shown}
             grid={grid}
             insets={insets}
@@ -294,17 +270,7 @@ export function Studio({
             }
             library={library}
             onArtboardPointer={notePointer}
-            onCanvasKey={(event) => {
-              if (
-                mode === 'editor' &&
-                !event.ctrlKey &&
-                !event.metaKey &&
-                !event.altKey &&
-                boardKeys.press({ key: event.key, shiftKey: event.shiftKey })
-              ) {
-                event.preventDefault();
-              }
-            }}
+            onCanvasKey={editing.onCanvasKey}
             othersHidden={!libraryVisible}
             primaryPan={primaryPan}
             promoted={mode === 'flying-in' || mode === 'flying-out'}
@@ -312,11 +278,7 @@ export function Studio({
             {mode !== 'library' && onScreen !== undefined && board !== undefined ? (
               <OpenBoard
                 maze={onScreen.maze}
-                overlays={
-                  mode === 'editor'
-                    ? { cursor: boardKeys.cursor, preview: wall.preview }
-                    : undefined
-                }
+                overlays={mode === 'editor' ? editing.overlays : undefined}
                 rect={board}
                 shown={mode !== 'flying-out'}
               />
@@ -336,6 +298,8 @@ export function Studio({
         filter={filter}
         library={library}
         onFilter={changeFilter}
+        newName={newName}
+        onNew={onNew}
         onOpenFile={onOpenFile}
         phone={phone}
         visible={libraryVisible}
@@ -359,7 +323,15 @@ export function Studio({
         <EditorChrome
           board={board}
           controller={camera}
-          cursor={boardKeys.cursor}
+          actions={
+            editing.checks === undefined ? null : (
+              <>
+                <Checks {...editing.checks} />
+                <MoreActions {...editing.actions} />
+              </>
+            )
+          }
+          cursor={editing.cursor}
           landed={mode === 'editor'}
           listOpen={state.listOpen}
           onLibrary={onLibrary}
@@ -375,27 +347,10 @@ export function Studio({
           phone={phone}
           visible={editorVisible}
         >
-          <EditControls
-            canRedo={editor.canRedo}
-            canUndo={editor.canUndo}
-            editable={editable}
-            hint={state.hint}
-            onBoardKey={boardKey}
-            onEdit={() => {
-              store.setState({ viewing: false });
-              showHint('Tap a slot to toggle. Drag to draw. Two fingers pan');
-            }}
-            onRedo={redo}
-            onTool={pickTool}
-            onUndo={undo}
-            onView={() => store.setState({ viewing: true })}
-            phone={phone}
-            tool={state.tool}
-            touchMode={state.touchOpened}
-            viewing={state.viewing}
-          />
+          <EditControls {...editing.controls} />
         </EditorChrome>
       ) : null}
+      {mode === 'editor' && !coarse ? <ShortcutHelp {...editing.help} /> : null}
       {state.listOpen && library !== undefined && mode === 'editor' ? (
         <MazeList
           current={onScreen?.key}

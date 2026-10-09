@@ -23,9 +23,9 @@ import {
   pagePoint,
   repoContent,
   repoText,
+  sameMaze,
   expectSaved,
   storedMine,
-  type MazeContent,
 } from '@tests/support/e2e/board-page';
 import {
   openPage,
@@ -105,10 +105,6 @@ async function stroke(
   await page.mouse.up();
 }
 
-function sameContent(expected: Maze): (content: MazeContent) => boolean {
-  return (content) => mazesEqual(content.maze, expected);
-}
-
 async function cellOnPage(page: Page, maze: Maze): Promise<number> {
   const box = await page.locator('[data-open-board] svg[data-board]').boundingBox();
   const geometry = boardGeometry(maze);
@@ -157,13 +153,13 @@ describe('The wall tool', () => {
       expected = stroked(expected, slots(walk(shape)));
     }
 
-    await expectSaved(page, sameContent(expected));
+    await expectSaved(page, sameMaze(expected));
 
     for (const _ of shapes) {
       await page.keyboard.press('Control+z');
     }
 
-    await expectSaved(page, sameContent(maze));
+    await expectSaved(page, sameMaze(maze));
   });
 
   test('keeps a straight line with ±40 % of tremor free of perpendiculars', async () => {
@@ -185,7 +181,7 @@ describe('The wall tool', () => {
 
     await expectSaved(
       page,
-      sameContent(
+      sameMaze(
         stroked(
           maze,
           slots(
@@ -211,7 +207,7 @@ describe('The wall tool', () => {
 
     await expectSaved(
       page,
-      sameContent(
+      sameMaze(
         stroked(
           maze,
           slots(
@@ -239,7 +235,7 @@ describe('The wall tool', () => {
 
     await expectSaved(
       page,
-      sameContent(
+      sameMaze(
         stroked(
           maze,
           slots(
@@ -259,12 +255,12 @@ describe('The wall tool', () => {
     const edge: Edge = { direction: 'vertical', x: 6, y: 9 };
     const point = await pagePoint(page, maze, edgeMiddle(edge));
     await page.mouse.click(point.x, point.y);
-    await expectSaved(page, sameContent(toggleWall(maze, edge)));
+    await expectSaved(page, sameMaze(toggleWall(maze, edge)));
     await page.mouse.click(point.x, point.y);
-    await expectSaved(page, sameContent(maze));
+    await expectSaved(page, sameMaze(maze));
     await page.keyboard.press('Control+z');
 
-    await expectSaved(page, sameContent(toggleWall(maze, edge)));
+    await expectSaved(page, sameMaze(toggleWall(maze, edge)));
   });
 
   test('draws a closed cell with the mouse alone', async () => {
@@ -282,7 +278,7 @@ describe('The wall tool', () => {
       }
     }
 
-    await expectSaved(page, sameContent(paintWalls(maze, sides, true)));
+    await expectSaved(page, sameMaze(paintWalls(maze, sides, true)));
   });
 });
 
@@ -299,7 +295,7 @@ describe('The first edit of a maze that is not in Mine', () => {
     expect(new URL(page.url()).hash).toMatch(MINE_ROUTE);
     expect(await page.evaluate(() => window.history.length)).toBe(length);
     await expect.poll(() => page.locator('h1').textContent()).toBe('AAMC15Maze (edited)');
-    const item = await expectSaved(page, sameContent(toggleWall(maze, edge)));
+    const item = await expectSaved(page, sameMaze(toggleWall(maze, edge)));
     expect(item.origin?.path).toBe(CLASSIC);
     expect(contentOf(item).trailer).toBe(trailer);
 
@@ -322,7 +318,7 @@ describe('The first edit of a maze that is not in Mine', () => {
 
     expect(new URL(page.url()).hash).toMatch(MINE_ROUTE);
     await expect.poll(() => page.locator('h1').textContent()).toBe('Shared one (edited)');
-    await expectSaved(page, sameContent(toggleWall(maze, edge)));
+    await expectSaved(page, sameMaze(toggleWall(maze, edge)));
   });
 
   test('of a .txt file copies it with the text after its grid', async () => {
@@ -342,7 +338,7 @@ describe('The first edit of a maze that is not in Mine', () => {
       await page.waitForFunction(() => window.location.hash.startsWith('#/mine/'));
 
       await expect.poll(() => page.locator('h1').textContent()).toBe('corridor (edited)');
-      const item = await expectSaved(page, sameContent(toggleWall(maze, edge)));
+      const item = await expectSaved(page, sameMaze(toggleWall(maze, edge)));
       expect(contentOf(item).trailer).toBe('Notes after the grid\n');
     } finally {
       rmSync(folder, { recursive: true, force: true });
@@ -360,13 +356,13 @@ describe('The first edit of a maze that is not in Mine', () => {
     const b: Edge = { direction: 'horizontal', x: 12, y: 9 };
     const c: Edge = { direction: 'vertical', x: 7, y: 3 };
     await click(first, a);
-    await expectSaved(first, sameContent(toggleWall(maze, a)));
+    await expectSaved(first, sameMaze(toggleWall(maze, a)));
     const second = await first.context().newPage();
     await second.goto(`${app}#/mine/${mineId(first) ?? ''}`);
     await waitForMode(second, 'editor');
     await click(second, b);
     const both = toggleWall(toggleWall(maze, a), b);
-    await expectSaved(second, sameContent(both));
+    await expectSaved(second, sameMaze(both));
     await click(first, c);
 
     await expect
@@ -378,7 +374,7 @@ describe('The first edit of a maze that is not in Mine', () => {
       .toBe(1);
     expect(await first.getByRole('radio', { name: 'Wall' }).isDisabled()).toBe(true);
     await first.waitForTimeout(300);
-    await expectSaved(first, sameContent(both));
+    await expectSaved(first, sameMaze(both));
   });
 
   test('undone to the start, saves the original file byte for byte', async () => {
@@ -391,7 +387,7 @@ describe('The first edit of a maze that is not in Mine', () => {
     ]);
     await page.waitForFunction(() => window.location.hash.startsWith('#/mine/'));
     await page.keyboard.press('Control+z');
-    const item = await expectSaved(page, sameContent(maze));
+    const item = await expectSaved(page, sameMaze(maze));
 
     expect(serializeMazeText(contentOf(item))).toBe(repoText(CLASSIC));
   });
@@ -431,7 +427,7 @@ describe('The keyboard cursor', () => {
     await page.getByRole('radio', { name: 'Wall' }).focus();
     await page.keyboard.press('Shift+ArrowUp');
 
-    await expectSaved(page, sameContent(toggleWall(maze, edgeOfCell({ x: 0, y: 0 }, 'north'))));
+    await expectSaved(page, sameMaze(toggleWall(maze, edgeOfCell({ x: 0, y: 0 }, 'north'))));
     expect(await page.evaluate(() => document.activeElement?.id)).toBe('canvas');
   });
 
@@ -456,7 +452,7 @@ describe('The keyboard cursor', () => {
       expected = toggleWall(expected, edgeOfCell(cell, side));
     }
 
-    await expectSaved(page, sameContent(expected));
+    await expectSaved(page, sameMaze(expected));
   });
 
   test('keeps the view on the cursor', async () => {
@@ -511,7 +507,7 @@ describe('Editing on a phone', () => {
     }
 
     await tapEdge();
-    await expectSaved(page, sameContent(toggleWall(maze, edge)));
+    await expectSaved(page, sameMaze(toggleWall(maze, edge)));
 
     await page.getByRole('button', { name: 'Done editing, back to viewing' }).tap();
     await page.getByRole('button', { name: 'Edit' }).waitFor();

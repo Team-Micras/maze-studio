@@ -18,6 +18,7 @@ import {
   undo,
   type History,
   type Maze,
+  type Profile,
 } from '@/maze';
 import type { MineCopy, OpenMaze } from '@/ui/open-maze';
 
@@ -31,6 +32,8 @@ export interface EditSession {
   /** The maze as it opened. */
   readonly opened: OpenMaze;
   readonly history: History<Maze>;
+  /** The rules it is checked by, which the Checks panel may change; not a step of undo. */
+  readonly profile: Profile;
   /** The item of Mine it saves to: itself, or the copy its first edit made. */
   readonly mine?: MineCopy & { readonly name: string };
   /**
@@ -46,6 +49,7 @@ export function openSession(opened: OpenMaze): EditSession {
   return {
     opened,
     history: createHistory(opened.maze, { equals: mazesEqual }),
+    profile: opened.document.profile,
     ...(mine === undefined ? {} : { mine: { ...mine, name: opened.name } }),
   };
 }
@@ -70,20 +74,31 @@ export function followRoute(session: EditSession, key: string): EditSession {
     : session;
 }
 
-/** The maze on screen, as it is now, under the name and line of its item of Mine once it has one. */
+/**
+ * The maze on screen, as it is now, under the name and line of its item of Mine once it has one,
+ * checked by the session's profile; the file it came from counts only while it is unchanged.
+ */
 export function sessionView(session: EditSession): OpenMaze {
   const { opened, mine, history } = session;
+  const { source, ...document } = opened.document;
   return {
     ...opened,
     key: sessionKey(session),
     maze: history.present,
     name: mine?.name ?? opened.name,
     detail: mine === undefined ? opened.detail : 'Saved in Mine',
-    document:
-      mine === undefined
-        ? opened.document
-        : { ...opened.document, mine: { id: mine.id, version: mine.version } },
+    document: {
+      ...document,
+      profile: session.profile,
+      ...(mine === undefined ? {} : { mine: { id: mine.id, version: mine.version } }),
+      ...(source !== undefined && mazesEqual(history.present, opened.maze) ? { source } : {}),
+    },
   };
+}
+
+/** The session checked by `profile` from now on. */
+export function withProfile(session: EditSession, profile: Profile): EditSession {
+  return profile === session.profile ? session : { ...session, profile };
 }
 
 /** Whether the maze has changed and has no item of Mine to keep the change in yet. */

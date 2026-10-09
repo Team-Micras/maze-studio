@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 
-import type { Maze } from '@/maze';
+import type { Maze, Profile } from '@/maze';
 import { reloadLibrary } from '@/ui/library/use-library';
 import { replaceRoute } from '@/ui/navigation';
 import type { OpenMaze } from '@/ui/open-maze';
@@ -22,6 +22,7 @@ import {
   sessionView,
   undoEdit,
   withMine,
+  withProfile,
   type EditSession,
 } from './edit-session';
 import { MineWriter } from './mine-writer';
@@ -58,6 +59,8 @@ export interface MazeEditor {
   readonly cancel: () => void;
   readonly undo: () => void;
   readonly redo: () => void;
+  /** Checks the maze by `profile` from now on, saved with it once it is in Mine. */
+  readonly setProfile: (profile: Profile) => void;
 }
 
 /** What the editor says while another tab holds a newer version (DESIGN.md 12). */
@@ -183,5 +186,6 @@ export function useMazeEditor(input: MazeEditorInput): MazeEditor {
     cancel: guarded(cancelEdit),
     undo: guarded(undoEdit),
     redo: guarded(redoEdit),
+    setProfile: (profile) => update((before) => withProfile(before, profile)),
   };
 }

@@ -123,6 +123,7 @@ export function useStudioFlight(input: StudioFlightInput): StudioFlight {
         touchOpened: lastPointer.current === 'touch',
         tool: 'wall',
         hint: undefined,
+        finding: undefined,
         libraryZoom: from?.k,
         leaving: undefined,
         preview: undefined,

@@ -2,7 +2,7 @@ import { useEffect } from 'react';
 
 import { typingIn } from '@/ui/typing-in';
 
-import type { Tool } from './tools-island';
+import { toolOfKey, type Tool } from './tools';
 
 /** What the editor's shortcuts do. */
 export interface EditorShortcuts {
@@ -13,14 +13,16 @@ export interface EditorShortcuts {
   readonly onUndo: () => void;
   readonly onRedo: () => void;
   readonly onTool: (tool: Tool) => void;
+  /** Closes the outer walls, on `B`. */
+  readonly onCloseBorder: () => void;
+  /** Opens the shortcut help, on `?`; none on a touch screen. */
+  readonly onHelp?: () => void;
 }
-
-const TOOL_KEYS: Readonly<Record<string, Tool>> = { h: 'hand', w: 'wall' };
 
 /**
  * The editor's keys anywhere on the page (DESIGN.md 11): Ctrl or Cmd with Z undoes, with Shift and
- * Z or with Y redoes, and `H` and `W` pick the hand and the wall tool. None fires while the focus
- * is in a text field.
+ * Z or with Y redoes; `H`, `W`, `R`, `C`, `S` and `G` pick the tools, `B` closes the outer walls and
+ * `?` opens the shortcut help. None fires while the focus is in a text field.
  */
 export function useEditorShortcuts({
   active,
@@ -28,6 +30,8 @@ export function useEditorShortcuts({
   onUndo,
   onRedo,
   onTool,
+  onCloseBorder,
+  onHelp,
 }: EditorShortcuts): void {
   useEffect(() => {
     if (!active) {
@@ -53,7 +57,19 @@ export function useEditorShortcuts({
         return;
       }
 
-      const tool = TOOL_KEYS[key];
+      if (key === 'b') {
+        event.preventDefault();
+        onCloseBorder();
+        return;
+      }
+
+      if (event.key === '?' && onHelp !== undefined) {
+        event.preventDefault();
+        onHelp();
+        return;
+      }
+
+      const tool = toolOfKey(key);
 
       if (tool !== undefined && (tool !== 'hand' || hand)) {
         event.preventDefault();
@@ -62,5 +78,5 @@ export function useEditorShortcuts({
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [active, hand, onUndo, onRedo, onTool]);
+  }, [active, hand, onUndo, onRedo, onTool, onCloseBorder, onHelp]);
 }

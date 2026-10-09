@@ -27,8 +27,9 @@ export interface EditorChromeProps {
   /** Whether the islands show; they come in late in the flight and leave at once. */
   readonly visible: boolean;
   /**
-   * Whether the camera has landed on the board; the minimap, hidden at the fit anyway, waits for
-   * it, so the flight's first frame does not also paint it.
+   * Whether the camera has landed on the board; the minimap, the checks and menu, and the editing
+   * controls wait for it and fade in, so the flight's first frame, which mounts the board, does not
+   * also mount them.
    */
   readonly landed: boolean;
   readonly listOpen: boolean;
@@ -38,11 +39,13 @@ export interface EditorChromeProps {
   readonly cursor?: Cell;
   /** The editing controls at the bottom centre. */
   readonly children?: ReactNode;
+  /** The checks and the menu, in the island at the top right. */
+  readonly actions?: ReactNode;
 }
 
 /**
  * The islands of an open maze (DESIGN.md 9.2 and 9.3): the way back to the library, the quick
- * list and the title at the top left, the minimap at the top right, the zoom at the bottom right,
+ * list and the title at the top left, the checks and the menu at the top right, the minimap at the top right, the zoom at the bottom right,
  * down the right edge on a phone, the cursor's status at the bottom left on a notebook, and the
  * editing controls at the bottom centre.
  */
@@ -58,6 +61,7 @@ export function EditorChrome({
   onLibrary,
   cursor,
   children,
+  actions,
 }: EditorChromeProps) {
   return (
     <div
@@ -67,7 +71,7 @@ export function EditorChrome({
       inert={!visible}
     >
       <header>
-        <Island className="fixed top-4 left-4 h-11 max-w-[calc(50vw-40px)] max-[720px]:top-safe-2 max-[720px]:left-safe-2 max-[720px]:max-w-[calc(100vw-16px)]">
+        <Island className="fixed top-4 left-4 h-11 max-w-[calc(50vw-40px)] max-[720px]:top-safe-2 max-[720px]:left-safe-2 max-[720px]:max-w-[calc(100vw-120px)]">
           <Hint label="Library" side="bottom">
             <IslandButton aria-label="Back to the library" onClick={onLibrary}>
               <SquaresFour aria-hidden size={18} />
@@ -92,6 +96,11 @@ export function EditorChrome({
             </p>
           </div>
         </Island>
+        {!landed || actions === undefined || actions === null ? null : (
+          <Island className="fixed top-4 right-4 h-11 transition-opacity duration-200 ease-(--ease) starting:opacity-0 max-[720px]:top-safe-2 max-[720px]:right-safe-2">
+            {actions}
+          </Island>
+        )}
       </header>
       {landed ? (
         <Minimap
@@ -106,7 +115,11 @@ export function EditorChrome({
         {phone ? null : (
           <CursorStatus cell={cursor} className="fixed bottom-6 left-4 z-[9]" maze={open.maze} />
         )}
-        {children}
+        {landed ? (
+          <div className="transition-opacity duration-200 ease-(--ease) starting:opacity-0">
+            {children}
+          </div>
+        ) : null}
         <ZoomIsland
           className={
             phone

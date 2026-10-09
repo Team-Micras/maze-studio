@@ -14,6 +14,7 @@ export {
   clearStart,
   fillBorder,
   paintWalls,
+  setGoalArea,
   setGoals,
   setStart,
   setWall,
@@ -22,6 +23,7 @@ export {
   wallRectangle,
   type CellArea,
 } from './edits';
+export { borderedMaze, presetMaze, presetProfile, type MazePreset } from './new-maze';
 export {
   beginGesture,
   canRedo,

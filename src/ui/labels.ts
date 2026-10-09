@@ -4,6 +4,8 @@
  * @module
  */
 
+import type { Profile } from '@/maze';
+
 const CATEGORY_LABELS: Readonly<Record<string, string>> = {
   classic: 'Classic',
   halfsize: 'Half size',
@@ -20,3 +22,11 @@ export function categoryLabel(category: string): string {
 export function sizeLabel(width: number, height: number): string {
   return `${width} × ${height}`;
 }
+
+/** The profiles in the order the screens offer them, with their names. */
+export const PROFILE_NAMES: readonly (readonly [Profile, string])[] = [
+  ['classic', 'Classic'],
+  ['halfsize', 'Half size'],
+  ['training', 'Training'],
+  ['free', 'Free'],
+];

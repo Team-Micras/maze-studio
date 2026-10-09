@@ -13,7 +13,7 @@ import {
   type Maze,
   type Result,
 } from '@/maze';
-import { changeMaze, openSession, type EditSession } from '@/ui/editor/edit-session';
+import { changeMaze, openSession, withProfile, type EditSession } from '@/ui/editor/edit-session';
 import { MineWriter, type MineStore } from '@/ui/editor/mine-writer';
 import type { OpenMaze } from '@/ui/open-maze';
 
@@ -108,6 +108,7 @@ class FakeMine implements MineStore {
 
     const saved = {
       ...current,
+      profile: changes.profile ?? current.profile,
       code: changes.maze === undefined ? current.code : encodeMazeCode(changes.maze),
       version: current.version + 1,
     };
@@ -198,6 +199,24 @@ describe('The writer of Mine', () => {
     expect(heard.refused).toEqual([]);
     expect(mine.log).toEqual(['save mine one', 'save mine one']);
     expect(mazesEqual(mine.mazeNamed('mine one') ?? EMPTY, wallsOf(0, 1))).toBe(true);
+  });
+
+  test('copies a new maze under its own name with the rules chosen, and saves a change of rules', async () => {
+    const mine = new FakeMine();
+    const { writer } = writerOn(mine);
+    const fresh: OpenMaze = {
+      ...opened('Untitled maze'),
+      key: 'new:1',
+      document: { trailer: '', profile: 'free', created: true },
+    };
+    const session = withProfile(edited(fresh, 0), 'training');
+    writer.write(session);
+    await writer.idle();
+    writer.write(withProfile(session, 'classic'));
+    await writer.idle();
+
+    expect(mine.log).toEqual(['create Untitled maze', 'save Untitled maze']);
+    expect([...mine.items.values()][0]?.profile).toBe('classic');
   });
 
   test('stops writing a maze another tab saved since, and says so once', async () => {

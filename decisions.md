@@ -475,3 +475,38 @@ The machine's rule is no builds in `/tmp`, so `tests/e2e/pwa.test.ts` builds the
   the larger of it and the session's, so going back at once to a maze whose library entry is still
   the older version is not refused as a conflict. The platform for ⌘ comes from
   `navigator.userAgentData`, with `navigator.platform` as the fallback.
+
+## 09/10/2026 — Slice 5b: the tools, Checks and New maze
+
+- **The cell tools apply on release.** Rectangle, Clear area, Start and Goal pick a cell on the
+  press and span a rectangle with a drag, shown as the selection; the release applies it as one
+  step (`cellEdit`, pure). A goal click replaces the goals, Shift and a click add or take away the
+  cell, and a drag, with Shift or without, makes the area the goals. With the keyboard, Enter puts
+  the start; with the others, a first Enter marks a corner and a second applies the area, and
+  Escape drops the corner. `setGoalArea` joins `src/maze`'s edits for the goal's rectangle.
+- **New mazes** come from `presetMaze` and `borderedMaze` in `src/maze`: Classic 16 × 16 and Half
+  size 32 × 32 with the start in (0, 0) walled east and the goals of the plan, Training and Custom
+  size with the border only, none with an error under their profile. They open like a `.txt` file,
+  without a route, under `uniqueName("Untitled maze")` or the name the dialog gives, and come to
+  Mine at their first edit under that name rather than "(edited)" (`created` in the document).
+- **Checks** run `validateMaze` on the maze on screen with the session's profile, and with the
+  file's source while the maze is unchanged (the repository's files open with the clean source of
+  PLAN.md 3.1), so the rules of the file count until the first edit. The profile is part of the
+  session, not a step of undo, and is saved with the copy. A finding clicked marks its place with
+  the focus overlay and brings it on screen without animation; the selected finding belongs to its
+  maze. Hints get Phosphor's `Info`, which DESIGN.md 4 does not map, beside its icons for errors and
+  warnings.
+- **Primitives:** shadcn's Popover, Dialog, Input and Label, on the `radix-ui` package already
+  there; no new dependency.
+- **The first screen grew** to 86 KB gzip for the app's chunk (65 KB before) and 37 KB for Radix:
+  the validation, which the Checks chip needs on screen; the dialog, popover and label; and nine
+  more Phosphor icons, each of which ships its six weights. With React's chunk and the CSS the first
+  screen is about 201 KB gzip, under the 250 KB of PLAN.md 6.
+- **The flight's easing test reads the frame's time.** Mounting the editor's islands made one frame
+  of the flight heavier, so the time taken in the MutationObserver lagged the frame and the fitted
+  curve was off by more than 0.02 once in three runs; `document.timeline.currentTime`, the frame's
+  own time, puts it within 0.001.
+- **The checks, the menu and the tools mount when the camera lands**, fading in, as the minimap
+  already did: the flight's first frame mounts the open board and stays lighter. That first frame
+  still runs over 33 ms in about one run in four of the development flight gate, at 33.4 ms, before
+  this slice as after it.

@@ -5,7 +5,7 @@
  */
 
 import type { CatalogEntry, MineOrigin } from '@/library';
-import { decodeMazeCode, type Maze, type Profile } from '@/maze';
+import { decodeMazeCode, type Maze, type MazeTextSource, type Profile } from '@/maze';
 
 import { categoryLabel, sizeLabel } from './labels';
 import type { Library } from './library/use-library';
@@ -30,6 +30,10 @@ export interface MazeDocument {
   readonly origin?: MineOrigin;
   /** The item of Mine it is, when it is one. */
   readonly mine?: MineCopy;
+  /** The file it was read from, for the rules of the file, while it is unchanged. */
+  readonly source?: MazeTextSource;
+  /** Whether it was made in the app, so that its copy in Mine keeps its name. */
+  readonly created?: boolean;
 }
 
 /** A maze open on screen, its name and the line under it (DESIGN.md 9.2). */

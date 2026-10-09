@@ -175,6 +175,15 @@ export function setGoals(maze: Maze, cells: Iterable<Cell>): Maze {
   return unlessEqual(maze, createMaze({ ...maze, start, goals: goals.values() }));
 }
 
+/** Makes the cells of `area` the goals, in place of the ones before, as {@link setGoals} does. */
+export function setGoalArea(maze: Maze, area: CellArea): Maze {
+  const { west, east, south, north } = bounds(maze, area);
+  return setGoals(
+    maze,
+    [...range(south, north)].flatMap((y) => [...range(west, east)].map((x) => ({ x, y })))
+  );
+}
+
 /** Makes `cell` a goal if it is not one, or takes it out of the goals if it is. */
 export function toggleGoal(maze: Maze, cell: Cell): Maze {
   checkCell(maze, cell);

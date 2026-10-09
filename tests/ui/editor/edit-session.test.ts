@@ -18,6 +18,7 @@ import {
   sessionView,
   undoEdit,
   withMine,
+  withProfile,
 } from '@/ui/editor/edit-session';
 import type { OpenMaze } from '@/ui/open-maze';
 
@@ -125,5 +126,25 @@ describe('An editing session', () => {
     expect(needsCopy(session)).toBe(false);
     expect(session.mine).toEqual({ id: 'u-2', version: 4, name: 'Mine one' });
     expect(sessionKey(session)).toBe('mine:u-2');
+  });
+
+  test('keeps its file source only while the maze is unchanged, and changes its rules apart', () => {
+    const source = {
+      fileName: 'classic/test.txt',
+      irregularities: [],
+      hadCR: false,
+      hadFinalNewline: true,
+    };
+    const opened = { ...repoMaze(), document: { ...repoMaze().document, source } };
+    let session = openSession(opened);
+
+    expect(sessionView(session).document.source).toEqual(source);
+    session = withProfile(session, 'free');
+    expect(sessionView(session).document.profile).toBe('free');
+    expect(canUndoEdit(session)).toBe(false);
+    session = changeMaze(session, toggleWall(opened.maze, FIRST));
+    expect(sessionView(session).document.source).toBeUndefined();
+    session = undoEdit(session);
+    expect(sessionView(session).document.source).toEqual(source);
   });
 });

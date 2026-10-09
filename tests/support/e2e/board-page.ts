@@ -13,7 +13,7 @@ import { expect } from 'vitest';
 
 import { loadSnapshot, type MineMaze } from '@/library';
 import { DATABASE_NAME } from '@/library/database';
-import { decodeMazeCode, type Edge, type Maze } from '@/maze';
+import { decodeMazeCode, mazesEqual, type Edge, type Maze } from '@/maze';
 import { boardGeometry, type MazePoint } from '@/render';
 
 const MAZEFILES = join(import.meta.dirname, '..', '..', '..', 'vendor', 'mazefiles');
@@ -126,6 +126,32 @@ export async function expectSaved(
   }
 
   return found;
+}
+
+/** A test that the content holds exactly `expected`. */
+export function sameMaze(expected: Maze): (content: MazeContent) => boolean {
+  return (content) => mazesEqual(content.maze, expected);
+}
+
+/** How many items Mine holds in the page's browser. */
+export function mineCount(page: Page): Promise<number> {
+  return page.evaluate(
+    (database) =>
+      new Promise<number>((resolve, reject) => {
+        const request = indexedDB.open(database);
+        request.addEventListener('error', () => reject(request.error ?? new Error('no database')));
+        request.addEventListener('success', () => {
+          const db = request.result;
+          const count = db.transaction('mine').objectStore('mine').count();
+          count.addEventListener('error', () => reject(count.error ?? new Error('no count')));
+          count.addEventListener('success', () => {
+            db.close();
+            resolve(count.result);
+          });
+        });
+      }),
+    DATABASE_NAME
+  );
 }
 
 /** The maze of a repository file as the app's snapshot has it. */

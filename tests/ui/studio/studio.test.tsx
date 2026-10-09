@@ -113,3 +113,24 @@ describe('An open maze', () => {
     expect(window.location.hash).toBe('#/');
   });
 });
+
+describe('The checks of an open maze', () => {
+  test.each([
+    ['notebook', 'light', 1440, 900],
+    ['notebook', 'dark', 1440, 900],
+    ['phone', 'light', 390, 844],
+    ['phone', 'dark', 390, 844],
+  ])(
+    'have no accessibility violations open on a %s in the %s theme',
+    async (_, theme, width, height) => {
+      await page.viewport(width, height);
+      document.documentElement.classList.toggle('dark', theme === 'dark');
+      await mountApp('#/repo/classic/AAMC15Maze.txt');
+      await expect.poll(mode).toBe('editor');
+      await userEvent.click(page.getByRole('button', { name: /^Checks/ }));
+      await expect.element(page.getByRole('dialog', { name: 'Checks' })).toBeVisible();
+
+      expect(await axeViolations()).toEqual([]);
+    }
+  );
+});

@@ -40,7 +40,7 @@ function open(hash = '#/', options: PageOptions = {}): Promise<Page> {
   return openPage(browser, contexts, app, hash, options);
 }
 
-/** Records every new transform of the world layer, with the time it was set. */
+/** Records every new transform of the world layer, with the time of the frame that set it. */
 async function recordWorld(page: Page): Promise<() => Promise<WorldSample[]>> {
   await page.evaluate(() => {
     const world = document.querySelector<HTMLElement>('[data-world]');
@@ -50,7 +50,10 @@ async function recordWorld(page: Page): Promise<() => Promise<WorldSample[]>> {
     if (world !== null) {
       new MutationObserver(() => {
         if (samples.at(-1)?.transform !== world.style.transform) {
-          samples.push({ at: performance.now(), transform: world.style.transform });
+          samples.push({
+            at: Number(document.timeline.currentTime ?? performance.now()),
+            transform: world.style.transform,
+          });
         }
       }).observe(world, { attributes: true, attributeFilter: ['style'] });
     }

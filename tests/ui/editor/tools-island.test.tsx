@@ -2,7 +2,8 @@ import { describe, expect, test } from 'vitest';
 import { page, userEvent } from 'vitest/browser';
 import { render } from 'vitest-browser-react';
 
-import { ToolsIsland, type Tool } from '@/ui/editor/tools-island';
+import type { Tool } from '@/ui/editor/tools';
+import { ToolsIsland } from '@/ui/editor/tools-island';
 import type { BoardKey } from '@/ui/editor/use-board-keys';
 import { TooltipProvider } from '@/ui/primitives/tooltip';
 import '@/ui/styles.css';
@@ -58,7 +59,7 @@ describe('The tools island', () => {
 
     expect(focusedLabel()).toBe('Wall');
     await userEvent.keyboard('{ArrowRight}');
-    expect(focusedLabel()).toBe('Undo');
+    expect(focusedLabel()).toBe('Rectangle');
     await userEvent.keyboard('{ArrowLeft}');
     expect(focusedLabel()).toBe('Wall');
     expect(keys).toEqual([]);

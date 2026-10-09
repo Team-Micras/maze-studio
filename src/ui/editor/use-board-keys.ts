@@ -1,9 +1,20 @@
 import { useState } from 'react';
 
-import { edgeOfCell, toggleWall, type Cell, type CellSide, type Maze } from '@/maze';
+import {
+  edgeOfCell,
+  setStart,
+  toggleGoal,
+  toggleWall,
+  type Cell,
+  type CellArea,
+  type CellSide,
+  type Maze,
+} from '@/maze';
 import { boardGeometry, cellInWorld, revealCamera, type Insets, type WorldRect } from '@/render';
 import type { CanvasCamera } from '@/ui/board/use-canvas-camera';
 
+import type { Tool } from './tools';
+import { cellEdit, isCellTool } from './use-cell-drawing';
 import type { MazeEditor } from './use-maze-editor';
 
 /** A key as the board reads it. */
@@ -21,14 +32,18 @@ export interface BoardKeysInput {
   readonly board: WorldRect | undefined;
   /** The room the islands leave, inside which the cursor is kept. */
   readonly insets: Insets;
-  /** Whether a Shift and arrow may change a wall. */
+  /** Whether the keys may change the maze. */
   readonly editable: boolean;
+  /** The tool Enter works with. */
+  readonly tool: Tool;
 }
 
 /** The keyboard cursor and what the board does with a key. */
 export interface BoardKeys {
   /** The cursor's cell, or `undefined` while it is hidden. */
   readonly cursor: Cell | undefined;
+  /** From the corner Enter marked to the cursor, while a second Enter is awaited. */
+  readonly selection: CellArea | undefined;
   /** Does what `key` asks of the board; `true` when it was the board's. */
   readonly press: (key: BoardKey) => boolean;
   /** Hides the cursor, as the pointer does when it presses. */
@@ -65,8 +80,11 @@ function stepped(maze: Maze, cell: Cell, side: CellSide): Cell {
 /**
  * The keyboard on the board (PLAN.md 3.4, DESIGN.md 10 and 11): the first arrow shows the cell
  * cursor at the start, or at (0, 0), and every arrow moves it; Shift and an arrow toggle the wall
- * on that side of it, one step of undo each. The camera keeps the cursor inside the islands'
- * insets, without animation.
+ * on that side of it, one step of undo each. Enter puts the start at the cursor; with the
+ * rectangle, the clear area and the goal, a first Enter marks a corner and a second applies the
+ * area to the cursor, and Escape drops the corner; Shift and Enter add or take away a goal cell.
+ * The first Enter only shows the cursor. The camera keeps the cursor inside the islands' insets,
+ * without animation.
  */
 export function useBoardKeys({
   editor,
@@ -75,8 +93,11 @@ export function useBoardKeys({
   board,
   insets,
   editable,
+  tool,
 }: BoardKeysInput): BoardKeys {
   const [cursor, setCursor] = useState<Cell | undefined>(undefined);
+  const [anchor, setAnchor] = useState<{ cell: Cell; tool: Tool } | undefined>(undefined);
+  const corner = anchor?.tool === tool ? anchor.cell : undefined;
 
   const reveal = (cell: Cell): void => {
     const view = camera.camera;
@@ -89,14 +110,49 @@ export function useBoardKeys({
     }
   };
 
-  const press = ({ key, shiftKey }: BoardKey): boolean => {
-    const side = ARROWS[key];
+  const enter = (shown: Cell, shiftKey: boolean): void => {
+    const current = editor.current();
 
-    if (side === undefined || maze === undefined) {
+    if (cursor === undefined || !editable || current === undefined || !isCellTool(tool)) {
+      return;
+    }
+
+    if (tool === 'start') {
+      editor.change(setStart(current, shown));
+    } else if (tool === 'goal' && shiftKey) {
+      editor.change(toggleGoal(current, shown));
+    } else if (corner === undefined) {
+      setAnchor({ cell: shown, tool });
+    } else {
+      editor.change(cellEdit(current, tool, corner, shown, false));
+      setAnchor(undefined);
+    }
+  };
+
+  const press = ({ key, shiftKey }: BoardKey): boolean => {
+    if (maze === undefined) {
       return false;
     }
 
     const shown = cursor ?? maze.start ?? { x: 0, y: 0 };
+
+    if (key === 'Enter') {
+      enter(shown, shiftKey);
+      setCursor(shown);
+      reveal(shown);
+      return true;
+    }
+
+    if (key === 'Escape') {
+      setAnchor(undefined);
+      return corner !== undefined;
+    }
+
+    const side = ARROWS[key];
+
+    if (side === undefined) {
+      return false;
+    }
 
     if (shiftKey) {
       const current = editor.current();
@@ -116,5 +172,11 @@ export function useBoardKeys({
     return true;
   };
 
-  return { cursor, press, hide: () => setCursor(undefined) };
+  return {
+    cursor,
+    selection:
+      corner === undefined || cursor === undefined ? undefined : { from: corner, to: cursor },
+    press,
+    hide: () => setCursor(undefined),
+  };
 }

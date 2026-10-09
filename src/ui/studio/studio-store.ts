@@ -9,7 +9,7 @@ import { createStore, type StoreApi } from 'zustand/vanilla';
 
 import type { WorldPoint } from '@/render';
 import type { HintMessage } from '@/ui/editor/tool-hint';
-import type { Tool } from '@/ui/editor/tools-island';
+import type { Tool } from '@/ui/editor/tools';
 import type { OpenMaze } from '@/ui/open-maze';
 
 /** The library, a maze, or a flight from one to the other (DESIGN.md 8). */
@@ -42,6 +42,9 @@ export interface StudioState {
   readonly tool: Tool;
   /** The hint above the tools, if one was given. */
   readonly hint: HintMessage | undefined;
+  /** The finding shown on the board, if any: the maze's key and the finding's. */
+  readonly finding: { readonly maze: string; readonly key: string } | undefined;
+  readonly helpOpen: boolean;
   /** The library's zoom when the maze was opened, for the thumbnails left behind. */
   readonly libraryZoom: number | undefined;
   /** The maze shown during the flight back, after the route has left it. */
@@ -60,6 +63,8 @@ export const INITIAL_STUDIO: StudioState = {
   touchOpened: false,
   tool: 'wall',
   hint: undefined,
+  finding: undefined,
+  helpOpen: false,
   libraryZoom: undefined,
   leaving: undefined,
   preview: undefined,
