@@ -29,6 +29,14 @@ browser; there is no server.
   `MazeText` of grid and trailer. The grid ends by its shape (see the parser's header); what the
   canonical text writes differently is an `Irregularity` in `source`, never a refusal; what does
   not fit the shape is refused with line and column.
+- `edges.ts`, `edits.ts`: edges by coordinates (`Edge`, `edgeOfCell`, `hasWall`) and the edits
+  of the editor as pure functions that return the same maze when nothing changes: `setWall`,
+  `toggleWall`, `paintWalls` (a list of edges gets one value; which edges a pointer path crosses
+  is the geometry's job in `src/render`), `wallRectangle`, `clearArea`, `fillBorder`, `moveStart`,
+  `setGoals` and `toggleGoal`. The start and the goals never overlap: the last one set wins.
+- `history.ts`: undo and redo over immutable values, 500 steps. `record` makes a step;
+  between `beginGesture` and `endGesture` it only changes the present, and the end makes one step
+  of the whole gesture, such as a drag, or none if it came back to where it began.
 - `maze-code.ts`: the compact code, version 1, for links and the snapshot, with `base64url.ts` and
   `bytes.ts`. The decoder refuses with a `MazeCodeRejection` and a message, never by throwing.
 

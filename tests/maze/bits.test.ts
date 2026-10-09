@@ -21,6 +21,21 @@ describe('Bits', () => {
     expect(after.with(9, false).equals(before)).toBe(true);
   });
 
+  test('sets many bits in one copy, and returns itself when none changes', () => {
+    const before = Bits.from(20, (index) => index === 3);
+    const after = before.withAll([1, 5, 5, 19, 3], true);
+    expect(Array.from({ length: 20 }, (_, index) => after.get(index))).toEqual(
+      Array.from({ length: 20 }, (_, index) => [1, 3, 5, 19].includes(index))
+    );
+    expect(before.get(1)).toBe(false);
+    expect(after.withAll([1, 5], true)).toBe(after);
+    expect(
+      after.withAll([1, 3, 2], false).equals(Bits.from(20, (index) => [5, 19].includes(index)))
+    ).toBe(true);
+    expect(before.withAll([], true)).toBe(before);
+    expect(() => before.withAll([3, 20], true)).toThrow(RangeError);
+  });
+
   test('compares by length and content', () => {
     expect(Bits.from(8).equals(Bits.from(9))).toBe(false);
     expect(Bits.from(8).equals(Bits.from(8).with(3, true))).toBe(false);

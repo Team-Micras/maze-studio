@@ -1,11 +1,39 @@
 /**
- * The maze core: the model, the mazefiles text format and the compact code. Pure TypeScript, with
+ * The maze core: the model, its edits and their history, the mazefiles text format and the
+ * compact code. Pure TypeScript, with
  * no React, no browser API beyond text encoding, and no other module of maze-studio.
  *
  * @module
  */
 
 export { Bits } from './bits';
+export { edgeIndex, edgeOfCell, hasWall, isMazeEdge, type CellSide, type Edge } from './edges';
+export {
+  clearArea,
+  fillBorder,
+  moveStart,
+  paintWalls,
+  setGoals,
+  setWall,
+  toggleGoal,
+  toggleWall,
+  wallRectangle,
+  type CellArea,
+} from './edits';
+export {
+  beginGesture,
+  canRedo,
+  canUndo,
+  createHistory,
+  endGesture,
+  HISTORY_LIMIT,
+  inGesture,
+  record,
+  redo,
+  undo,
+  type History,
+  type HistoryOptions,
+} from './history';
 export {
   cellAt,
   cellIndex,

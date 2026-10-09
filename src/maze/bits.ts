@@ -55,6 +55,25 @@ export class Bits {
     return new Bits(this.length, bytes);
   }
 
+  /**
+   * A copy with every bit at `indices` set to `value`, or these bits when they all already are.
+   * Repeated indices are fine.
+   */
+  withAll(indices: Iterable<number>, value: boolean): Bits {
+    let bytes: Uint8Array | undefined;
+
+    for (const index of indices) {
+      if (this.get(index) !== value || bytes !== undefined) {
+        bytes ??= this.#bytes.slice();
+        bytes[index >> 3] = value
+          ? (bytes[index >> 3] ?? 0) | (1 << (index & 7))
+          : (bytes[index >> 3] ?? 0) & ~(1 << (index & 7));
+      }
+    }
+
+    return bytes === undefined ? this : new Bits(this.length, bytes);
+  }
+
   /** Whether `other` has the same length and the same bits. */
   equals(other: Bits): boolean {
     return (
