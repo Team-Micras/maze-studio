@@ -151,7 +151,8 @@ export function createMaze(parts: MazeParts): Maze {
   return Object.freeze({ width, height, horizontal, vertical, start, goals: Object.freeze(goals) });
 }
 
-function sameCell(left: Cell | undefined, right: Cell | undefined): boolean {
+/** Whether two cells, either of which may be missing, are the same cell or both missing. */
+export function sameCell(left: Cell | undefined, right: Cell | undefined): boolean {
   return left?.x === right?.x && left?.y === right?.y;
 }
 

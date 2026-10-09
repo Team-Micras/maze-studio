@@ -44,6 +44,10 @@ browser; there is no server.
   document is edited; `profileOfPath` gives a repository path its folder's profile.
 - `maze-code.ts`: the compact code, version 1, for links and the snapshot, with `base64url.ts` and
   `bytes.ts`. The decoder refuses with a `MazeCodeRejection` and a message, never by throwing.
+- `diff.ts`: `diffMazes(before, after)`, the walls put and taken, the goal cells marked and
+  unmarked and the start on both sides, or `undefined` when the sizes differ; `isEmptyDiff`.
+  `tests/maze/diff.test.ts` checks it against the pairs of `tests/fixtures/diff/`, each with its
+  counts written by hand.
 
 `tests/maze/mazefiles-corpus.test.ts` reads every file of `vendor/mazefiles` at the pinned commit:
 blob SHA, byte-for-byte round trip and compact-code round trip.
@@ -75,6 +79,34 @@ open borders, which the repository never has.
 - `database.ts`, `settings.ts`: a small IndexedDB wrapper with the stores `repo-files`, `mine`
   and `settings`, and the preferences and local folder kept in the last.
 
+## Drawing
+
+`src/render/index.ts` is its public face. It imports only `src/maze`, and never React.
+
+- `geometry.ts`: a maze drawn with its longest side 640 world units (`ARTBOARD_SIZE`), board or
+  thumbnail proportions (DESIGN.md 2.2), maze points in cells (`u` east, `v` north) and board
+  points, cell, wall and slot rectangles, `nearestEdge` within 0.32 cell and the cells under a
+  point.
+- `track-layers.ts`, `overlay-layers.ts`, `path.ts`, `track-colors.ts`: the track and the editor's
+  overlays as SVG path data, one string per layer in the order of DESIGN.md 2.2 and 2.3, walls and
+  posts split red and bare by the paint rule; the same strings feed a canvas `Path2D`.
+- `stroke.ts`: the wall stroke of PLAN.md 3.4, walking the post grid with a step of 0.6 cell, with
+  turns, the axis lock of Shift and every post of a fast move; `applyStroke` paints it with
+  `paintWalls`.
+- `camera.ts`, `camera-input.ts`, `easing.ts`: the camera `{ x, y, k }` as pure functions: fit
+  between insets, zoom range and the 96 px pan limit, zoom at a point, pinch, centring, the flight
+  path (straight on screen, geometric in size) and the curves of DESIGN.md 8; what a wheel event
+  or a zoom key asks (DESIGN.md 7).
+- `minimap.ts`: when the minimap shows (past 1.06 times the fit), its frame, the visible area on
+  it and the world point under a click.
+- `thumbnails.ts`, `lru-cache.ts`: thumbnails painted on an `OffscreenCanvas` in bands of 64, 128,
+  256 and 512 pixels, the diff on top if asked, in an LRU bounded at 64 MB of bitmaps.
+
+`src/ui/board/` turns these into components, mounted alone in the browser tests: `Board` (the
+SVG, a path per layer), `CameraStage` and `useBoardCamera` (the canvas the board lies on, with
+wheel, pinch, Space or middle-button drag and the zoom keys), `Minimap`, `ThumbnailCanvas` with
+the app's one `thumbnailCache`, and `CursorStatus`.
+
 ## Import rules
 
 Checked by `bun run lint` through `no-restricted-imports` in `.oxlintrc.json`, and the rules
@@ -96,3 +128,8 @@ Four Vitest projects, run one after the other: `unit` (`tests/**/*.test.ts`, Nod
 Chromium, one file at a time, outside the check) and `e2e` (`tests/e2e/`, which builds the app
 under `/maze-studio/` into `node_modules/.tmp/` and drives it with Playwright).
 `tests/config/vitest-projects.test.ts` guards that split.
+
+Browser tests share what is in `tests/support/ui/`: `BoardHarness` mounts a board on its stage
+with the minimap and the cursor status, `frames.ts` measures motion as DESIGN.md 8 says (p95 at or
+below 20 ms, at most 1 % of frames over 25 ms, the median of three runs), and `touch.ts` sends real
+touches. Reference screenshots live in `screenshots/` next to their test and are committed.

@@ -122,3 +122,41 @@ The machine's rule is no builds in `/tmp`, so `tests/e2e/pwa.test.ts` builds the
   stored code does not read cannot be written as a `.txt`, so the screen must tell the user which
   ones were left out rather than drop them silently.
 - **An update stops at its first failure.** Downloads already running finish; no new one starts.
+
+## 09/10/2026 — Slice 3: drawing and camera
+
+- **The track's colours are values, not theme tokens.** The track looks the same in both themes,
+  so `TRACK_COLORS` in `src/render/track-colors.ts` is the one source for the SVG board and the
+  canvas thumbnails, which cannot read CSS variables. The UI tokens of DESIGN.md 2.1 (desk,
+  islands, ink, the added `--warning`, `--success` and `--diff-ink`, and the island and slab
+  shadows) replaced the shadcn defaults in `src/ui/styles.css`.
+- **The board slab's shadow scales with the camera.** It sits on the SVG in world units, as in the
+  approved mockup. Measured on a 32×32 board, wheel zoom up to about seven times the fit and a
+  drag at about four times keep p95 at 16.8 ms with no frame over 25 ms, so it stays.
+- **The camera follows the fit until the user moves it.** `useBoardCamera` keeps no camera of its
+  own until a move, so a resized viewport refits; after a move it keeps that place and only the
+  limits are applied again. Fitting with `0` returns to following the fit.
+- **Lint overrides, each for one file.** `jsx-a11y` counts `role="application"` as
+  non-interactive, but DESIGN.md 13 makes the canvas exactly that: a focusable application that
+  takes keys and pointers. `src/ui/board/camera-stage.tsx` allows `tabIndex` on that role and turns
+  off `no-noninteractive-element-interactions`. `unicorn/no-array-fill-with-reference-type` fires
+  on `CanvasRenderingContext2D.fill(path)`, which is not an array fill, so it is off for
+  `src/render/thumbnails.ts`.
+- **Reference screenshots are committed.** The board's screenshots (16×16, 21×21, 32×32, light and
+  dark, with every overlay) are compared with references in `screenshots/` next to the test, named
+  `<name>-chromium-linux.png`; the screenshots of failures stay in the ignored `__screenshots__`.
+  The runner's iframe is scaled to 0.8, so a 600 px stage is a 480 px picture. Update them with
+  `vitest run --project browser tests/ui/board/board.test.tsx -u` after a deliberate change of the
+  drawing, and look at them before committing.
+- **Pointers in browser tests.** Synthetic mouse events can capture pointer 1, so pan and drag tests
+  dispatch them; synthetic touches cannot be captured, so the pinch test sends real touches through
+  the DevTools protocol (`tests/support/ui/touch.ts`), converting the iframe's points to the
+  page's.
+- **Diff fixtures come from known edits.** Each pair in `tests/fixtures/diff/` was written by
+  applying the core's edits to a repository maze (three walls put, one taken and a goal cell
+  added; five walls taken and the start moved; twelve walls put and the marks cleared; nothing; a
+  16×16 against a 21×21), and its `expected.json` was written by hand from those edits, never from
+  `diffMazes`.
+- **Thumbnails are keyed by the caller.** The cache takes a string key, such as the compact code,
+  plus the band; a maze object is not a key, since the library decodes the same maze more than
+  once.

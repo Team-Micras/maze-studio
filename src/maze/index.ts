@@ -1,12 +1,13 @@
 /**
- * The maze core: the model, its edits and their history, the mazefiles text format, the compact
- * code and validation. Pure TypeScript, with
+ * The maze core: the model, its edits and their history, the diff between two mazes, the
+ * mazefiles text format, the compact code and validation. Pure TypeScript, with
  * no React, no browser API beyond text encoding, and no other module of maze-studio.
  *
  * @module
  */
 
 export { Bits } from './bits';
+export { diffMazes, isEmptyDiff, type MazeDiff } from './diff';
 export { edgeIndex, edgeOfCell, hasWall, isMazeEdge, type CellSide, type Edge } from './edges';
 export {
   clearArea,
@@ -45,6 +46,7 @@ export {
   MAX_SIDE,
   mazesEqual,
   MIN_SIDE,
+  sameCell,
   verticalEdgeCount,
   verticalEdgeIndex,
   type Cell,

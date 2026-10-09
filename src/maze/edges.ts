@@ -36,7 +36,7 @@ export function edgeOfCell(cell: Cell, side: CellSide): Edge {
 }
 
 /** Whether `edge` is an edge of `maze`, border edges included. */
-export function isMazeEdge(maze: Maze, edge: Edge): boolean {
+export function isMazeEdge(maze: Pick<Maze, 'width' | 'height'>, edge: Edge): boolean {
   const [columns, rows] =
     edge.direction === 'horizontal' ? [maze.width, maze.height + 1] : [maze.width + 1, maze.height];
   return (

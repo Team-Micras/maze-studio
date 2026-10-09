@@ -46,7 +46,12 @@
       }
     },
     {
-      "files": ["tests/e2e/**", "tests/support/library/browser-deflate.ts"],
+      "files": [
+        "tests/e2e/**",
+        "tests/support/library/browser-deflate.ts",
+        "tests/support/ui/frames.ts",
+        "tests/support/ui/touch.ts"
+      ],
       "rules": {
         "no-await-in-loop": "off"
       }
@@ -234,6 +239,19 @@
       "files": ["src/library/mine.ts"],
       "rules": {
         "unicorn/require-post-message-target-origin": "off"
+      }
+    },
+    {
+      "files": ["src/render/thumbnails.ts"],
+      "rules": {
+        "unicorn/no-array-fill-with-reference-type": "off"
+      }
+    },
+    {
+      "files": ["src/ui/board/camera-stage.tsx"],
+      "rules": {
+        "jsx-a11y/no-noninteractive-tabindex": ["error", { "roles": ["application"] }],
+        "jsx-a11y/no-noninteractive-element-interactions": "off"
       }
     }
   ]

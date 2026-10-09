@@ -9,6 +9,12 @@ import { deflateZeros } from './tests/support/library/browser-deflate.ts';
 
 const PERFORMANCE_TESTS = ['tests/**/*-performance.test.{ts,tsx}'];
 
+/**
+ * Reference screenshots live next to their test in `screenshots/`, committed, unlike the
+ * screenshots of failures, which stay in the ignored `__screenshots__`.
+ */
+const SCREENSHOT_REFERENCES = 'screenshots';
+
 function chromium() {
   return {
     enabled: true,
@@ -17,6 +23,28 @@ function chromium() {
     viewport: { width: 1440, height: 900 },
     instances: [{ browser: 'chromium' as const }],
     commands: { deflateZeros },
+    expect: {
+      toMatchScreenshot: {
+        resolveScreenshotPath: ({
+          arg,
+          browserName,
+          ext,
+          platform,
+          root,
+          testFileDirectory,
+          testFileName,
+        }: {
+          arg: string;
+          browserName: string;
+          ext: string;
+          platform: string;
+          root: string;
+          testFileDirectory: string;
+          testFileName: string;
+        }) =>
+          `${root}/${testFileDirectory}/${SCREENSHOT_REFERENCES}/${testFileName}/${arg}-${browserName}-${platform}${ext}`,
+      },
+    },
   };
 }
 
