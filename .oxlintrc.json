@@ -46,7 +46,7 @@
       }
     },
     {
-      "files": ["tests/e2e/**"],
+      "files": ["tests/e2e/**", "tests/support/library/browser-deflate.ts"],
       "rules": {
         "no-await-in-loop": "off"
       }
@@ -194,7 +194,13 @@
       }
     },
     {
-      "files": ["scripts/**", "*.config.ts", "tests/e2e/**", "tests/config/**"],
+      "files": [
+        "scripts/**",
+        "*.config.ts",
+        "tests/e2e/**",
+        "tests/config/**",
+        "tests/support/library/browser-deflate.ts"
+      ],
       "env": {
         "node": true
       }

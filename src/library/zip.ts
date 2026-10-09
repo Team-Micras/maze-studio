@@ -165,6 +165,27 @@ export const MAX_ARCHIVE_BYTES = 32 * 1024 * 1024;
 
 class TooLarge extends Error {}
 
+/**
+ * How much deflated data goes into the decompressor at a time. Deflate expands at most about
+ * 1032 times, so one slice inflates to at most about 1 MiB before the cap can cut it.
+ */
+const INFLATE_SLICE = 1024;
+
+async function feed(
+  writer: WritableStreamDefaultWriter<BufferSource>,
+  bytes: Uint8Array,
+  offset: number
+): Promise<void> {
+  if (offset >= bytes.length) {
+    await writer.close();
+    return;
+  }
+
+  await writer.ready;
+  await writer.write(bytes.slice(offset, offset + INFLATE_SLICE));
+  await feed(writer, bytes, offset + INFLATE_SLICE);
+}
+
 async function drain(
   reader: ReadableStreamDefaultReader<Uint8Array>,
   output: Uint8Array,
@@ -177,7 +198,6 @@ async function drain(
   }
 
   if (length + value.length > output.length) {
-    await reader.cancel();
     throw new TooLarge();
   }
 
@@ -186,12 +206,20 @@ async function drain(
 }
 
 async function inflate(bytes: Uint8Array, limit: number): Promise<Uint8Array> {
-  const reader = new Blob([bytes.slice()])
-    .stream()
-    .pipeThrough(new DecompressionStream('deflate-raw'))
-    .getReader();
+  const { writable, readable } = new DecompressionStream('deflate-raw');
+  const writer = writable.getWriter();
+  const reader = readable.getReader();
+  const fed = feed(writer, bytes, 0);
   const output = new Uint8Array(limit);
-  return output.slice(0, await drain(reader, output, 0));
+
+  try {
+    const length = await drain(reader, output, 0);
+    await fed;
+    return output.slice(0, length);
+  } catch (error) {
+    await Promise.allSettled([reader.cancel(), writer.abort(), fed]);
+    throw error;
+  }
 }
 
 function endOfDirectory(view: DataView): number | undefined {

@@ -111,8 +111,13 @@ The machine's rule is no builds in `/tmp`, so `tests/e2e/pwa.test.ts` builds the
 - **Zip limits.** The reader refuses an entry that declares more than 1 MiB (a 16×16 maze is
   about 1 kB, a 64×64 under 40 kB), an archive that declares more than 32 MiB in all, entries
   whose data overlap, and an entry that inflates past or short of the size it declares. It
-  inflates one entry at a time, reading the stream in chunks into a buffer of the declared size
-  and cancelling it the moment it would overflow, so a crafted archive cannot fill the memory.
+  inflates one entry at a time, into a buffer of the declared size, and feeds the decompressor 1
+  KiB of deflated data at a time, reading its output between writes, so each step makes at most
+  about 1 MiB (deflate expands at most about 1032 times) and the stream is cancelled right past
+  the cap. Handing it the whole entry at once, as a `Blob.stream()` does, lets Chromium inflate
+  everything before the first read: a 1 GiB bomb took 383 ms and a gibibyte of memory; it is now
+  refused in about 2 ms. `tests/library/zip-bomb.test.tsx` checks that in Chromium, with a bomb
+  that a browser command deflates on the Node side.
 - **The export says what it left out.** `exportMine` returns `{ zip, skipped }`: an item whose
   stored code does not read cannot be written as a `.txt`, so the screen must tell the user which
   ones were left out rather than drop them silently.
