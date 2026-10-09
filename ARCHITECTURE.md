@@ -17,6 +17,26 @@ browser; there is no server.
 | `tests/`           | Mirrors `src/`: `src/maze/x.ts` is tested by `tests/maze/x.test.ts`.                                                   |
 | `vendor/mazefiles` | The mazefiles repository as a submodule, pinned to the snapshot's commit.                                              |
 
+## The maze core
+
+`src/maze/index.ts` is its public face:
+
+- `maze.ts`: `Maze`, `Cell`, `createMaze` (checks sizes 1 to 64, wall counts, cells inside, goals
+  unique and never the start), edge and cell indices, `mazesEqual`. Walls are two immutable `Bits`
+  sets (`bits.ts`), `horizontal` with `(height + 1) × width` edges and `vertical` with
+  `height × (width + 1)`, `(0, 0)` in the south-west corner.
+- `maze-text.ts`, `parse-maze-text.ts`, `serialize-maze-text.ts`: the mazefiles text as a
+  `MazeText` of grid and trailer. The grid ends by its shape (see the parser's header); what the
+  canonical text writes differently is an `Irregularity` in `source`, never a refusal; what does
+  not fit the shape is refused with line and column.
+- `maze-code.ts`: the compact code, version 1, for links and the snapshot, with `base64url.ts` and
+  `bytes.ts`. The decoder refuses with a `MazeCodeRejection` and a message, never by throwing.
+
+`tests/maze/mazefiles-corpus.test.ts` reads every file of `vendor/mazefiles` at the pinned commit:
+blob SHA, byte-for-byte round trip and compact-code round trip.
+`tests/maze/round-trip-properties.test.ts` does the same over random mazes from a fixed seed, with
+open borders, which the repository never has.
+
 ## Import rules
 
 Checked by `bun run lint` through `no-restricted-imports` in `.oxlintrc.json`, and the rules
