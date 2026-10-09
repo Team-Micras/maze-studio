@@ -1,5 +1,6 @@
 import { expect, test } from 'vitest';
 
+import { boardGeometry } from '@/render';
 import '@/ui/styles.css';
 import { settled } from '@tests/support/ui/animations';
 import { FRAME_BUDGET, measureFrames, medianRun, type FrameReport } from '@tests/support/ui/frames';
@@ -8,6 +9,7 @@ import { artboards, mountApp } from '@tests/support/ui/library-app';
 const RUNS = 3;
 const FLIGHT_FRAMES = 40;
 const LIST_STEPS = 50;
+const STROKE_STEPS = 200;
 const FLIGHT_WORST_MS = 33;
 
 function mode(): string | null | undefined {
@@ -97,5 +99,53 @@ test('fifty ↓ in a row through the open quick list keep the frame budget of DE
 
   const median = medianRun(reports);
   console.info(describeRun(`quick list, ${LIST_STEPS} ↓`, median));
+  expectWithinBudget(median);
+});
+
+test('a stroke over a 32×32 board, one move a frame, keeps the frame budget of DESIGN.md 8', async () => {
+  await mountApp('#/repo/halfsize/japan2011hef.txt');
+  await until('editor');
+  const stage = document.querySelector<HTMLElement>('[role="application"]');
+  const svg = document.querySelector('[data-open-board] svg[data-board]');
+  const box = svg?.getBoundingClientRect();
+  const geometry = boardGeometry({ width: 32, height: 32 });
+  const scale = (box?.width ?? 0) / geometry.width;
+  const at = (u: number, v: number): { clientX: number; clientY: number } => ({
+    clientX: (box?.x ?? 0) + (geometry.margin + u * geometry.pitch) * scale,
+    clientY: (box?.y ?? 0) + (geometry.margin + (geometry.rows - v) * geometry.pitch) * scale,
+  });
+  const press = (type: string, u: number, v: number): void => {
+    stage?.dispatchEvent(
+      new PointerEvent(type, {
+        bubbles: true,
+        cancelable: true,
+        pointerId: 1,
+        pointerType: 'mouse',
+        button: 0,
+        buttons: type === 'pointerup' ? 0 : 1,
+        ...at(u, v),
+      })
+    );
+  };
+  const reports: FrameReport[] = [];
+
+  for (let run = 0; run < RUNS; run++) {
+    const row = 4 + run * 8;
+    press('pointerdown', 2.2, row);
+    reports.push(
+      await measureFrames(STROKE_STEPS, (index) => {
+        const lane = Math.floor(index / 50);
+        const along = (index % 50) * 0.5;
+        press('pointermove', lane % 2 === 0 ? 2 + along : 27 - along, row + lane);
+      })
+    );
+    press('pointerup', 2, row);
+    await settled();
+  }
+
+  const median = medianRun(reports);
+  console.info(describeRun(`stroke, ${STROKE_STEPS} moves`, median));
+  await expect.poll(() => window.location.hash).toMatch(/^#\/mine\//);
+  expect(document.querySelector('h1')?.textContent).toBe('japan2011hef (edited)');
   expectWithinBudget(median);
 });

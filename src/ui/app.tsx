@@ -1,13 +1,14 @@
 import { useEffect, useRef, useState } from 'react';
 
-import { DEFAULT_FILTER, fileStem, type LibraryFilter } from '@/library';
+import { DEFAULT_FILTER, type LibraryFilter } from '@/library';
 import { parseMazeText } from '@/maze';
 
 import { CANVAS_ID } from './canvas-id';
+import { useMazeEditor } from './editor/use-maze-editor';
 import { useRoute } from './hooks/use-route';
 import { useLibrary } from './library/use-library';
 import { pushRoute, replaceRoute } from './navigation';
-import { MAX_FILE_BYTES, openingOf, type OpenMaze } from './open-maze';
+import { looseDocument, MAX_FILE_BYTES, mazeKeyOf, openingOf, type OpenMaze } from './open-maze';
 import { TooltipProvider } from './primitives/tooltip';
 import { LIBRARY_ROUTE, parseRoute, routeHash, type Route } from './routes';
 import { Studio } from './studio/studio';
@@ -27,8 +28,10 @@ function focusCanvas(): void {
 }
 
 /**
- * The whole app: the studio, showing the library or the maze the route opens, with the toasts on
- * top. A `.txt` file opens without a route of its own; the Library button closes it (PLAN.md 3.4).
+ * The whole app: the studio, showing the library or the maze the route opens, as edited, with the
+ * toasts on top. A `.txt` file opens without a route of its own; the Library button closes it
+ * (PLAN.md 3.4). A route that names the copy an edit has just made is not missing while the
+ * library loads it.
  */
 export function App() {
   const route = useRoute();
@@ -46,12 +49,18 @@ export function App() {
     setLastFilter({ hash, filter: route.filter });
   }
 
+  const opened = shownFile ?? (opening.status === 'open' ? opening.open : undefined);
+  const editor = useMazeEditor({ opened, wanted: shownFile?.key ?? mazeKeyOf(route) });
+  const routeKey = mazeKeyOf(route);
   const missing =
-    route.kind !== 'library' && opening.status === 'missing' ? opening.message : undefined;
+    routeKey !== undefined && opening.status === 'missing' && !editor.answers(routeKey)
+      ? opening.message
+      : undefined;
 
   useEffect(() => {
     const current = parseRoute(hash);
-    fromLibrary.current = previous.current.kind === 'library' && current.kind !== 'library';
+    fromLibrary.current =
+      current.kind !== 'library' && (previous.current.kind === 'library' || fromLibrary.current);
     previous.current = current;
 
     if (current.kind === 'library') {
@@ -89,8 +98,9 @@ export function App() {
         open: {
           key: `file:${(before?.id ?? 0) + 1}`,
           maze: parsed.value.maze,
-          name: fileStem(picked.name),
+          name: picked.name.replace(/\.txt$/i, ''),
           detail: 'Opened from a file',
+          document: looseDocument(parsed.value.trailer),
         },
         at: hash,
         id: (before?.id ?? 0) + 1,
@@ -99,8 +109,6 @@ export function App() {
       showToast(`Could not read ${picked.name} (${parsed.error.message}). Pick a mazefiles .txt`);
     }
   };
-
-  const shownMaze = shownFile ?? (opening.status === 'open' ? opening.open : undefined);
 
   return (
     <TooltipProvider delayDuration={350} skipDelayDuration={300}>
@@ -123,7 +131,8 @@ export function App() {
         onLibrary={toLibrary}
         onOpenFile={(picked) => void openFile(picked)}
         onPin={replaceRoute}
-        opened={shownMaze}
+        editor={editor}
+        opened={editor.shown ?? opened}
       />
       <Toaster />
     </TooltipProvider>

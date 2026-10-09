@@ -148,7 +148,7 @@ describe('The library of the built app', () => {
 
     try {
       await page.locator('input[data-open-file]').setInputFiles(file);
-      await page.getByRole('heading', { level: 1, name: 'corridor' }).waitFor();
+      await page.getByRole('heading', { level: 1, name: 'corridor', exact: true }).waitFor();
 
       expect(await page.getByText('Opened from a file').isVisible()).toBe(true);
       expect(new URL(page.url()).hash).toBe('#/');

@@ -1,4 +1,12 @@
-import { useCallback, useEffect, useRef, useState, type FocusEvent, type ReactNode } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type FocusEvent,
+  type KeyboardEvent,
+  type ReactNode,
+} from 'react';
 
 import type { CatalogEntry } from '@/library';
 import {
@@ -9,7 +17,7 @@ import {
   type Insets,
   type LibraryGrid,
 } from '@/render';
-import { CameraStage, type PrimaryPan } from '@/ui/board/camera-stage';
+import { CameraStage, type PrimaryPan, type StageDrawing } from '@/ui/board/camera-stage';
 import { CANVAS_ID } from '@/ui/canvas-id';
 import type { CanvasCamera } from '@/ui/board/use-canvas-camera';
 import { useDevicePixelRatio } from '@/ui/board/use-device-pixel-ratio';
@@ -42,6 +50,10 @@ export interface LibraryCanvasProps {
   readonly primaryPan?: PrimaryPan;
   /** Whether the world layer is promoted, as during a flight. */
   readonly promoted?: boolean;
+  /** What the primary button and one finger draw when they do not pan, as on an open maze. */
+  readonly drawing?: StageDrawing;
+  /** Keys for the content, before the canvas's own. */
+  readonly onCanvasKey?: (event: KeyboardEvent<HTMLDivElement>) => void;
   /** Hands on the kind of pointer that pressed an artboard: mouse, pen or touch. */
   readonly onArtboardPointer?: (pointerType: string) => void;
   /** More world content, drawn above the artboards, such as the open board. */
@@ -73,6 +85,8 @@ export function LibraryCanvas({
   label = 'Maze library',
   primaryPan = 'lazy',
   promoted = false,
+  drawing,
+  onCanvasKey,
   onArtboardPointer,
   children,
   className,
@@ -123,8 +137,10 @@ export function LibraryCanvas({
     <CameraStage
       className={className}
       controller={controller}
+      drawing={drawing}
       id={CANVAS_ID}
       label={label}
+      onKeyDown={onCanvasKey}
       primaryPan={primaryPan}
       promoted={promoted}
     >

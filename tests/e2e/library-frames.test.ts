@@ -1,7 +1,7 @@
 import { chromium, type Browser, type Page } from 'playwright';
 import { afterAll, beforeAll, describe, expect, inject, test } from 'vitest';
 
-import { cpuBenchmark, throttleRate } from '@tests/support/e2e/cpu-rate';
+import { cpuBenchmark, throttleRate } from '@tests/support/cpu-rate';
 import { FRAME_BUDGET, frameReport, medianRun, type FrameReport } from '@tests/support/ui/frames';
 
 const app = inject('appUrl');

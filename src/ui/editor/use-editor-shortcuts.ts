@@ -1,0 +1,66 @@
+import { useEffect } from 'react';
+
+import { typingIn } from '@/ui/typing-in';
+
+import type { Tool } from './tools-island';
+
+/** What the editor's shortcuts do. */
+export interface EditorShortcuts {
+  /** Whether a maze is open in the editor, where the shortcuts work. */
+  readonly active: boolean;
+  /** Whether the hand is offered, as on a notebook. */
+  readonly hand: boolean;
+  readonly onUndo: () => void;
+  readonly onRedo: () => void;
+  readonly onTool: (tool: Tool) => void;
+}
+
+const TOOL_KEYS: Readonly<Record<string, Tool>> = { h: 'hand', w: 'wall' };
+
+/**
+ * The editor's keys anywhere on the page (DESIGN.md 11): Ctrl or Cmd with Z undoes, with Shift and
+ * Z or with Y redoes, and `H` and `W` pick the hand and the wall tool. None fires while the focus
+ * is in a text field.
+ */
+export function useEditorShortcuts({
+  active,
+  hand,
+  onUndo,
+  onRedo,
+  onTool,
+}: EditorShortcuts): void {
+  useEffect(() => {
+    if (!active) {
+      return undefined;
+    }
+
+    const onKey = (event: KeyboardEvent): void => {
+      if (typingIn(event.target) || event.altKey) {
+        return;
+      }
+
+      const key = event.key.toLowerCase();
+
+      if (event.ctrlKey || event.metaKey) {
+        if (key === 'z' && !event.shiftKey) {
+          event.preventDefault();
+          onUndo();
+        } else if ((key === 'z' && event.shiftKey) || (key === 'y' && event.ctrlKey)) {
+          event.preventDefault();
+          onRedo();
+        }
+
+        return;
+      }
+
+      const tool = TOOL_KEYS[key];
+
+      if (tool !== undefined && (tool !== 'hand' || hand)) {
+        event.preventDefault();
+        onTool(tool);
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [active, hand, onUndo, onRedo, onTool]);
+}

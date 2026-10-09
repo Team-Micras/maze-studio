@@ -3,6 +3,14 @@ import { afterAll, beforeAll, describe, expect, inject, test } from 'vitest';
 
 import { cubicBezier } from '@/render';
 import { FLIGHT_IN_MS } from '@/ui/studio/studio-store';
+import {
+  openPage,
+  parseCamera,
+  studioMode as mode,
+  worldCamera as camera,
+  type Camera,
+  type PageOptions,
+} from '@tests/support/e2e/studio-page';
 
 const app = inject('appUrl');
 
@@ -28,43 +36,8 @@ interface WorldSample {
   readonly transform: string;
 }
 
-interface Camera {
-  readonly x: number;
-  readonly y: number;
-  readonly k: number;
-}
-
-async function open(
-  hash = '#/',
-  options: { width?: number; height?: number; touch?: boolean; reduced?: boolean } = {}
-): Promise<Page> {
-  const context = await browser.newContext({
-    viewport: { width: options.width ?? 1440, height: options.height ?? 900 },
-    hasTouch: options.touch ?? false,
-    reducedMotion: options.reduced === true ? 'reduce' : 'no-preference',
-  });
-  contexts.push(context);
-  const page = await context.newPage();
-  await page.goto(`${app}${hash}`);
-  await page.locator('a[data-artboard]').first().waitFor();
-  return page;
-}
-
-function mode(page: Page): Promise<string | null> {
-  return page.locator('[data-studio-mode]').getAttribute('data-studio-mode');
-}
-
-function parseCamera(transform: string): Camera {
-  const match = /translate\(([-\d.e]+)px, ([-\d.e]+)px\) scale\(([-\d.e]+)\)/.exec(transform);
-  return { x: Number(match?.[1]), y: Number(match?.[2]), k: Number(match?.[3]) };
-}
-
-async function camera(page: Page): Promise<Camera> {
-  return parseCamera(
-    await page.evaluate(
-      () => document.querySelector<HTMLElement>('[data-world]')?.style.transform ?? ''
-    )
-  );
+function open(hash = '#/', options: PageOptions = {}): Promise<Page> {
+  return openPage(browser, contexts, app, hash, options);
 }
 
 /** Records every new transform of the world layer, with the time it was set. */

@@ -1,7 +1,7 @@
 import type { CSSProperties } from 'react';
 
 import type { Maze } from '@/maze';
-import type { WorldRect } from '@/render';
+import type { BoardOverlays, WorldRect } from '@/render';
 import { Board } from '@/ui/board/board';
 
 /** The props of {@link OpenBoard}. */
@@ -11,6 +11,8 @@ export interface OpenBoardProps {
   readonly rect: WorldRect;
   /** Whether it shows; it fades in over the thumbnail and out again (DESIGN.md 8). */
   readonly shown: boolean;
+  /** The editor's cursor and edge preview. */
+  readonly overlays?: BoardOverlays;
 }
 
 function placeStyle(rect: WorldRect): CSSProperties {
@@ -25,7 +27,7 @@ function placeStyle(rect: WorldRect): CSSProperties {
  * The full board of the open maze in the world, mounted when the flight starts and cross-fading
  * over the artboard's thumbnail in 300 ms, so nothing swaps or resizes on landing.
  */
-export function OpenBoard({ maze, rect, shown }: OpenBoardProps) {
+export function OpenBoard({ maze, rect, shown, overlays }: OpenBoardProps) {
   return (
     <div
       className="absolute top-0 left-0 transition-opacity duration-300 ease-(--ease-out) starting:opacity-0 data-hidden:opacity-0"
@@ -33,7 +35,7 @@ export function OpenBoard({ maze, rect, shown }: OpenBoardProps) {
       data-open-board=""
       style={placeStyle(rect)}
     >
-      <Board className="size-full" maze={maze} />
+      <Board className="size-full" maze={maze} overlays={overlays} />
     </div>
   );
 }

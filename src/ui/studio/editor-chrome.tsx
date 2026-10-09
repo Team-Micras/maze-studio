@@ -1,6 +1,9 @@
 import { SidebarSimple, SquaresFour } from '@phosphor-icons/react';
+import type { ReactNode } from 'react';
 
+import type { Cell } from '@/maze';
 import { MINIMAP_SIZE, type WorldRect } from '@/render';
+import { CursorStatus } from '@/ui/board/cursor-status';
 import { Minimap } from '@/ui/board/minimap';
 import type { CanvasCamera } from '@/ui/board/use-canvas-camera';
 import { Hint, Island, IslandButton } from '@/ui/islands/island';
@@ -31,12 +34,17 @@ export interface EditorChromeProps {
   readonly listOpen: boolean;
   readonly onToggleList: () => void;
   readonly onLibrary: () => void;
+  /** The keyboard cursor's cell, which the status names on a notebook. */
+  readonly cursor?: Cell;
+  /** The editing controls at the bottom centre. */
+  readonly children?: ReactNode;
 }
 
 /**
  * The islands of an open maze (DESIGN.md 9.2 and 9.3): the way back to the library, the quick
  * list and the title at the top left, the minimap at the top right, the zoom at the bottom right,
- * down the right edge on a phone. Editing comes in slice 5.
+ * down the right edge on a phone, the cursor's status at the bottom left on a notebook, and the
+ * editing controls at the bottom centre.
  */
 export function EditorChrome({
   open,
@@ -48,6 +56,8 @@ export function EditorChrome({
   listOpen,
   onToggleList,
   onLibrary,
+  cursor,
+  children,
 }: EditorChromeProps) {
   return (
     <div
@@ -93,6 +103,10 @@ export function EditorChrome({
         />
       ) : null}
       <footer>
+        {phone ? null : (
+          <CursorStatus cell={cursor} className="fixed bottom-6 left-4 z-[9]" maze={open.maze} />
+        )}
+        {children}
         <ZoomIsland
           className={
             phone

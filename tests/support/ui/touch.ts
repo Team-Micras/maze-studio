@@ -27,10 +27,11 @@ function toTopLevel(point: TouchPoint): TouchPoint {
   return { x: frame.left + point.x * scale, y: frame.top + point.y * scale };
 }
 
-async function dispatch(
+/** Puts the fingers at `points`, the first one id 1, as one touch event of `type`. */
+export async function touch(
   type: 'touchStart' | 'touchMove' | 'touchEnd',
   points: readonly TouchPoint[]
-) {
+): Promise<void> {
   const session: CDPSession = cdp();
   await session.send('Input.dispatchTouchEvent', {
     type,
@@ -44,11 +45,11 @@ export async function pinch(
   to: readonly [TouchPoint, TouchPoint],
   steps = 8
 ): Promise<void> {
-  await dispatch('touchStart', from);
+  await touch('touchStart', from);
 
   for (let step = 1; step <= steps; step++) {
     const share = step / steps;
-    await dispatch(
+    await touch(
       'touchMove',
       from.map((point, index) => ({
         x: point.x + ((to[index]?.x ?? point.x) - point.x) * share,
@@ -57,5 +58,5 @@ export async function pinch(
     );
   }
 
-  await dispatch('touchEnd', []);
+  await touch('touchEnd', []);
 }

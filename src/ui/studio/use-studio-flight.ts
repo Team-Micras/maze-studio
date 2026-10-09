@@ -118,6 +118,9 @@ export function useStudioFlight(input: StudioFlightInput): StudioFlight {
       store.setState({
         cell,
         viewing: now.phone || lastPointer.current === 'touch',
+        touchOpened: lastPointer.current === 'touch',
+        tool: 'wall',
+        hint: undefined,
         libraryZoom: from?.k,
         leaving: undefined,
         preview: undefined,

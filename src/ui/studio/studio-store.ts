@@ -1,6 +1,6 @@
 /**
  * The state of the studio, one store per studio: whether the library or a maze is on screen or a
- * flight is between them, where the open maze lies, and the quick list.
+ * flight is between them, where the open maze lies, the quick list, and the editor's mode and tool.
  *
  * @module
  */
@@ -8,6 +8,8 @@
 import { createStore, type StoreApi } from 'zustand/vanilla';
 
 import type { WorldPoint } from '@/render';
+import type { HintMessage } from '@/ui/editor/tool-hint';
+import type { Tool } from '@/ui/editor/tools-island';
 import type { OpenMaze } from '@/ui/open-maze';
 
 /** The library, a maze, or a flight from one to the other (DESIGN.md 8). */
@@ -34,6 +36,12 @@ export interface StudioState {
   readonly cell: WorldPoint;
   /** Whether the maze is open to look at, one finger panning, as on a phone or after a touch. */
   readonly viewing: boolean;
+  /** Whether a touch opened the maze, so that edit mode offers the way back to view mode. */
+  readonly touchOpened: boolean;
+  /** The editor's tool; every maze opens in the wall tool. */
+  readonly tool: Tool;
+  /** The hint above the tools, if one was given. */
+  readonly hint: HintMessage | undefined;
   /** The library's zoom when the maze was opened, for the thumbnails left behind. */
   readonly libraryZoom: number | undefined;
   /** The maze shown during the flight back, after the route has left it. */
@@ -49,6 +57,9 @@ export const INITIAL_STUDIO: StudioState = {
   chromeIn: false,
   cell: LOOSE_CELL,
   viewing: false,
+  touchOpened: false,
+  tool: 'wall',
+  hint: undefined,
   libraryZoom: undefined,
   leaving: undefined,
   preview: undefined,

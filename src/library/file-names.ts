@@ -32,3 +32,18 @@ export function uniqueStems(names: readonly string[]): string[] {
     return unique;
   });
 }
+
+/**
+ * `name`, or `name 2`, `name 3`... the first that no name in `taken` already is, comparing without
+ * case, so that every name shown in Mine is its own.
+ */
+export function uniqueName(name: string, taken: Iterable<string>): string {
+  const used = new Set([...taken].map((known) => known.toLowerCase()));
+  let unique = name;
+
+  for (let copy = 2; used.has(unique.toLowerCase()); copy++) {
+    unique = `${name} ${copy}`;
+  }
+
+  return unique;
+}

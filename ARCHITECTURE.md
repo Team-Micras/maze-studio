@@ -94,6 +94,9 @@ open borders, which the repository never has.
 - `track-layers.ts`, `overlay-layers.ts`, `path.ts`, `track-colors.ts`: the track and the editor's
   overlays as SVG path data, one string per layer in the order of DESIGN.md 2.2 and 2.3, walls and
   posts split red and bare by the paint rule; the same strings feed a canvas `Path2D`.
+- `board-placement.ts`: a board placed in a world rectangle as its SVG is (centred, cells square):
+  the maze point under a world point, a cell's world rectangle, and a cell's side on screen, which
+  must reach 28 px (`MIN_TOUCH_CELL`) for a touch to edit.
 - `stroke.ts`: the wall stroke of PLAN.md 3.4, walking the post grid with a step of 0.6 cell, with
   turns, the axis lock of Shift and every post of a fast move; `applyStroke` paints it with
   `paintWalls`.
@@ -112,7 +115,8 @@ open borders, which the repository never has.
 
 `src/ui/board/` turns these into components, mounted alone in the browser tests: `Board` (the
 SVG, a path per layer), `CameraStage` and `useBoardCamera` (the canvas the board lies on, with
-wheel, pinch, Space or middle-button drag and the zoom keys), `Minimap` (which paints the live
+wheel, pinch, Space or middle-button drag and the zoom keys, and a drawing gesture for the
+content that a second finger takes back), `Minimap` (which paints the live
 maze outside the cache), `ThumbnailCanvas` with the app's one `thumbnailCache`, and
 `CursorStatus`.
 
@@ -126,9 +130,15 @@ library and a maze (DESIGN.md 8); the camera hook (`board/use-canvas-camera.ts`)
 free of the limits while it lasts.
 
 - `studio/`: `Studio` puts the library and the open maze on one canvas under one camera, with the
-  flights between them (`use-studio-flight.ts` runs them, `studio-store.ts` holds the mode), the
-  open board (`OpenBoard`), the editor's islands (`EditorChrome`) and the quick list (`MazeList`,
-  `list-order.ts`).
+  flights between them (`use-studio-flight.ts` runs them, `studio-store.ts` holds the mode and the
+  tool), the open board (`OpenBoard`), the editor's islands (`EditorChrome`) and the quick list
+  (`MazeList`, `list-order.ts`).
+- `editor/`: editing the maze on screen. `edit-session.ts` is pure: the history, one step per
+  gesture, and the copy in Mine the first edit makes; `use-maze-editor.ts` keeps the session in
+  `App`, so a route that names a copy just made is never missing, and `mine-writer.ts` copies and
+  autosaves, one write at a time. `use-wall-drawing.ts` turns the stage's gestures into strokes,
+  `use-board-keys.ts` runs the cell cursor, `use-editor-shortcuts.ts` the keys on the page, and
+  `ToolsIsland`, `ToolHint` and `EditControls` are the tools, the hint and the phone's Edit button.
 - `library/`: `LibraryChrome` draws the library's islands (search, source and category, Open,
   theme, credit); `LibraryCanvas` mounts the visible rows of `Artboard`s, keeps the active one,
   fades the others while a maze is open, and reveals the one Tab reaches.

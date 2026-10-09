@@ -17,12 +17,12 @@ import {
 import '@/ui/styles.css';
 import { axeViolations } from '@tests/support/axe-check';
 import { settled } from '@tests/support/ui/animations';
-import { CameraStage } from '@/ui/board/camera-stage';
+import { CameraStage, type StageDrawing } from '@/ui/board/camera-stage';
 import { useBoardCamera } from '@/ui/board/use-board-camera';
 import { BoardHarness } from '@tests/support/ui/board-harness';
 import { REPO_MAZES, repoMaze } from '@tests/support/ui/repo-mazes';
 import { shownCamera } from '@tests/support/ui/shown-camera';
-import { pinch } from '@tests/support/ui/touch';
+import { pinch, touch } from '@tests/support/ui/touch';
 import { thumbnailCache } from '@/ui/board/thumbnail-cache';
 
 let maze: Maze;
@@ -93,6 +93,49 @@ function LazyStage({ onClick }: { readonly onClick: () => void }) {
       </button>
     </CameraStage>
   );
+}
+
+/** What a drawing on the stage was told, in order. */
+type DrawCall = readonly [string, ...unknown[]];
+
+/** A drawing that records its calls, and starts a gesture when `accepts` says so. */
+function recorder(calls: DrawCall[], accepts = true): StageDrawing {
+  return {
+    begin: (point, input) => {
+      calls.push(['begin', point.x, input.pointerType]);
+      return accepts;
+    },
+    move: (points, input) => calls.push(['move', points.at(-1)?.x, input.shiftKey]),
+    end: () => calls.push(['end']),
+    cancel: () => calls.push(['cancel']),
+    hover: (point) => calls.push(['hover', point?.x]),
+  };
+}
+
+/** A stage that draws with `drawing` over the editor's board. */
+function DrawingStage({ drawing }: { readonly drawing: StageDrawing }) {
+  const camera = useBoardCamera({ board: LAZY_BOARD });
+
+  return (
+    <CameraStage className="fixed inset-0" controller={camera} drawing={drawing} label="Drawing">
+      <div className="size-[640px]" />
+    </CameraStage>
+  );
+}
+
+/** A move of the primary button to `clientX`, as a coalesced event carries it. */
+function moveAt(clientX: number): PointerEvent {
+  return new PointerEvent('pointermove', {
+    pointerId: 1,
+    pointerType: 'mouse',
+    buttons: 1,
+    clientX,
+    clientY: 400,
+  });
+}
+
+function names(calls: readonly DrawCall[]): string[] {
+  return calls.map(([name]) => name);
 }
 
 function press(target: Element, type: string, x: number): void {
@@ -280,6 +323,104 @@ describe('The camera stage', () => {
     content.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }));
 
     expect(clicks).toBe(1);
+  });
+
+  test('draws with the primary button, keeping the camera, and ends on release', async () => {
+    const calls: DrawCall[] = [];
+    await render(<DrawingStage drawing={recorder(calls)} />);
+    await expect.poll(() => shownCamera().k).toBeGreaterThan(0);
+    const fit = shownCamera();
+    pointer('pointerdown', { button: 0, buttons: 1, clientX: 600, clientY: 400 });
+    pointer('pointermove', { buttons: 1, clientX: 640, clientY: 400, shiftKey: true });
+    pointer('pointerup', { button: 0, buttons: 0, clientX: 640, clientY: 400 });
+    await settled();
+
+    expect(calls).toEqual([['begin', 600, 'mouse'], ['move', 640, true], ['end']]);
+    expectCamera(shownCamera(), fit);
+  });
+
+  test('hands the drawing every coalesced position of a move', async () => {
+    const moves: number[][] = [];
+    const drawing: StageDrawing = {
+      ...recorder([]),
+      move: (points) => moves.push(points.map((point) => point.x)),
+    };
+    await render(<DrawingStage drawing={drawing} />);
+    await expect.poll(() => shownCamera().k).toBeGreaterThan(0);
+    pointer('pointerdown', { button: 0, buttons: 1, clientX: 600, clientY: 400 });
+    pointer('pointermove', {
+      buttons: 1,
+      clientX: 660,
+      clientY: 400,
+      coalescedEvents: [moveAt(620), moveAt(640), moveAt(660)],
+    });
+    pointer('pointerup', { button: 0, buttons: 0, clientX: 660, clientY: 400 });
+
+    expect(moves).toEqual([[620, 640, 660]]);
+  });
+
+  test('leaves a press the drawing refuses, and pans with Space instead of drawing', async () => {
+    const calls: DrawCall[] = [];
+    await render(<DrawingStage drawing={recorder(calls, false)} />);
+    await expect.poll(() => shownCamera().k).toBeGreaterThan(0);
+    pointer('pointerdown', { button: 0, buttons: 1, clientX: 600, clientY: 400 });
+    pointer('pointermove', { buttons: 1, clientX: 640, clientY: 400 });
+    pointer('pointerup', { button: 0, buttons: 0, clientX: 640, clientY: 400 });
+
+    expect(names(calls)).toEqual(['begin']);
+
+    calls.length = 0;
+    const fit = shownCamera();
+    key('keydown', ' ');
+    await settled();
+    pointer('pointerdown', { button: 0, buttons: 1, clientX: 600, clientY: 400 });
+    pointer('pointermove', { buttons: 1, clientX: 650, clientY: 400 });
+    pointer('pointerup', { button: 0, buttons: 0, clientX: 650, clientY: 400 });
+    key('keyup', ' ');
+
+    await expect.poll(() => shownCamera().x).toBeCloseTo(fit.x + 50, 3);
+    expect(calls).toEqual([]);
+  });
+
+  test('follows the pointer with no button down, and forgets it when it leaves', async () => {
+    const calls: DrawCall[] = [];
+    await render(<DrawingStage drawing={recorder(calls)} />);
+    await expect.poll(() => shownCamera().k).toBeGreaterThan(0);
+    pointer('pointermove', { buttons: 0, clientX: 500, clientY: 400 });
+    stage().dispatchEvent(
+      new PointerEvent('pointerout', {
+        bubbles: true,
+        pointerId: 1,
+        pointerType: 'mouse',
+        relatedTarget: document.body,
+      })
+    );
+
+    expect(calls).toEqual([
+      ['hover', 500],
+      ['hover', undefined],
+    ]);
+  });
+
+  test('takes the drawing back when a second finger lands, and pinches', async () => {
+    const calls: DrawCall[] = [];
+    await render(<DrawingStage drawing={recorder(calls)} />);
+    await expect.poll(() => shownCamera().k).toBeGreaterThan(0);
+    const fit = shownCamera();
+    await touch('touchStart', [{ x: 600, y: 400 }]);
+    await touch('touchStart', [
+      { x: 600, y: 400 },
+      { x: 700, y: 400 },
+    ]);
+    await touch('touchMove', [
+      { x: 550, y: 400 },
+      { x: 750, y: 400 },
+    ]);
+    await touch('touchEnd', []);
+
+    await expect.poll(() => shownCamera().k).toBeCloseTo(fit.k * 2, 3);
+    expect(names(calls)).toEqual(['begin', 'cancel']);
+    expect(calls[0]?.[2]).toBe('touch');
   });
 
   test('pans with the middle button', async () => {

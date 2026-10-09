@@ -35,7 +35,35 @@ export interface CameraStageProps {
    * (DESIGN.md 8): a promoted layer scales a texture instead of repainting, but blurs when zoomed.
    */
   readonly promoted?: boolean;
+  /** What the primary button or one finger draws when it does not pan. */
+  readonly drawing?: StageDrawing;
+  /** Runs before the stage's own keys; a key it prevents is left alone. */
+  readonly onKeyDown?: (event: KeyboardEvent<HTMLDivElement>) => void;
   readonly className?: string;
+}
+
+/** What a drawing pointer says besides where it is. */
+export interface DrawInput {
+  readonly pointerType: string;
+  /** Whether Shift is held, read again at every move (DESIGN.md 10). */
+  readonly shiftKey: boolean;
+}
+
+/**
+ * A gesture the content draws with the primary button or one finger, on stage coordinates. A
+ * second finger takes it back and pinches instead, so one finger draws and two pan and zoom.
+ */
+export interface StageDrawing {
+  /** Starts a gesture at a press; `false` leaves the press alone. */
+  readonly begin: (point: ScreenPoint, input: DrawInput) => boolean;
+  /** Follows the pointer through every position since the last move, coalesced ones included. */
+  readonly move: (points: readonly ScreenPoint[], input: DrawInput) => void;
+  /** Ends the gesture where it is. */
+  readonly end: () => void;
+  /** Takes back what the gesture did. */
+  readonly cancel: () => void;
+  /** Follows a pointer over the canvas with no button down; `undefined` when it leaves. */
+  readonly hover?: (point: ScreenPoint | undefined) => void;
 }
 
 /** How far, in pixels, a press must move before a lazy pan takes it over from a click. */
@@ -60,7 +88,8 @@ type Gesture =
       readonly origin: ScreenPoint;
       readonly from: Camera;
     }
-  | { readonly kind: 'pinch'; readonly from: PointerPair; readonly start: Camera };
+  | { readonly kind: 'pinch'; readonly from: PointerPair; readonly start: Camera }
+  | { readonly kind: 'draw'; readonly pointer: number };
 
 const MIDDLE_BUTTON = 1;
 const PRIMARY_BUTTON = 0;
@@ -91,7 +120,7 @@ function pairOf(pointers: ReadonlyMap<number, ScreenPoint>): PointerPair | undef
  * The canvas a board lies on (DESIGN.md 7): the wheel pans, Ctrl or Cmd with the wheel and a
  * pinch zoom, Space with a drag and the middle button pan, and `+` (also `=`), `-` and `0` zoom in,
  * out and fit. The primary button and one finger pan as `primaryPan` says; a lazy pan swallows
- * the click that ends it. It is the `application` the keyboard focuses; whatever else the pointer
+ * the click that ends it. When they do not pan, they draw what `drawing` says. It is the `application` the keyboard focuses; whatever else the pointer
  * does on it is left to the content.
  */
 export function CameraStage({
@@ -101,6 +130,8 @@ export function CameraStage({
   id,
   primaryPan = 'off',
   promoted = false,
+  drawing,
+  onKeyDown: onContentKey,
   className,
 }: CameraStageProps) {
   const pointers = useRef(new Map<number, ScreenPoint>());
@@ -128,18 +159,33 @@ export function CameraStage({
     const primary = event.button === PRIMARY_BUTTON;
     const pans = event.button === MIDDLE_BUTTON || (primary && (spaceHeld || primaryPan === 'on'));
     const presses = primary && primaryPan === 'lazy';
+    const draws = primary && !pans && primaryPan === 'off' && drawing !== undefined;
     dragged.current = false;
 
-    if (event.pointerType !== 'mouse' || pans || presses) {
+    if (event.pointerType !== 'mouse' || pans || presses || draws) {
       pointers.current.set(event.pointerId, point);
     }
 
     const pair = pairOf(pointers.current);
 
     if (pointers.current.size === 2 && pair !== undefined && camera !== undefined) {
+      if (gesture.current?.kind === 'draw') {
+        drawing?.cancel();
+      }
+
       event.currentTarget.setPointerCapture(event.pointerId);
       gesture.current = { kind: 'pinch', from: pair, start: camera };
       setPanning(false);
+      return;
+    }
+
+    if (
+      pointers.current.size === 1 &&
+      draws &&
+      drawing.begin(point, { pointerType: event.pointerType, shiftKey: event.shiftKey })
+    ) {
+      event.currentTarget.setPointerCapture(event.pointerId);
+      gesture.current = { kind: 'draw', pointer: event.pointerId };
       return;
     }
 
@@ -155,12 +201,26 @@ export function CameraStage({
 
   const onPointerMove = (event: PointerEvent<HTMLDivElement>): void => {
     if (!pointers.current.has(event.pointerId)) {
+      if (event.buttons === 0 && event.pointerType === 'mouse') {
+        drawing?.hover?.(localPoint(event.currentTarget, event));
+      }
+
       return;
     }
 
     const point = localPoint(event.currentTarget, event);
     pointers.current.set(event.pointerId, point);
     const current = gesture.current;
+
+    if (current?.kind === 'draw' && current.pointer === event.pointerId) {
+      const stage = event.currentTarget;
+      const coalesced = event.nativeEvent.getCoalescedEvents?.() ?? [];
+      drawing?.move(
+        coalesced.length === 0 ? [point] : coalesced.map((each) => localPoint(stage, each)),
+        { pointerType: event.pointerType, shiftKey: event.shiftKey }
+      );
+      return;
+    }
 
     if (
       current?.kind === 'press' &&
@@ -192,6 +252,18 @@ export function CameraStage({
     pointers.current.delete(event.pointerId);
     const current = gesture.current;
 
+    if (current?.kind === 'draw' && current.pointer === event.pointerId) {
+      gesture.current = undefined;
+
+      if (event.type === 'pointercancel') {
+        drawing?.cancel();
+      } else {
+        drawing?.end();
+      }
+
+      return;
+    }
+
     if (
       current?.kind === 'pinch' ||
       ((current?.kind === 'pan' || current?.kind === 'press') &&
@@ -203,6 +275,12 @@ export function CameraStage({
   };
 
   const onKeyDown = (event: KeyboardEvent<HTMLDivElement>): void => {
+    onContentKey?.(event);
+
+    if (event.defaultPrevented) {
+      return;
+    }
+
     if (event.key === ' ') {
       event.preventDefault();
       setSpaceHeld(true);
@@ -241,9 +319,9 @@ export function CameraStage({
       className={cn(
         'relative touch-none overflow-hidden bg-background outline-none select-none',
         'focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset',
+        className,
         spaceHeld && 'cursor-grab',
-        panning && 'cursor-grabbing',
-        className
+        panning && 'cursor-grabbing'
       )}
       data-panning={panning ? '' : undefined}
       id={id}
@@ -259,6 +337,11 @@ export function CameraStage({
       onKeyUp={onKeyUp}
       onPointerCancel={onPointerEnd}
       onPointerDown={onPointerDown}
+      onPointerLeave={(event) => {
+        if (event.pointerType === 'mouse') {
+          drawing?.hover?.(undefined);
+        }
+      }}
       onPointerMove={onPointerMove}
       onPointerUp={onPointerEnd}
       ref={attach}

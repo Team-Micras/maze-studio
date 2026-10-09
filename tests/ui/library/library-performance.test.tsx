@@ -1,6 +1,7 @@
 import { expect, test } from 'vitest';
 
 import '@/ui/styles.css';
+import { cpuBenchmarkHere, throttleRate } from '@tests/support/cpu-rate';
 import { FRAME_BUDGET, medianOfRuns, type FrameReport } from '@tests/support/ui/frames';
 import { artboards, mountApp } from '@tests/support/ui/library-app';
 import { shownCamera } from '@tests/support/ui/shown-camera';
@@ -8,7 +9,14 @@ import { throttled } from '@tests/support/ui/throttle';
 
 const STEPS = 200;
 const RUNS = 3;
-const SLOWDOWN = 4;
+
+/** The throttle that makes this machine as slow as the reference notebook at 4×. */
+function slowdown(): number {
+  const measured = cpuBenchmarkHere();
+  const rate = throttleRate(measured);
+  console.info(`CPU benchmark ${measured.toFixed(1)} ms, throttled ${rate.toFixed(2)}×`);
+  return rate;
+}
 
 function stage(): HTMLElement {
   const element = document.querySelector<HTMLElement>('[role="application"]');
@@ -51,7 +59,7 @@ test('dragging every maze of the repository keeps the frame budget of DESIGN.md 
   let mounted = 0;
   let travelled = 0;
 
-  const median = await throttled(SLOWDOWN, () =>
+  const median = await throttled(slowdown(), () =>
     medianOfRuns(RUNS, STEPS, (index) => {
       if (index === 0) {
         pointer('pointerdown', 800, 4);
@@ -78,7 +86,7 @@ test('zooming every maze of the repository keeps the frame budget of DESIGN.md 8
   let mounted = 0;
   let deepest = 1;
 
-  const median = await throttled(SLOWDOWN, () =>
+  const median = await throttled(slowdown(), () =>
     medianOfRuns(RUNS, STEPS, (index) => {
       mounted = Math.max(mounted, artboards().length);
       deepest = Math.max(deepest, shownCamera().k / fit);

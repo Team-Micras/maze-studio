@@ -24,7 +24,7 @@ export {
   type StoreName,
   type StoreWriter,
 } from './database';
-export { fileStem, uniqueStems } from './file-names';
+export { fileStem, uniqueName, uniqueStems } from './file-names';
 export {
   isUpdateDue,
   UPDATE_INTERVAL_MS,

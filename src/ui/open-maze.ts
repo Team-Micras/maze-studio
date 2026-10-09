@@ -4,8 +4,8 @@
  * @module
  */
 
-import type { CatalogEntry } from '@/library';
-import { decodeMazeCode, type Maze } from '@/maze';
+import type { CatalogEntry, MineOrigin } from '@/library';
+import { decodeMazeCode, type Maze, type Profile } from '@/maze';
 
 import { categoryLabel, sizeLabel } from './labels';
 import type { Library } from './library/use-library';
@@ -14,6 +14,24 @@ import type { Route } from './routes';
 /** The largest `.txt` file the app opens, 1 MiB: a 64×64 maze is under 40 kB. */
 export const MAX_FILE_BYTES = 1024 * 1024;
 
+/** The item of Mine a maze is, and the version on screen. */
+export interface MineCopy {
+  readonly id: string;
+  readonly version: number;
+}
+
+/** What a maze carries besides its walls, which a copy in Mine keeps (PLAN.md 3.1). */
+export interface MazeDocument {
+  /** The text after the grid. */
+  readonly trailer: string;
+  /** The rules it is checked by: the repository folder's, Mine's own, or free. */
+  readonly profile: Profile;
+  /** The repository file it is or was copied from. */
+  readonly origin?: MineOrigin;
+  /** The item of Mine it is, when it is one. */
+  readonly mine?: MineCopy;
+}
+
 /** A maze open on screen, its name and the line under it (DESIGN.md 9.2). */
 export interface OpenMaze {
   /** What tells it apart: its catalog key, or `link:<code>` and `file:<n>`. */
@@ -21,6 +39,12 @@ export interface OpenMaze {
   readonly maze: Maze;
   readonly name: string;
   readonly detail: string;
+  readonly document: MazeDocument;
+}
+
+/** The document of a maze that comes from nowhere in particular, as a link or a file. */
+export function looseDocument(trailer = ''): MazeDocument {
+  return { trailer, profile: 'free' };
 }
 
 /** What a route opens: nothing yet, a maze, or nothing at all and why. */
@@ -46,6 +70,7 @@ export function openingOf(route: Route, library: Library | undefined): Opening {
               maze: decoded.value.maze,
               name: decoded.value.name === '' ? 'Shared maze' : decoded.value.name,
               detail: 'Opened from a link',
+              document: looseDocument(decoded.value.trailer),
             },
           }
         : {
@@ -63,11 +88,11 @@ export function openingOf(route: Route, library: Library | undefined): Opening {
     return WAITING;
   }
 
-  const key = route.kind === 'repo' ? `repo:${route.path}` : `mine:${route.id}`;
+  const key = mazeKeyOf(route);
   const entry = library.entries.find((candidate) => candidate.key === key);
-  const maze = library.mazeOf(key);
+  const open = entry === undefined ? undefined : openEntry(entry, library);
 
-  if (entry === undefined || maze === undefined) {
+  if (open === undefined) {
     return {
       status: 'missing',
       message:
@@ -75,11 +100,21 @@ export function openingOf(route: Route, library: Library | undefined): Opening {
     };
   }
 
-  return { status: 'open', open: openEntry(entry, maze) };
+  return { status: 'open', open };
 }
 
-/** A catalog entry open on screen, with the line DESIGN.md 9.2 gives it. */
-export function openEntry(entry: CatalogEntry, maze: Maze): OpenMaze {
+/**
+ * A catalog entry open on screen, with the line DESIGN.md 9.2 gives it, or `undefined` when its
+ * maze does not read.
+ */
+export function openEntry(entry: CatalogEntry, library: Library): OpenMaze | undefined {
+  const maze = library.mazeOf(entry.key);
+  const document = library.documentOf(entry.key);
+
+  if (maze === undefined || document === undefined) {
+    return undefined;
+  }
+
   return {
     key: entry.key,
     maze,
@@ -88,5 +123,22 @@ export function openEntry(entry: CatalogEntry, maze: Maze): OpenMaze {
       entry.origin === 'mine'
         ? 'Saved in Mine'
         : `${categoryLabel(entry.category)}, ${sizeLabel(entry.width, entry.height)}`,
+    document,
   };
+}
+
+/** The key of the maze `route` opens, as {@link OpenMaze.key} has it; none for the library. */
+export function mazeKeyOf(route: Route): string | undefined {
+  switch (route.kind) {
+    case 'library':
+      return undefined;
+    case 'repo':
+      return `repo:${route.path}`;
+    case 'mine':
+      return `mine:${route.id}`;
+    case 'folder':
+      return `folder:${route.file}`;
+    default:
+      return `link:${route.code}`;
+  }
 }

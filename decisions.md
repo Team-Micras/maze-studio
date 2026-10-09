@@ -403,3 +403,51 @@ The machine's rule is no builds in `/tmp`, so `tests/e2e/pwa.test.ts` builds the
   opened it.
 - **`useStudioFlight`** holds the flights, out of `studio.tsx`; the world layer has
   `will-change: transform` only while it flies.
+
+## 09/10/2026 — Slice 5a: the editor's base
+
+- **The editing session lives in `App`.** The first edit of a maze that is not in Mine copies it
+  there and replaces the route with `#/mine/<uuid>`, before the library has loaded the copy. Kept
+  in `App`, the session answers for that route meanwhile, so the route is never taken for a missing
+  maze; once the route has moved to the copy, the original's route opens the original again, in a
+  new session. Any other maze starts a new history. The session itself (`edit-session.ts`) is pure
+  and tested in Node; the hook only keeps it and writes.
+- **The copy.** Named `uniqueName("<name> (edited)")` against Mine's names, with the original's
+  text after the grid, its profile (the repository folder's, or free for a link or a file) and,
+  from the repository, its path and blob SHA. The original never changes; undoing every step saves
+  the copy back to the original file byte for byte. A `.txt` file is now named by its file name
+  without `.txt`: it was `fileStem`'s `corridor-txt`, which only a download name should be.
+- **Autosave**, after every gesture, one write at a time, the latest state winning, so a burst of
+  gestures makes at most one more write. The copy and every save reload this tab's library through
+  a window event, since Mine's `BroadcastChannel` does not reach the tab that writes. A save that
+  Mine refuses, because another tab saved a newer version, turns the maze read-only with the ink
+  island of DESIGN.md 12; a browser that keeps Mine only best-effort gets its toast at the copy.
+- **The stage arbitrates the pointer.** `CameraStage` takes a `drawing`: the primary button or one
+  finger draws when it does not pan (Hand, view mode, Space, the middle button), and a second
+  finger takes the drawing back and pinches, so one finger draws and two pan and zoom. The drawing
+  gets every coalesced position of a move. A finger previews the slot it pressed and changes it
+  only on release or once the stroke steps on, so a pinch that starts leaves nothing behind. A
+  touch on cells under 28 px does not edit and the hint says "Zoom in to edit": at 390 × 844 a
+  16×16 fits at 22.6 px a cell and edits from 28.3 px, a 32×32 fits at 11.4 px, does not edit at
+  27.8 and edits at 34.7.
+- **The keyboard.** The first arrow shows the cursor at the start, or at (0, 0), and the next ones
+  move it; Shift and an arrow toggle that side's wall, a step each, and the camera keeps the cursor
+  inside the editor's insets without animation. The tools island takes `↑`, `↓` and every Shift
+  and arrow in its capture phase and hands them to the board with the focus; `←` and `→` stay
+  Radix's, which moves the focus a task later, so the tests poll for it. `H`, `W`, `Ctrl+Z`,
+  `Ctrl+Shift+Z` and `Ctrl+Y` work anywhere but in a text field.
+- **Tools of this slice:** Hand and Wall, then Undo and Redo; Rectangle, Clear area, Start and Goal
+  come with slice 5b. The active tool is styled by `aria-checked`, because the tooltip's trigger,
+  on the same element, writes its own `data-state` over the toggle's `on`. On a phone, and after a
+  touch opened the maze, the eye leads back to view mode.
+- **Measured.** A stroke over a 32×32, one move a frame for 200 frames, the median of three: p95
+  16.7 ms, no frame over 25 ms, worst 16.8 ms. Each move re-renders the board's SVG, which is cheap
+  enough not to need anything finer.
+- **Both frame gates are calibrated.** The browser project's library gate now throttles by the same
+  benchmark as the production gate, run in its own page. On the reference notebook that is still
+  4×, and there its library zoom spreads from 0 to 1.5 % of frames over 25 ms between runs, as it
+  does on the code before this slice: the gate sits at its edge since the tester iframe runs at
+  scale 1, and the production gate, with the same throttle, stays at 0 %.
+- **Left for later:** landing on the copy in Mine, with the filter turned to Mine, when leaving an
+  edited maze (PLAN.md 3.4, Flight), and the phone's edit-mode bottom inset of 84 px against view
+  mode's 88 (DESIGN.md 7), which both share now.

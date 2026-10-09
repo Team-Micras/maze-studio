@@ -1,8 +1,8 @@
 import { describe, expect, test } from 'vitest';
 
-import { REFERENCE_BENCHMARK_MS, TARGET_SLOWDOWN, throttleRate } from '@tests/support/e2e/cpu-rate';
+import { REFERENCE_BENCHMARK_MS, TARGET_SLOWDOWN, throttleRate } from '@tests/support/cpu-rate';
 
-describe('The throttle of the production frame gate', () => {
+describe('The throttle of the frame gates', () => {
   test('is the full slowdown on the reference notebook', () => {
     expect(throttleRate(REFERENCE_BENCHMARK_MS)).toBe(TARGET_SLOWDOWN);
   });
