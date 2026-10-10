@@ -1,7 +1,7 @@
 /**
  * Measuring motion as DESIGN.md 8 asks: the intervals between consecutive
  * `requestAnimationFrame` timestamps while something moves, p95 at or below 20 ms and at most 1 %
- * of the intervals above 25 ms, the median of three runs.
+ * of the intervals above 25 ms, the median of three runs (see {@link medianRun}).
  *
  * @module
  */
@@ -77,9 +77,16 @@ export async function medianOfRuns(
   return medianRun(reports);
 }
 
-/** The run whose p95 is the median of the runs. */
+/**
+ * The median run, the runs ordered by their share of slow frames, then by their worst frame, then
+ * by their p95, so the run taken is the middle one on what the budget is strictest about, and one
+ * stray frame of a loaded machine in one run does not decide.
+ */
 export function medianRun(reports: readonly FrameReport[]): FrameReport {
-  const sorted = reports.toSorted((left, right) => left.p95 - right.p95);
+  const sorted = reports.toSorted(
+    (left, right) =>
+      left.slowShare - right.slowShare || left.worst - right.worst || left.p95 - right.p95
+  );
   const median = sorted[Math.floor(sorted.length / 2)];
 
   if (median === undefined) {

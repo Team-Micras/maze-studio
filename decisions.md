@@ -695,3 +695,17 @@ The machine's rule is no builds in `/tmp`, so `tests/e2e/pwa.test.ts` builds the
   case, Save and Create disabled while a field is invalid, menu triggers without tooltips, menus
   without exit animation, the canvas as `role="application"`, no URL for previews and loose mazes.
 - **Size:** the first screen counts 201.1 KB gzip, +6.5 KB with this slice.
+
+## 10/10/2026 — Slice 7 review
+
+- **`settled()` waits for two quiet frames in a row**, and for every finite animation it meets on
+  the way, so axe never measures an island fading in after a deferred mount; the editor's axe test
+  also waits for the editor's islands at full opacity.
+- **The median run of a frame test** is the middle one by its share of slow frames, then its worst
+  frame, then its p95, so one stray frame of a loaded machine in one run does not decide. The
+  flights keep "no frame above 33 ms" on that run.
+- **Import refuses before reading** a `.zip` over 32 MiB and any other file over 1 MiB, the zip
+  reader's limits, with the reason in the report.
+- **Reload into a new version waits** for the writes to Mine on their way (`pending-writes.ts`).
+- **A static test** (`tests/config/safe-areas.test.ts`) fails a `fixed` element of `src/ui`, outside
+  the primitives, that sits by an edge without its safe-area inset.

@@ -33,6 +33,7 @@ import {
   type EditSession,
 } from './edit-session';
 import { MineWriter } from './mine-writer';
+import { trackWriter } from './pending-writes';
 
 /** What the editor needs to know about the app's route. */
 export interface MazeEditorInput {
@@ -163,6 +164,7 @@ export function useMazeEditor(input: MazeEditorInput): MazeEditor {
         );
       },
     });
+    return trackWriter(writer.current);
   }, []);
 
   const readOnly = session !== undefined && refused.has(session.opened);

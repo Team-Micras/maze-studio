@@ -1,6 +1,6 @@
 import { useState } from 'react';
 
-import { exportMine, readImport, uniqueName, type SkippedImport } from '@/library';
+import { exportMine, oversizedImport, readImport, uniqueName, type SkippedImport } from '@/library';
 import { downloadBlob } from '@/ui/download';
 import { appStorage } from '@/ui/storage';
 import { showToast } from '@/ui/toasts';
@@ -75,9 +75,14 @@ export function useMineBackup(): MineBackup {
       return 0;
     }
 
+    const refused: SkippedImport[] = files.flatMap((file) => {
+      const reason = oversizedImport(file.name, file.size);
+      return reason === undefined ? [] : [{ name: file.name, message: reason }];
+    });
+    const accepted = files.filter((file) => oversizedImport(file.name, file.size) === undefined);
     const read = await readImport(
       await Promise.all(
-        files.map(async (file) => ({
+        accepted.map(async (file) => ({
           name: file.name,
           bytes: new Uint8Array(await file.arrayBuffer()),
         }))
@@ -103,7 +108,7 @@ export function useMineBackup(): MineBackup {
     const failed = outcomes.filter((outcome): outcome is SkippedImport => 'message' in outcome);
 
     reloadLibrary();
-    setReport(importReport(added, [...read.skipped, ...failed]));
+    setReport(importReport(added, [...refused, ...read.skipped, ...failed]));
     return added.length;
   };
 

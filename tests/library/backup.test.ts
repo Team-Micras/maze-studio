@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'vitest';
 
-import { BACKUP_INDEX, exportMine, readImport } from '@/library/backup';
+import { BACKUP_INDEX, exportMine, oversizedImport, readImport } from '@/library/backup';
 import type { MineMaze } from '@/library/mine';
 import { readZip, writeZip } from '@/library/zip';
 import { createMaze, encodeMazeCode, mazesEqual, parseMazeText, serializeMazeText } from '@/maze';
@@ -127,5 +127,15 @@ describe('the backup of Mine', () => {
       { name: 'broken.txt', message: expect.stringMatching(/^line 1, column 1: /) },
       { name: 'readme.md', message: 'not a .txt maze file' },
     ]);
+  });
+});
+
+describe('oversizedImport', () => {
+  test('refuses a .txt over 1 MiB and a zip over 32 MiB, whatever the case of the extension', () => {
+    expect(oversizedImport('a.txt', 1024 * 1024)).toBeUndefined();
+    expect(oversizedImport('a.txt', 1024 * 1024 + 1)).toBe('larger than 1 MiB');
+    expect(oversizedImport('notes', 1024 * 1024 + 1)).toBe('larger than 1 MiB');
+    expect(oversizedImport('b.zip', 32 * 1024 * 1024)).toBeUndefined();
+    expect(oversizedImport('b.ZIP', 32 * 1024 * 1024 + 1)).toBe('larger than 32 MiB');
   });
 });

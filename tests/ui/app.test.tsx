@@ -181,6 +181,14 @@ describe('The shell', () => {
       document.documentElement.classList.toggle('dark', theme === 'dark');
       await mountOnMaze('#/repo/classic/AAMC15Maze.txt');
       await expect.element(page.getByRole('heading', { level: 1 })).toBeVisible();
+      await expect
+        .poll(() => {
+          const chrome = document.querySelector('[data-chrome="editor"]');
+          return chrome === null || chrome.hasAttribute('data-hidden')
+            ? 0
+            : Number(getComputedStyle(chrome).opacity);
+        })
+        .toBe(1);
 
       expect(await axeViolations()).toEqual([]);
     }

@@ -181,6 +181,7 @@ describe('Empty and error states (DESIGN.md 12)', () => {
       { name: 'alpha.txt', mimeType: 'text/plain', buffer: Buffer.from(text) },
       { name: 'broken.txt', mimeType: 'text/plain', buffer: Buffer.from('o---o\n|x\n') },
       { name: 'notes.md', mimeType: 'text/markdown', buffer: Buffer.from('# notes\n') },
+      { name: 'huge.txt', mimeType: 'text/plain', buffer: Buffer.alloc(1024 * 1024 + 1, 0x20) },
     ]);
     const dialog = page.getByRole('dialog', { name: 'Import' });
     await dialog.waitFor();
@@ -193,6 +194,7 @@ describe('Empty and error states (DESIGN.md 12)', () => {
     expect(sections[1]).toMatch(/^Renamed1alpha 2alpha was taken$/);
     expect(sections[2]).toContain('broken.txt');
     expect(sections[2]).toContain('notes.mdnot a .txt maze file');
+    expect(sections[2]).toContain('huge.txtlarger than 1 MiB');
 
     await page.getByRole('button', { name: 'Close' }).click();
     await page.waitForFunction(() => window.location.hash.includes('src=mine'));

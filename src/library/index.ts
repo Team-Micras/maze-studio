@@ -8,6 +8,7 @@
 export {
   BACKUP_INDEX,
   exportMine,
+  oversizedImport,
   readImport,
   type ExportResult,
   type ImportFile,

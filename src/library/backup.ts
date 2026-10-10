@@ -10,7 +10,7 @@ import { parseMazeText, serializeMazeText, type Profile } from '@/maze';
 
 import { uniqueStems } from './file-names';
 import { mineContent, type MineDraft, type MineMaze, type MineOrigin } from './mine';
-import { readZip, writeZip, type ZipEntry } from './zip';
+import { MAX_ARCHIVE_BYTES, MAX_ENTRY_BYTES, readZip, writeZip, type ZipEntry } from './zip';
 
 /** The name of the index inside a backup zip. */
 export const BACKUP_INDEX = 'maze-studio-backup.json';
@@ -77,6 +77,22 @@ function readIndex(entries: readonly ZipEntry[]): Map<string, IndexEntry> {
   } catch {
     return new Map();
   }
+}
+
+function isZip(name: string): boolean {
+  return name.toLowerCase().endsWith('.zip');
+}
+
+/**
+ * Why the import refuses a file of `size` bytes before reading it, if it does: a zip over 32 MiB,
+ * any other file over 1 MiB, the limits of the zip reader.
+ */
+export function oversizedImport(name: string, size: number): string | undefined {
+  if (isZip(name)) {
+    return size > MAX_ARCHIVE_BYTES ? 'larger than 32 MiB' : undefined;
+  }
+
+  return size > MAX_ENTRY_BYTES ? 'larger than 1 MiB' : undefined;
 }
 
 /** An item the export could not write, and why. */
@@ -163,7 +179,7 @@ function draftOf(file: ImportFile, indexed: IndexEntry | undefined): MineDraft |
 async function expand(
   file: ImportFile
 ): Promise<{ files: ImportFile[]; index: Map<string, IndexEntry>; skipped: SkippedImport[] }> {
-  if (!file.name.toLowerCase().endsWith('.zip')) {
+  if (!isZip(file.name)) {
     return { files: [file], index: new Map(), skipped: [] };
   }
 
