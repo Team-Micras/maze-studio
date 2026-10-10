@@ -51,6 +51,7 @@ export class MineWriter {
   readonly #written = new WeakMap<OpenMaze, Written>();
   readonly #refused = new WeakSet<OpenMaze>();
   readonly #copying = new WeakMap<OpenMaze, Promise<void>>();
+  readonly #copiesOnTheirWay = new Set<Promise<void>>();
   readonly #waiting = new Map<OpenMaze, EditSession>();
   #draining: Promise<void> | undefined;
 
@@ -113,9 +114,17 @@ export class MineWriter {
     return this.#versions.get(id);
   }
 
-  /** Resolves once every session asked has been written, or has failed to be. */
+  /**
+   * Resolves once every session asked has been written and every copy asked has been made, or has
+   * failed to be, including those asked while it waits.
+   */
   async idle(): Promise<void> {
-    await this.#draining;
+    if (this.#draining === undefined && this.#copiesOnTheirWay.size === 0) {
+      return;
+    }
+
+    await Promise.allSettled([this.#draining, ...this.#copiesOnTheirWay]);
+    await this.idle();
   }
 
   async #drain(): Promise<void> {
@@ -208,6 +217,11 @@ export class MineWriter {
       throw error;
     });
     this.#copying.set(session.opened, copying);
+    this.#copiesOnTheirWay.add(copying);
+    void copying.then(
+      () => this.#copiesOnTheirWay.delete(copying),
+      () => this.#copiesOnTheirWay.delete(copying)
+    );
     return copying;
   }
 

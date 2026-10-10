@@ -1,6 +1,6 @@
 import { useState } from 'react';
 
-import { exportMine, oversizedImport, readImport, uniqueName, type SkippedImport } from '@/library';
+import { exportMine, readImport, uniqueName, type SkippedImport } from '@/library';
 import { downloadBlob } from '@/ui/download';
 import { appStorage } from '@/ui/storage';
 import { showToast } from '@/ui/toasts';
@@ -12,6 +12,7 @@ import {
   importReport,
   type ImportedMaze,
 } from './backup-report';
+import { readPickedImports } from './picked-import';
 import type { Report } from './report-dialog';
 import { reloadLibrary } from './use-library';
 
@@ -75,19 +76,8 @@ export function useMineBackup(): MineBackup {
       return 0;
     }
 
-    const refused: SkippedImport[] = files.flatMap((file) => {
-      const reason = oversizedImport(file.name, file.size);
-      return reason === undefined ? [] : [{ name: file.name, message: reason }];
-    });
-    const accepted = files.filter((file) => oversizedImport(file.name, file.size) === undefined);
-    const read = await readImport(
-      await Promise.all(
-        accepted.map(async (file) => ({
-          name: file.name,
-          bytes: new Uint8Array(await file.arrayBuffer()),
-        }))
-      )
-    );
+    const picked = await readPickedImports(files);
+    const read = await readImport(picked.files);
     const taken = (await storage.mine.list()).map((item) => item.name);
     const named = read.drafts.map((draft) => {
       const name = uniqueName(draft.name, taken);
@@ -108,7 +98,7 @@ export function useMineBackup(): MineBackup {
     const failed = outcomes.filter((outcome): outcome is SkippedImport => 'message' in outcome);
 
     reloadLibrary();
-    setReport(importReport(added, [...refused, ...read.skipped, ...failed]));
+    setReport(importReport(added, [...picked.refused, ...read.skipped, ...failed]));
     return added.length;
   };
 

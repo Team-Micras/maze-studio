@@ -248,6 +248,34 @@ describe('The writer of Mine', () => {
     expect(mazesEqual(mine.mazeNamed('shared') ?? EMPTY, wallsOf(0))).toBe(true);
   });
 
+  test('idle waits for a Save to Mine on its way, and for a copy that fails', async () => {
+    const mine = new FakeMine();
+    const { writer } = writerOn(mine);
+    const link: OpenMaze = { ...opened('shared'), key: 'link:abc' };
+    mine.hold();
+    const saving = writer.saveToMine(openSession(link));
+    let idle = false;
+    const waiting = writer.idle().then(() => {
+      idle = true;
+    });
+    await new Promise((resolve) => setTimeout(resolve, 20));
+
+    expect(idle).toBe(false);
+    mine.release();
+    await Promise.all([saving, waiting]);
+    expect(mine.log).toEqual(['create shared']);
+
+    const failing = new MineWriter(() => Promise.reject(new Error('no storage')), {
+      copied: () => undefined,
+      saved: () => undefined,
+      refused: () => undefined,
+      failed: () => undefined,
+    });
+    const refused = failing.saveToMine(openSession({ ...link, key: 'link:def' }));
+    await expect(failing.idle()).resolves.toBeUndefined();
+    await expect(refused).rejects.toThrow('no storage');
+  });
+
   test('stops writing a maze another tab saved since, and says so once', async () => {
     const mine = new FakeMine();
     const { writer, heard } = writerOn(mine);

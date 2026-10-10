@@ -709,3 +709,6 @@ The machine's rule is no builds in `/tmp`, so `tests/e2e/pwa.test.ts` builds the
 - **Reload into a new version waits** for the writes to Mine on their way (`pending-writes.ts`).
 - **A static test** (`tests/config/safe-areas.test.ts`) fails a `fixed` element of `src/ui`, outside
   the primitives, that sits by an edge without its safe-area inset.
+- **After the re-review:** the writer's `idle()` waits for the copies on their way too (Save to
+  Mine), and the picked files are read for the import by `picked-import.ts`, which refuses an
+  oversized one without calling its `arrayBuffer()`.
