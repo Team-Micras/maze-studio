@@ -29,6 +29,8 @@ const contexts: BrowserContext[] = [];
 interface Frame {
   readonly mode: string;
   readonly board?: { x: number; y: number; width: number; height: number };
+  /** The scale the labels and rings follow, `--k` on the world. */
+  readonly labelScale: string;
 }
 
 interface WorldSample {
@@ -90,7 +92,7 @@ function easingError(samples: readonly WorldSample[], from: Camera, to: Camera, 
   return { samples: progress.length, error: best };
 }
 
-/** Records the mode and the open board's box at every frame until `stop` is called. */
+/** Records the mode, the open board's box and `--k` at every frame until `stop` is called. */
 async function recordFrames(page: Page): Promise<() => Promise<Frame[]>> {
   await page.evaluate(() => {
     const frames: Frame[] = [];
@@ -100,6 +102,8 @@ async function recordFrames(page: Page): Promise<() => Promise<Frame[]>> {
       const box = document.querySelector('[data-open-board]')?.getBoundingClientRect();
       frames.push({
         mode: document.querySelector('[data-studio-mode]')?.getAttribute('data-studio-mode') ?? '',
+        labelScale:
+          document.querySelector<HTMLElement>('[data-world]')?.style.getPropertyValue('--k') ?? '',
         ...(box === undefined
           ? {}
           : { board: { x: box.x, y: box.y, width: box.width, height: box.height } }),
@@ -183,6 +187,7 @@ describe('The flight into a maze and back', () => {
     );
 
     expect(flying.length).toBeGreaterThan(10);
+    expect(new Set(flying.map((frame) => frame.labelScale)).size).toBe(1);
     expect(landed).not.toBeNull();
     expect(worst).toBeLessThan(2);
     expect(Math.abs((later?.x ?? 0) - (landed?.x ?? 0))).toBeLessThan(0.5);
@@ -204,6 +209,25 @@ describe('The flight into a maze and back', () => {
     expect(error).toBeLessThan(0.02);
   });
 
+  test('a press on an artboard mounts its board, hidden, before the click opens it', async () => {
+    const page = await open();
+    const artboard = page.locator('a[data-artboard]').nth(6);
+    const box = await artboard.boundingBox();
+    await page.mouse.move((box?.x ?? 0) + (box?.width ?? 0) / 2, (box?.y ?? 0) + 40);
+
+    expect(await page.locator('[data-open-board]').count()).toBe(0);
+    await page.mouse.down();
+    await expect.poll(() => page.locator('[data-open-board][data-hidden]').count()).toBe(1);
+    expect(await mode(page)).toBe('library');
+    await page.mouse.up();
+    await page.waitForFunction(
+      () =>
+        document.querySelector('[data-studio-mode]')?.getAttribute('data-studio-mode') === 'editor'
+    );
+
+    expect(await page.locator('[data-open-board]').count()).toBe(1);
+  });
+
   test('the browser Back flies back, shrinking the board to its artboard, and lands focused', async () => {
     const page = await open();
     const key = await openFirstMaze(page);
@@ -219,6 +243,11 @@ describe('The flight into a maze and back', () => {
       .filter((frame) => frame.mode === 'flying-out' && frame.board !== undefined)
       .map((frame) => frame.board?.width ?? 0);
 
+    expect(
+      new Set(
+        frames.filter((frame) => frame.mode === 'flying-out').map((frame) => frame.labelScale)
+      ).size
+    ).toBe(1);
     expect(new Set(widths.map((width) => Math.round(width))).size).toBeGreaterThan(10);
     expect(widths[0] ?? 0).toBeGreaterThan(2 * (widths.at(-1) ?? 0));
     expect(

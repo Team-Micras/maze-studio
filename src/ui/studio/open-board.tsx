@@ -32,7 +32,7 @@ function placeStyle(rect: WorldRect): CSSProperties {
 export function OpenBoard({ maze, rect, shown, overlays }: OpenBoardProps) {
   return (
     <div
-      className="pointer-events-none absolute top-0 left-0 transition-opacity group-data-promoted/world:will-change-[opacity] duration-300 ease-(--ease-out) starting:opacity-0 data-hidden:opacity-0"
+      className="pointer-events-none absolute top-0 left-0 transition-opacity duration-300 ease-(--ease-out) starting:opacity-0 data-hidden:opacity-0"
       data-hidden={shown ? undefined : ''}
       data-open-board=""
       style={placeStyle(rect)}

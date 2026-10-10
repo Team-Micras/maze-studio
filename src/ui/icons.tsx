@@ -7,7 +7,10 @@
 
 import type { JSX, SVGProps } from 'react';
 
-/** The props of an icon: its side, 1em by default, and any attribute of an SVG. */
+/**
+ * The props of an icon: its side, 1em by default, and any attribute of an SVG; hidden from screen
+ * readers unless `aria-hidden` says otherwise, since what it means is named beside it.
+ */
 export interface IconProps extends Omit<SVGProps<SVGSVGElement>, 'children'> {
   readonly size?: number | string;
 }
@@ -15,9 +18,15 @@ export interface IconProps extends Omit<SVGProps<SVGSVGElement>, 'children'> {
 /** An icon. */
 export type Icon = (props: IconProps) => JSX.Element;
 
-function Glyph({ d, size = '1em', ...props }: IconProps & { readonly d: string }) {
+function Glyph({
+  d,
+  size = '1em',
+  'aria-hidden': hidden = true,
+  ...props
+}: IconProps & { readonly d: string }) {
   return (
     <svg
+      aria-hidden={hidden}
       fill="currentColor"
       height={size}
       viewBox="0 0 256 256"

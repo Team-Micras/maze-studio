@@ -567,3 +567,19 @@ The machine's rule is no builds in `/tmp`, so `tests/e2e/pwa.test.ts` builds the
 - **Leaving a maze of Mine changed in the session** for the library, by the Library button or the
   browser's Back, shows Mine and lands on its artboard: `App` remembers the maze on screen at the
   route before and, on reaching the library from such a maze, replaces the filter with Mine.
+
+## 09/10/2026 — Slice 5b re-review
+
+- **The world layer is untouched while the camera is free.** The library's production zoom had lost
+  its margin (0 to 1.0 % of frames over 25 ms in six runs, 0 % before), and the bisect pointed at
+  the world layer's new marks. `data-promoted` and `group/world`, and the open board's
+  `will-change: opacity` that read them, never showed a gain and are gone; only `fixedScale`
+  stays, and only during a flight. Six runs: 0.0 % over 25 ms, worst 16.8 ms.
+- **The flight's fixes are observable.** The e2e flight tests check that `--k` keeps one value
+  through the flight in and through the flight back, and that a press on an artboard mounts its
+  board hidden before the click opens it; removing either fails them.
+- **Icons are hidden from screen readers by default**: `aria-hidden` on the generated SVG, which a
+  caller may override.
+- **The 250 KB budget is reported only** (the owner's decision, as in the monitor): `bun run size`
+  prints the first screen's size and never fails, it is no criterion of a slice being done, and the
+  size is not optimized only to fit the number. Each slice reports the size and how it moved.

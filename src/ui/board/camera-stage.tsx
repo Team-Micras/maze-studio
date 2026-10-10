@@ -33,8 +33,6 @@ export interface CameraStageProps {
   /**
    * Whether the world layer is promoted (`will-change: transform`), as only during a flight
    * (DESIGN.md 8): a promoted layer scales a texture instead of repainting, but blurs when zoomed.
-   * It carries `data-promoted` meanwhile, so content that fades can take a layer of its own, since
-   * a change of opacity inside the promoted layer would repaint all of it.
    */
   readonly promoted?: boolean;
   /**
@@ -364,11 +362,7 @@ export function CameraStage({
       tabIndex={0}
     >
       <div
-        className={cn(
-          'group/world absolute top-0 left-0 origin-top-left',
-          camera === undefined && 'invisible'
-        )}
-        data-promoted={promoted ? '' : undefined}
+        className={cn('absolute top-0 left-0 origin-top-left', camera === undefined && 'invisible')}
         data-world=""
         style={
           camera === undefined
