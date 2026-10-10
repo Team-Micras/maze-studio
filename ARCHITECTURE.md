@@ -129,7 +129,10 @@ maze outside the cache), `ThumbnailCanvas` with the app's one `thumbnailCache`, 
 `src/ui/app.tsx` is the shell: it reads the route from the hash (`routes.ts`, `navigation.ts`,
 `hooks/use-route.ts`), loads the library (`library/use-library.ts`, over `storage.ts`, which opens
 IndexedDB once), and shows the library or the maze the route opens (`open-maze.ts`), with the
-toasts (`toasts.ts`, `toaster.tsx`) and the theme (`theme.ts`). The studio flies between the
+toasts (`toasts.ts`, `toaster.tsx`; a toast may carry an action or stay until closed) and the theme
+(`theme.ts`). `main.tsx` registers the service worker (`sw/sw.ts`, which precaches the whole build,
+the snapshot's chunk included, so the app opens and edits offline) and, when a new version waits,
+`new-version.ts` offers it in a persistent "New version." toast with Reload. The studio flies between the
 library and a maze (DESIGN.md 8); the camera hook (`board/use-canvas-camera.ts`) runs the flight,
 free of the limits while it lasts.
 
@@ -153,9 +156,13 @@ free of the limits while it lasts.
 - `changes/`: the session's Changes, `session-changes.ts` (pure, one store per tab) and
   `ChangesChip` and `ChangesPanel`; `studio/use-studio-changes.ts` wires them into the studio, and
   `App` discards.
-- `library/`: `LibraryChrome` draws the library's islands (search, source and category, Open,
-  New maze with `new-maze-menu.tsx` and its Custom size dialog, theme, credit), and `new-maze.ts`
-  in `src/ui` makes the maze it asks for; `LibraryCanvas` mounts the visible rows of `Artboard`s, keeps the active one,
+- `library/`: `LibraryChrome` draws the library's islands (search, source and category, the
+  "Mine and files" menu of `mine-and-files.tsx`, Open, New maze with `new-maze-button.tsx`,
+  `new-maze-menu.tsx` and its Custom size dialog, theme, and the credit with the note of
+  `update-note.ts`), and `new-maze.ts` in `src/ui` makes the maze it asks for. `use-mine-backup.ts`
+  runs Export all and Import (`backup-report.ts` words them, `ReportDialog` shows the reports), and
+  `use-repo-updates.ts` asks GitHub once a day and on Check for updates. `EmptyLibrary` is an empty
+  Mine, with New maze, or a search that finds nothing; `LibraryCanvas` mounts the visible rows of `Artboard`s, keeps the active one,
   fades the others while a maze is open, and reveals the one Tab reaches.
 - `islands/`: the island, its buttons, separator and tooltip, the zoom island and the theme button.
 - `board/`: as above, plus `paint-queue.ts`, which paints thumbnails in idle time.
@@ -187,6 +194,14 @@ under `/maze-studio/` into `node_modules/.tmp/` and drives it with Playwright).
 in its global setup (`tests/support/e2e/serve-app.ts`), for all its files; one of them,
 `production-frames.test.ts`, measures the built library's drag and zoom and the flights into a
 maze and back at 4× the reference notebook's slowness, the throttle calibrated to the machine.
+
+Every row of DESIGN.md 12, the empty and error states, has a test: the ones slice 7 added are in
+`tests/e2e/states.test.ts` (maze list filter, persistence, Export with a skipped maze, Import,
+failed update check), `tests/e2e/files.test.ts` (Save to folder fails, Open folder absent),
+`tests/ui/new-version.test.tsx`, `tests/ui/library/artboard.test.tsx` (thumbnail not drawn yet)
+and `tests/ui/library/library-screen.test.tsx` (empty Mine, no result); the rest sit with their
+feature's tests. `tests/e2e/pwa.test.ts` opens, searches, edits and saves offline after a first
+visit.
 
 Browser tests share what is in `tests/support/ui/`: `BoardHarness` mounts a board on its stage
 with the minimap and the cursor status, `frames.ts` measures motion as DESIGN.md 8 says (p95 at or

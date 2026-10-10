@@ -69,7 +69,8 @@ function chromium() {
  */
 const WORKERS = { unit: 6, browser: 4, performance: 1, e2e: 1 } as const;
 
-const DARK_COLOR = '#0a0a0a';
+/** The dark desk colour (`src/ui/theme.ts`), for the title bar and splash of the installed app. */
+const DARK_COLOR = '#191919';
 
 /**
  * The largest chunk shipped, the entry with React DOM, is about 200 kB before gzip; a warning past

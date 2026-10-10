@@ -1,5 +1,6 @@
 import { useId, useRef, useState, type FormEvent } from 'react';
 
+import { useCoarsePointer } from '@/ui/hooks/use-media-query';
 import { X } from '@/ui/icons';
 import { IslandButton } from '@/ui/islands/island';
 import { Button } from '@/ui/primitives/button';
@@ -11,7 +12,7 @@ import { Label } from '@/ui/primitives/label';
 const EMPTY_NAME = 'Name cannot be empty';
 
 /** What the dialog says of a name another maze of Mine has. */
-const TAKEN_NAME = 'Name already in Mine';
+const TAKEN_NAME = 'Name already in Mine. Pick another';
 
 /** The props of {@link RenameDialog}. */
 export interface RenameDialogProps {
@@ -56,8 +57,11 @@ function RenameForm({ name, taken, onDone }: FormProps) {
         <Input
           aria-describedby={error === undefined ? undefined : `${id}-error`}
           aria-invalid={error !== undefined}
+          autoComplete="off"
           id={id}
+          name="name"
           onChange={(event) => setValue(event.target.value)}
+          spellCheck={false}
           value={value}
         />
         {error === undefined ? null : (
@@ -80,6 +84,7 @@ function RenameForm({ name, taken, onDone }: FormProps) {
  */
 export function RenameDialog({ open, onOpenChange, name, taken, onRename }: RenameDialogProps) {
   const content = useRef<HTMLDivElement>(null);
+  const coarse = useCoarsePointer();
 
   return (
     <Dialog onOpenChange={onOpenChange} open={open}>
@@ -87,7 +92,12 @@ export function RenameDialog({ open, onOpenChange, name, taken, onRename }: Rena
         aria-describedby={undefined}
         onOpenAutoFocus={(event) => {
           event.preventDefault();
-          content.current?.querySelector('input')?.select();
+
+          if (coarse) {
+            content.current?.focus();
+          } else {
+            content.current?.querySelector('input')?.select();
+          }
         }}
         ref={content}
       >

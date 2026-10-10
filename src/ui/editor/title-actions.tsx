@@ -24,7 +24,7 @@ export function TitleActions({ onSaveToMine, folderFile, onSaveToFolder }: Title
         </IslandButton>
       )}
       {folderFile === undefined || onSaveToFolder === undefined ? null : (
-        <Hint label={`Save to ${folderFile}`} side="bottom">
+        <Hint label={`Save to ${folderFile}`} side="bottom" verbatim={folderFile}>
           <IslandButton onClick={onSaveToFolder}>
             <FloppyDisk aria-hidden size={16} />
             Save to folder

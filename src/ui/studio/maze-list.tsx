@@ -92,7 +92,7 @@ interface ItemsProps {
 const Items = memo(function Items({ entries, library, root, onPin }: ItemsProps) {
   return entries.map((entry) => (
     <CommandItem
-      className="gap-2.5 rounded-[9px] px-2 py-1.5"
+      className="gap-2.5 rounded-[9px] px-2 py-1.5 [contain-intrinsic-size:auto_48px] [content-visibility:auto]"
       key={entry.key}
       onSelect={() => onPin(entry.key)}
       value={entry.key}
@@ -204,7 +204,7 @@ export function MazeList({ library, current, phone, onPreview, onPin, onCancel }
   return (
     <aside
       aria-label="Maze list"
-      className="fixed top-[72px] bottom-4 left-4 z-[15] flex w-[320px] flex-col overflow-hidden rounded-[16px] bg-card shadow-island motion-safe:animate-in motion-safe:fade-in-0 motion-safe:slide-in-from-left-3.5 motion-safe:duration-240 motion-safe:ease-(--ease-drawer)"
+      className="fixed top-safe-[72px] bottom-safe-4 left-safe-4 z-[15] flex w-[320px] flex-col overflow-hidden rounded-[16px] bg-card shadow-island motion-safe:animate-in motion-safe:fade-in-0 motion-safe:slide-in-from-left-3.5 motion-safe:duration-240 motion-safe:ease-(--ease-drawer)"
       id={MAZE_LIST_ID}
     >
       {command}

@@ -85,8 +85,13 @@ describe('Opening a maze', () => {
   test('a path the repository does not have opens the library and says so', async () => {
     await mountOnMaze('#/repo/classic/nowhere.txt');
 
-    await expect.element(page.getByText('No maze at classic/nowhere.txt')).toBeVisible();
+    await expect
+      .element(page.getByText('No maze at classic/nowhere.txt. Pick one from the library'))
+      .toBeVisible();
     await expect.poll(() => window.location.hash).toBe('#/');
+    expect(
+      [...document.querySelectorAll('ol li [translate="no"]')].map((span) => span.textContent)
+    ).toEqual(['classic/nowhere.txt']);
   });
 });
 

@@ -32,7 +32,7 @@ export default async function serveApp(project: TestProject): Promise<() => Prom
   const dist = mkdtempSync(join(BUILDS, 'e2e-'));
   execFileSync('bunx', ['vite', 'build', '--outDir', dist, '--emptyOutDir'], {
     cwd: ROOT,
-    env: { ...process.env, NODE_ENV: 'production', BASE_PATH: BASE },
+    env: { ...process.env, NODE_ENV: 'production', BASE_PATH: BASE, VITE_AUTO_UPDATES: 'off' },
     stdio: 'pipe',
   });
   const server = await preview({

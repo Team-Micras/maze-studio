@@ -51,7 +51,7 @@ export function EditControls({
       {tools.editable ? null : (
         <Island
           aria-hidden
-          className="fixed top-[72px] left-4 bg-primary px-3 py-2 text-[13px] font-medium text-primary-foreground max-[720px]:top-safe-16 max-[720px]:left-safe-2"
+          className="fixed top-safe-[72px] left-safe-4 bg-primary px-3 py-2 text-[13px] font-medium text-primary-foreground max-[720px]:top-safe-16 max-[720px]:left-safe-2"
         >
           {NEWER_ELSEWHERE}
         </Island>

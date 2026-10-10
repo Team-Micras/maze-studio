@@ -76,7 +76,7 @@ export function EditorChrome({
       inert={!visible}
     >
       <header>
-        <Island className="fixed top-4 left-4 h-11 max-w-[calc(50vw-40px)] max-[720px]:top-safe-2 max-[720px]:left-safe-2 max-[720px]:max-w-[calc(100vw-120px)]">
+        <Island className="fixed top-safe-4 left-safe-4 h-11 max-w-[calc(50vw-40px)] max-[720px]:top-safe-2 max-[720px]:left-safe-2 max-[720px]:max-w-[calc(100vw-120px)]">
           <Hint label="Library" side="bottom">
             <IslandButton aria-label="Back to the library" onClick={onLibrary}>
               <SquaresFour aria-hidden size={18} />
@@ -103,7 +103,7 @@ export function EditorChrome({
           {settled ? titleActions : null}
         </Island>
         {!settled || actions === undefined || actions === null ? null : (
-          <Island className="fixed top-4 right-4 h-11 transition-opacity duration-200 ease-(--ease) starting:opacity-0 max-[720px]:top-safe-2 max-[720px]:right-safe-2">
+          <Island className="fixed top-safe-4 right-safe-4 h-11 transition-opacity duration-200 ease-(--ease) starting:opacity-0 max-[720px]:top-safe-2 max-[720px]:right-safe-2">
             {actions}
           </Island>
         )}
@@ -111,7 +111,7 @@ export function EditorChrome({
       {settled ? (
         <Minimap
           board={board}
-          className="fixed top-[70px] right-4 max-[720px]:top-safe-16 max-[720px]:right-safe-2"
+          className="fixed top-safe-[70px] right-safe-4 max-[720px]:top-safe-16 max-[720px]:right-safe-2"
           controller={controller}
           maze={open.maze}
           size={phone ? PHONE_MINIMAP_SIZE : MINIMAP_SIZE}
@@ -119,7 +119,11 @@ export function EditorChrome({
       ) : null}
       <footer>
         {phone ? null : (
-          <CursorStatus cell={cursor} className="fixed bottom-6 left-4 z-[9]" maze={open.maze} />
+          <CursorStatus
+            cell={cursor}
+            className="fixed bottom-safe-6 left-safe-4 z-[9]"
+            maze={open.maze}
+          />
         )}
         {settled ? (
           <div className="transition-opacity duration-200 ease-(--ease) starting:opacity-0">
@@ -130,7 +134,7 @@ export function EditorChrome({
           className={
             phone
               ? 'right-safe-2 bottom-[calc(96px+env(safe-area-inset-bottom))]'
-              : 'right-4 bottom-[18px]'
+              : 'right-safe-4 bottom-safe-[18px]'
           }
           orientation={phone ? 'vertical' : 'horizontal'}
           percent={zoomPercent(controller)}

@@ -3,6 +3,7 @@ import type { ComponentProps, ReactNode } from 'react';
 import { Button } from '@/ui/primitives/button';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/ui/primitives/tooltip';
 import { cn } from '@/ui/primitives/utils';
+import { Verbatim } from '@/ui/verbatim';
 
 /**
  * A floating island (DESIGN.md 5 and 6): card surface, 14 px corners, 4 px padding, 2 px gaps,
@@ -50,6 +51,8 @@ export function IslandSeparator({ className }: { readonly className?: string }) 
 export interface HintProps {
   /** What the control does. */
   readonly label: string;
+  /** The parts of the label a page translator must leave alone, such as a file name. */
+  readonly verbatim?: string | undefined;
   /** Its key, shown after the label in mono. */
   readonly shortcut?: string;
   readonly side?: 'top' | 'bottom';
@@ -57,12 +60,12 @@ export interface HintProps {
 }
 
 /** A tooltip with a control's name and its key (DESIGN.md 6). */
-export function Hint({ label, shortcut, side = 'top', children }: HintProps) {
+export function Hint({ label, verbatim, shortcut, side = 'top', children }: HintProps) {
   return (
     <Tooltip>
       <TooltipTrigger asChild>{children}</TooltipTrigger>
       <TooltipContent className="text-xs font-medium" side={side} sideOffset={8}>
-        {label}
+        <Verbatim text={label} verbatim={verbatim} />
         {shortcut === undefined ? null : (
           <kbd className="ml-3 font-mono text-[11px] text-background/70">{shortcut}</kbd>
         )}

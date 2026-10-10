@@ -55,7 +55,12 @@ export function looseDocument(trailer = ''): MazeDocument {
 export type Opening =
   | { readonly status: 'waiting' }
   | { readonly status: 'open'; readonly open: OpenMaze }
-  | { readonly status: 'missing'; readonly message: string };
+  | {
+      readonly status: 'missing';
+      readonly message: string;
+      /** The path or file the message names, which a page translator must leave alone. */
+      readonly verbatim?: string;
+    };
 
 const WAITING: Opening = { status: 'waiting' };
 
@@ -112,15 +117,21 @@ export function openingOf(
   const open = entry === undefined ? undefined : openEntry(entry, library);
 
   if (open === undefined) {
-    return {
-      status: 'missing',
-      message:
-        route.kind === 'repo'
-          ? `No maze at ${route.path}`
-          : route.kind === 'folder'
-            ? `No maze at ${route.file} in the folder`
-            : 'That maze is no longer in Mine',
-    };
+    if (route.kind === 'repo') {
+      return {
+        status: 'missing',
+        message: `No maze at ${route.path}. Pick one from the library`,
+        verbatim: route.path,
+      };
+    }
+
+    return route.kind === 'folder'
+      ? {
+          status: 'missing',
+          message: `No maze at ${route.file} in the folder. Pick one from the library`,
+          verbatim: route.file,
+        }
+      : { status: 'missing', message: 'That maze is no longer in Mine. Pick one from the library' };
   }
 
   return { status: 'open', open };

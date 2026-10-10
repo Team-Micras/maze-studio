@@ -8,6 +8,7 @@
 
 import { uniqueStems } from '@/library';
 import { encodeMazeCode, serializeMazeText } from '@/maze';
+import { downloadBlob } from '@/ui/download';
 import type { OpenMaze } from '@/ui/open-maze';
 import { routeHash } from '@/ui/routes';
 
@@ -52,15 +53,7 @@ export async function copyText(text: string): Promise<boolean> {
   }
 }
 
-/** How long the download's object URL lives: revoked at once, the browser may not have read it. */
-const REVOKE_AFTER_MS = 10_000;
-
 /** Downloads `text` as `fileName`. */
 export function downloadText(fileName: string, text: string): void {
-  const url = URL.createObjectURL(new Blob([text], { type: 'text/plain' }));
-  const link = document.createElement('a');
-  link.href = url;
-  link.download = fileName;
-  link.click();
-  window.setTimeout(() => URL.revokeObjectURL(url), REVOKE_AFTER_MS);
+  downloadBlob(fileName, new Blob([text], { type: 'text/plain' }));
 }

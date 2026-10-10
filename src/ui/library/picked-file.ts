@@ -9,3 +9,16 @@ export function pickedFile(event: ChangeEvent<HTMLInputElement>, onFile: (file: 
     onFile(file);
   }
 }
+
+/** Hands on every file picked in a file input and clears it, so the same files can be picked again. */
+export function pickedFiles(
+  event: ChangeEvent<HTMLInputElement>,
+  onFiles: (files: readonly File[]) => void
+) {
+  const files = [...(event.target.files ?? [])];
+  event.target.value = '';
+
+  if (files.length > 0) {
+    onFiles(files);
+  }
+}

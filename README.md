@@ -4,9 +4,24 @@ A web app for the micromouse community to browse, view, edit and share mazes in 
 [micromouseonline/mazefiles](https://github.com/micromouseonline/mazefiles). It is a PWA: it runs in
 the browser on a laptop or a phone, installs, and works offline at a competition.
 
-It is under construction. The plan is a library of every maze of the mazefiles repository with
-search and thumbnails, a viewer that draws the maze like the real track, a fast editor with undo and
-validation, and sharing as a `.txt` file or a link.
+## What it does
+
+- **Library.** Every maze of the mazefiles repository on one canvas, with thumbnails, search, and
+  filters by source (Repo, Mine, and a local Folder where the browser can open one) and category.
+  Pan with a drag, zoom with the wheel, a pinch or `+`/`-`.
+- **Viewer.** Opening a maze flies into it and draws it like the real track: walls, posts, start and
+  goal, with checks against the classic rules ("Passes", or what is wrong and where).
+- **Editor.** Walls by drag or click, rectangles, clear area, start and goal, with undo and redo,
+  a cell cursor on the keyboard, and New maze in the classic, half-size and training sizes or a
+  custom one. The first edit of a repository maze makes a copy in **Mine**, kept in the browser and
+  saved as you go; the Changes chip lists what changed in the session, to discard or keep.
+- **Sharing and files.** Copy link (the maze in the URL), Share… on a phone, Download .txt, Open a
+  `.txt`, Save to folder, and Export all and Import of Mine as a zip.
+- **Offline and installable.** After the first visit the app opens, searches, edits and saves with
+  no network; it installs as an app, says "New version." with Reload when there is one, and checks
+  GitHub for newer mazes once a day and on Check for updates.
+
+Service worker, installation and Open folder need a secure context: `https://` or `localhost`.
 
 ## Credit
 
@@ -39,7 +54,7 @@ In a clone made without `--recurse-submodules`, run `git submodule update --init
 | `bun run preview`          | Serve the built app                                                        |
 | `bun run test`             | Unit tests (Node) and browser tests (Chromium)                             |
 | `bun run test:performance` | Frame-time tests in Chromium, one file at a time, outside the check        |
-| `bun run test:e2e`         | Builds the app and checks the PWA and the library in Chromium              |
+| `bun run test:e2e`         | Builds the app and drives it in Chromium: PWA, offline, library, editor    |
 | `bun run size`             | Gzip size of the build, after `bun run build`                              |
 | `bun run snapshot`         | Write `src/library/snapshot.json` from `vendor/mazefiles`; runs on its own |
 | `bun run check`            | Lint, format, typecheck, tests, e2e, build and size: what CI runs          |

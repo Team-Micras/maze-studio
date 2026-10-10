@@ -47,7 +47,9 @@ export function ChangesChip({ count, open, onToggle }: ChangesChipProps) {
       onClick={onToggle}
     >
       <GitDiff aria-hidden className="text-[var(--diff-ink)]" size={16} />
-      <span aria-hidden>{count} changed</span>
+      <span aria-hidden className="tabular-nums">
+        {count} changed
+      </span>
     </IslandButton>
   );
 }
@@ -127,7 +129,9 @@ function Row({ row, onOpen, onKeep, onDiscard }: RowProps) {
           {item.name}
         </b>
         <small className="truncate text-xs text-muted-foreground" data-summary="">
-          {current === undefined ? 'Not readable' : changeSummary(item, current)}
+          {current === undefined
+            ? 'Not readable. Discard it or open it again'
+            : changeSummary(item, current)}
         </small>
         <span className="mt-1 flex gap-1">
           <IslandButton
@@ -260,7 +264,7 @@ export function ChangesPanel({ open, onOpenChange, phone, ...body }: ChangesPane
 
   return (
     <Popover modal={false} onOpenChange={onOpenChange} open={open}>
-      <PopoverAnchor className="pointer-events-none fixed top-[64px] right-4 size-px" />
+      <PopoverAnchor className="pointer-events-none fixed top-safe-[64px] right-safe-4 size-px" />
       <PopoverContent
         align="end"
         aria-label="Changes in this session"

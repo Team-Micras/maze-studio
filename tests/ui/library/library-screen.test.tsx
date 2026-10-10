@@ -174,10 +174,16 @@ describe('Search and filters', () => {
 
     await expect.element(page.getByRole('heading', { name: 'Nothing in Mine yet' })).toBeVisible();
     expect(window.location.hash).toBe('#/?src=mine');
+    const empty = page
+      .getByRole('heading', { name: 'Nothing in Mine yet' })
+      .element().parentElement;
+    expect(empty?.querySelector('button')?.textContent).toBe('New maze');
 
     await userEvent.click(page.getByRole('radio', { name: 'Repo' }));
     await userEvent.fill(page.getByRole('searchbox', { name: 'Search mazes' }), 'no such maze');
     await expect.element(page.getByRole('heading', { name: 'No mazes match' })).toBeVisible();
+    const none = page.getByRole('heading', { name: 'No mazes match' }).element().parentElement;
+    expect(none?.querySelector('button')).toBeNull();
   });
 
   test('/ focuses the search from the canvas and never types itself', async () => {

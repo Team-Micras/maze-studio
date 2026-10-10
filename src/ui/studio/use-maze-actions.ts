@@ -135,7 +135,12 @@ export function useMazeActions({
               const done = await editor.rename(name);
 
               if (!done) {
-                showToast(`Could not rename ${open.name} (changed in another tab)`);
+                showToast(
+                  `Could not rename ${open.name} (changed in another tab). Reload to rename`,
+                  {
+                    verbatim: open.name,
+                  }
+                );
               }
 
               return done;

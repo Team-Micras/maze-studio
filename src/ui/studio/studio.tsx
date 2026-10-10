@@ -33,6 +33,7 @@ import { useViewportWidth } from '@/ui/hooks/use-viewport-width';
 import { ZoomIsland } from '@/ui/islands/zoom-island';
 import { zoomPercent } from '@/ui/islands/zoom-percent';
 import { EmptyLibrary } from '@/ui/library/empty-library';
+import type { MineAndFilesActions } from '@/ui/library/mine-and-files';
 import { emptyTitle } from '@/ui/library/empty-title';
 import { LibraryCanvas } from '@/ui/library/library-canvas';
 import { LibraryChrome } from '@/ui/library/library-chrome';
@@ -76,8 +77,10 @@ export interface StudioProps {
   readonly onSaveToFolder: (fileName: string, text: string) => void;
   /** Deletes the maze of Mine `id` and opens the library on Mine. */
   readonly onDelete: (id: string) => void;
-  /** Opens a local folder as the Folder source, where the browser can. */
-  readonly onOpenFolder?: () => void;
+  /** What the library's "Mine and files" menu does. */
+  readonly files: MineAndFilesActions;
+  /** What the credit adds of the updates from GitHub, if anything. */
+  readonly updateNote?: string | undefined;
   /** Leaves the open maze for the library. */
   readonly onLibrary: () => void;
   /** Puts the maze of a catalog entry in the route, in place of the open one. */
@@ -117,7 +120,8 @@ export function Studio({
   onDiscard,
   onSaveToFolder,
   onDelete,
-  onOpenFolder,
+  files,
+  updateNote,
   onLibrary,
   onPin,
 }: StudioProps) {
@@ -346,7 +350,11 @@ export function Studio({
           </LibraryCanvas>
         )}
         {library !== undefined && mode === 'library' && shown.length === 0 ? (
-          <EmptyLibrary mineIsEmpty={filter.source === 'mine' && library.mineCount === 0} />
+          <EmptyLibrary
+            mineIsEmpty={filter.source === 'mine' && library.mineCount === 0}
+            newName={newName}
+            onNew={onNew}
+          />
         ) : null}
         <p aria-live="polite" className="sr-only">
           {library !== undefined && mode === 'library' && shown.length === 0
@@ -362,7 +370,8 @@ export function Studio({
         newName={newName}
         onNew={onNew}
         onOpenFile={onOpenFile}
-        {...(onOpenFolder === undefined ? {} : { onOpenFolder })}
+        files={files}
+        updateNote={updateNote}
         phone={phone}
         visible={libraryVisible}
       />
@@ -374,7 +383,7 @@ export function Studio({
           inert={!libraryVisible}
         >
           <ZoomIsland
-            className="right-4 bottom-[18px]"
+            className="right-safe-4 bottom-safe-[18px]"
             percent={zoomPercent(camera)}
             refit={refit}
             zoomBy={zoomBy}

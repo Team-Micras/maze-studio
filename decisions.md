@@ -652,3 +652,46 @@ The machine's rule is no builds in `/tmp`, so `tests/e2e/pwa.test.ts` builds the
   stored, without a reload.
 - **`expectToast`** looks inside the toast viewport and expects exactly one visible toast; Radix's
   copy for screen readers lies outside it.
+
+## 10/10/2026 — Slice 7: PWA and finish
+
+- **The "Mine and files" menu is always there**, on the notebook's actions island and in a phone's
+  `+`: Export all, Import…, Open folder… (only where the browser has a folder picker; absent, not
+  disabled) and Check for updates.
+- **Export all** downloads `maze-studio-mine-<local date>.zip` and says "Exported N"; when an item
+  does not read, "Exported N, skipped M" with Details, a dialog with each skipped maze and why.
+  **Import** takes `.zip` and `.txt` files, names each maze uniquely in Mine (a clash becomes
+  "<name> 2"), and shows a report of what was added, renamed and skipped with the reason; with
+  anything added, the library turns to Mine. Imported mazes are not session Changes: nothing was
+  edited.
+- **A toast with an action stays 8 s**, not 2.4 s, so its button can be reached; Radix pauses it on
+  hover and focus. The new version's toast stays until Reload or its close button.
+- **Check for updates** runs the updater at once; the credit island adds what it found: "Checking
+  for updates…", "Up to date", "Updated" or the reason of a failure with the commit in use
+  ("Offline, using the copy from 548dcde"), in an `<output>` so it is announced. The credit's count
+  and commit are those of the snapshot or of the cache the library reads. The automatic daily check
+  runs only in production builds; the e2e build turns it off (`VITE_AUTO_UPDATES=off`) and routes
+  GitHub itself where a test needs it.
+- **An empty Mine offers New maze** in its island; a search that finds nothing does not.
+- **Icons:** `Export`, `UploadSimple` and `ArrowsClockwise` join the generated set, as DESIGN.md 4
+  maps them.
+- **Downloads** of a `.txt` and of the zip share `downloadBlob` (`src/ui/download.ts`).
+- **Audit (`web-design-guidelines`).** Fixed: islands keep off the notch and rounded corners in a
+  phone held sideways too (`top-safe-*`, `left-safe-*`, `right-safe-*`, `bottom-safe-*` take any
+  spacing or length); `touch-action: manipulation` and no tap highlight on the page; the Button's
+  transitions listed and its ring 2 px with a 2 px offset; a focus ring on the list's filter and on
+  the toast viewport; `overscroll-contain` on lists and the report; Toggle hover raises contrast;
+  shortcuts in mono, without letter spacing; the credit's pills fit a phone; an `<h1>` in the
+  library; `name`, `autoComplete="off"` and `spellCheck={false}` on the dialogs' fields, which take
+  the focus only under a fine pointer, so a phone's keyboard does not cover the dialog; error copy
+  with a next step where DESIGN.md does not fix the words; maze names, paths, file names and the
+  commit inside toasts, the confirm dialog, the Save to folder hint and the credit note marked
+  `translate="no"` (`Verbatim`); the manifest's colours are the dark desk, `#191919`; the quick
+  list's rows use `content-visibility: auto`.
+- **Left as they are.** `overscroll-behavior-y: none` on the page, against pull-to-refresh on
+  Android, is the owner's call, still open. Counts and percentages stay as written: the app is in
+  English only, and `Intl.NumberFormat` comes with a second locale. The Checks findings carry no
+  coordinates or names to mark. The audit's other points are DESIGN.md's own choices: sentence
+  case, Save and Create disabled while a field is invalid, menu triggers without tooltips, menus
+  without exit animation, the canvas as `role="application"`, no URL for previews and loose mazes.
+- **Size:** the first screen counts 201.1 KB gzip, +6.5 KB with this slice.

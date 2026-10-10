@@ -1,4 +1,5 @@
 import { Button } from '@/ui/primitives/button';
+import { Verbatim } from '@/ui/verbatim';
 import {
   Dialog,
   DialogClose,
@@ -12,6 +13,8 @@ export interface ConfirmDialogProps {
   readonly open: boolean;
   readonly onOpenChange: (open: boolean) => void;
   readonly title: string;
+  /** The parts of the title a page translator must leave alone, such as a file name. */
+  readonly verbatim?: string | undefined;
   readonly description: string;
   /** What the button that goes ahead says. */
   readonly confirm: string;
@@ -23,6 +26,7 @@ export function ConfirmDialog({
   open,
   onOpenChange,
   title,
+  verbatim,
   description,
   confirm,
   onConfirm,
@@ -30,7 +34,9 @@ export function ConfirmDialog({
   return (
     <Dialog onOpenChange={onOpenChange} open={open}>
       <DialogContent>
-        <DialogTitle translate="no">{title}</DialogTitle>
+        <DialogTitle>
+          <Verbatim text={title} verbatim={verbatim} />
+        </DialogTitle>
         <DialogDescription>{description}</DialogDescription>
         <div className="flex justify-end gap-2">
           <DialogClose asChild>

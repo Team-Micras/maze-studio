@@ -2,6 +2,7 @@ import { Plus, Ruler, X } from '@/ui/icons';
 import { useId, useRef, useState, type FormEvent, type ReactNode } from 'react';
 
 import type { Profile } from '@/maze';
+import { useCoarsePointer } from '@/ui/hooks/use-media-query';
 import { PROFILE_NAMES } from '@/ui/labels';
 import { IslandButton } from '@/ui/islands/island';
 import { PRESETS, sideOf, type NewMazeRequest } from '@/ui/new-maze';
@@ -71,10 +72,12 @@ function SideField({ label, value, onChange }: SideFieldProps) {
       <Input
         aria-describedby={valid ? undefined : `${id}-error`}
         aria-invalid={!valid}
+        autoComplete="off"
         id={id}
         inputMode="numeric"
         max={64}
         min={1}
+        name={label.toLowerCase()}
         onChange={(event) => onChange(event.target.value)}
         type="number"
         value={value}
@@ -157,8 +160,11 @@ function CustomForm({ defaultName, onCreate }: CustomFormProps) {
       <div className="flex flex-col gap-1.5">
         <Label htmlFor={nameId}>Name</Label>
         <Input
+          autoComplete="off"
           id={nameId}
+          name="name"
           onChange={(event) => setName(event.target.value)}
+          spellCheck={false}
           placeholder="Untitled maze…"
           value={name}
         />
@@ -186,6 +192,7 @@ export function CustomSizeDialog({
   onCreate,
 }: CustomSizeDialogProps) {
   const content = useRef<HTMLDivElement>(null);
+  const coarse = useCoarsePointer();
 
   return (
     <Dialog onOpenChange={onOpenChange} open={open}>
@@ -193,7 +200,7 @@ export function CustomSizeDialog({
         aria-describedby={undefined}
         onOpenAutoFocus={(event) => {
           event.preventDefault();
-          content.current?.querySelector('input')?.focus();
+          (coarse ? content.current : content.current?.querySelector('input'))?.focus();
         }}
         ref={content}
       >

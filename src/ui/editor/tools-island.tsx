@@ -80,7 +80,7 @@ export function ToolsIsland({
   };
 
   return (
-    <Island className={cn('fixed bottom-[18px] left-1/2 -translate-x-1/2', className)}>
+    <Island className={cn('fixed bottom-safe-[18px] left-1/2 -translate-x-1/2', className)}>
       <Toolbar.Root
         aria-label="Tools"
         className="flex items-center gap-0.5"

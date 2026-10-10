@@ -15,8 +15,12 @@ import {
 import { newMazeName, openNewMaze } from './new-maze';
 import { useMazeEditor } from './editor/use-maze-editor';
 import { useRoute } from './hooks/use-route';
+import { ReportDialog } from './library/report-dialog';
+import { updateNote } from './library/update-note';
 import { useLocalFolder } from './library/use-local-folder';
 import { reloadLibrary, useLibrary } from './library/use-library';
+import { useMineBackup } from './library/use-mine-backup';
+import { useRepoUpdates } from './library/use-repo-updates';
 import { pushRoute, replaceRoute } from './navigation';
 import {
   looseDocument,
@@ -69,6 +73,8 @@ export function App() {
   const route = useRoute();
   const folder = useLocalFolder();
   const library = useLibrary(folder.contents);
+  const backup = useMineBackup();
+  const updates = useRepoUpdates();
   const hash = routeHash(route);
   const [loose, setLoose] = useState<LooseMaze | undefined>(undefined);
   const [onDisk, setOnDisk] = useState<{ fileName: string; text: string } | undefined>(undefined);
@@ -103,10 +109,12 @@ export function App() {
     changeOf(changes, trail.left.slice('mine:'.length)) !== undefined
       ? MINE_FILTER
       : undefined;
-  const missing =
+  const missingOpening =
     routeKey !== undefined && opening.status === 'missing' && !editor.answers(routeKey)
-      ? opening.message
+      ? opening
       : undefined;
+  const missing = missingOpening?.message;
+  const missingName = missingOpening?.verbatim;
 
   useEffect(() => {
     const current = parseRoute(hash);
@@ -127,10 +135,10 @@ export function App() {
 
   useEffect(() => {
     if (missing !== undefined) {
-      showToast(missing);
+      showToast(missing, missingName === undefined ? {} : { verbatim: missingName });
       replaceRoute(lastLibrary.current);
     }
-  }, [missing]);
+  }, [missing, missingName]);
 
   const toLibrary = (): void => {
     if (shownLoose !== undefined) {
@@ -174,7 +182,7 @@ export function App() {
           );
 
     if (saved?.ok !== true) {
-      showToast(`Could not discard ${item.name} (changed in another tab)`);
+      showToast(`Could not discard ${item.name} (changed in another tab)`, { verbatim: item.name });
       return;
     }
 
@@ -198,11 +206,11 @@ export function App() {
     const saved = await folder.save(fileName, text, overwrite);
 
     if (saved.ok) {
-      showToast(`Saved to ${fileName}`);
+      showToast(`Saved to ${fileName}`, { verbatim: fileName });
     } else if (saved.changed === true) {
       setOnDisk({ fileName, text });
     } else {
-      showToast(`Could not save to ${fileName} (${saved.reason})`);
+      showToast(`Could not save to ${fileName} (${saved.reason})`, { verbatim: fileName });
     }
   };
 
@@ -224,6 +232,12 @@ export function App() {
     }
   };
 
+  const importFiles = async (files: readonly File[]): Promise<void> => {
+    if ((await backup.importFiles(files)) > 0) {
+      replaceRoute({ kind: 'library', filter: MINE_FILTER });
+    }
+  };
+
   const openLoose = (make: (id: number) => OpenMaze): void => {
     setLoose((before) => {
       const id = (before?.id ?? 0) + 1;
@@ -237,7 +251,9 @@ export function App() {
 
   const openFile = async (picked: File): Promise<void> => {
     if (picked.size > MAX_FILE_BYTES) {
-      showToast(`Could not read ${picked.name} (larger than 1 MiB). Pick a mazefiles .txt`);
+      showToast(`Could not read ${picked.name} (larger than 1 MiB). Pick a mazefiles .txt`, {
+        verbatim: picked.name,
+      });
       return;
     }
 
@@ -255,7 +271,9 @@ export function App() {
         },
       }));
     } else {
-      showToast(`Could not read ${picked.name} (${parsed.error.message}). Pick a mazefiles .txt`);
+      showToast(`Could not read ${picked.name} (${parsed.error.message}). Pick a mazefiles .txt`, {
+        verbatim: picked.name,
+      });
     }
   };
 
@@ -263,7 +281,7 @@ export function App() {
     <TooltipProvider delayDuration={350} skipDelayDuration={300}>
       <nav aria-label="Skip link">
         <a
-          className="fixed top-3 left-3 z-40 -translate-y-[160%] rounded-[10px] bg-primary px-3 py-2 text-[13px] text-primary-foreground focus-visible:translate-y-0"
+          className="fixed top-safe-3 left-safe-3 z-40 -translate-y-[160%] rounded-[10px] bg-primary px-3 py-2 text-[13px] text-primary-foreground focus-visible:translate-y-0"
           href={`#${CANVAS_ID}`}
           onClick={(event) => {
             event.preventDefault();
@@ -284,7 +302,13 @@ export function App() {
         onDiscard={(item) => void discard(item)}
         onDelete={(id) => void deleteMine(id)}
         onSaveToFolder={(fileName, text) => void saveToFolder(fileName, text)}
-        {...(folder.supported ? { onOpenFolder: () => void openFolder() } : {})}
+        files={{
+          onExportAll: () => void backup.exportAll(),
+          onImport: (files) => void importFiles(files),
+          onCheckUpdates: updates.checkNow,
+          ...(folder.supported ? { onOpenFolder: () => void openFolder() } : {}),
+        }}
+        updateNote={library === undefined ? undefined : updateNote(updates.status, library.commit)}
         onPin={replaceRoute}
         editor={editor}
         opened={editor.shown ?? opened}
@@ -304,7 +328,9 @@ export function App() {
         }}
         open={onDisk !== undefined}
         title={`${onDisk?.fileName ?? ''} changed on disk`}
+        verbatim={onDisk?.fileName}
       />
+      <ReportDialog onClose={backup.closeReport} report={backup.report} />
       <Toaster />
     </TooltipProvider>
   );

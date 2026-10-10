@@ -107,31 +107,28 @@
 }
 
 /*
- * Island positions on a phone: their distance from the edge plus the safe-area inset of that edge,
- * so a notch or a home indicator never covers them (DESIGN.md 5).
+ * Island positions: their distance from the edge plus the safe-area inset of that edge, so a notch,
+ * a rounded corner or a home indicator never covers them, a phone held sideways included
+ * (DESIGN.md 5). `top-safe-4` is 1rem from the top; `top-safe-[72px]` takes any length.
  */
-@utility top-safe-2 {
-  top: calc(0.5rem + env(safe-area-inset-top));
+@utility top-safe-* {
+  top: calc(var(--spacing) * --value(number) + env(safe-area-inset-top));
+  top: calc(--value([length]) + env(safe-area-inset-top));
 }
 
-@utility top-safe-16 {
-  top: calc(4rem + env(safe-area-inset-top));
+@utility left-safe-* {
+  left: calc(var(--spacing) * --value(number) + env(safe-area-inset-left));
+  left: calc(--value([length]) + env(safe-area-inset-left));
 }
 
-@utility top-safe-28 {
-  top: calc(7rem + env(safe-area-inset-top));
+@utility right-safe-* {
+  right: calc(var(--spacing) * --value(number) + env(safe-area-inset-right));
+  right: calc(--value([length]) + env(safe-area-inset-right));
 }
 
-@utility left-safe-2 {
-  left: calc(0.5rem + env(safe-area-inset-left));
-}
-
-@utility right-safe-2 {
-  right: calc(0.5rem + env(safe-area-inset-right));
-}
-
-@utility bottom-safe-3 {
-  bottom: calc(0.75rem + env(safe-area-inset-bottom));
+@utility bottom-safe-* {
+  bottom: calc(var(--spacing) * --value(number) + env(safe-area-inset-bottom));
+  bottom: calc(--value([length]) + env(safe-area-inset-bottom));
 }
 
 @layer base {
@@ -141,6 +138,8 @@
 
   html {
     color-scheme: light;
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
   }
 
   html.dark {

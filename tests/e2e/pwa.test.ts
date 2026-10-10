@@ -1,7 +1,16 @@
 import { chromium, type Browser, type BrowserContext, type Page } from 'playwright';
 import { afterAll, beforeAll, describe, expect, inject, test } from 'vitest';
 
+import { toggleWall, type Edge } from '@/maze';
+import {
+  edgeMiddle,
+  expectSaved,
+  pagePoint,
+  repoContent,
+  sameMaze,
+} from '@tests/support/e2e/board-page';
 import { BASE } from '@tests/support/e2e/serve-app';
+import { waitForMode } from '@tests/support/e2e/studio-page';
 
 interface Icon {
   readonly src: string;
@@ -25,6 +34,8 @@ function isManifest(value: unknown): value is Manifest {
 }
 
 const app = inject('appUrl');
+const CLASSIC = 'classic/AAMC15Maze.txt';
+const EDGE: Edge = { direction: 'vertical', x: 6, y: 9 };
 let browser: Browser;
 const contexts: BrowserContext[] = [];
 
@@ -90,8 +101,8 @@ describe('the PWA built for GitHub Pages', () => {
     expect(manifest.display).toBe('standalone');
     expect(manifest.start_url).toBe(BASE);
     expect(manifest.scope).toBe(BASE);
-    expect(manifest.theme_color).toMatch(/^#[0-9a-f]{6}$/i);
-    expect(manifest.background_color).toMatch(/^#[0-9a-f]{6}$/i);
+    expect(manifest.theme_color).toBe('#191919');
+    expect(manifest.background_color).toBe('#191919');
     expect(manifest.icons.some((icon) => icon.sizes === '192x192')).toBe(true);
     expect(manifest.icons.some((icon) => icon.sizes === '512x512')).toBe(true);
     expect(manifest.icons.some((icon) => icon.purpose === 'maskable')).toBe(true);
@@ -138,5 +149,25 @@ describe('the PWA built for GitHub Pages', () => {
     expect(response?.fromServiceWorker()).toBe(true);
     await page.getByRole('link', { name: 'micromouseonline/mazefiles' }).waitFor();
     await page.locator('a[data-artboard]').first().waitFor();
+  });
+
+  test('after the first visit, opens, searches, edits and saves with no network', async () => {
+    const page = await fresh();
+    await page.goto(app);
+    await controlled(page);
+    await page.context().setOffline(true);
+    await page.reload();
+    await page.locator('a[data-artboard]').first().waitFor();
+
+    await page.getByRole('searchbox', { name: 'Search mazes' }).fill('AAMC15Maze');
+    await expect.poll(() => page.locator('a[data-artboard]').count()).toBe(1);
+    await page.locator(`a[data-artboard="repo:${CLASSIC}"]`).click();
+    await waitForMode(page, 'editor');
+    const { maze } = await repoContent(CLASSIC);
+    const point = await pagePoint(page, maze, edgeMiddle(EDGE));
+    await page.mouse.click(point.x, point.y);
+
+    const saved = await expectSaved(page, sameMaze(toggleWall(maze, EDGE)));
+    expect(saved.origin?.path).toBe(CLASSIC);
   });
 });

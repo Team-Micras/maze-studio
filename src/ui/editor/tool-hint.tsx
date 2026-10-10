@@ -42,7 +42,7 @@ export function ToolHint({ message, className }: ToolHintProps) {
     <p
       aria-hidden
       className={cn(
-        'pointer-events-none fixed bottom-[74px] left-1/2 z-[9] max-w-[calc(100vw-24px)] -translate-x-1/2 rounded-[9px] bg-primary px-2.5 py-[5px] text-center text-xs text-primary-foreground opacity-0 transition-opacity duration-200 ease-(--ease) data-shown:opacity-100',
+        'pointer-events-none fixed bottom-safe-[74px] left-1/2 z-[9] max-w-[calc(100vw-24px)] -translate-x-1/2 rounded-[9px] bg-primary px-2.5 py-[5px] text-center text-xs text-primary-foreground opacity-0 transition-opacity duration-200 ease-(--ease) data-shown:opacity-100',
         className
       )}
       data-hint=""

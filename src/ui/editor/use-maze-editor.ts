@@ -159,7 +159,7 @@ export function useMazeEditor(input: MazeEditorInput): MazeEditor {
       refused: (opened) => setRefused((before) => new Set([...before, opened])),
       failed: (error) => {
         showToast(
-          `Could not save to Mine (${error instanceof Error ? error.message : String(error)})`
+          `Could not save to Mine (${error instanceof Error ? error.message : String(error)}). Download .txt to keep it`
         );
       },
     });

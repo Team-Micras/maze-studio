@@ -460,6 +460,31 @@ describe('A local folder', () => {
     await expect.poll(() => page.locator('h1').textContent()).toBe('a');
   });
 
+  test('a failed Save to folder says why and keeps the copy in Mine', async () => {
+    const { maze } = await repoContent(CLASSIC);
+    const context = await folderContext();
+    const page = await context.newPage();
+    await page.goto(app);
+    await fillFolder(page, { 'a.txt': repoText(CLASSIC) });
+    await page.getByRole('button', { name: 'Mine and files' }).click();
+    await page.getByRole('menuitem', { name: 'Open folder…' }).click();
+    await page.locator('a[data-artboard="folder:a.txt"]').click();
+    await waitForMode(page, 'editor');
+    await clickEdge(page, maze, EDGE);
+    const saved = await expectSaved(page, sameMaze(toggleWall(maze, EDGE)));
+    await page.evaluate(() => {
+      Object.assign(FileSystemFileHandle.prototype, {
+        createWritable: () =>
+          Promise.reject(new DOMException('The disk is full', 'QuotaExceededError')),
+      });
+    });
+    await page.getByRole('button', { name: 'Save to folder' }).click();
+
+    await expectToast(page, /^Could not save to a\.txt \(.+\)$/);
+    expect(await folderText(page, 'a.txt')).toBe(repoText(CLASSIC));
+    expect((await storedMine(page, saved.id))?.code).toBe(saved.code);
+  });
+
   test('#/folder/<file> opens again after a reload, and without access goes to the library', async () => {
     const context = await folderContext();
     const page = await context.newPage();
@@ -518,6 +543,9 @@ describe('A local folder', () => {
     await page.goto(app);
     await page.locator('a[data-artboard]').first().waitFor();
 
-    expect(await page.getByRole('button', { name: 'Mine and files' }).count()).toBe(0);
+    await page.getByRole('button', { name: 'Mine and files' }).click();
+    await page.getByRole('menuitem', { name: 'Check for updates' }).waitFor();
+
+    expect(await page.getByRole('menuitem', { name: 'Open folder…' }).count()).toBe(0);
   });
 });

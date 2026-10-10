@@ -29,7 +29,7 @@ describe('The Rename dialog', () => {
     const field = page.getByRole('textbox', { name: 'Name' });
     await userEvent.fill(field, 'shared ONE');
 
-    await expect.element(page.getByText('Name already in Mine')).toBeVisible();
+    await expect.element(page.getByText('Name already in Mine. Pick another')).toBeVisible();
     await expect.element(page.getByRole('button', { name: 'Save' })).toBeDisabled();
     await expect.element(field).toHaveAttribute('aria-invalid', 'true');
     expect(await axeViolations()).toEqual([]);

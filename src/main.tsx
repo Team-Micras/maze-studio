@@ -2,6 +2,7 @@ import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 
 import { App } from '@/ui/app';
+import { offerReload } from '@/ui/new-version';
 import '@/ui/styles.css';
 import { registerSW } from 'virtual:pwa-register';
 
@@ -12,7 +13,9 @@ if (!root) {
 }
 
 if (import.meta.env.PROD) {
-  registerSW();
+  const update = registerSW({
+    onNeedRefresh: () => offerReload(() => void update(true)),
+  });
 }
 
 createRoot(root).render(
