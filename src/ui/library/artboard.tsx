@@ -5,7 +5,7 @@ import type { Maze } from '@/maze';
 import type { ThumbnailBand, WorldRect } from '@/render';
 import { ThumbnailCanvas } from '@/ui/board/thumbnail-canvas';
 import { pushRoute } from '@/ui/navigation';
-import { routeHash, type Route } from '@/ui/routes';
+import { routeHash, routeOfEntry } from '@/ui/routes';
 
 import { artboardLabel } from './artboard-label';
 
@@ -20,12 +20,6 @@ export interface ArtboardProps {
   /** Whether it fades out and leaves the keyboard and the pointer, as while a maze is open. */
   readonly hidden?: boolean;
   readonly onFocus: (key: string, event: FocusEvent<HTMLAnchorElement>) => void;
-}
-
-function routeOf(entry: CatalogEntry): Route {
-  return entry.origin === 'mine' && entry.id !== undefined
-    ? { kind: 'mine', id: entry.id }
-    : { kind: 'repo', path: entry.path ?? entry.name };
 }
 
 function artboardStyle(place: WorldRect): CSSProperties & Record<'--bw', number> {
@@ -61,7 +55,7 @@ export const Artboard = memo(function Artboard({
       draggable={false}
       tabIndex={hidden ? -1 : undefined}
       data-artboard={entry.key}
-      href={routeHash(routeOf(entry))}
+      href={routeHash(routeOfEntry(entry))}
       onClick={(event) => {
         if (
           !event.defaultPrevented &&
@@ -71,7 +65,7 @@ export const Artboard = memo(function Artboard({
           !event.altKey
         ) {
           event.preventDefault();
-          pushRoute(routeOf(entry));
+          pushRoute(routeOfEntry(entry));
         }
       }}
       onFocus={(event) => onFocus(entry.key, event)}

@@ -17,7 +17,7 @@ import {
   sameMaze,
   storedMine,
 } from '@tests/support/e2e/board-page';
-import { openPage, waitForMode } from '@tests/support/e2e/studio-page';
+import { openPage, waitForMode, expectToast } from '@tests/support/e2e/studio-page';
 
 const app = inject('appUrl');
 const ROOT = join(import.meta.dirname, '..', '..');
@@ -240,11 +240,7 @@ describe('Discard of a maze of Mine another tab saved since', () => {
     await openChanges(first);
     await discard(first, 'AAMC15Maze (edited)');
 
-    await expect
-      .poll(() =>
-        first.getByText('Could not discard AAMC15Maze (edited) (changed in another tab)').count()
-      )
-      .toBe(1);
+    await expectToast(first, 'Could not discard AAMC15Maze (edited) (changed in another tab)');
     expect(await first.locator('[data-change]').count()).toBe(1);
     await expectSaved(first, sameMaze(toggleWall(toggleWall(before, OTHER), EDGE)));
   });

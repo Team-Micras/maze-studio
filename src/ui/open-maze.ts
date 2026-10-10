@@ -59,8 +59,15 @@ export type Opening =
 
 const WAITING: Opening = { status: 'waiting' };
 
+/** What the app says when a folder's maze is asked for without access to the folder. */
+export const NO_FOLDER_ACCESS = 'No access to the folder. Open it again to allow.';
+
 /** The maze `route` opens; a route of the library opens none. */
-export function openingOf(route: Route, library: Library | undefined): Opening {
+export function openingOf(
+  route: Route,
+  library: Library | undefined,
+  folderRestoring = false
+): Opening {
   switch (route.kind) {
     case 'library':
       return { status: 'missing', message: '' };
@@ -83,7 +90,15 @@ export function openingOf(route: Route, library: Library | undefined): Opening {
           };
     }
     case 'folder':
-      return { status: 'missing', message: 'Folders open from the library' };
+      if (library === undefined || folderRestoring) {
+        return WAITING;
+      }
+
+      if (library.folder === undefined) {
+        return { status: 'missing', message: NO_FOLDER_ACCESS };
+      }
+
+      break;
     default:
       break;
   }
@@ -100,7 +115,11 @@ export function openingOf(route: Route, library: Library | undefined): Opening {
     return {
       status: 'missing',
       message:
-        route.kind === 'repo' ? `No maze at ${route.path}` : 'That maze is no longer in Mine',
+        route.kind === 'repo'
+          ? `No maze at ${route.path}`
+          : route.kind === 'folder'
+            ? `No maze at ${route.file} in the folder`
+            : 'That maze is no longer in Mine',
     };
   }
 
@@ -126,7 +145,9 @@ export function openEntry(entry: CatalogEntry, library: Library): OpenMaze | und
     detail:
       entry.origin === 'mine'
         ? 'Saved in Mine'
-        : `${categoryLabel(entry.category)}, ${sizeLabel(entry.width, entry.height)}`,
+        : entry.origin === 'folder'
+          ? `In the folder ${library.folder?.name ?? ''}`
+          : `${categoryLabel(entry.category)}, ${sizeLabel(entry.width, entry.height)}`,
     document,
   };
 }

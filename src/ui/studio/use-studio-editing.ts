@@ -58,7 +58,8 @@ export interface StudioEditing {
   readonly onCanvasKey: (event: KeyboardEvent<HTMLDivElement>) => void;
   readonly controls: EditControlsProps;
   readonly checks: ChecksProps | undefined;
-  readonly actions: MoreActionsProps;
+  /** The editing part of the ⋯ menu; the studio adds the file actions. */
+  readonly actions: Pick<MoreActionsProps, 'editable' | 'onCloseBorder' | 'onChanges' | 'onHelp'>;
   readonly help: ShortcutHelpProps;
 }
 

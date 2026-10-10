@@ -1,7 +1,7 @@
 import { useCallback, useDeferredValue, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { useStore } from 'zustand';
 
-import { filterCatalog, type CatalogEntry, type LibraryFilter } from '@/library';
+import { filterCatalog, type LibraryFilter } from '@/library';
 import {
   artboardIn,
   boardLimits,
@@ -24,7 +24,9 @@ import type { ChangeItem } from '@/ui/changes/session-changes';
 import { Checks } from '@/ui/editor/checks';
 import { EditControls } from '@/ui/editor/edit-controls';
 import { MoreActions } from '@/ui/editor/more-actions';
+import { RenameDialog } from '@/ui/editor/rename-dialog';
 import { ShortcutHelp } from '@/ui/editor/shortcut-help';
+import { CopyLinkButton, TitleActions } from '@/ui/editor/title-actions';
 import type { MazeEditor } from '@/ui/editor/use-maze-editor';
 import { useCoarsePointer, usePhoneLayout } from '@/ui/hooks/use-media-query';
 import { useViewportWidth } from '@/ui/hooks/use-viewport-width';
@@ -38,13 +40,14 @@ import type { Library } from '@/ui/library/use-library';
 import { openEntry, type OpenMaze } from '@/ui/open-maze';
 import { cn } from '@/ui/primitives/utils';
 import type { NewMazeRequest } from '@/ui/new-maze';
-import type { Route } from '@/ui/routes';
+import { routeOfEntry, type Route } from '@/ui/routes';
 import { typingIn } from '@/ui/typing-in';
 
 import { EditorChrome } from './editor-chrome';
 import { listOrder, steppedKey } from './list-order';
 import { MazeList } from './maze-list';
 import { OpenBoard } from './open-board';
+import { useMazeActions } from './use-maze-actions';
 import { useStudioChanges } from './use-studio-changes';
 import { useStudioEditing } from './use-studio-editing';
 import { useStudioFlight } from './use-studio-flight';
@@ -68,6 +71,12 @@ export interface StudioProps {
   readonly newName: string;
   /** Discards an item of Changes: deletes a copy or puts back a maze of Mine. */
   readonly onDiscard: (item: ChangeItem) => void;
+  /** Writes `text` over the opened folder's `fileName`. */
+  readonly onSaveToFolder: (fileName: string, text: string) => void;
+  /** Deletes the maze of Mine `id` and opens the library on Mine. */
+  readonly onDelete: (id: string) => void;
+  /** Opens a local folder as the Folder source, where the browser can. */
+  readonly onOpenFolder?: () => void;
   /** Leaves the open maze for the library. */
   readonly onLibrary: () => void;
   /** Puts the maze of a catalog entry in the route, in place of the open one. */
@@ -84,12 +93,6 @@ function editorInsetsFor(phone: boolean, viewing: boolean): Insets {
   }
 
   return viewing ? EDITOR_PHONE_INSETS : EDITOR_PHONE_EDIT_INSETS;
-}
-
-function routeOf(entry: CatalogEntry): Route {
-  return entry.origin === 'mine' && entry.id !== undefined
-    ? { kind: 'mine', id: entry.id }
-    : { kind: 'repo', path: entry.path ?? entry.name };
 }
 
 /**
@@ -111,6 +114,9 @@ export function Studio({
   onNew,
   newName,
   onDiscard,
+  onSaveToFolder,
+  onDelete,
+  onOpenFolder,
   onLibrary,
   onPin,
 }: StudioProps) {
@@ -153,6 +159,15 @@ export function Studio({
   });
   const coarse = useCoarsePointer();
   const changes = useStudioChanges({ store, state, library, onScreen, phone, onDiscard });
+  const actions = useMazeActions({
+    store,
+    state,
+    editor,
+    open: mode === 'editor' && previewed === undefined ? onScreen : undefined,
+    phone,
+    onSaveToFolder,
+    onDelete,
+  });
   const editing = useStudioEditing({
     store,
     state,
@@ -222,7 +237,7 @@ export function Studio({
     store.setState({ listOpen: false });
 
     if (entry !== undefined) {
-      onPin(routeOf(entry));
+      onPin(routeOfEntry(entry));
     }
 
     store.setState({ preview: undefined });
@@ -248,7 +263,7 @@ export function Studio({
         const entry = library.entries.find((candidate) => candidate.key === next);
 
         if (entry !== undefined) {
-          onPin(routeOf(entry));
+          onPin(routeOfEntry(entry));
         }
       }
     };
@@ -341,6 +356,7 @@ export function Studio({
         newName={newName}
         onNew={onNew}
         onOpenFile={onOpenFile}
+        {...(onOpenFolder === undefined ? {} : { onOpenFolder })}
         phone={phone}
         visible={libraryVisible}
       />
@@ -368,11 +384,13 @@ export function Studio({
               <>
                 <ChangesChip {...changes.chip} />
                 <Checks {...editing.checks} />
-                <MoreActions {...editing.actions} />
+                <MoreActions {...editing.actions} {...actions.menu} />
+                {actions.copyLink === undefined ? null : <CopyLinkButton {...actions.copyLink} />}
               </>
             )
           }
           cursor={editing.cursor}
+          titleActions={<TitleActions {...actions.title} />}
           landed={mode === 'editor'}
           listOpen={state.listOpen}
           onLibrary={onLibrary}
@@ -392,6 +410,7 @@ export function Studio({
         </EditorChrome>
       ) : null}
       {mode === 'editor' && !coarse ? <ShortcutHelp {...editing.help} /> : null}
+      {actions.rename === undefined ? null : <RenameDialog {...actions.rename} />}
       {mode === 'library' || mode === 'editor' ? <ChangesPanel {...changes.panel} /> : null}
       {state.listOpen && library !== undefined && mode === 'editor' ? (
         <MazeList

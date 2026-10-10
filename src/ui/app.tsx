@@ -14,9 +14,17 @@ import {
 import { newMazeName, openNewMaze } from './new-maze';
 import { useMazeEditor } from './editor/use-maze-editor';
 import { useRoute } from './hooks/use-route';
+import { useLocalFolder } from './library/use-local-folder';
 import { reloadLibrary, useLibrary } from './library/use-library';
 import { pushRoute, replaceRoute } from './navigation';
-import { looseDocument, MAX_FILE_BYTES, mazeKeyOf, openingOf, type OpenMaze } from './open-maze';
+import {
+  looseDocument,
+  MAX_FILE_BYTES,
+  mazeKeyOf,
+  NO_FOLDER_ACCESS,
+  openingOf,
+  type OpenMaze,
+} from './open-maze';
 import { TooltipProvider } from './primitives/tooltip';
 import { LIBRARY_ROUTE, parseRoute, routeHash, type Route } from './routes';
 import { Studio } from './studio/studio';
@@ -58,13 +66,14 @@ function focusCanvas(): void {
  */
 export function App() {
   const route = useRoute();
-  const library = useLibrary();
+  const folder = useLocalFolder();
+  const library = useLibrary(folder.contents);
   const hash = routeHash(route);
   const [loose, setLoose] = useState<LooseMaze | undefined>(undefined);
   const lastLibrary = useRef<Route>(LIBRARY_ROUTE);
   const fromLibrary = useRef(false);
   const previous = useRef<Route>(route);
-  const opening = openingOf(route, library);
+  const opening = openingOf(route, library, folder.restoring);
   const shownLoose = loose?.at === hash ? loose.open : undefined;
   const [lastFilter, setLastFilter] = useState({ hash: '#/', filter: DEFAULT_FILTER });
 
@@ -183,6 +192,31 @@ export function App() {
     }
   };
 
+  const saveToFolder = async (fileName: string, text: string): Promise<void> => {
+    const saved = await folder.save(fileName, text);
+    showToast(
+      saved.ok ? `Saved to ${fileName}` : `Could not save to ${fileName} (${saved.reason})`
+    );
+  };
+
+  const deleteMine = async (id: string): Promise<void> => {
+    sessionChanges.setState((before) => withoutChange(before, id));
+    replaceRoute({ kind: 'library', filter: MINE_FILTER });
+    await (await appStorage())?.mine.remove(id);
+    reloadLibrary();
+  };
+
+  const openFolder = async (): Promise<void> => {
+    try {
+      await folder.open();
+      replaceRoute({ kind: 'library', filter: { ...DEFAULT_FILTER, source: 'folder' } });
+    } catch (error) {
+      if (!(error instanceof DOMException && error.name === 'AbortError')) {
+        showToast(NO_FOLDER_ACCESS);
+      }
+    }
+  };
+
   const openLoose = (make: (id: number) => OpenMaze): void => {
     setLoose((before) => {
       const id = (before?.id ?? 0) + 1;
@@ -241,6 +275,9 @@ export function App() {
         onNew={(request) => openLoose((id) => openNewMaze(request, id, mineNames))}
         onOpenFile={(picked) => void openFile(picked)}
         onDiscard={(item) => void discard(item)}
+        onDelete={(id) => void deleteMine(id)}
+        onSaveToFolder={(fileName, text) => void saveToFolder(fileName, text)}
+        {...(folder.supported ? { onOpenFolder: () => void openFolder() } : {})}
         onPin={replaceRoute}
         editor={editor}
         opened={editor.shown ?? opened}

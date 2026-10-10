@@ -16,7 +16,16 @@ export {
   type SkippedImport,
 } from './backup';
 export { gitBlobSha } from './blob-sha';
-export { mineCatalog, repoCatalog, type CatalogEntry } from './catalog';
+export { folderCatalog, mineCatalog, repoCatalog, type CatalogEntry } from './catalog';
+export {
+  folderPermission,
+  isFolderHandle,
+  readFolder,
+  writeFolderFile,
+  type FolderContents,
+  type FolderFile,
+  type FolderHandle,
+} from './folder';
 export {
   Database,
   DATABASE_NAME,

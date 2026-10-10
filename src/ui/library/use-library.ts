@@ -1,11 +1,13 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 
 import {
+  folderCatalog,
   loadSnapshot,
   mineCatalog,
   repoCatalog,
   SearchIndex,
   type CatalogEntry,
+  type FolderContents,
   type MineMaze,
   type RepoFile,
 } from '@/library';
@@ -30,6 +32,8 @@ export interface Library {
   readonly commit: string;
   readonly repoCount: number;
   readonly mineCount: number;
+  /** The opened folder: its name and how many of its `.txt` files did not parse; none if closed. */
+  readonly folder?: { readonly name: string; readonly skipped: number };
   /** The maze of an entry, decoded on first use. */
   readonly mazeOf: (key: string) => Maze | undefined;
   /** What the maze of an entry carries besides its walls, decoded on first use. */
@@ -46,10 +50,18 @@ interface Decoded {
   readonly document: MazeDocument;
 }
 
-function library(commit: string, files: readonly RepoFile[], mine: readonly MineMaze[]): Library {
+/** What the library is built from: the repository's files, Mine, and maybe an opened folder. */
+interface Loaded {
+  readonly commit: string;
+  readonly files: readonly RepoFile[];
+  readonly mine: readonly MineMaze[];
+}
+
+function library({ commit, files, mine }: Loaded, folder: FolderContents | undefined): Library {
   const repoEntries = repoCatalog(files);
   const mineEntries = mineCatalog(mine);
-  const entries = [...repoEntries, ...mineEntries];
+  const folderEntries = folder === undefined ? [] : folderCatalog(folder.files);
+  const entries = [...repoEntries, ...mineEntries, ...folderEntries];
   const stored = new Map<string, Stored>([
     ...files.map((file): [string, Stored] => [
       `repo:${file.path}`,
@@ -74,7 +86,19 @@ function library(commit: string, files: readonly RepoFile[], mine: readonly Mine
       },
     ]),
   ]);
-  const decoded = new Map<string, Decoded>();
+  const decoded = new Map<string, Decoded>(
+    (folder?.files ?? []).map((file): [string, Decoded] => [
+      `folder:${file.fileName}`,
+      {
+        maze: file.text.maze,
+        document: {
+          trailer: file.text.trailer,
+          profile: 'free',
+          ...(file.text.source === undefined ? {} : { source: file.text.source }),
+        },
+      },
+    ])
+  );
   const decode = (key: string): Decoded | undefined => {
     const known = decoded.get(key);
 
@@ -103,29 +127,30 @@ function library(commit: string, files: readonly RepoFile[], mine: readonly Mine
     commit,
     repoCount: repoEntries.length,
     mineCount: mineEntries.length,
+    ...(folder === undefined ? {} : { folder: { name: folder.name, skipped: folder.skipped } }),
     mazeOf: (key) => decode(key)?.maze,
     documentOf: (key) => decode(key)?.document,
   };
 }
 
-async function loadLibrary(): Promise<Library> {
+async function loadLibrary(): Promise<Loaded> {
   const storage = await appStorage();
 
   if (storage === undefined) {
     const snapshot = await loadSnapshot();
-    return library(snapshot.commit, snapshot.files, []);
+    return { commit: snapshot.commit, files: snapshot.files, mine: [] };
   }
 
   const [copy, mine] = await Promise.all([storage.repo.current(), storage.mine.list()]);
-  return library(copy.commit, copy.files, mine);
+  return { commit: copy.commit, files: copy.files, mine };
 }
 
 /**
- * The library, or `undefined` while it loads. It loads again when another tab writes to Mine, or
- * when this one says it did with {@link reloadLibrary}.
+ * The library, or `undefined` while it loads, with the mazes of `folder` when one is open. It loads
+ * again when another tab writes to Mine, or when this one says it did with {@link reloadLibrary}.
  */
-export function useLibrary(): Library | undefined {
-  const [loaded, setLoaded] = useState<Library | undefined>(undefined);
+export function useLibrary(folder?: FolderContents): Library | undefined {
+  const [loaded, setLoaded] = useState<Loaded | undefined>(undefined);
 
   useEffect(() => {
     let current = true;
@@ -153,5 +178,8 @@ export function useLibrary(): Library | undefined {
     };
   }, []);
 
-  return loaded;
+  return useMemo(
+    () => (loaded === undefined ? undefined : library(loaded, folder)),
+    [loaded, folder]
+  );
 }

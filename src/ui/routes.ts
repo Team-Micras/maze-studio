@@ -5,6 +5,7 @@
  * @module
  */
 
+import type { CatalogEntry } from '@/library/catalog';
 import {
   DEFAULT_FILTER,
   isLibraryCategory,
@@ -115,4 +116,15 @@ export function routeHash(route: Route): string {
     default:
       return `#${MAZE_PREFIXES.link}${encodeURIComponent(route.code)}`;
   }
+}
+
+/** The route of a catalog entry's maze: in the repository, in Mine, or in the opened folder. */
+export function routeOfEntry(entry: CatalogEntry): Route {
+  if (entry.origin === 'mine' && entry.id !== undefined) {
+    return { kind: 'mine', id: entry.id };
+  }
+
+  return entry.origin === 'folder'
+    ? { kind: 'folder', file: entry.path ?? `${entry.name}.txt` }
+    : { kind: 'repo', path: entry.path ?? entry.name };
 }

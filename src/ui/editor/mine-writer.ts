@@ -65,6 +65,47 @@ export class MineWriter {
     this.#draining ??= this.#drain();
   }
 
+  /**
+   * Copies `session`'s maze to Mine under its own name, edited or not, as Save to Mine does for a
+   * link or a file; nothing happens once it has a copy.
+   */
+  async saveToMine(session: EditSession): Promise<void> {
+    await this.idle();
+
+    if (this.#copies.get(session.opened) === undefined && session.mine === undefined) {
+      await this.#copy(session, true);
+    }
+  }
+
+  /**
+   * Renames `session`'s item of Mine on the version this tab knows.
+   *
+   * @returns Whether Mine took the name; another tab's newer save refuses it.
+   */
+  async rename(session: EditSession, name: string): Promise<boolean> {
+    await this.idle();
+    const { opened } = session;
+    const copy = this.#copies.get(opened) ?? session.mine;
+    const mine = await this.#mine();
+
+    if (copy === undefined || mine === undefined) {
+      return false;
+    }
+
+    const version = Math.max(copy.version, this.#versions.get(copy.id) ?? 0);
+    const result = await mine.save(copy.id, { name }, version);
+
+    if (!result.ok) {
+      return false;
+    }
+
+    const renamed = { ...copy, name, version: result.value.version };
+    this.#copies.set(opened, renamed);
+    this.#versions.set(renamed.id, renamed.version);
+    this.#events.saved(opened, renamed);
+    return true;
+  }
+
   /** The version of item `id` this tab saved last, if it saved one. */
   savedVersion(id: string): number | undefined {
     return this.#versions.get(id);
@@ -151,7 +192,7 @@ export class MineWriter {
     this.#events.saved(opened, saved);
   }
 
-  async #copy(session: EditSession): Promise<void> {
+  async #copy(session: EditSession, asIs = false): Promise<void> {
     const mine = await this.#mine();
 
     if (mine === undefined) {
@@ -162,7 +203,7 @@ export class MineWriter {
     const taken = (await mine.list()).map((item) => item.name);
     const item = await mine.create({
       name: uniqueName(
-        opened.document.created === true ? opened.name : copyName(opened.name),
+        opened.document.created === true || asIs ? opened.name : copyName(opened.name),
         taken
       ),
       maze: history.present,

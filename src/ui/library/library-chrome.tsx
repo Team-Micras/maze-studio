@@ -1,4 +1,4 @@
-import { FolderOpen, Moon, Plus, Sun } from '@/ui/icons';
+import { FolderOpen, FolderSimple, Moon, Plus, Sun } from '@/ui/icons';
 import { useRef, type ReactNode } from 'react';
 
 import { MAZEFILES, type LibraryFilter } from '@/library';
@@ -33,6 +33,8 @@ export interface LibraryChromeProps {
   /** The name a new maze gets unless named: "Untitled maze", unique in Mine. */
   readonly newName: string;
   readonly phone: boolean;
+  /** Opens a local folder as the Folder source; absent where the browser cannot. */
+  readonly onOpenFolder?: () => void;
   /** The Changes chip, which the notebook's actions island shows first. */
   readonly changes?: ReactNode;
   /** Whether the islands show; they fade out and leave the keyboard while a maze is open. */
@@ -70,6 +72,7 @@ function Credit({
 
 interface MenuProps {
   readonly onOpenFile: (file: File) => void;
+  readonly onOpenFolder?: () => void;
   readonly onNew: (request: NewMazeRequest) => void;
   readonly newName: string;
 }
@@ -94,7 +97,26 @@ function NewMazeMenu({ onNew, newName }: Omit<MenuProps, 'onOpenFile'>) {
   );
 }
 
-function PhoneMenu({ onOpenFile, onNew, newName }: MenuProps) {
+/** The "Mine and files" menu (DESIGN.md 6.1): Open folder… where the browser can open one. */
+function MineAndFiles({ onOpenFolder }: { readonly onOpenFolder: () => void }) {
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <IslandButton aria-label="Mine and files">
+          <FolderSimple aria-hidden size={18} />
+        </IslandButton>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="z-20 min-w-52 rounded-[14px]">
+        <DropdownMenuItem className="rounded-[9px]" onSelect={onOpenFolder}>
+          <FolderOpen aria-hidden size={16} />
+          Open folder…
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
+
+function PhoneMenu({ onOpenFile, onOpenFolder, onNew, newName }: MenuProps) {
   const input = useRef<HTMLInputElement>(null);
   const theme = useTheme((state) => state.theme);
   const toggleTheme = useTheme((state) => state.toggle);
@@ -112,6 +134,12 @@ function PhoneMenu({ onOpenFile, onNew, newName }: MenuProps) {
             <DropdownMenuContent align="end" className="z-20 min-w-52 rounded-[14px]">
               {items}
               <DropdownMenuSeparator />
+              {onOpenFolder === undefined ? null : (
+                <DropdownMenuItem className="rounded-[9px]" onSelect={onOpenFolder}>
+                  <FolderSimple aria-hidden size={16} />
+                  Open folder…
+                </DropdownMenuItem>
+              )}
               <DropdownMenuItem className="rounded-[9px]" onSelect={() => input.current?.click()}>
                 <FolderOpen aria-hidden size={16} />
                 Open a .txt file…
@@ -152,6 +180,7 @@ export function LibraryChrome({
   newName,
   phone,
   changes,
+  onOpenFolder,
   visible,
 }: LibraryChromeProps) {
   const change = (next: Partial<LibraryFilter>): void => onFilter({ ...filter, ...next });
@@ -160,6 +189,7 @@ export function LibraryChrome({
   );
   const source = (
     <SourceFilter
+      {...(library?.folder === undefined ? {} : { folder: library.folder })}
       mineCount={library?.mineCount ?? 0}
       onChange={(next) => change({ source: next })}
       value={filter.source}
@@ -185,7 +215,12 @@ export function LibraryChrome({
           <search>
             <Island className="fixed top-safe-2 right-safe-2 left-safe-2">
               {search}
-              <PhoneMenu newName={newName} onNew={onNew} onOpenFile={onOpenFile} />
+              <PhoneMenu
+                newName={newName}
+                onNew={onNew}
+                onOpenFile={onOpenFile}
+                {...(onOpenFolder === undefined ? {} : { onOpenFolder })}
+              />
             </Island>
           </search>
           <Island className="fixed top-safe-16 right-safe-2 left-safe-2 overflow-x-auto">
@@ -217,6 +252,7 @@ export function LibraryChrome({
           </search>
           <Island className="fixed top-4 right-4 h-11">
             {changes}
+            {onOpenFolder === undefined ? null : <MineAndFiles onOpenFolder={onOpenFolder} />}
             <OpenFileButton onFile={onOpenFile} />
             <NewMazeMenu newName={newName} onNew={onNew} />
             <IslandSeparator />

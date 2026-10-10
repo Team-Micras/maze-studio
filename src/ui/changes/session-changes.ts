@@ -100,6 +100,16 @@ export function addExisting(changes: SessionChanges, id: string, name: string): 
   };
 }
 
+/** The session with the item of `id`, if listed, under its new name. */
+export function renameChange(changes: SessionChanges, id: string, name: string): SessionChanges {
+  return changeOf(changes, id) === undefined
+    ? changes
+    : {
+        ...changes,
+        items: changes.items.map((item) => (item.id === id ? { ...item, name } : item)),
+      };
+}
+
 /** The session without the item of `id`, as after Discard. */
 export function withoutChange(changes: SessionChanges, id: string): SessionChanges {
   return { ...changes, items: changes.items.filter((item) => item.id !== id) };

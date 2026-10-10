@@ -3,7 +3,13 @@ import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react
 import type { Maze, Profile } from '@/maze';
 import { reloadLibrary } from '@/ui/library/use-library';
 import { replaceRoute } from '@/ui/navigation';
-import { addCreated, addExisting, noteSeen, sessionChanges } from '@/ui/changes/session-changes';
+import {
+  addCreated,
+  addExisting,
+  noteSeen,
+  renameChange,
+  sessionChanges,
+} from '@/ui/changes/session-changes';
 import { routeOfKey, type OpenMaze } from '@/ui/open-maze';
 import { appStorage } from '@/ui/storage';
 import { showToast } from '@/ui/toasts';
@@ -62,6 +68,14 @@ export interface MazeEditor {
   readonly redo: () => void;
   /** Checks the maze by `profile` from now on, saved with it once it is in Mine. */
   readonly setProfile: (profile: Profile) => void;
+  /** Whether the maze is a link or a file not yet in Mine, which Save to Mine copies there. */
+  readonly canSaveToMine: boolean;
+  /** The file of the opened folder the maze came from, once its copy is in Mine. */
+  readonly folderFile: string | undefined;
+  /** Copies a link or a file to Mine under its own name, edited or not. */
+  readonly saveToMine: () => void;
+  /** Renames the maze's item of Mine; `false` when Mine refused it. */
+  readonly rename: (name: string) => Promise<boolean>;
   /** The version of item `id` of Mine this tab saved last, if it saved one. */
   readonly savedVersion: (id: string) => number | undefined;
   /** Starts a new session on `open`, as when Discard has put back the maze on screen. */
@@ -216,6 +230,33 @@ export function useMazeEditor(input: MazeEditorInput): MazeEditor {
     undo: guarded(undoEdit),
     redo: guarded(redoEdit),
     setProfile: (profile) => update((before) => withProfile(before, profile)),
+    canSaveToMine:
+      session?.mine === undefined &&
+      (session?.opened.key.startsWith('link:') === true ||
+        session?.opened.key.startsWith('file:') === true),
+    folderFile:
+      session?.mine !== undefined && session.opened.key.startsWith('folder:')
+        ? session.opened.key.slice('folder:'.length)
+        : undefined,
+    saveToMine: () => {
+      const now = latest.current;
+
+      if (now !== undefined) {
+        void writer.current?.saveToMine(now);
+      }
+    },
+    rename: async (name) => {
+      const now = latest.current;
+      const done = now === undefined ? false : await writer.current?.rename(now, name);
+
+      if (done === true && now?.mine !== undefined) {
+        const renamed = { ...now.mine, name };
+        setStored((before) => (before?.opened === now.opened ? withMine(before, renamed) : before));
+        sessionChanges.setState((changes) => renameChange(changes, renamed.id, name));
+      }
+
+      return done === true;
+    },
     savedVersion: (id) => writer.current?.savedVersion(id),
     reopen: (open) => {
       const next = openSession(open);

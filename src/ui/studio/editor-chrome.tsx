@@ -41,6 +41,8 @@ export interface EditorChromeProps {
   readonly children?: ReactNode;
   /** The checks and the menu, in the island at the top right. */
   readonly actions?: ReactNode;
+  /** Save to Mine or Save to folder, after the title. */
+  readonly titleActions?: ReactNode;
 }
 
 /**
@@ -62,6 +64,7 @@ export function EditorChrome({
   cursor,
   children,
   actions,
+  titleActions,
 }: EditorChromeProps) {
   const settled = useDeferredValue(landed, false) && landed;
 
@@ -97,6 +100,7 @@ export function EditorChrome({
               {open.detail}
             </p>
           </div>
+          {settled ? titleActions : null}
         </Island>
         {!settled || actions === undefined || actions === null ? null : (
           <Island className="fixed top-4 right-4 h-11 transition-opacity duration-200 ease-(--ease) starting:opacity-0 max-[720px]:top-safe-2 max-[720px]:right-safe-2">

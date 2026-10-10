@@ -58,6 +58,7 @@ export interface StudioState {
   readonly changesOpen: boolean;
   /** Whether the board shows the diff of the maze on screen ("Show on board", `D`). */
   readonly showDiff: boolean;
+  readonly renameOpen: boolean;
 }
 
 /** The studio's state at the start: the library. */
@@ -78,6 +79,7 @@ export const INITIAL_STUDIO: StudioState = {
   prepared: undefined,
   changesOpen: false,
   showDiff: false,
+  renameOpen: false,
 };
 
 /** A new store of the studio's state. */

@@ -147,6 +147,9 @@ free of the limits while it lasts.
   tools, the hint and the phone's Edit button. `Checks` (with `checks-summary.ts`) is the chip and
   the panel, `MoreActions` the ⋯ menu and `ShortcutHelp` the `?` dialog. `studio/use-studio-editing.ts`
   wires them into the studio.
+- `editor/share.ts`, `RenameDialog`, `TitleActions`: the link, the download, Save to Mine and Save
+  to folder, and Rename; `studio/use-maze-actions.ts` puts them in the menu and the islands, and
+  `library/use-local-folder.ts` keeps the local folder over `src/library/folder.ts`.
 - `changes/`: the session's Changes, `session-changes.ts` (pure, one store per tab) and
   `ChangesChip` and `ChangesPanel`; `studio/use-studio-changes.ts` wires them into the studio, and
   `App` discards.

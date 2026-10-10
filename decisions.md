@@ -596,3 +596,37 @@ The machine's rule is no builds in `/tmp`, so `tests/e2e/pwa.test.ts` builds the
   brings the item back as a maze of Mine, compared with that state (DESIGN.md 6.2).
 - "Show on board" names `D` in `aria-keyshortcuts`, its `kbd` is hidden from screen readers, and
   the panel's buttons are 40 px tall on a phone.
+
+## 09/10/2026 — Slice 6: sharing, saving and files
+
+- **Copy link** puts `#/m/<code>` on the clipboard: the walls, the marks and the name, never the text
+  after the grid, which a toast says when the maze has some. Without a clipboard, as over plain
+  HTTP, a selected text area and `execCommand('copy')` try next; if that fails too, the link goes in
+  the address bar with "Copy failed, link is in the address bar". On a phone, Copy link and Share…
+  (Web Share, where the browser has it) are in the ⋯ menu.
+- **Download .txt** writes the canonical text with the text after the grid, under the stem
+  `uniqueStems` gives the name (`AAMC15Maze (edited)` → `AAMC15Maze-edited.txt`).
+- **Save to Mine** copies a link or a `.txt` under its own name, edited or not; an edit copies it
+  too, as "<name> (edited)". Both enter Changes.
+- **The local folder** (`src/library/folder.ts`, `useLocalFolder`) is the third source, Folder,
+  while it is open: its `.txt` files by name, those that do not parse skipped and counted in the
+  source's tooltip. Its handle is kept in IndexedDB; a later visit reads the folder at once when
+  the browser still grants it, else `#/folder/<file>` falls back to the library with "No access to
+  the folder. Open it again to allow.". A folder maze edits into a copy in Mine, and Save to folder,
+  which shows only once that copy exists, writes it back over its file, asking for write permission
+  inside the click; the copy stays in Mine and the source rereads the folder. Open folder is the
+  only item of the "Mine and files" menu until slice 7 brings Export all, Import and Check for
+  updates; where the browser has no folder picker, the menu is not there.
+- **The handle in a context that is not persistent.** Reading the handle back out of IndexedDB
+  still crashes the page in Playwright's off-the-record contexts (a reload after Open folder closes
+  the page), so the folder's e2e tests run in a persistent context with a picker that gives a folder
+  of the origin's private file system; whether Chrome's incognito windows crash the same way is not
+  checked here.
+- **Rename and Delete**, for a maze of Mine, in the ⋯ menu. Rename goes through the writer, on the
+  version this tab knows, so autosave after it is not refused; Delete takes a second select, then
+  opens the library on Mine.
+- **Menus close at once.** With an exit animation, a menu whose item started a download or wrote
+  the clipboard could stay mounted, closed, in Chromium, and its outside-click layer ate the next
+  click; the menu triggers have no tooltip either, which covered the first item. Downloads and
+  Share… start once the menu has closed.
+- **Size:** the first screen counts 192.7 KB gzip, +5.1 KB with this slice.

@@ -70,3 +70,11 @@ export async function worldCamera(page: Page): Promise<Camera> {
     )
   );
 }
+
+/**
+ * Expects a toast that says `text`; Radix shows a toast's words twice for a moment, in the toast
+ * and in the region that announces it.
+ */
+export async function expectToast(page: Page, text: string | RegExp): Promise<void> {
+  await page.getByText(text).first().waitFor();
+}
