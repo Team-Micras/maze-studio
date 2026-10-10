@@ -134,38 +134,51 @@ export function App() {
   const discard = async (item: ChangeItem): Promise<void> => {
     const shown = editor.shown;
     const open = shown?.key === `mine:${item.id}`;
-    sessionChanges.setState((before) => withoutChange(before, item.id));
     const mine = (await appStorage())?.mine;
 
-    if (mine === undefined) {
-      return;
-    }
-
     if (item.kind !== 'existing') {
+      sessionChanges.setState((before) => withoutChange(before, item.id));
+
       if (open) {
         setLoose(undefined);
         replaceRoute(item.source ?? lastLibrary.current);
       }
 
-      await mine.remove(item.id);
+      await mine?.remove(item.id);
       reloadLibrary();
       return;
     }
 
-    const stored = await mine.get(item.id);
+    const stored = await mine?.get(item.id);
+    const saved =
+      mine === undefined || stored === undefined || item.baseline === undefined
+        ? undefined
+        : await mine.save(
+            item.id,
+            {
+              maze: item.baseline,
+              ...(item.baselineProfile === undefined ? {} : { profile: item.baselineProfile }),
+            },
+            editor.savedVersion(item.id) ?? stored.version
+          );
 
-    if (item.baseline === undefined || stored === undefined) {
+    if (saved?.ok !== true) {
+      showToast(`Could not discard ${item.name} (changed in another tab)`);
       return;
     }
 
-    const saved = await mine.save(item.id, { maze: item.baseline }, stored.version);
+    sessionChanges.setState((before) => withoutChange(before, item.id));
     reloadLibrary();
 
-    if (saved.ok && open && shown !== undefined) {
+    if (open && shown !== undefined) {
       editor.reopen({
         ...shown,
-        maze: item.baseline,
-        document: { ...shown.document, mine: { id: item.id, version: saved.value.version } },
+        maze: item.baseline ?? shown.maze,
+        document: {
+          ...shown.document,
+          profile: item.baselineProfile ?? shown.document.profile,
+          mine: { id: item.id, version: saved.value.version },
+        },
       });
     }
   };

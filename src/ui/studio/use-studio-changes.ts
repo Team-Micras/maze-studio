@@ -6,6 +6,7 @@ import type { ChangeRow, ChangesChipProps, ChangesPanelProps } from '@/ui/change
 import {
   changeDiff,
   changeOf,
+  keepChange,
   sessionChanges,
   withoutChange,
   type ChangeItem,
@@ -95,7 +96,17 @@ export function useStudioChanges({
           pushRoute({ kind: 'mine', id: item.id });
         }
       },
-      onKeep: (item) => sessionChanges.setState((before) => withoutChange(before, item.id)),
+      onKeep: (item) => {
+        const key = `mine:${item.id}`;
+        const shown = onScreen?.key === key ? onScreen : undefined;
+        const maze = shown?.maze ?? library?.mazeOf(key);
+        const profile = shown?.document.profile ?? library?.documentOf(key)?.profile ?? 'free';
+        sessionChanges.setState((before) =>
+          maze === undefined
+            ? withoutChange(before, item.id)
+            : keepChange(before, item.id, { maze, profile })
+        );
+      },
       onDiscard,
     },
     diff: state.showDiff ? screenDiff : undefined,

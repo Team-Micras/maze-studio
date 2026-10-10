@@ -160,8 +160,18 @@ describe('Changes of the session', () => {
     await expect
       .poll(() => summary(page))
       .toBe(hasWall(before, OTHER) ? '1 wall removed' : '1 wall added');
+    await page.keyboard.press('Escape');
+    await page.getByRole('button', { name: /^Checks/ }).click();
+    await page
+      .getByRole('dialog', { name: 'Checks' })
+      .getByRole('radio', { name: 'Training' })
+      .click();
+    await expect.poll(async () => (await storedMine(page, id))?.profile).toBe('training');
+    await page.keyboard.press('Escape');
+    await openChanges(page);
     await discard(page, 'AAMC15Maze (edited)');
     await expectSaved(page, sameMaze(before));
+    expect((await storedMine(page, id))?.profile).toBe('classic');
     expect(new URL(page.url()).hash).toBe(`#/mine/${id}`);
     await clickEdge(page, maze, OTHER);
     await expectSaved(page, sameMaze(toggleWall(before, OTHER)));
@@ -206,6 +216,37 @@ describe('Changes of the session', () => {
     await expect.poll(() => page.locator('[data-layer^="diff-"]').count()).toBe(0);
     await openChanges(page);
     await expect.poll(() => page.locator('[data-change] canvas[data-painted]').count()).toBe(1);
+  });
+});
+
+describe('Discard of a maze of Mine another tab saved since', () => {
+  test('says so and keeps the item', async () => {
+    const { maze } = await repoContent(CLASSIC);
+    const first = await openMaze(`#/repo/${CLASSIC}`);
+    await clickEdge(first, maze, EDGE);
+    const before = toggleWall(maze, EDGE);
+    await expectSaved(first, sameMaze(before));
+    const id = mineId(first) ?? '';
+    await first.reload();
+    await waitForMode(first, 'editor');
+    await clickEdge(first, maze, OTHER);
+    await expectSaved(first, sameMaze(toggleWall(before, OTHER)));
+
+    const other = await openMaze(`#/mine/${id}`, first.context());
+    await clickEdge(other, maze, EDGE);
+    await expectSaved(other, sameMaze(toggleWall(toggleWall(before, OTHER), EDGE)));
+    await other.close();
+
+    await openChanges(first);
+    await discard(first, 'AAMC15Maze (edited)');
+
+    await expect
+      .poll(() =>
+        first.getByText('Could not discard AAMC15Maze (edited) (changed in another tab)').count()
+      )
+      .toBe(1);
+    expect(await first.locator('[data-change]').count()).toBe(1);
+    await expectSaved(first, sameMaze(toggleWall(toggleWall(before, OTHER), EDGE)));
   });
 });
 

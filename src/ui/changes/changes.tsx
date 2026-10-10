@@ -77,8 +77,9 @@ function DiscardButton({ name, onDiscard }: DiscardButtonProps) {
     <IslandButton
       aria-label={armed ? `Confirm discard of ${name}` : `Discard ${name}`}
       className={cn(
-        'h-8 min-w-8 px-2 text-xs',
-        armed && 'bg-destructive text-white hover:bg-destructive/90'
+        'h-8 min-w-8 px-2 text-xs max-[720px]:h-10',
+        armed &&
+          'bg-destructive text-destructive-foreground hover:bg-destructive hover:text-destructive-foreground dark:hover:bg-destructive'
       )}
       data-armed={armed ? '' : undefined}
       onClick={() => {
@@ -131,14 +132,14 @@ function Row({ row, onOpen, onKeep, onDiscard }: RowProps) {
         <span className="mt-1 flex gap-1">
           <IslandButton
             aria-label={`Open ${item.name}`}
-            className="h-8 px-2 text-xs"
+            className="h-8 px-2 text-xs max-[720px]:h-10"
             onClick={() => onOpen(item)}
           >
             Open
           </IslandButton>
           <IslandButton
             aria-label={`Keep ${item.name}`}
-            className="h-8 px-2 text-xs"
+            className="h-8 px-2 text-xs max-[720px]:h-10"
             onClick={() => onKeep(item)}
           >
             <Check aria-hidden size={14} />
@@ -199,14 +200,17 @@ function Body({
           Taken
         </span>
         <IslandButton
+          aria-keyshortcuts="D"
           aria-pressed={showDiff}
-          className="h-8 px-2 text-xs aria-pressed:bg-muted"
+          className="h-8 px-2 text-xs aria-pressed:bg-muted max-[720px]:h-10"
           disabled={!canShowDiff}
           onClick={() => onShowDiff(!showDiff)}
         >
           <Eye aria-hidden size={14} />
           Show on board
-          <kbd className="font-mono text-[11px] text-muted-foreground">D</kbd>
+          <kbd aria-hidden className="font-mono text-[11px] text-muted-foreground">
+            D
+          </kbd>
         </IslandButton>
       </div>
       <ul className="min-h-0 flex-1 overflow-auto overscroll-contain px-2 pt-1 pb-2.5">

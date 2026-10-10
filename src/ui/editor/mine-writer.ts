@@ -65,6 +65,11 @@ export class MineWriter {
     this.#draining ??= this.#drain();
   }
 
+  /** The version of item `id` this tab saved last, if it saved one. */
+  savedVersion(id: string): number | undefined {
+    return this.#versions.get(id);
+  }
+
   /** Resolves once every session asked has been written, or has failed to be. */
   async idle(): Promise<void> {
     await this.#draining;

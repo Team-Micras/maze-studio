@@ -14,6 +14,7 @@ import {
   addExisting,
   changeOf,
   changeSummary,
+  keepChange,
   NO_CHANGES,
   noteSeen,
   withoutChange,
@@ -60,8 +61,8 @@ describe('The changes of the session', () => {
 
   test('compare a maze of Mine from before with the state first seen in the session', () => {
     const seen = walls(BASE, A);
-    let changes = noteSeen(NO_CHANGES, 'm-1', seen);
-    changes = noteSeen(changes, 'm-1', walls(BASE, A, B));
+    let changes = noteSeen(NO_CHANGES, 'm-1', { maze: seen, profile: 'training' });
+    changes = noteSeen(changes, 'm-1', { maze: walls(BASE, A, B), profile: 'free' });
     changes = addExisting(changes, 'm-1', 'Mine one');
 
     const item = changeOf(changes, 'm-1');
@@ -70,6 +71,7 @@ describe('The changes of the session', () => {
     expect(item?.name).toBe('Mine one');
     expect(item?.source).toBeUndefined();
     expect(mazesEqual(item?.baseline ?? BASE, seen)).toBe(true);
+    expect(item?.baselineProfile).toBe('training');
     expect(addExisting(changes, 'm-1', 'Other')).toBe(changes);
   });
 });
@@ -89,5 +91,23 @@ describe('The line of a change', () => {
   test('says "No differences" back at the baseline, and "New maze" without one', () => {
     expect(changeSummary(copy(BASE), BASE)).toBe('No differences');
     expect(changeSummary(NEW, walls(BASE, A))).toBe('New maze');
+  });
+});
+
+describe('Keep', () => {
+  test('takes the item out, and a later save brings it back against the state kept', () => {
+    const kept = walls(BASE, A);
+    let changes = addCreated(NO_CHANGES, { ...copy(), kind: 'copy' });
+    changes = keepChange(changes, 'u-1', { maze: kept, profile: 'classic' });
+
+    expect(changes.items).toEqual([]);
+    changes = addExisting(changes, 'u-1', 'test (edited)');
+    expect(changeOf(changes, 'u-1')?.kind).toBe('existing');
+    expect(mazesEqual(changeOf(changes, 'u-1')?.baseline ?? BASE, kept)).toBe(true);
+    expect(changeSummary(changeOf(changes, 'u-1') ?? copy(), walls(kept, B))).toBe('1 wall added');
+  });
+
+  test('a save of a maze never noted adds nothing', () => {
+    expect(addExisting(NO_CHANGES, 'x', 'X')).toBe(NO_CHANGES);
   });
 });

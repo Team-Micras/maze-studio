@@ -62,6 +62,8 @@ export interface MazeEditor {
   readonly redo: () => void;
   /** Checks the maze by `profile` from now on, saved with it once it is in Mine. */
   readonly setProfile: (profile: Profile) => void;
+  /** The version of item `id` of Mine this tab saved last, if it saved one. */
+  readonly savedVersion: (id: string) => number | undefined;
   /** Starts a new session on `open`, as when Discard has put back the maze on screen. */
   readonly reopen: (open: OpenMaze) => void;
 }
@@ -136,11 +138,8 @@ export function useMazeEditor(input: MazeEditorInput): MazeEditor {
           }
         });
       },
-      saved: (opened, copy) => {
-        if (opened.document.mine !== undefined) {
-          sessionChanges.setState((changes) => addExisting(changes, copy.id, copy.name));
-        }
-
+      saved: (_, copy) => {
+        sessionChanges.setState((changes) => addExisting(changes, copy.id, copy.name));
         reloadLibrary();
       },
       refused: (opened) => setRefused((before) => new Set([...before, opened])),
@@ -159,7 +158,9 @@ export function useMazeEditor(input: MazeEditorInput): MazeEditor {
     const mine = opened?.document.mine;
 
     if (opened !== undefined && mine !== undefined) {
-      sessionChanges.setState((changes) => noteSeen(changes, mine.id, opened.maze));
+      sessionChanges.setState((changes) =>
+        noteSeen(changes, mine.id, { maze: opened.maze, profile: opened.document.profile })
+      );
     }
   }, [opened]);
 
@@ -215,6 +216,7 @@ export function useMazeEditor(input: MazeEditorInput): MazeEditor {
     undo: guarded(undoEdit),
     redo: guarded(redoEdit),
     setProfile: (profile) => update((before) => withProfile(before, profile)),
+    savedVersion: (id) => writer.current?.savedVersion(id),
     reopen: (open) => {
       const next = openSession(open);
       latest.current = next;

@@ -8,7 +8,7 @@
 
 import { createStore, type StoreApi } from 'zustand/vanilla';
 
-import { diffMazes, mazesEqual, type Maze, type MazeDiff } from '@/maze';
+import { diffMazes, mazesEqual, type Maze, type MazeDiff, type Profile } from '@/maze';
 import type { Route } from '@/ui/routes';
 
 /** How an item came into the session: a copy, a new maze, or a maze of Mine from before. */
@@ -25,14 +25,25 @@ export interface ChangeItem {
    * session; none for a new maze.
    */
   readonly baseline: Maze | undefined;
+  /** The profile of the baseline, which Discard puts back with it; none for a copy. */
+  readonly baselineProfile?: Profile;
   /** Where a copy came from, which Discard goes back to; none for a file or a new maze. */
   readonly source: Route | undefined;
 }
 
-/** The session's changes, and the first state seen of every maze of Mine opened. */
+/** A state of a maze of Mine that a later change is compared with. */
+export interface SeenState {
+  readonly maze: Maze;
+  readonly profile: Profile;
+}
+
+/**
+ * The session's changes, and the state each maze of Mine is compared with: the first one seen, or
+ * the one Keep left.
+ */
 export interface SessionChanges {
   readonly items: readonly ChangeItem[];
-  readonly firstSeen: ReadonlyMap<string, Maze>;
+  readonly firstSeen: ReadonlyMap<string, SeenState>;
 }
 
 /** No changes yet. */
@@ -54,20 +65,22 @@ export function addCreated(
 }
 
 /** Notes the state of a maze of Mine when the session first opens it; later states are ignored. */
-export function noteSeen(changes: SessionChanges, id: string, maze: Maze): SessionChanges {
+export function noteSeen(changes: SessionChanges, id: string, seen: SeenState): SessionChanges {
   if (changes.firstSeen.has(id)) {
     return changes;
   }
 
-  return { ...changes, firstSeen: new Map([...changes.firstSeen, [id, maze]]) };
+  return { ...changes, firstSeen: new Map([...changes.firstSeen, [id, seen]]) };
 }
 
 /**
- * The session with a maze of Mine from before it, once an edit of the session has saved it,
- * compared with the state first seen.
+ * The session with a maze of Mine changed by a save of the session, compared with the state noted
+ * for it; nothing changes for a maze already listed or never noted.
  */
 export function addExisting(changes: SessionChanges, id: string, name: string): SessionChanges {
-  if (changeOf(changes, id) !== undefined) {
+  const seen = changes.firstSeen.get(id);
+
+  if (changeOf(changes, id) !== undefined || seen === undefined) {
     return changes;
   }
 
@@ -75,14 +88,32 @@ export function addExisting(changes: SessionChanges, id: string, name: string): 
     ...changes,
     items: [
       ...changes.items,
-      { id, kind: 'existing', name, baseline: changes.firstSeen.get(id), source: undefined },
+      {
+        id,
+        kind: 'existing',
+        name,
+        baseline: seen.maze,
+        baselineProfile: seen.profile,
+        source: undefined,
+      },
     ],
   };
 }
 
-/** The session without the item of `id`, as after Keep or Discard. */
+/** The session without the item of `id`, as after Discard. */
 export function withoutChange(changes: SessionChanges, id: string): SessionChanges {
   return { ...changes, items: changes.items.filter((item) => item.id !== id) };
+}
+
+/**
+ * The session after Keep: the item is out, and `kept`, its state now, is what a later edit of it
+ * is compared with, as for a maze of Mine from before the session.
+ */
+export function keepChange(changes: SessionChanges, id: string, kept: SeenState): SessionChanges {
+  return {
+    items: changes.items.filter((item) => item.id !== id),
+    firstSeen: new Map([...changes.firstSeen, [id, kept]]),
+  };
 }
 
 /** The diff of an item, current against its baseline, or none for a new maze. */

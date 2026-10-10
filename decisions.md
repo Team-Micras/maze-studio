@@ -583,3 +583,16 @@ The machine's rule is no builds in `/tmp`, so `tests/e2e/pwa.test.ts` builds the
 - **The 250 KB budget is reported only** (the owner's decision, as in the monitor): `bun run size`
   prints the first screen's size and never fails, it is no criterion of a slice being done, and the
   size is not optimized only to fit the number. Each slice reports the size and how it moved.
+
+## 09/10/2026 — Slice 5c review
+
+- **The armed Discard reads in both themes**: `--destructive-foreground` is near white on the light
+  theme's red and near black on the dark theme's lighter red (white on it gave 2.9 : 1), and the
+  armed button keeps its fill on hover. The panel's test runs axe with Discard armed in both.
+- **Discard of a maze of Mine from before the session** saves back its first state, maze and
+  profile, on the version this tab saved last; if another tab saved since, the save is refused, the
+  item stays and a toast says "Could not discard <name> (changed in another tab)".
+- **Keep then a new edit**: Keep takes the item out and notes the maze's state then; a later save
+  brings the item back as a maze of Mine, compared with that state (DESIGN.md 6.2).
+- "Show on board" names `D` in `aria-keyshortcuts`, its `kbd` is hidden from screen readers, and
+  the panel's buttons are 40 px tall on a phone.

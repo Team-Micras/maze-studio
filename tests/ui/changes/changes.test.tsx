@@ -106,6 +106,38 @@ describe('The Changes panel', () => {
     expect(heard.discarded).toEqual(['u-1']);
   });
 
+  test.each(['light', 'dark'])(
+    'has no accessibility violations with Discard armed in the %s theme',
+    async (theme) => {
+      document.documentElement.classList.toggle('dark', theme === 'dark');
+
+      try {
+        await mount();
+        await userEvent.click(page.getByRole('button', { name: 'Discard test (edited)' }));
+        await expect
+          .element(page.getByRole('button', { name: 'Confirm discard of test (edited)' }))
+          .toBeVisible();
+
+        expect(await axeViolations()).toEqual([]);
+      } finally {
+        document.documentElement.classList.remove('dark');
+      }
+    }
+  );
+
+  test('names D as the key of Show on board, and is 40 px tall per button on a phone', async () => {
+    await page.viewport(390, 844);
+    await mount(ROWS, true);
+    const show = page.getByRole('button', { name: 'Show on board' });
+
+    await expect.element(show).toHaveAttribute('aria-keyshortcuts', 'D');
+    expect(show.element().getBoundingClientRect().height).toBe(40);
+    expect(
+      page.getByRole('button', { name: 'Keep Untitled maze' }).element().getBoundingClientRect()
+        .height
+    ).toBe(40);
+  });
+
   test('keeps and opens an item', async () => {
     const heard = await mount();
     await userEvent.click(page.getByRole('button', { name: 'Keep Untitled maze' }));
