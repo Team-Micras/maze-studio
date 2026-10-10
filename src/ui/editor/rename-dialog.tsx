@@ -10,30 +10,42 @@ import { Label } from '@/ui/primitives/label';
 /** What the dialog says of an empty name (DESIGN.md 12). */
 const EMPTY_NAME = 'Name cannot be empty';
 
+/** What the dialog says of a name another maze of Mine has. */
+const TAKEN_NAME = 'Name already in Mine';
+
 /** The props of {@link RenameDialog}. */
 export interface RenameDialogProps {
   readonly open: boolean;
   readonly onOpenChange: (open: boolean) => void;
   /** The name now, which the field starts with. */
   readonly name: string;
+  /** The names of the other mazes of Mine, which this one cannot take, compared without case. */
+  readonly taken: readonly string[];
   /** Renames; resolves `false` when the name could not be saved. */
   readonly onRename: (name: string) => Promise<boolean>;
 }
 
 interface FormProps {
   readonly name: string;
+  readonly taken: readonly string[];
   readonly onDone: (name: string) => void;
 }
 
-function RenameForm({ name, onDone }: FormProps) {
+function RenameForm({ name, taken, onDone }: FormProps) {
   const [value, setValue] = useState(name);
   const id = useId();
-  const empty = value.trim() === '';
+  const trimmed = value.trim();
+  const error =
+    trimmed === ''
+      ? EMPTY_NAME
+      : taken.some((other) => other.toLowerCase() === trimmed.toLowerCase())
+        ? TAKEN_NAME
+        : undefined;
   const submit = (event: FormEvent<HTMLFormElement>): void => {
     event.preventDefault();
 
-    if (!empty) {
-      onDone(value.trim());
+    if (error === undefined) {
+      onDone(trimmed);
     }
   };
 
@@ -42,19 +54,19 @@ function RenameForm({ name, onDone }: FormProps) {
       <div className="flex flex-col gap-1.5">
         <Label htmlFor={id}>Name</Label>
         <Input
-          aria-describedby={empty ? `${id}-error` : undefined}
-          aria-invalid={empty}
+          aria-describedby={error === undefined ? undefined : `${id}-error`}
+          aria-invalid={error !== undefined}
           id={id}
           onChange={(event) => setValue(event.target.value)}
           value={value}
         />
-        {empty ? (
+        {error === undefined ? null : (
           <p className="text-xs text-destructive" id={`${id}-error`}>
-            {EMPTY_NAME}
+            {error}
           </p>
-        ) : null}
+        )}
       </div>
-      <Button className="self-end rounded-[10px]" disabled={empty} type="submit">
+      <Button className="self-end rounded-[10px]" disabled={error !== undefined} type="submit">
         Save
       </Button>
     </form>
@@ -62,10 +74,11 @@ function RenameForm({ name, onDone }: FormProps) {
 }
 
 /**
- * Rename (DESIGN.md 6 and 12): one field, which takes the focus, Enter saves, and an empty name
- * says "Name cannot be empty" and disables Save.
+ * Rename (DESIGN.md 6 and 12): one field, which takes the focus, Enter saves; an empty name says
+ * "Name cannot be empty", a name another maze of Mine has says "Name already in Mine", and either
+ * disables Save.
  */
-export function RenameDialog({ open, onOpenChange, name, onRename }: RenameDialogProps) {
+export function RenameDialog({ open, onOpenChange, name, taken, onRename }: RenameDialogProps) {
   const content = useRef<HTMLDivElement>(null);
 
   return (
@@ -89,6 +102,7 @@ export function RenameDialog({ open, onOpenChange, name, onRename }: RenameDialo
         {open ? (
           <RenameForm
             name={name}
+            taken={taken}
             onDone={(next) => {
               onOpenChange(false);
               void onRename(next);

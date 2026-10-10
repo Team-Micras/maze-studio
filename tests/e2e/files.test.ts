@@ -93,6 +93,7 @@ async function folderContext(): Promise<BrowserContext> {
   contexts.push(context);
   await context.addInitScript(() => {
     window.permissionAsks = [];
+    Object.assign(navigator.storage, { persisted: () => Promise.resolve(true) });
     Object.assign(window, {
       showDirectoryPicker: async () =>
         (await navigator.storage.getDirectory()).getDirectoryHandle('mazes', { create: true }),
@@ -124,6 +125,21 @@ async function fillFolder(page: Page, files: Record<string, string>): Promise<vo
       await writable.close();
     }
   }, files);
+}
+
+/** The keys of the settings store, where the folder's handle is kept. */
+function settingsKeys(page: Page): Promise<string[]> {
+  return page.evaluate(
+    (database) =>
+      new Promise<string[]>((resolve) => {
+        const request = indexedDB.open(database);
+        request.addEventListener('success', () => {
+          const keys = request.result.transaction('settings').objectStore('settings').getAllKeys();
+          keys.addEventListener('success', () => resolve(keys.result.map(String)));
+        });
+      }),
+    DATABASE_NAME
+  );
 }
 
 function folderText(page: Page, name: string): Promise<string> {
@@ -311,6 +327,25 @@ describe('A .txt file', () => {
   });
 });
 
+describe('The ⋯ menu', () => {
+  test('fits the board and turns the theme over', async () => {
+    const page = await openMaze(`#/repo/${CLASSIC}`);
+    const fitted = await page.locator('[data-world]').getAttribute('style');
+    await page.locator('#canvas').focus();
+    await page.keyboard.press('+');
+    await page.keyboard.press('+');
+    await expect.poll(() => page.locator('[data-world]').getAttribute('style')).not.toBe(fitted);
+    await menu(page, /^Fit/);
+
+    await expect.poll(() => page.locator('[data-world]').getAttribute('style')).toBe(fitted);
+    const dark = await page.evaluate(() => document.documentElement.classList.contains('dark'));
+    await menu(page, /theme$/);
+    await expect
+      .poll(() => page.evaluate(() => document.documentElement.classList.contains('dark')))
+      .toBe(!dark);
+  });
+});
+
 describe('Rename and Delete', () => {
   test('Rename changes the name shown and the download, and refuses an empty name', async () => {
     const { maze } = await repoContent(CLASSIC);
@@ -388,7 +423,7 @@ describe('A local folder', () => {
     expect(stored).toBe('directory');
   });
 
-  test('a folder maze edits into a copy, and Save to folder writes it back, asking in the click', async () => {
+  test('a folder maze edits into a copy, and Save to folder writes it back, asking in the click and before writing over a change on disk', async () => {
     const { maze } = await repoContent(CLASSIC);
     const context = await folderContext();
     const page = await context.newPage();
@@ -403,7 +438,16 @@ describe('A local folder', () => {
     expect(await page.getByRole('button', { name: 'Save to folder' }).count()).toBe(0);
     await clickEdge(page, maze, EDGE);
     await expectSaved(page, sameMaze(toggleWall(maze, EDGE)));
+    const elsewhere = `${repoText(CLASSIC)}Written elsewhere\n`;
+    await fillFolder(page, { 'a.txt': elsewhere });
     await page.getByRole('button', { name: 'Save to folder' }).click();
+    await page.getByRole('dialog', { name: 'a.txt changed on disk' }).waitFor();
+    await page.getByRole('button', { name: 'Cancel' }).click();
+
+    expect(await folderText(page, 'a.txt')).toBe(elsewhere);
+    expect(await page.evaluate(() => window.permissionAsks)).toEqual([]);
+    await page.getByRole('button', { name: 'Save to folder' }).click();
+    await page.getByRole('button', { name: 'Save anyway' }).click();
     await expectToast(page, 'Saved to a.txt');
 
     expect(await folderText(page, 'a.txt')).toBe(
@@ -439,6 +483,29 @@ describe('A local folder', () => {
 
     await expectToast(page, 'No access to the folder. Open it again to allow.');
     await waitForMode(page, 'library');
+  });
+
+  test('is not kept where the storage is not persistent', async () => {
+    const context = await browser.newContext({ viewport: { width: 1440, height: 900 } });
+    contexts.push(context);
+    await context.addInitScript(() => {
+      Object.assign(navigator.storage, {
+        persisted: () => Promise.resolve(false),
+        persist: () => Promise.resolve(false),
+      });
+      Object.assign(window, {
+        showDirectoryPicker: async () =>
+          (await navigator.storage.getDirectory()).getDirectoryHandle('mazes', { create: true }),
+      });
+    });
+    const page = await context.newPage();
+    await page.goto(app);
+    await fillFolder(page, { 'a.txt': repoText(CLASSIC) });
+    await page.getByRole('button', { name: 'Mine and files' }).click();
+    await page.getByRole('menuitem', { name: 'Open folder…' }).click();
+    await expect.poll(() => page.locator('a[data-artboard^="folder:"]').count()).toBe(1);
+
+    expect(await settingsKeys(page)).not.toContain('folder-handle');
   });
 
   test('is not offered where the browser cannot open a folder', async () => {

@@ -39,6 +39,7 @@ import { LibraryChrome } from '@/ui/library/library-chrome';
 import type { Library } from '@/ui/library/use-library';
 import { openEntry, type OpenMaze } from '@/ui/open-maze';
 import { cn } from '@/ui/primitives/utils';
+import { useTheme } from '@/ui/theme';
 import type { NewMazeRequest } from '@/ui/new-maze';
 import { routeOfEntry, type Route } from '@/ui/routes';
 import { typingIn } from '@/ui/typing-in';
@@ -158,6 +159,8 @@ export function Studio({
         : libraryLimits(grid, viewport, insets),
   });
   const coarse = useCoarsePointer();
+  const theme = useTheme((current) => current.theme);
+  const toggleTheme = useTheme((current) => current.toggle);
   const changes = useStudioChanges({ store, state, library, onScreen, phone, onDiscard });
   const actions = useMazeActions({
     store,
@@ -167,6 +170,9 @@ export function Studio({
     phone,
     onSaveToFolder,
     onDelete,
+    mineNames: (library?.entries ?? [])
+      .filter((entry) => entry.origin === 'mine')
+      .map((entry) => entry.name),
   });
   const editing = useStudioEditing({
     store,
@@ -384,7 +390,13 @@ export function Studio({
               <>
                 <ChangesChip {...changes.chip} />
                 <Checks {...editing.checks} />
-                <MoreActions {...editing.actions} {...actions.menu} />
+                <MoreActions
+                  {...editing.actions}
+                  {...actions.menu}
+                  onFit={() => refit({ animate: true })}
+                  onToggleTheme={toggleTheme}
+                  theme={theme}
+                />
                 {actions.copyLink === undefined ? null : <CopyLinkButton {...actions.copyLink} />}
               </>
             )

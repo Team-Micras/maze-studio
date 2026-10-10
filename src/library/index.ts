@@ -21,6 +21,7 @@ export {
   folderPermission,
   isFolderHandle,
   readFolder,
+  readFolderFile,
   writeFolderFile,
   type FolderContents,
   type FolderFile,

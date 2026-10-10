@@ -30,6 +30,8 @@ export interface MazeActionsInput {
   readonly onSaveToFolder: (fileName: string, text: string) => void;
   /** Deletes the maze of Mine `id` and opens the library on Mine. */
   readonly onDelete: (id: string) => void;
+  /** Every name in Mine, with this maze's own. */
+  readonly mineNames: readonly string[];
 }
 
 /** The menu's share and file actions, the title island's buttons and the rename dialog. */
@@ -69,6 +71,7 @@ export function useMazeActions({
   phone,
   onSaveToFolder,
   onDelete,
+  mineNames,
 }: MazeActionsInput): MazeActions {
   const mineId = open?.document.mine?.id;
 
@@ -127,6 +130,7 @@ export function useMazeActions({
             open: state.renameOpen,
             onOpenChange: (renameOpen) => store.setState({ renameOpen }),
             name: open.name,
+            taken: mineNames.filter((name) => name.toLowerCase() !== open.name.toLowerCase()),
             onRename: async (name) => {
               const done = await editor.rename(name);
 

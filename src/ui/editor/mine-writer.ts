@@ -50,6 +50,7 @@ export class MineWriter {
   readonly #versions = new Map<string, number>();
   readonly #written = new WeakMap<OpenMaze, Written>();
   readonly #refused = new WeakSet<OpenMaze>();
+  readonly #copying = new WeakMap<OpenMaze, Promise<void>>();
   readonly #waiting = new Map<OpenMaze, EditSession>();
   #draining: Promise<void> | undefined;
 
@@ -67,14 +68,15 @@ export class MineWriter {
 
   /**
    * Copies `session`'s maze to Mine under its own name, edited or not, as Save to Mine does for a
-   * link or a file; nothing happens once it has a copy.
+   * link or a file; nothing happens once it has a copy, and a copy on its way is the one. The copy
+   * is registered at once, so an edit written meanwhile waits for it and saves into it.
    */
-  async saveToMine(session: EditSession): Promise<void> {
-    await this.idle();
-
-    if (this.#copies.get(session.opened) === undefined && session.mine === undefined) {
-      await this.#copy(session, true);
+  saveToMine(session: EditSession): Promise<void> {
+    if (this.#copies.get(session.opened) !== undefined || session.mine !== undefined) {
+      return Promise.resolve();
     }
+
+    return this.#copyOnce(session, true);
   }
 
   /**
@@ -151,11 +153,12 @@ export class MineWriter {
       return;
     }
 
+    await this.#copying.get(opened);
     const copy = this.#copies.get(opened) ?? session.mine;
 
     if (copy === undefined) {
       if (needsCopy(session)) {
-        await this.#copy(session);
+        await this.#copyOnce(session, false);
       }
 
       return;
@@ -192,7 +195,23 @@ export class MineWriter {
     this.#events.saved(opened, saved);
   }
 
-  async #copy(session: EditSession, asIs = false): Promise<void> {
+  /** Copies `session`'s maze unless a copy of the same opened maze is already on its way. */
+  #copyOnce(session: EditSession, asIs: boolean): Promise<void> {
+    const pending = this.#copying.get(session.opened);
+
+    if (pending !== undefined) {
+      return pending;
+    }
+
+    const copying = this.#copy(session, asIs).catch((error: unknown) => {
+      this.#copying.delete(session.opened);
+      throw error;
+    });
+    this.#copying.set(session.opened, copying);
+    return copying;
+  }
+
+  async #copy(session: EditSession, asIs: boolean): Promise<void> {
     const mine = await this.#mine();
 
     if (mine === undefined) {

@@ -630,3 +630,25 @@ The machine's rule is no builds in `/tmp`, so `tests/e2e/pwa.test.ts` builds the
   click; the menu triggers have no tooltip either, which covered the first item. Downloads and
   Share… start once the menu has closed.
 - **Size:** the first screen counts 192.7 KB gzip, +5.1 KB with this slice.
+
+## 10/10/2026 — Slice 6 review
+
+- **One copy per maze.** The writer keeps the copy on its way for each opened maze and registers it
+  at once: a second Save to Mine waits for it, and an edit written meanwhile saves into it.
+- **Save to folder checks the disk first.** The folder keeps the text it read of each file; before
+  writing, the file is read again, and if it changed a dialog says "<file> changed on disk" and
+  writes only on "Save anyway".
+- **Reading the folder never stops at one file.** A file that cannot be read, or is over 1 MiB, is
+  skipped and counted without reading its text; the restore of the folder kept from an earlier visit
+  always ends, in a `finally`.
+- **Rename refuses a name already in Mine**, compared without case, beside the field.
+- **The ⋯ menu has Fit and the theme** too.
+- **The folder's handle is kept only where the storage is persistent.** Open folder asks for it
+  (`persisted()`, else `persist()`); without it, the handle is not stored, so a private window does
+  not read a handle back on reload. Checking this showed that the reload crash in Playwright's
+  off-the-record contexts comes from the origin's private file system the tests stand the folder on,
+  not from IndexedDB: the page dies on reload after Open folder even with nothing stored. The folder's
+  e2e tests keep to a persistent context; the one without persistent storage checks that nothing is
+  stored, without a reload.
+- **`expectToast`** looks inside the toast viewport and expects exactly one visible toast; Radix's
+  copy for screen readers lies outside it.

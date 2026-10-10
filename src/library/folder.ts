@@ -36,6 +36,8 @@ export interface FolderFile {
   /** The file's name, `.txt` included, which its route names. */
   readonly fileName: string;
   readonly text: MazeText;
+  /** The file's text as read, to tell later whether it changed on disk. */
+  readonly raw: string;
 }
 
 /** Whether `value` is a folder handle, as a picker gives. */
@@ -79,7 +81,39 @@ export async function folderPermission(
   return ((await folder.requestPermission?.(descriptor)) ?? 'denied') === 'granted';
 }
 
-/** The `.txt` mazes of `folder`, by name; a file that does not parse is skipped and counted. */
+/** A file's maze, or `undefined` when it is too large, cannot be read or does not parse. */
+async function readFile(entry: FolderFileHandle): Promise<FolderFile | undefined> {
+  try {
+    const file = await entry.getFile();
+
+    if (file.size > MAX_FOLDER_FILE_BYTES) {
+      return undefined;
+    }
+
+    const raw = await file.text();
+    const parsed = parseMazeText(raw, entry.name);
+    return parsed.ok ? { fileName: entry.name, text: parsed.value, raw } : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+/** The text of the file `fileName` of `folder` now, or `undefined` when it cannot be read. */
+export async function readFolderFile(
+  folder: FolderHandle,
+  fileName: string
+): Promise<string | undefined> {
+  try {
+    return await (await (await folder.getFileHandle(fileName)).getFile()).text();
+  } catch {
+    return undefined;
+  }
+}
+
+/**
+ * The `.txt` mazes of `folder`, by name; a file that is too large, cannot be read or does not
+ * parse is skipped and counted.
+ */
 export async function readFolder(folder: FolderHandle): Promise<FolderContents> {
   const files: FolderFile[] = [];
   let skipped = 0;
@@ -89,14 +123,12 @@ export async function readFolder(folder: FolderHandle): Promise<FolderContents> 
       continue;
     }
 
-    const file = await entry.getFile();
-    const parsed =
-      file.size > MAX_FOLDER_FILE_BYTES ? undefined : parseMazeText(await file.text(), entry.name);
+    const read = await readFile(entry);
 
-    if (parsed?.ok === true) {
-      files.push({ fileName: entry.name, text: parsed.value });
-    } else {
+    if (read === undefined) {
       skipped += 1;
+    } else {
+      files.push(read);
     }
   }
 

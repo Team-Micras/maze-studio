@@ -1,13 +1,16 @@
 import { useRef, useState } from 'react';
 
 import {
+  CornersOut,
   DotsThree,
   DownloadSimple,
   GitDiff,
   Keyboard,
   LinkSimple,
+  Moon,
   ShareNetwork,
   Square,
+  Sun,
   Textbox,
   Trash,
 } from '@/ui/icons';
@@ -39,6 +42,11 @@ export interface MoreActionsProps {
   readonly onRename?: () => void;
   /** Deletes the maze from Mine, only for a maze of Mine, on the second select. */
   readonly onDelete?: () => void;
+  /** Fits the board, as `0` does. */
+  readonly onFit: () => void;
+  /** The theme now, which the theme item turns over. */
+  readonly theme: 'light' | 'dark';
+  readonly onToggleTheme: () => void;
   /** Opens the shortcut help; absent on a touch screen. */
   readonly onHelp?: () => void;
 }
@@ -47,7 +55,8 @@ const ITEM = 'rounded-[9px]';
 
 /**
  * The editor's ⋯ menu (DESIGN.md 6, 6.1 and 9.2): Download .txt, Copy link and Share… on a phone,
- * Close outer walls, Changes, Rename and Delete for a maze of Mine, and the shortcut help. Delete
+ * Close outer walls, Changes, Rename and Delete for a maze of Mine, Fit, the theme and the
+ * shortcut help. Delete
  * takes two selects: the first keeps the menu open and turns it into "Confirm delete". A download
  * and Web Share start once the menu has closed.
  */
@@ -60,6 +69,9 @@ export function MoreActions({
   onShare,
   onRename,
   onDelete,
+  onFit,
+  theme,
+  onToggleTheme,
   onHelp,
 }: MoreActionsProps) {
   const [armed, setArmed] = useState(false);
@@ -140,9 +152,18 @@ export function MoreActions({
             {armed ? 'Confirm delete' : 'Delete'}
           </DropdownMenuItem>
         )}
+        <DropdownMenuSeparator />
+        <DropdownMenuItem className={ITEM} onSelect={onFit}>
+          <CornersOut aria-hidden size={16} />
+          Fit
+          <DropdownMenuShortcut>0</DropdownMenuShortcut>
+        </DropdownMenuItem>
+        <DropdownMenuItem className={ITEM} onSelect={onToggleTheme}>
+          {theme === 'dark' ? <Sun aria-hidden size={16} /> : <Moon aria-hidden size={16} />}
+          {theme === 'dark' ? 'Light theme' : 'Dark theme'}
+        </DropdownMenuItem>
         {onHelp === undefined ? null : (
           <>
-            <DropdownMenuSeparator />
             <DropdownMenuItem className={ITEM} onSelect={onHelp}>
               <Keyboard aria-hidden size={16} />
               Keyboard shortcuts

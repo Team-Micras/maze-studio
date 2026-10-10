@@ -6,6 +6,7 @@
  */
 
 import type { Browser, BrowserContext, Page } from 'playwright';
+import { expect } from 'vitest';
 
 /** How a page is opened. */
 export interface PageOptions {
@@ -72,9 +73,14 @@ export async function worldCamera(page: Page): Promise<Camera> {
 }
 
 /**
- * Expects a toast that says `text`; Radix shows a toast's words twice for a moment, in the toast
- * and in the region that announces it.
+ * Expects one toast on screen that says `text`: a toast of the app's viewport, not the copy Radix
+ * puts out of sight for screen readers to announce it.
  */
 export async function expectToast(page: Page, text: string | RegExp): Promise<void> {
-  await page.getByText(text).first().waitFor();
+  const toast = page
+    .getByRole('region', { name: /^Notifications/ })
+    .locator('li', { hasText: text });
+  await toast.first().waitFor();
+  await expect.poll(() => toast.count()).toBe(1);
+  await expect.poll(() => toast.isVisible()).toBe(true);
 }

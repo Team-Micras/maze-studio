@@ -219,6 +219,35 @@ describe('The writer of Mine', () => {
     expect([...mine.items.values()][0]?.profile).toBe('classic');
   });
 
+  test('makes one copy for two Save to Mine asked at once', async () => {
+    const mine = new FakeMine();
+    const { writer } = writerOn(mine);
+    const link: OpenMaze = { ...opened('shared'), key: 'link:abc' };
+    const session = openSession(link);
+    mine.hold();
+    const first = writer.saveToMine(session);
+    const second = writer.saveToMine(session);
+    mine.release();
+    await Promise.all([first, second]);
+
+    expect(mine.log).toEqual(['create shared']);
+  });
+
+  test('saves an edit made while Save to Mine copies, into that copy', async () => {
+    const mine = new FakeMine();
+    const { writer } = writerOn(mine);
+    const link: OpenMaze = { ...opened('shared'), key: 'link:abc' };
+    mine.hold();
+    const saving = writer.saveToMine(openSession(link));
+    writer.write(edited(link, 0));
+    mine.release();
+    await saving;
+    await writer.idle();
+
+    expect(mine.log).toEqual(['create shared', 'save shared']);
+    expect(mazesEqual(mine.mazeNamed('shared') ?? EMPTY, wallsOf(0))).toBe(true);
+  });
+
   test('stops writing a maze another tab saved since, and says so once', async () => {
     const mine = new FakeMine();
     const { writer, heard } = writerOn(mine);

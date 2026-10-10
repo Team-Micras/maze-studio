@@ -4,6 +4,7 @@ import {
   folderCatalog,
   folderPermission,
   readFolder,
+  readFolderFile,
   writeFolderFile,
   type FolderHandle,
 } from '@/library';
@@ -84,6 +85,47 @@ describe('A local folder', () => {
       ['folder:a.txt', 'a', 'folder'],
       ['folder:b.txt', 'b', 'folder'],
     ]);
+  });
+
+  test('skips without reading a file over 1 MiB, and one that cannot be read', async () => {
+    let read = 0;
+    const big = {
+      kind: 'file' as const,
+      name: 'huge.txt',
+      getFile: () =>
+        Promise.resolve({
+          size: 2 * 1024 * 1024,
+          text: () => {
+            read += 1;
+            return Promise.resolve(CORRIDOR);
+          },
+        }),
+      createWritable: () => Promise.reject(new Error('read only')),
+    };
+    const broken = { ...big, name: 'gone.txt', getFile: () => Promise.reject(new Error('gone')) };
+    const folder = memoryFolder({ 'a.txt': CORRIDOR });
+    const contents = await readFolder({
+      ...folder,
+      async *values() {
+        yield big;
+        yield broken;
+        yield* folder.values();
+      },
+    });
+
+    expect(contents.files.map((file) => file.fileName)).toEqual(['a.txt']);
+    expect(contents.skipped).toBe(2);
+    expect(read).toBe(0);
+  });
+
+  test('keeps the text it read, and reads a file again as it is now', async () => {
+    const folder = memoryFolder({ 'a.txt': CORRIDOR });
+    const contents = await readFolder(folder);
+    folder.files['a.txt'] = 'changed';
+
+    expect(contents.files[0]?.raw).toBe(CORRIDOR);
+    expect(await readFolderFile(folder, 'a.txt')).toBe('changed');
+    expect(await readFolderFile(folder, 'missing.txt')).toBe('');
   });
 
   test('writes a maze back over its file', async () => {

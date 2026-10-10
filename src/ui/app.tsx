@@ -5,6 +5,7 @@ import { DEFAULT_FILTER, type LibraryFilter } from '@/library';
 import { parseMazeText } from '@/maze';
 
 import { CANVAS_ID } from './canvas-id';
+import { ConfirmDialog } from './confirm-dialog';
 import {
   changeOf,
   sessionChanges,
@@ -70,6 +71,7 @@ export function App() {
   const library = useLibrary(folder.contents);
   const hash = routeHash(route);
   const [loose, setLoose] = useState<LooseMaze | undefined>(undefined);
+  const [onDisk, setOnDisk] = useState<{ fileName: string; text: string } | undefined>(undefined);
   const lastLibrary = useRef<Route>(LIBRARY_ROUTE);
   const fromLibrary = useRef(false);
   const previous = useRef<Route>(route);
@@ -192,11 +194,16 @@ export function App() {
     }
   };
 
-  const saveToFolder = async (fileName: string, text: string): Promise<void> => {
-    const saved = await folder.save(fileName, text);
-    showToast(
-      saved.ok ? `Saved to ${fileName}` : `Could not save to ${fileName} (${saved.reason})`
-    );
+  const saveToFolder = async (fileName: string, text: string, overwrite = false): Promise<void> => {
+    const saved = await folder.save(fileName, text, overwrite);
+
+    if (saved.ok) {
+      showToast(`Saved to ${fileName}`);
+    } else if (saved.changed === true) {
+      setOnDisk({ fileName, text });
+    } else {
+      showToast(`Could not save to ${fileName} (${saved.reason})`);
+    }
   };
 
   const deleteMine = async (id: string): Promise<void> => {
@@ -281,6 +288,22 @@ export function App() {
         onPin={replaceRoute}
         editor={editor}
         opened={editor.shown ?? opened}
+      />
+      <ConfirmDialog
+        confirm="Save anyway"
+        description="It changed since the app read it. Saving replaces what is in it now."
+        onConfirm={() => {
+          if (onDisk !== undefined) {
+            void saveToFolder(onDisk.fileName, onDisk.text, true);
+          }
+        }}
+        onOpenChange={(open) => {
+          if (!open) {
+            setOnDisk(undefined);
+          }
+        }}
+        open={onDisk !== undefined}
+        title={`${onDisk?.fileName ?? ''} changed on disk`}
       />
       <Toaster />
     </TooltipProvider>
