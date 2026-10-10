@@ -146,3 +146,22 @@ export function mazeKeyOf(route: Route): string | undefined {
       return `link:${route.code}`;
   }
 }
+
+/** The route of the maze a key names, as {@link mazeKeyOf} makes them; none for a file or a new maze. */
+export function routeOfKey(key: string): Route | undefined {
+  const [kind = '', ...rest] = key.split(':');
+  const value = rest.join(':');
+
+  switch (kind) {
+    case 'repo':
+      return { kind: 'repo', path: value };
+    case 'mine':
+      return { kind: 'mine', id: value };
+    case 'folder':
+      return { kind: 'folder', file: value };
+    case 'link':
+      return { kind: 'link', code: value };
+    default:
+      return undefined;
+  }
+}

@@ -544,3 +544,26 @@ The machine's rule is no builds in `/tmp`, so `tests/e2e/pwa.test.ts` builds the
 - **On a phone the Checks chip shows its count**, and the live region that says "Checks: 2 errors"
   sits beside the button rather than in it.
 - `isTool` asks `Object.hasOwn`, and the shortcut help has Esc.
+
+## 09/10/2026 — Slice 5c: Changes
+
+- **The session's changes live in one in-memory store** (`src/ui/changes/session-changes.ts`, pure
+  functions over a zustand store), fed by the editor's writer: a copy or a new maze enters when its
+  first edit writes it to Mine, with the maze it was copied from as its baseline and the route it
+  came from; a maze of Mine from before the session enters at its first save, against the state the
+  session first opened it in. A reload starts another session.
+- **The line of an item** comes from `diffMazes`: "3 walls added, 1 removed, goal changed",
+  "New maze", or "No differences" once back at the baseline, which never takes the item out. The
+  row's thumbnail draws the diff through `ThumbnailCache.diffThumbnail`, keyed by the baseline's
+  compact code.
+- **Discard**, in two clicks with 3 s armed, deletes a copy or a new maze from Mine and, if it is
+  open, goes back to the route it came from (the repository file, the link) or to the library; for
+  a maze of Mine from before, it saves back the session's first state and puts it on screen in a
+  new session. **Keep** takes the item out and changes nothing else. The ⋯ menu opens the panel even
+  with nothing in it.
+- **One panel for the studio**, a popover anchored under the islands at the top right on a
+  notebook and a sheet on a phone; the chips in the editor's island and in the library's actions
+  island open it. "Show on board" and `D` draw the diff of the maze on screen.
+- **Leaving a maze of Mine changed in the session** for the library, by the Library button or the
+  browser's Back, shows Mine and lands on its artboard: `App` remembers the maze on screen at the
+  route before and, on reaching the library from such a maze, replaces the filter with Mine.

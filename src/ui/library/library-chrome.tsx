@@ -1,5 +1,5 @@
 import { FolderOpen, Moon, Plus, Sun } from '@/ui/icons';
-import { useRef } from 'react';
+import { useRef, type ReactNode } from 'react';
 
 import { MAZEFILES, type LibraryFilter } from '@/library';
 import { Island, IslandButton, IslandSeparator } from '@/ui/islands/island';
@@ -33,6 +33,8 @@ export interface LibraryChromeProps {
   /** The name a new maze gets unless named: "Untitled maze", unique in Mine. */
   readonly newName: string;
   readonly phone: boolean;
+  /** The Changes chip, which the notebook's actions island shows first. */
+  readonly changes?: ReactNode;
   /** Whether the islands show; they fade out and leave the keyboard while a maze is open. */
   readonly visible: boolean;
 }
@@ -149,6 +151,7 @@ export function LibraryChrome({
   onNew,
   newName,
   phone,
+  changes,
   visible,
 }: LibraryChromeProps) {
   const change = (next: Partial<LibraryFilter>): void => onFilter({ ...filter, ...next });
@@ -213,6 +216,7 @@ export function LibraryChrome({
             </Island>
           </search>
           <Island className="fixed top-4 right-4 h-11">
+            {changes}
             <OpenFileButton onFile={onOpenFile} />
             <NewMazeMenu newName={newName} onNew={onNew} />
             <IslandSeparator />

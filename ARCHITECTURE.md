@@ -147,6 +147,9 @@ free of the limits while it lasts.
   tools, the hint and the phone's Edit button. `Checks` (with `checks-summary.ts`) is the chip and
   the panel, `MoreActions` the ⋯ menu and `ShortcutHelp` the `?` dialog. `studio/use-studio-editing.ts`
   wires them into the studio.
+- `changes/`: the session's Changes, `session-changes.ts` (pure, one store per tab) and
+  `ChangesChip` and `ChangesPanel`; `studio/use-studio-changes.ts` wires them into the studio, and
+  `App` discards.
 - `library/`: `LibraryChrome` draws the library's islands (search, source and category, Open,
   New maze with `new-maze-menu.tsx` and its Custom size dialog, theme, credit), and `new-maze.ts`
   in `src/ui` makes the maze it asks for; `LibraryCanvas` mounts the visible rows of `Artboard`s, keeps the active one,

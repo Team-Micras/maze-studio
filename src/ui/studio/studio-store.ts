@@ -54,6 +54,10 @@ export interface StudioState {
   readonly listOpen: boolean;
   /** The artboard pressed in the library, whose board is mounted hidden before the click opens it. */
   readonly prepared: string | undefined;
+  /** Whether the Changes panel is open. */
+  readonly changesOpen: boolean;
+  /** Whether the board shows the diff of the maze on screen ("Show on board", `D`). */
+  readonly showDiff: boolean;
 }
 
 /** The studio's state at the start: the library. */
@@ -72,6 +76,8 @@ export const INITIAL_STUDIO: StudioState = {
   preview: undefined,
   listOpen: false,
   prepared: undefined,
+  changesOpen: false,
+  showDiff: false,
 };
 
 /** A new store of the studio's state. */

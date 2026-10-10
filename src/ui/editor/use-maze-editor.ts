@@ -3,7 +3,8 @@ import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react
 import type { Maze, Profile } from '@/maze';
 import { reloadLibrary } from '@/ui/library/use-library';
 import { replaceRoute } from '@/ui/navigation';
-import type { OpenMaze } from '@/ui/open-maze';
+import { addCreated, addExisting, noteSeen, sessionChanges } from '@/ui/changes/session-changes';
+import { routeOfKey, type OpenMaze } from '@/ui/open-maze';
 import { appStorage } from '@/ui/storage';
 import { showToast } from '@/ui/toasts';
 
@@ -61,6 +62,8 @@ export interface MazeEditor {
   readonly redo: () => void;
   /** Checks the maze by `profile` from now on, saved with it once it is in Mine. */
   readonly setProfile: (profile: Profile) => void;
+  /** Starts a new session on `open`, as when Discard has put back the maze on screen. */
+  readonly reopen: (open: OpenMaze) => void;
 }
 
 /** What the editor says while another tab holds a newer version (DESIGN.md 12). */
@@ -111,6 +114,16 @@ export function useMazeEditor(input: MazeEditorInput): MazeEditor {
     writer.current = new MineWriter(async () => (await appStorage())?.mine, {
       copied: (opened, copy, item) => {
         setStored((before) => (before?.opened === opened ? withMine(before, copy) : before));
+        const created = opened.document.created === true;
+        sessionChanges.setState((changes) =>
+          addCreated(changes, {
+            id: item.id,
+            kind: created ? 'new' : 'copy',
+            name: item.name,
+            baseline: created ? undefined : opened.maze,
+            source: routeOfKey(opened.key),
+          })
+        );
 
         if (openedNow.current === opened) {
           replaceRoute({ kind: 'mine', id: item.id });
@@ -123,7 +136,13 @@ export function useMazeEditor(input: MazeEditorInput): MazeEditor {
           }
         });
       },
-      saved: () => reloadLibrary(),
+      saved: (opened, copy) => {
+        if (opened.document.mine !== undefined) {
+          sessionChanges.setState((changes) => addExisting(changes, copy.id, copy.name));
+        }
+
+        reloadLibrary();
+      },
       refused: (opened) => setRefused((before) => new Set([...before, opened])),
       failed: (error) => {
         showToast(
@@ -134,6 +153,15 @@ export function useMazeEditor(input: MazeEditorInput): MazeEditor {
   }, []);
 
   const readOnly = session !== undefined && refused.has(session.opened);
+  const opened = session?.opened;
+
+  useEffect(() => {
+    const mine = opened?.document.mine;
+
+    if (opened !== undefined && mine !== undefined) {
+      sessionChanges.setState((changes) => noteSeen(changes, mine.id, opened.maze));
+    }
+  }, [opened]);
 
   useEffect(() => {
     if (session !== undefined && !editing(session) && !readOnly) {
@@ -187,5 +215,10 @@ export function useMazeEditor(input: MazeEditorInput): MazeEditor {
     undo: guarded(undoEdit),
     redo: guarded(redoEdit),
     setProfile: (profile) => update((before) => withProfile(before, profile)),
+    reopen: (open) => {
+      const next = openSession(open);
+      latest.current = next;
+      setStored(next);
+    },
   };
 }

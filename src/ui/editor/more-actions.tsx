@@ -1,4 +1,4 @@
-import { DotsThree, Keyboard, Square } from '@/ui/icons';
+import { DotsThree, Keyboard, Square, GitDiff } from '@/ui/icons';
 
 import { Hint, IslandButton } from '@/ui/islands/island';
 import {
@@ -14,12 +14,14 @@ export interface MoreActionsProps {
   /** Whether the maze can change; not while another tab holds a newer version. */
   readonly editable: boolean;
   readonly onCloseBorder: () => void;
+  /** Opens the Changes panel, also with nothing in it. */
+  readonly onChanges: () => void;
   /** Opens the shortcut help; absent on a touch screen. */
   readonly onHelp?: () => void;
 }
 
-/** The editor's ⋯ menu (DESIGN.md 6 and 9.2): close the outer walls, and the shortcut help. */
-export function MoreActions({ editable, onCloseBorder, onHelp }: MoreActionsProps) {
+/** The editor's ⋯ menu (DESIGN.md 6 and 9.2): close the outer walls, Changes and the shortcut help. */
+export function MoreActions({ editable, onCloseBorder, onChanges, onHelp }: MoreActionsProps) {
   return (
     <DropdownMenu modal={false}>
       <Hint label="More actions" side="bottom">
@@ -34,6 +36,10 @@ export function MoreActions({ editable, onCloseBorder, onHelp }: MoreActionsProp
           <Square aria-hidden size={16} />
           Close outer walls
           <DropdownMenuShortcut>B</DropdownMenuShortcut>
+        </DropdownMenuItem>
+        <DropdownMenuItem className="rounded-[9px]" onSelect={onChanges}>
+          <GitDiff aria-hidden size={16} />
+          Changes
         </DropdownMenuItem>
         {onHelp === undefined ? null : (
           <DropdownMenuItem className="rounded-[9px]" onSelect={onHelp}>

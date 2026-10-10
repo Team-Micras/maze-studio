@@ -15,14 +15,16 @@ export interface EditorShortcuts {
   readonly onTool: (tool: Tool) => void;
   /** Closes the outer walls, on `B`. */
   readonly onCloseBorder: () => void;
+  /** Shows or hides the diff on the board, on `D`. */
+  readonly onToggleDiff: () => void;
   /** Opens the shortcut help, on `?`; none on a touch screen. */
   readonly onHelp?: () => void;
 }
 
 /**
  * The editor's keys anywhere on the page (DESIGN.md 11): Ctrl or Cmd with Z undoes, with Shift and
- * Z or with Y redoes; `H`, `W`, `R`, `C`, `S` and `G` pick the tools, `B` closes the outer walls and
- * `?` opens the shortcut help. None fires while the focus is in a text field.
+ * Z or with Y redoes; `H`, `W`, `R`, `C`, `S` and `G` pick the tools, `B` closes the outer walls,
+ * `D` shows or hides the diff and `?` opens the shortcut help. None fires while the focus is in a text field.
  */
 export function useEditorShortcuts({
   active,
@@ -31,6 +33,7 @@ export function useEditorShortcuts({
   onRedo,
   onTool,
   onCloseBorder,
+  onToggleDiff,
   onHelp,
 }: EditorShortcuts): void {
   useEffect(() => {
@@ -63,6 +66,12 @@ export function useEditorShortcuts({
         return;
       }
 
+      if (key === 'd') {
+        event.preventDefault();
+        onToggleDiff();
+        return;
+      }
+
       if (event.key === '?' && onHelp !== undefined) {
         event.preventDefault();
         onHelp();
@@ -78,5 +87,5 @@ export function useEditorShortcuts({
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [active, hand, onUndo, onRedo, onTool, onCloseBorder, onHelp]);
+  }, [active, hand, onUndo, onRedo, onTool, onCloseBorder, onToggleDiff, onHelp]);
 }

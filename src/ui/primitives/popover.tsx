@@ -11,6 +11,10 @@ function PopoverTrigger({ ...props }: React.ComponentProps<typeof PopoverPrimiti
   return <PopoverPrimitive.Trigger data-slot="popover-trigger" {...props} />;
 }
 
+function PopoverAnchor({ ...props }: React.ComponentProps<typeof PopoverPrimitive.Anchor>) {
+  return <PopoverPrimitive.Anchor data-slot="popover-anchor" {...props} />;
+}
+
 /** A panel by its trigger (DESIGN.md 5 and 6): 16 px corners, the island shadow, the panels' layer. */
 function PopoverContent({
   className,
@@ -34,4 +38,4 @@ function PopoverContent({
   );
 }
 
-export { Popover, PopoverContent, PopoverTrigger };
+export { Popover, PopoverAnchor, PopoverContent, PopoverTrigger };

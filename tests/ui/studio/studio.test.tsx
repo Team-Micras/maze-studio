@@ -134,3 +134,26 @@ describe('The checks of an open maze', () => {
     }
   );
 });
+
+describe('The Changes panel of an open maze', () => {
+  test.each([
+    ['notebook', 'light', 1440, 900],
+    ['notebook', 'dark', 1440, 900],
+    ['phone', 'light', 390, 844],
+    ['phone', 'dark', 390, 844],
+  ])(
+    'opens from the menu with nothing changed, without accessibility violations on a %s in the %s theme',
+    async (_, theme, width, height) => {
+      await page.viewport(width, height);
+      document.documentElement.classList.toggle('dark', theme === 'dark');
+      await mountApp('#/repo/classic/AAMC15Maze.txt');
+      await expect.poll(mode).toBe('editor');
+      await userEvent.click(page.getByRole('button', { name: 'More actions' }));
+      await userEvent.click(page.getByRole('menuitem', { name: 'Changes' }));
+      await expect.element(page.getByText('Nothing changed since the app opened.')).toBeVisible();
+      await expect.poll(() => document.querySelector('[role="menu"]')).toBeNull();
+
+      expect(await axeViolations()).toEqual([]);
+    }
+  );
+});

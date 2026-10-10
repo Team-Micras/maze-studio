@@ -19,6 +19,8 @@ import {
   type WorldRect,
 } from '@/render';
 import { useCanvasCamera } from '@/ui/board/use-canvas-camera';
+import { ChangesChip, ChangesPanel } from '@/ui/changes/changes';
+import type { ChangeItem } from '@/ui/changes/session-changes';
 import { Checks } from '@/ui/editor/checks';
 import { EditControls } from '@/ui/editor/edit-controls';
 import { MoreActions } from '@/ui/editor/more-actions';
@@ -43,6 +45,7 @@ import { EditorChrome } from './editor-chrome';
 import { listOrder, steppedKey } from './list-order';
 import { MazeList } from './maze-list';
 import { OpenBoard } from './open-board';
+import { useStudioChanges } from './use-studio-changes';
 import { useStudioEditing } from './use-studio-editing';
 import { useStudioFlight } from './use-studio-flight';
 import { createStudioStore, type StudioState } from './studio-store';
@@ -63,6 +66,8 @@ export interface StudioProps {
   readonly onNew: (request: NewMazeRequest) => void;
   /** The name a new maze gets unless named. */
   readonly newName: string;
+  /** Discards an item of Changes: deletes a copy or puts back a maze of Mine. */
+  readonly onDiscard: (item: ChangeItem) => void;
   /** Leaves the open maze for the library. */
   readonly onLibrary: () => void;
   /** Puts the maze of a catalog entry in the route, in place of the open one. */
@@ -105,6 +110,7 @@ export function Studio({
   onOpenFile,
   onNew,
   newName,
+  onDiscard,
   onLibrary,
   onPin,
 }: StudioProps) {
@@ -146,6 +152,7 @@ export function Studio({
         : libraryLimits(grid, viewport, insets),
   });
   const coarse = useCoarsePointer();
+  const changes = useStudioChanges({ store, state, library, onScreen, phone, onDiscard });
   const editing = useStudioEditing({
     store,
     state,
@@ -157,6 +164,9 @@ export function Studio({
     insets: editorInsets,
     phone,
     coarse,
+    diff: mode === 'editor' ? changes.diff : undefined,
+    onToggleDiff: changes.toggleDiff,
+    onChanges: changes.openPanel,
   });
 
   const onScreenKey = useRef(onScreen?.key);
@@ -327,6 +337,7 @@ export function Studio({
         filter={filter}
         library={library}
         onFilter={changeFilter}
+        changes={libraryVisible ? <ChangesChip {...changes.chip} /> : null}
         newName={newName}
         onNew={onNew}
         onOpenFile={onOpenFile}
@@ -355,6 +366,7 @@ export function Studio({
           actions={
             editing.checks === undefined ? null : (
               <>
+                <ChangesChip {...changes.chip} />
                 <Checks {...editing.checks} />
                 <MoreActions {...editing.actions} />
               </>
@@ -380,6 +392,7 @@ export function Studio({
         </EditorChrome>
       ) : null}
       {mode === 'editor' && !coarse ? <ShortcutHelp {...editing.help} /> : null}
+      {mode === 'library' || mode === 'editor' ? <ChangesPanel {...changes.panel} /> : null}
       {state.listOpen && library !== undefined && mode === 'editor' ? (
         <MazeList
           current={onScreen?.key}

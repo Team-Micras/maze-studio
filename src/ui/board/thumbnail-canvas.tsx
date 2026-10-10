@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react';
 
-import { encodeMazeCode, type Maze } from '@/maze';
+import { encodeMazeCode, type Maze, type MazeDiff } from '@/maze';
 import { boardGeometry, paintTrack, thumbnailBand, type ThumbnailBand } from '@/render';
 import { cn } from '@/ui/primitives/utils';
 
@@ -25,7 +25,18 @@ export interface ThumbnailCanvasProps {
    * being edited, whose every edit would otherwise leave a bitmap behind in the cache.
    */
   readonly cached?: boolean;
+  /**
+   * A diff to draw on top, and what identifies the maze it is taken from (DESIGN.md 2.3): the
+   * Changes panel's thumbnails.
+   */
+  readonly diff?: ThumbnailDiff;
   readonly className?: string;
+}
+
+/** A diff drawn on a thumbnail, and the key of the maze it is taken from. */
+export interface ThumbnailDiff {
+  readonly diff: MazeDiff;
+  readonly key: string;
 }
 
 function showBitmap(canvas: HTMLCanvasElement, bitmap: OffscreenCanvas): void {
@@ -44,9 +55,17 @@ function paintCached(
   canvas: HTMLCanvasElement,
   maze: Maze,
   band: ThumbnailBand,
-  blank: boolean
+  blank: boolean,
+  diff: ThumbnailDiff | undefined
 ): () => void {
   const key = encodeMazeCode(maze);
+
+  if (diff !== undefined) {
+    return schedulePaint(() =>
+      showBitmap(canvas, thumbnailCache.diffThumbnail(key, diff.key, maze, band, diff.diff))
+    );
+  }
+
   const ready = thumbnailCache.cached(key, band);
 
   if (ready !== undefined && blank) {
@@ -91,6 +110,7 @@ export function ThumbnailCanvas({
   height,
   resolution,
   cached = true,
+  diff,
   className,
 }: ThumbnailCanvasProps) {
   const canvas = useRef<HTMLCanvasElement>(null);
@@ -105,12 +125,12 @@ export function ThumbnailCanvas({
     }
 
     if (cached) {
-      return paintCached(element, maze, band, element.dataset.painted === undefined);
+      return paintCached(element, maze, band, element.dataset.painted === undefined, diff);
     }
 
     paintLive(element, maze, { width: width * ratio, height: height * ratio });
     return undefined;
-  }, [maze, width, height, ratio, cached, band]);
+  }, [maze, width, height, ratio, cached, band, diff]);
 
   return (
     <canvas aria-hidden className={cn('block', className)} ref={canvas} style={{ width, height }} />

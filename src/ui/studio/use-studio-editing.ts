@@ -1,7 +1,7 @@
 import { useCallback, type KeyboardEvent } from 'react';
 import type { StoreApi } from 'zustand';
 
-import { fillBorder, validateMaze, type Cell, type Finding } from '@/maze';
+import { fillBorder, validateMaze, type Cell, type Finding, type MazeDiff } from '@/maze';
 import {
   areaInWorld,
   boardGeometry,
@@ -42,6 +42,10 @@ export interface StudioEditingInput {
   readonly phone: boolean;
   /** Whether the main pointer is a finger, which has no shortcut help. */
   readonly coarse: boolean;
+  /** The diff the board shows, if any. */
+  readonly diff: MazeDiff | undefined;
+  readonly onToggleDiff: () => void;
+  readonly onChanges: () => void;
 }
 
 /** What the studio hands the canvas, the board and the editor's islands. */
@@ -79,6 +83,9 @@ export function useStudioEditing({
   insets,
   phone,
   coarse,
+  diff,
+  onToggleDiff,
+  onChanges,
 }: StudioEditingInput): StudioEditing {
   const open = state.mode === 'editor' && board !== undefined && onScreen !== undefined;
   const editable = !editor.readOnly;
@@ -152,6 +159,7 @@ export function useStudioEditing({
     onRedo: redo,
     onTool: pickTool,
     onCloseBorder: editable ? closeBorder : () => undefined,
+    onToggleDiff,
     ...(coarse ? {} : { onHelp: openHelp }),
   });
 
@@ -200,6 +208,7 @@ export function useStudioEditing({
         ? {}
         : { selection: cells.selection ?? boardKeys.selection }),
       ...(focused === undefined ? {} : { focus: focused }),
+      ...(diff === undefined ? {} : { diff }),
     },
     cursor: boardKeys.cursor,
     drawingTool: wall.drawing !== undefined || cells.drawing !== undefined,
@@ -242,7 +251,12 @@ export function useStudioEditing({
             },
             phone,
           },
-    actions: { editable, onCloseBorder: closeBorder, ...(coarse ? {} : { onHelp: openHelp }) },
+    actions: {
+      editable,
+      onCloseBorder: closeBorder,
+      onChanges,
+      ...(coarse ? {} : { onHelp: openHelp }),
+    },
     help: {
       open: state.helpOpen,
       onOpenChange: (helpOpen) => store.setState({ helpOpen }),
