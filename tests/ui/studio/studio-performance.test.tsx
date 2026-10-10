@@ -12,6 +12,9 @@ const LIST_STEPS = 50;
 const STROKE_STEPS = 200;
 const FLIGHT_WORST_MS = 33;
 
+/** The frame of the click after the press, about 50 ms later, as a person's click comes. */
+const CLICK_FRAME = 3;
+
 function mode(): string | null | undefined {
   return document.querySelector('[data-studio-mode]')?.getAttribute('data-studio-mode');
 }
@@ -41,6 +44,10 @@ test('the flights into a maze and back keep the frame budget of DESIGN.md 8', as
     inward.push(
       await measureFrames(FLIGHT_FRAMES, (index) => {
         if (index === 0) {
+          artboards()[6]?.dispatchEvent(
+            new PointerEvent('pointerdown', { bubbles: true, pointerType: 'mouse', button: 0 })
+          );
+        } else if (index === CLICK_FRAME) {
           artboards()[6]?.click();
         }
 

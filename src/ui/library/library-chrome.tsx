@@ -1,4 +1,4 @@
-import { FolderOpen, Moon, Plus, Sun } from '@phosphor-icons/react';
+import { FolderOpen, Moon, Plus, Sun } from '@/ui/icons';
 import { useRef } from 'react';
 
 import { MAZEFILES, type LibraryFilter } from '@/library';

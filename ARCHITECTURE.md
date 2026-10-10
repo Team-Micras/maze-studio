@@ -153,7 +153,9 @@ free of the limits while it lasts.
   fades the others while a maze is open, and reveals the one Tab reaches.
 - `islands/`: the island, its buttons, separator and tooltip, the zoom island and the theme button.
 - `board/`: as above, plus `paint-queue.ts`, which paints thumbnails in idle time.
-- `primitives/`: the shadcn components, with Phosphor icons.
+- `primitives/`: the shadcn components.
+- `icons.tsx`: the Phosphor icons the app uses, one component each in the regular weight, written by
+  `scripts/icons.ts` from `@phosphor-icons/core`; nothing in `src` imports a Phosphor package.
 
 ## Import rules
 
@@ -177,7 +179,8 @@ Chromium, one file at a time, outside the check) and `e2e` (`tests/e2e/`, which 
 under `/maze-studio/` into `node_modules/.tmp/` and drives it with Playwright).
 `tests/config/vitest-projects.test.ts` guards that split. The e2e project builds the app once,
 in its global setup (`tests/support/e2e/serve-app.ts`), for all its files; one of them,
-`library-frames.test.ts`, measures the built library's frames at 4× CPU throttling.
+`production-frames.test.ts`, measures the built library's drag and zoom and the flights into a
+maze and back at 4× the reference notebook's slowness, the throttle calibrated to the machine.
 
 Browser tests share what is in `tests/support/ui/`: `BoardHarness` mounts a board on its stage
 with the minimap and the cursor status, `frames.ts` measures motion as DESIGN.md 8 says (p95 at or

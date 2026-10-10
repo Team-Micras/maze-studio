@@ -1,4 +1,4 @@
-import { MagnifyingGlass } from '@phosphor-icons/react';
+import { MagnifyingGlass } from '@/ui/icons';
 import { useEffect, useRef } from 'react';
 
 import { cn } from '@/ui/primitives/utils';

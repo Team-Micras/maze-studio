@@ -500,6 +500,9 @@ describe('Editing on a phone', () => {
 
     await tapEdge();
     await expect.poll(() => page.locator('[data-hint]').textContent()).toBe('Zoom in to edit');
+    await expect
+      .poll(() => page.locator('p[aria-live="polite"]', { hasText: 'Zoom in to edit' }).count())
+      .toBe(1);
     expect(new URL(page.url()).hash).toBe(`#/repo/${CLASSIC}`);
 
     for (let zoom = 0; zoom < 3; zoom++) {

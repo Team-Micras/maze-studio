@@ -1,10 +1,11 @@
-import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { useCallback, useDeferredValue, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { useStore } from 'zustand';
 
 import { filterCatalog, type CatalogEntry, type LibraryFilter } from '@/library';
 import {
   artboardIn,
   boardLimits,
+  cellOf,
   EDITOR_INSETS,
   EDITOR_KEEP,
   EDITOR_PHONE_EDIT_INSETS,
@@ -176,6 +177,21 @@ export function Studio({
     listOpener.current = null;
   };
 
+  const preparedIndex =
+    mode === 'library' && state.prepared !== undefined
+      ? shown.findIndex((entry) => entry.key === state.prepared)
+      : -1;
+  const preparedMaze =
+    preparedIndex < 0 || state.prepared === undefined ? undefined : library?.mazeOf(state.prepared);
+  const prepared =
+    preparedMaze === undefined || state.prepared === undefined
+      ? undefined
+      : {
+          key: state.prepared,
+          maze: preparedMaze,
+          rect: artboardIn(cellOf(preparedIndex, grid.columns), preparedMaze),
+        };
+
   const { notePointer } = useStudioFlight({
     store,
     camera,
@@ -231,6 +247,8 @@ export function Studio({
   }, [mode, library, onPin, openList]);
 
   const libraryVisible = mode === 'library' || mode === 'flying-out';
+  const flying = mode === 'flying-in' || mode === 'flying-out';
+  const chromeMounted = useDeferredValue(mode !== 'library', false);
   const editorVisible = mode === 'editor' || (mode === 'flying-in' && state.chromeIn);
   const primaryPan =
     mode === 'library'
@@ -254,7 +272,7 @@ export function Studio({
           <LibraryCanvas
             activeHidden={mode === 'editor'}
             activeKey={mode === 'library' ? undefined : (state.leaving?.key ?? opened?.key)}
-            bandScale={libraryVisible ? undefined : state.libraryZoom}
+            bandScale={mode === 'library' ? undefined : state.libraryZoom}
             className={cn(
               'fixed inset-0',
               editing.drawingTool && 'cursor-crosshair',
@@ -269,11 +287,20 @@ export function Studio({
               inEditor && onScreen !== undefined ? `${onScreen.name}, maze board` : 'Maze library'
             }
             library={library}
-            onArtboardPointer={notePointer}
+            onArtboardPointer={(pointerType, key) => {
+              notePointer(pointerType);
+
+              if (mode === 'library' && key !== state.prepared) {
+                store.setState({ prepared: key });
+              }
+            }}
             onCanvasKey={editing.onCanvasKey}
             othersHidden={!libraryVisible}
             primaryPan={primaryPan}
-            promoted={mode === 'flying-in' || mode === 'flying-out'}
+            {...(flying && state.libraryZoom !== undefined
+              ? { fixedScale: state.libraryZoom }
+              : {})}
+            promoted={flying}
           >
             {mode !== 'library' && onScreen !== undefined && board !== undefined ? (
               <OpenBoard
@@ -282,7 +309,9 @@ export function Studio({
                 rect={board}
                 shown={mode !== 'flying-out'}
               />
-            ) : null}
+            ) : prepared === undefined ? null : (
+              <OpenBoard maze={prepared.maze} rect={prepared.rect} shown={false} />
+            )}
           </LibraryCanvas>
         )}
         {library !== undefined && mode === 'library' && shown.length === 0 ? (
@@ -319,7 +348,7 @@ export function Studio({
           />
         </aside>
       )}
-      {onScreen !== undefined && board !== undefined && mode !== 'library' ? (
+      {chromeMounted && onScreen !== undefined && board !== undefined && mode !== 'library' ? (
         <EditorChrome
           board={board}
           controller={camera}

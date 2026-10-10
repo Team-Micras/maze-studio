@@ -82,7 +82,7 @@ export function useStudioFlight(input: StudioFlightInput): StudioFlight {
   const libraryShown = useRef(false);
   const openKey = opened?.key;
   const previousKey = useRef<string | undefined>(undefined);
-  const previousShown = useRef<{ onScreen?: OpenMaze; board?: WorldRect }>({});
+  const previousShown = useRef<{ onScreen?: OpenMaze; board?: WorldRect; camera?: Camera }>({});
 
   useLayoutEffect(() => {
     latest.current = input;
@@ -155,6 +155,7 @@ export function useStudioFlight(input: StudioFlightInput): StudioFlight {
     if (openKey === undefined && before !== undefined) {
       const leaving = previousShown.current.onScreen;
       const leftBoard = previousShown.current.board;
+      const leftCamera = previousShown.current.camera;
       const index = now.shown.findIndex((entry) => entry.key === leaving?.key);
       const back =
         index < 0 || leaving === undefined
@@ -175,9 +176,9 @@ export function useStudioFlight(input: StudioFlightInput): StudioFlight {
               libraryLimits(now.grid, view, now.insets)
             );
       const start =
-        back === undefined || leftBoard === undefined || from === undefined
+        back === undefined || leftBoard === undefined || leftCamera === undefined
           ? undefined
-          : sameScreenPlace(from, leftBoard, back);
+          : sameScreenPlace(leftCamera, leftBoard, back);
       const flies =
         start !== undefined &&
         libraryLanding !== undefined &&
@@ -213,7 +214,7 @@ export function useStudioFlight(input: StudioFlightInput): StudioFlight {
   }, [openKey, store]);
 
   useLayoutEffect(() => {
-    previousShown.current = { onScreen, board };
+    previousShown.current = { onScreen, board, camera: camera.camera };
   });
 
   const notePointer = useCallback((pointerType: string) => {

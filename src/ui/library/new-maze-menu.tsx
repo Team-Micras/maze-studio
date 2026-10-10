@@ -1,4 +1,4 @@
-import { Plus, Ruler, X } from '@phosphor-icons/react';
+import { Plus, Ruler, X } from '@/ui/icons';
 import { useId, useRef, useState, type FormEvent, type ReactNode } from 'react';
 
 import type { Profile } from '@/maze';

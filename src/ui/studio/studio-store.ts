@@ -52,6 +52,8 @@ export interface StudioState {
   /** The catalog key of the maze the quick list previews, if not the one open. */
   readonly preview: string | undefined;
   readonly listOpen: boolean;
+  /** The artboard pressed in the library, whose board is mounted hidden before the click opens it. */
+  readonly prepared: string | undefined;
 }
 
 /** The studio's state at the start: the library. */
@@ -69,6 +71,7 @@ export const INITIAL_STUDIO: StudioState = {
   leaving: undefined,
   preview: undefined,
   listOpen: false,
+  prepared: undefined,
 };
 
 /** A new store of the studio's state. */

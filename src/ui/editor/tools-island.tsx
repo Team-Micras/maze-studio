@@ -9,7 +9,7 @@ import {
   HandGrabbing,
   PencilSimpleLine,
   type Icon,
-} from '@phosphor-icons/react';
+} from '@/ui/icons';
 import type { KeyboardEvent } from 'react';
 import { Toolbar } from 'radix-ui';
 

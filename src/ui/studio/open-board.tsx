@@ -24,13 +24,15 @@ function placeStyle(rect: WorldRect): CSSProperties {
 }
 
 /**
- * The full board of the open maze in the world, mounted when the flight starts and cross-fading
- * over the artboard's thumbnail in 300 ms, so nothing swaps or resizes on landing.
+ * The full board of the open maze in the world, cross-fading over the artboard's thumbnail in
+ * 300 ms as the flight starts, so nothing swaps or resizes on landing. It is mounted hidden as soon
+ * as the artboard is pressed, so the click's frame only shows it. The pointer goes through it to
+ * the canvas.
  */
 export function OpenBoard({ maze, rect, shown, overlays }: OpenBoardProps) {
   return (
     <div
-      className="absolute top-0 left-0 transition-opacity duration-300 ease-(--ease-out) starting:opacity-0 data-hidden:opacity-0"
+      className="pointer-events-none absolute top-0 left-0 transition-opacity group-data-promoted/world:will-change-[opacity] duration-300 ease-(--ease-out) starting:opacity-0 data-hidden:opacity-0"
       data-hidden={shown ? undefined : ''}
       data-open-board=""
       style={placeStyle(rect)}

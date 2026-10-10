@@ -4,6 +4,7 @@ import { render } from 'vitest-browser-react';
 
 import { createMaze, validateMaze, type Finding, type Profile } from '@/maze';
 import { Checks } from '@/ui/editor/checks';
+import { checksSummary } from '@/ui/editor/checks-summary';
 import { TooltipProvider } from '@/ui/primitives/tooltip';
 import '@/ui/styles.css';
 import { axeViolations } from '@tests/support/axe-check';
@@ -50,6 +51,16 @@ describe('The checks', () => {
     await expect.element(page.getByRole('dialog', { name: 'Checks' })).toBeVisible();
     expect(document.querySelectorAll('[data-finding]').length).toBe(OPEN_BORDER.length);
     expect(await axeViolations()).toEqual([]);
+  });
+
+  test('show the count on a phone, and say the checks beside the chip', async () => {
+    await mount(OPEN_BORDER, true);
+    const chip = document.querySelector('[data-checks]');
+    const region = document.querySelector('[aria-live="polite"]');
+
+    expect(chip?.textContent).toBe(String(checksSummary(OPEN_BORDER).count));
+    expect(region?.textContent).toMatch(/^Checks: \d+ warnings?$/);
+    expect(chip?.contains(region ?? null)).toBe(false);
   });
 
   test('pass with nothing to say, under the rules chosen', async () => {

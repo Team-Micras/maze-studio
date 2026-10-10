@@ -9,6 +9,8 @@ export const HINT_DURATION_MS = 2600;
 export interface HintMessage {
   readonly text: string;
   readonly at: number;
+  /** Whether a screen reader is told too, as when a touch was refused. */
+  readonly spoken?: boolean;
 }
 
 /** The props of {@link ToolHint}. */
@@ -47,6 +49,35 @@ export function ToolHint({ message, className }: ToolHintProps) {
       data-shown={shown ? '' : undefined}
     >
       {message?.text}
+    </p>
+  );
+}
+
+/** The props of {@link SpokenHint}. */
+export interface SpokenHintProps {
+  readonly message: HintMessage | undefined;
+}
+
+/**
+ * The live region that speaks the hints a screen reader must hear, such as "Zoom in to edit"
+ * (DESIGN.md 13): always mounted, emptied and written again for each one, so a hint said twice is
+ * spoken twice.
+ */
+export function SpokenHint({ message }: SpokenHintProps) {
+  const [said, setSaid] = useState<HintMessage | undefined>(undefined);
+
+  useEffect(() => {
+    if (message?.spoken !== true) {
+      return undefined;
+    }
+
+    const frame = requestAnimationFrame(() => setSaid(message));
+    return () => cancelAnimationFrame(frame);
+  }, [message]);
+
+  return (
+    <p aria-live="polite" className="sr-only">
+      {said !== undefined && said === message ? said.text : ''}
     </p>
   );
 }

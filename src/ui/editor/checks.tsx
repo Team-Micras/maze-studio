@@ -1,4 +1,4 @@
-import { CheckCircle, Info, Warning, WarningCircle, X, type Icon } from '@phosphor-icons/react';
+import { CheckCircle, Info, Warning, WarningCircle, X, type Icon } from '@/ui/icons';
 import { useState, type ReactNode } from 'react';
 
 import type { Finding, Profile, Severity } from '@/maze';
@@ -142,7 +142,7 @@ function insideCanvas(target: EventTarget | null): boolean {
 
 /**
  * The Checks chip and its panel (DESIGN.md 6, 12 and 13): the chip says "2 errors", "1 warning" or
- * "Passes" in a live region; the panel lists the findings under the profile chosen, and a finding
+ * "Passes", only the count on a phone, and a live region beside it says "Checks: 2 errors"; the panel lists the findings under the profile chosen, and a finding
  * clicked is shown on the board. On a notebook the panel is a popover that stays open while the
  * board is edited; on a phone it is a sheet, which a finding clicked closes to show the board.
  */
@@ -159,10 +159,15 @@ export function Checks({ findings, profile, onProfile, selected, onSelect, phone
       onClick={phone ? () => setOpen(true) : undefined}
     >
       <LevelIcon aria-hidden className={LEVEL_COLORS[summary.level]} size={16} />
-      <span aria-live="polite" className={phone ? 'sr-only' : undefined}>
-        {summary.label}
+      <span aria-hidden className={phone ? 'font-mono tabular-nums' : undefined}>
+        {phone ? summary.count || null : summary.label}
       </span>
     </IslandButton>
+  );
+  const spoken = (
+    <span aria-live="polite" className="sr-only">
+      Checks: {summary.label}
+    </span>
   );
   const close = (): void => setOpen(false);
 
@@ -170,6 +175,7 @@ export function Checks({ findings, profile, onProfile, selected, onSelect, phone
     return (
       <>
         {chip}
+        {spoken}
         <Sheet onOpenChange={setOpen} open={open}>
           <SheetContent aria-describedby={undefined} className="max-h-[62dvh]">
             <Panel
@@ -196,6 +202,7 @@ export function Checks({ findings, profile, onProfile, selected, onSelect, phone
   return (
     <Popover modal={false} onOpenChange={setOpen} open={open}>
       <PopoverTrigger asChild>{chip}</PopoverTrigger>
+      {spoken}
       <PopoverContent
         align="end"
         aria-label="Checks"

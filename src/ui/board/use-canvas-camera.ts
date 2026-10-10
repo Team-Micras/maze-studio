@@ -19,6 +19,12 @@ import {
   type WorldRect,
 } from '@/render';
 
+/**
+ * How many frames a flight waits before its clock starts: the frame that draws what its start
+ * mounted is slow, and a clock already running would make the camera jump across it.
+ */
+const SETTLE_FRAMES = 2;
+
 /** How long the fit takes when animated (DESIGN.md 8). */
 export const FIT_DURATION_MS = 260;
 
@@ -87,9 +93,15 @@ export interface CanvasCamera {
   readonly pinch: (start: Camera, from: PointerPair, to: PointerPair) => void;
   /** Fits the content, in 260 ms when `animate` is set and the user allows motion. */
   readonly refit: (options?: { readonly animate?: boolean }) => void;
-  /** Flies the camera free of the limits, landing as the flight says. */
+  /**
+   * Flies the camera free of the limits, landing as the flight says. The motion starts two frames
+   * after the call, once the frame that draws what started it has passed.
+   */
   readonly fly: (flight: Flight) => void;
-  /** Puts the camera at once where given, free of the limits until the next move. */
+  /**
+   * Puts the camera at once where given, free of the limits until the next move; a flight asked
+   * right after starts there.
+   */
   readonly jump: (camera: Camera) => void;
   /** Does what a wheel event at `at` asks (DESIGN.md 7). */
   readonly wheel: (input: WheelInput, at: ScreenPoint) => void;
@@ -180,8 +192,16 @@ export function useCanvasCamera({
     }
 
     const path = flightPath(from, flight.to, flight.anchor);
-    const started = performance.now();
+    let started: number | undefined;
+    let waited = 0;
     const frame = (now: number): void => {
+      if (waited < SETTLE_FRAMES) {
+        waited += 1;
+        animation.current = requestAnimationFrame(frame);
+        return;
+      }
+
+      started ??= now;
       const progress = Math.min(1, (now - started) / flight.duration);
       flight.onProgress?.(progress);
 
@@ -203,6 +223,7 @@ export function useCanvasCamera({
   const jump = useCallback((next: Camera): void => {
     cancelAnimationFrame(animation.current);
     flying.current = false;
+    latest.current = { ...latest.current, camera: next };
     setPlaced({ camera: next, free: true });
   }, []);
 

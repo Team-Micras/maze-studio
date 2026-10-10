@@ -12,6 +12,7 @@ describe('The Checks chip', () => {
     expect(checksSummary([finding('warning'), finding('error'), finding('error')])).toEqual({
       level: 'error',
       label: '2 errors',
+      count: 2,
     });
   });
 
@@ -19,12 +20,13 @@ describe('The Checks chip', () => {
     expect(checksSummary([finding('warning'), finding('hint')])).toEqual({
       level: 'warning',
       label: '1 warning',
+      count: 1,
     });
   });
 
   test('passes with hints only, or with nothing', () => {
-    expect(checksSummary([finding('hint')])).toEqual({ level: 'ok', label: 'Passes' });
-    expect(checksSummary([])).toEqual({ level: 'ok', label: 'Passes' });
+    expect(checksSummary([finding('hint')])).toEqual({ level: 'ok', label: 'Passes', count: 0 });
+    expect(checksSummary([])).toEqual({ level: 'ok', label: 'Passes', count: 0 });
   });
 
   test('names the rules a maze passes', () => {

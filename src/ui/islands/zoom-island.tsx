@@ -1,4 +1,4 @@
-import { CornersOut, Minus, Plus } from '@phosphor-icons/react';
+import { CornersOut, Minus, Plus } from '@/ui/icons';
 import { memo } from 'react';
 
 import { KEY_ZOOM_FACTOR } from '@/render';

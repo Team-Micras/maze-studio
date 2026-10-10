@@ -510,3 +510,37 @@ The machine's rule is no builds in `/tmp`, so `tests/e2e/pwa.test.ts` builds the
   already did: the flight's first frame mounts the open board and stays lighter. That first frame
   still runs over 33 ms in about one run in four of the development flight gate, at 33.4 ms, before
   this slice as after it.
+
+## 09/10/2026 — Slice 5b review
+
+- **Icons from `@phosphor-icons/core`, a devDependency.** `@phosphor-icons/react` ships every icon
+  in its six weights, and named imports do not prune them. `scripts/icons.ts` (`bun run icons`)
+  reads the regular SVGs of the icons the app uses from `@phosphor-icons/core` 2.1.1 and writes
+  `src/ui/icons.tsx`, one small component per icon with its one path; `tests/config/icons.test.ts`
+  keeps the file what the script writes. The React package is gone, and the fences refuse any
+  `@phosphor-icons/` import in `src`, so icons come only from `@/ui/icons`. The app's chunk went
+  from 86.0 to 73.4 KB gzip, and the eager first screen counts 182.1 KB.
+- **The flights in the production gate.** The e2e project now flies into a maze and back three
+  times on the built app at the calibrated throttle and holds DESIGN.md 8: p95 at most 20 ms, at
+  most 1 % of frames over 25 ms, none over 33 ms. Making it pass found four things:
+  - the flight back did not move: the render that left the maze already held the camera to the
+    library's limits, so the flight started from where it lands. It now starts from the editor's
+    camera of the last render, and `jump` moves the camera a flight then starts from; an e2e test
+    checks that the board shrinks frame by frame to its artboard;
+  - the artboards' labels and rings, counter-scaled by `--k`, changed at every frame, which
+    repainted the promoted world while they faded. During a flight they keep the library's zoom,
+    the zoom it starts from or lands on (`fixedScale`);
+  - the board's mount is taken off the click: a press on an artboard mounts its board hidden, and
+    the click's frame only shows it; the editor's chrome, and the checks, menu, tools and minimap at
+    the landing, mount in deferred renders that React splits across frames;
+  - a flight's clock starts two frames after the call, past the frame that draws what started it,
+    and the gate counts the frames of the motion, from the frame before the camera first moves to
+    three frames after the landing.
+    Four runs at 3.36 to 3.99× on the reference notebook: flight in and back at p95 16.7 to 16.8 ms,
+    no frame over 25 ms, worst 16.8 ms. The development flight gate presses before it clicks, as a
+    person does.
+- **"Zoom in to edit" is spoken** by a live region that stays mounted, emptied and written again at
+  every refused tap; DESIGN.md 13 lists it.
+- **On a phone the Checks chip shows its count**, and the live region that says "Checks: 2 errors"
+  sits beside the button rather than in it.
+- `isTool` asks `Object.hasOwn`, and the shortcut help has Esc.

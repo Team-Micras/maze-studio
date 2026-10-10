@@ -85,7 +85,8 @@ export function useStudioEditing({
   const drawable = open && !previewing && !state.listOpen && !state.viewing && editable;
   const maze = open ? onScreen.maze : undefined;
   const showHint = useCallback(
-    (text: string) => store.setState({ hint: { text, at: performance.now() } }),
+    (text: string, spoken = false) =>
+      store.setState({ hint: { text, at: performance.now(), spoken } }),
     [store]
   );
   const boardKeys = useBoardKeys({
@@ -103,7 +104,7 @@ export function useStudioEditing({
     maze,
     board,
     enabled: drawable && state.tool === 'wall',
-    onTooSmall: () => showHint(TOO_SMALL_HINT),
+    onTooSmall: () => showHint(TOO_SMALL_HINT, true),
     onPress: boardKeys.hide,
   });
   const cells = useCellDrawing({
@@ -112,7 +113,7 @@ export function useStudioEditing({
     maze,
     board,
     tool: drawable && isCellTool(state.tool) ? state.tool : undefined,
-    onTooSmall: () => showHint(TOO_SMALL_HINT),
+    onTooSmall: () => showHint(TOO_SMALL_HINT, true),
     onPress: boardKeys.hide,
   });
   const pickTool = useCallback(

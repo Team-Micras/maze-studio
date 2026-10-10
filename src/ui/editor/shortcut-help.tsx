@@ -3,7 +3,7 @@ import { Fragment } from 'react';
 import { IslandButton } from '@/ui/islands/island';
 import { shortcutLabel } from '@/ui/platform';
 import { Dialog, DialogClose, DialogContent, DialogTitle } from '@/ui/primitives/dialog';
-import { X } from '@phosphor-icons/react';
+import { X } from '@/ui/icons';
 
 /** The editor's shortcuts as the help lists them (DESIGN.md 11). */
 const SHORTCUTS: readonly (readonly [string, readonly string[]])[] = [
@@ -18,6 +18,7 @@ const SHORTCUTS: readonly (readonly [string, readonly string[]])[] = [
   ['Undo, redo', ['Ctrl Z', 'Ctrl Shift Z']],
   ['Pan', ['Space', 'drag']],
   ['Zoom in, out, fit', ['+', '-', '0']],
+  ['Close the list, a panel or a menu, else drop the corner, else the finding shown', ['Esc']],
   ['This help', ['?']],
 ];
 

@@ -1,4 +1,4 @@
-import { DotsThree, Keyboard, Square } from '@phosphor-icons/react';
+import { DotsThree, Keyboard, Square } from '@/ui/icons';
 
 import { Hint, IslandButton } from '@/ui/islands/island';
 import {

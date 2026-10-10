@@ -1,6 +1,6 @@
 import * as React from 'react';
 import { Command as CommandPrimitive } from 'cmdk';
-import { MagnifyingGlass } from '@phosphor-icons/react';
+import { MagnifyingGlass } from '@/ui/icons';
 
 import { cn } from './utils';
 

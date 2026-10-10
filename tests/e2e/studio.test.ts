@@ -204,7 +204,7 @@ describe('The flight into a maze and back', () => {
     expect(error).toBeLessThan(0.02);
   });
 
-  test('the browser Back flies back and lands on the artboard, focused', async () => {
+  test('the browser Back flies back, shrinking the board to its artboard, and lands focused', async () => {
     const page = await open();
     const key = await openFirstMaze(page);
     const stop = await recordFrames(page);
@@ -214,8 +214,19 @@ describe('The flight into a maze and back', () => {
         document.querySelector('[data-studio-mode]')?.getAttribute('data-studio-mode') === 'library'
     );
     const frames = await stop();
+    const landed = await page.locator(`a[data-artboard="${key}"]`).boundingBox();
+    const widths = frames
+      .filter((frame) => frame.mode === 'flying-out' && frame.board !== undefined)
+      .map((frame) => frame.board?.width ?? 0);
 
-    expect(frames.some((frame) => frame.mode === 'flying-out')).toBe(true);
+    expect(new Set(widths.map((width) => Math.round(width))).size).toBeGreaterThan(10);
+    expect(widths[0] ?? 0).toBeGreaterThan(2 * (widths.at(-1) ?? 0));
+    expect(
+      widths.every((width, index) => index === 0 || width <= (widths[index - 1] ?? 0) + 0.5)
+    ).toBe(true);
+    expect(Math.abs((widths.at(-1) ?? 0) - (landed?.width ?? 0))).toBeLessThan(
+      0.1 * (landed?.width ?? 1)
+    );
     expect(new URL(page.url()).hash).toBe('#/');
     expect(await page.evaluate(() => document.activeElement?.getAttribute('data-artboard'))).toBe(
       key

@@ -109,6 +109,10 @@
               {
                 "regex": "^node:",
                 "message": "src/maze runs in the browser and in Node alike; it never imports Node's modules."
+              },
+              {
+                "regex": "^@phosphor-icons/",
+                "message": "Icons come from @/ui/icons, which scripts/icons.ts writes from @phosphor-icons/core in the regular weight only."
               }
             ]
           }
@@ -133,6 +137,10 @@
               {
                 "regex": "^(@/(library|render|ui|main)|(\\.\\./)+(render|ui|main))(/|$)",
                 "message": "src/library depends only on src/maze; reach its own files by relative path."
+              },
+              {
+                "regex": "^@phosphor-icons/",
+                "message": "Icons come from @/ui/icons, which scripts/icons.ts writes from @phosphor-icons/core in the regular weight only."
               }
             ]
           }
@@ -157,6 +165,10 @@
               {
                 "regex": "^(@/(library|render|ui|main)|(\\.\\./)+(library|ui|main))(/|$)",
                 "message": "src/render depends only on src/maze; reach its own files by relative path."
+              },
+              {
+                "regex": "^@phosphor-icons/",
+                "message": "Icons come from @/ui/icons, which scripts/icons.ts writes from @phosphor-icons/core in the regular weight only."
               }
             ]
           }
@@ -179,13 +191,8 @@
                 "message": "The UI never imports the entry point; src/main.tsx wires the app together."
               },
               {
-                "regex": "^@phosphor-icons/react/",
-                "message": "Import Phosphor icons by name from @phosphor-icons/react itself, never from its inner paths."
-              },
-              {
-                "group": ["@phosphor-icons/react"],
-                "allowImportNamePattern": "^[A-Z][A-Za-z0-9]*$",
-                "message": "Import Phosphor icons by name, so only the icons used are bundled."
+                "regex": "^@phosphor-icons/",
+                "message": "Icons come from @/ui/icons, which scripts/icons.ts writes from @phosphor-icons/core in the regular weight only."
               }
             ]
           }
@@ -202,6 +209,10 @@
               {
                 "regex": "^((@tests|@scripts)|(\\.\\./)+(tests|scripts|vendor))(/|$)",
                 "message": "Shipped code never imports tests, scripts or the vendored repositories."
+              },
+              {
+                "regex": "^@phosphor-icons/",
+                "message": "Icons come from @/ui/icons, which scripts/icons.ts writes from @phosphor-icons/core in the regular weight only."
               }
             ]
           }
@@ -260,7 +271,12 @@
     {
       "files": ["src/ui/board/camera-stage.tsx"],
       "rules": {
-        "jsx-a11y/no-noninteractive-tabindex": ["error", { "roles": ["application"] }],
+        "jsx-a11y/no-noninteractive-tabindex": [
+          "error",
+          {
+            "roles": ["application"]
+          }
+        ],
         "jsx-a11y/no-noninteractive-element-interactions": "off"
       }
     }

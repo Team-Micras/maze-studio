@@ -33,8 +33,15 @@ export interface CameraStageProps {
   /**
    * Whether the world layer is promoted (`will-change: transform`), as only during a flight
    * (DESIGN.md 8): a promoted layer scales a texture instead of repainting, but blurs when zoomed.
+   * It carries `data-promoted` meanwhile, so content that fades can take a layer of its own, since
+   * a change of opacity inside the promoted layer would repaint all of it.
    */
   readonly promoted?: boolean;
+  /**
+   * The scale counter-scaled content follows instead of the camera's, as during a flight: content
+   * whose size changed at every frame would repaint the promoted layer at every frame.
+   */
+  readonly fixedScale?: number;
   /** What the primary button or one finger draws when it does not pan. */
   readonly drawing?: StageDrawing;
   /** Runs before the stage's own keys; a key it prevents is left alone. */
@@ -94,12 +101,19 @@ type Gesture =
 const MIDDLE_BUTTON = 1;
 const PRIMARY_BUTTON = 0;
 
-/** The world layer's transform, and the scale and its inverse for counter-scaled content. */
-function worldStyle(camera: Camera): CSSProperties & Record<'--k' | '--ik', number> {
+/**
+ * The world layer's transform, and the scale and its inverse for counter-scaled content: the
+ * camera's, or `fixedScale` when given.
+ */
+function worldStyle(
+  camera: Camera,
+  fixedScale: number | undefined
+): CSSProperties & Record<'--k' | '--ik', number> {
+  const scale = fixedScale ?? camera.k;
   return {
     transform: `translate(${camera.x}px, ${camera.y}px) scale(${camera.k})`,
-    '--k': camera.k,
-    '--ik': 1 / camera.k,
+    '--k': scale,
+    '--ik': 1 / scale,
   };
 }
 
@@ -130,6 +144,7 @@ export function CameraStage({
   id,
   primaryPan = 'off',
   promoted = false,
+  fixedScale,
   drawing,
   onKeyDown: onContentKey,
   className,
@@ -349,12 +364,16 @@ export function CameraStage({
       tabIndex={0}
     >
       <div
-        className={cn('absolute top-0 left-0 origin-top-left', camera === undefined && 'invisible')}
+        className={cn(
+          'group/world absolute top-0 left-0 origin-top-left',
+          camera === undefined && 'invisible'
+        )}
+        data-promoted={promoted ? '' : undefined}
         data-world=""
         style={
           camera === undefined
             ? undefined
-            : { ...worldStyle(camera), willChange: promoted ? 'transform' : undefined }
+            : { ...worldStyle(camera, fixedScale), willChange: promoted ? 'transform' : undefined }
         }
       >
         {children}

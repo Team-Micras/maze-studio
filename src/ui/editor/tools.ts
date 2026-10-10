@@ -50,7 +50,7 @@ export const TOOLS: readonly ToolInfo[] = ORDER.map(toolInfo);
 
 /** Whether `value` names a tool. */
 export function isTool(value: string): value is Tool {
-  return value in INFO;
+  return Object.hasOwn(INFO, value);
 }
 
 /** The tool of a key, in either case. */

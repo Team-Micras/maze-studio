@@ -50,12 +50,14 @@ export interface LibraryCanvasProps {
   readonly primaryPan?: PrimaryPan;
   /** Whether the world layer is promoted, as during a flight. */
   readonly promoted?: boolean;
+  /** The scale the labels and rings follow instead of the camera's, as during a flight. */
+  readonly fixedScale?: number;
   /** What the primary button and one finger draw when they do not pan, as on an open maze. */
   readonly drawing?: StageDrawing;
   /** Keys for the content, before the canvas's own. */
   readonly onCanvasKey?: (event: KeyboardEvent<HTMLDivElement>) => void;
-  /** Hands on the kind of pointer that pressed an artboard: mouse, pen or touch. */
-  readonly onArtboardPointer?: (pointerType: string) => void;
+  /** Hands on the kind of pointer that pressed the canvas, and the key of the artboard pressed. */
+  readonly onArtboardPointer?: (pointerType: string, key: string | undefined) => void;
   /** More world content, drawn above the artboards, such as the open board. */
   readonly children?: ReactNode;
   readonly className?: string;
@@ -85,6 +87,7 @@ export function LibraryCanvas({
   label = 'Maze library',
   primaryPan = 'lazy',
   promoted = false,
+  fixedScale,
   drawing,
   onCanvasKey,
   onArtboardPointer,
@@ -138,6 +141,7 @@ export function LibraryCanvas({
       className={className}
       controller={controller}
       drawing={drawing}
+      {...(fixedScale === undefined ? {} : { fixedScale })}
       id={CANVAS_ID}
       label={label}
       onKeyDown={onCanvasKey}
@@ -145,7 +149,15 @@ export function LibraryCanvas({
       promoted={promoted}
     >
       <div
-        onPointerDownCapture={(event) => onArtboardPointer?.(event.pointerType)}
+        onPointerDownCapture={(event) =>
+          onArtboardPointer?.(
+            event.pointerType,
+            event.target instanceof Element
+              ? (event.target.closest('a[data-artboard]')?.getAttribute('data-artboard') ??
+                  undefined)
+              : undefined
+          )
+        }
         onBlur={(event) => {
           if (!event.currentTarget.contains(event.relatedTarget)) {
             setFocused(undefined);

@@ -1,4 +1,4 @@
-import { FolderOpen } from '@phosphor-icons/react';
+import { FolderOpen } from '@/ui/icons';
 import { useRef } from 'react';
 
 import { Hint, IslandButton } from '@/ui/islands/island';

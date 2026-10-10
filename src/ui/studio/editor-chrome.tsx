@@ -1,5 +1,5 @@
-import { SidebarSimple, SquaresFour } from '@phosphor-icons/react';
-import type { ReactNode } from 'react';
+import { SidebarSimple, SquaresFour } from '@/ui/icons';
+import { useDeferredValue, type ReactNode } from 'react';
 
 import type { Cell } from '@/maze';
 import { MINIMAP_SIZE, type WorldRect } from '@/render';
@@ -28,8 +28,8 @@ export interface EditorChromeProps {
   readonly visible: boolean;
   /**
    * Whether the camera has landed on the board; the minimap, the checks and menu, and the editing
-   * controls wait for it and fade in, so the flight's first frame, which mounts the board, does not
-   * also mount them.
+   * controls wait for it, mount in a deferred render that React splits across frames, and fade in,
+   * so neither the flight nor its landing frame pays for them.
    */
   readonly landed: boolean;
   readonly listOpen: boolean;
@@ -63,6 +63,8 @@ export function EditorChrome({
   children,
   actions,
 }: EditorChromeProps) {
+  const settled = useDeferredValue(landed, false) && landed;
+
   return (
     <div
       className="transition-opacity duration-200 ease-(--ease) data-hidden:pointer-events-none data-hidden:opacity-0"
@@ -96,13 +98,13 @@ export function EditorChrome({
             </p>
           </div>
         </Island>
-        {!landed || actions === undefined || actions === null ? null : (
+        {!settled || actions === undefined || actions === null ? null : (
           <Island className="fixed top-4 right-4 h-11 transition-opacity duration-200 ease-(--ease) starting:opacity-0 max-[720px]:top-safe-2 max-[720px]:right-safe-2">
             {actions}
           </Island>
         )}
       </header>
-      {landed ? (
+      {settled ? (
         <Minimap
           board={board}
           className="fixed top-[70px] right-4 max-[720px]:top-safe-16 max-[720px]:right-safe-2"
@@ -115,7 +117,7 @@ export function EditorChrome({
         {phone ? null : (
           <CursorStatus cell={cursor} className="fixed bottom-6 left-4 z-[9]" maze={open.maze} />
         )}
-        {landed ? (
+        {settled ? (
           <div className="transition-opacity duration-200 ease-(--ease) starting:opacity-0">
             {children}
           </div>
