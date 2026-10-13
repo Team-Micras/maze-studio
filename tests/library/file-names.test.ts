@@ -2,7 +2,7 @@ import { describe, expect, test } from 'vitest';
 
 import { uniqueName } from '@/library';
 
-describe('A unique name in Mine', () => {
+describe('A unique name in My mazes', () => {
   test('is the name itself while nothing has it', () => {
     expect(uniqueName('AAMC15Maze (edited)', ['japan2011hef (edited)'])).toBe(
       'AAMC15Maze (edited)'

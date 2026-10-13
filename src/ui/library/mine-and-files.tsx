@@ -5,7 +5,7 @@ import { DropdownMenuItem, DropdownMenuSeparator } from '@/ui/primitives/dropdow
 
 import { pickedFiles } from './picked-file';
 
-/** What the "Mine and files" menu does (DESIGN.md 6.1). */
+/** What the "My mazes and files" menu does (DESIGN.md 6.1). */
 export interface MineAndFilesActions {
   readonly onExportAll: () => void;
   readonly onImport: (files: readonly File[]) => void;
@@ -22,7 +22,7 @@ export interface MineAndFilesItemsProps {
 }
 
 /**
- * The items of the "Mine and files" menu: Export all, Import…, Open folder… where the browser can
+ * The items of the "My mazes and files" menu: Export all, Import…, Open folder… where the browser can
  * open one, and Check for updates. The notebook shows them in their own menu, a phone in its `+`.
  */
 export function MineAndFilesItems({ actions, children }: MineAndFilesItemsProps) {

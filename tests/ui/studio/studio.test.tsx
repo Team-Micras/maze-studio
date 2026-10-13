@@ -59,6 +59,40 @@ describe('The quick maze list', () => {
     );
   });
 
+  test('changes nothing on hover; the arrows switch at once and a click pins', async () => {
+    await mountApp();
+    await openMaze();
+    const title = document.querySelector('h1')?.textContent;
+    await openList();
+    const rows = [...document.querySelectorAll<HTMLElement>('[cmdk-item]')];
+    const other = rows.find((row) => !row.textContent?.includes(title ?? '')) ?? document.body;
+    await userEvent.hover(other);
+    await new Promise((resolve) => setTimeout(resolve, 150));
+
+    expect(document.querySelector('h1')?.textContent).toBe(title);
+    await userEvent.keyboard('{ArrowDown}');
+    await expect.poll(() => document.querySelector('h1')?.textContent).not.toBe(title);
+    const previewed = document.querySelector('h1')?.textContent;
+    await userEvent.click(other);
+    await expect.poll(() => document.querySelector('#maze-list')).toBeNull();
+    expect(document.querySelector('h1')?.textContent).not.toBe(previewed);
+  });
+
+  test('keeps the focus ring of the filter whole inside the drawer', async () => {
+    await mountApp();
+    await openMaze();
+    await openList();
+    const drawer = document.querySelector('#maze-list')?.getBoundingClientRect();
+    const box = document
+      .querySelector('[data-slot="command-input-wrapper"]')
+      ?.getBoundingClientRect();
+
+    expect(drawer).toBeDefined();
+    expect((box?.top ?? 0) - (drawer?.top ?? 0)).toBeGreaterThanOrEqual(4);
+    expect((box?.left ?? 0) - (drawer?.left ?? 0)).toBeGreaterThanOrEqual(4);
+    expect((drawer?.right ?? 0) - (box?.right ?? 0)).toBeGreaterThanOrEqual(4);
+  });
+
   test('opens as a sheet on a phone, and Escape closes it on the pinned maze', async () => {
     await page.viewport(390, 844);
     await mountApp();

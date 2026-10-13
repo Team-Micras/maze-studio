@@ -28,9 +28,9 @@ export interface MazeActionsInput {
   readonly phone: boolean;
   /** Writes `text` over the folder's `fileName`. */
   readonly onSaveToFolder: (fileName: string, text: string) => void;
-  /** Deletes the maze of Mine `id` and opens the library on Mine. */
+  /** Deletes the maze of My mazes `id` and opens the library on My mazes. */
   readonly onDelete: (id: string) => void;
-  /** Every name in Mine, with this maze's own. */
+  /** Every name in My mazes, with this maze's own. */
   readonly mineNames: readonly string[];
 }
 
@@ -61,7 +61,7 @@ function canShare(): boolean {
  * The actions on the open maze (PLAN.md 3.4, DESIGN.md 6.1 and 12): Copy link, which says when
  * the notes after the grid stay out of the link and, without a clipboard, puts the link in the
  * address bar; Share… with Web Share; Download .txt under a stem that passes the name rule; Save
- * to Mine and Save to folder; Rename and Delete for a maze of Mine.
+ * to My mazes and Save to folder; Rename and Delete for a maze of My mazes.
  */
 export function useMazeActions({
   store,

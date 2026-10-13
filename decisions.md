@@ -712,3 +712,20 @@ The machine's rule is no builds in `/tmp`, so `tests/e2e/pwa.test.ts` builds the
 - **After the re-review:** the writer's `idle()` waits for the copies on their way too (Save to
   Mine), and the picked files are read for the import by `picked-import.ts`, which refuses an
   oversized one without calling its `arrayBuffer()`.
+
+## 13/10/2026 — Owner feedback, round 1 (PLAN.md 12)
+
+- **"Mine" is "My mazes"** everywhere the user reads it: the source filter, the "My mazes and files" menu, "Saved in
+  My mazes", messages, docs. Code names (`mine`, `#/mine/<uuid>`, `MineLibrary`) stay.
+- **The quick list changes nothing on hover** (`disablePointerSelection`): the arrows preview at once, a click pins.
+  A line under the list says where the pinned maze's edits stand, "Saving to My mazes…" or "<name> is saved in My
+  mazes", fed by the writes the editor notes in `pending-writes.ts` (`useWriting`).
+- **The title renames:** for a maze of My mazes, a click turns the name into a field; Enter saves through Rename's
+  path and `name-check.ts`, Escape or leaving puts it back.
+- **The Library button after a first edit of a `.txt` or a new maze** did nothing: such a maze shares the library's
+  history entry, its first edit replaced that entry with `#/mine/<uuid>`, and the button's `history.back()` had no
+  library entry to go back to (in a fresh tab, nowhere at all). The first edit of a maze without a route of its own
+  now pushes `#/mine/<uuid>`, so the library's entry stays behind it.
+- **Thumbnails keep their outer walls:** walls and posts at least 1 device pixel, and the outer ones end 1 device
+  pixel inside the bitmap, in every band; a 32 × 32 maze at 64 px kept almost no walls before.
+- **The list's filter sits inset** in the drawer, so the drawer's rounded corners no longer cut its focus ring.

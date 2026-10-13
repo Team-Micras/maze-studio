@@ -1,7 +1,7 @@
 /**
  * New mazes from the New maze menu (PLAN.md 3.4, DESIGN.md 9.2): a preset or a custom size, named
  * "Untitled maze" through `uniqueName` unless named in the dialog, open in the editor without a
- * route of their own, and written to Mine only by their first edit, under their own name.
+ * route of their own, and written to My mazes only by their first edit, under their own name.
  *
  * @module
  */
@@ -53,7 +53,7 @@ export function newMazeName(name: string, taken: Iterable<string>): string {
 
 /**
  * The new maze `request` asks for, open under the key `new:<id>`; its name is made unique among
- * the names of Mine, `taken`.
+ * the names of My mazes, `taken`.
  */
 export function openNewMaze(
   request: NewMazeRequest,

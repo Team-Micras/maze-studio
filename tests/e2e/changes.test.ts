@@ -141,7 +141,7 @@ describe('Changes of the session', () => {
     await expect.poll(() => mineCount(page)).toBe(0);
   });
 
-  test('a maze of Mine from before the session: Discard puts back its state at the start', async () => {
+  test('a maze of My mazes from before the session: Discard puts back its state at the start', async () => {
     const { maze } = await repoContent(CLASSIC);
     const first = await openMaze(`#/repo/${CLASSIC}`);
     await clickEdge(first, maze, EDGE);
@@ -177,7 +177,7 @@ describe('Changes of the session', () => {
     await expectSaved(page, sameMaze(toggleWall(before, OTHER)));
   });
 
-  test('a change undone stays as "No differences", and the copy stays in Mine', async () => {
+  test('a change undone stays as "No differences", and the copy stays in My mazes', async () => {
     const { maze } = await repoContent(CLASSIC);
     const page = await openMaze(`#/repo/${CLASSIC}`);
     await clickEdge(page, maze, EDGE);
@@ -219,7 +219,7 @@ describe('Changes of the session', () => {
   });
 });
 
-describe('Discard of a maze of Mine another tab saved since', () => {
+describe('Discard of a maze of My mazes another tab saved since', () => {
   test('says so and keeps the item', async () => {
     const { maze } = await repoContent(CLASSIC);
     const first = await openMaze(`#/repo/${CLASSIC}`);
@@ -248,7 +248,7 @@ describe('Discard of a maze of Mine another tab saved since', () => {
 
 describe('Leaving a maze edited in the session', () => {
   test.each(['the Library button', 'the browser Back'])(
-    'with %s lands on its copy, with the filter on Mine',
+    'with %s lands on its copy, with the filter on My mazes',
     async (how) => {
       const page = await openPage(browser, contexts, app);
       const artboard = page.locator(`a[data-artboard="repo:${CLASSIC}"]`);

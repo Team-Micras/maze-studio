@@ -33,10 +33,10 @@ export interface LibraryChromeProps {
   readonly onOpenFile: (file: File) => void;
   /** Opens a new maze in the editor. */
   readonly onNew: (request: NewMazeRequest) => void;
-  /** The name a new maze gets unless named: "Untitled maze", unique in Mine. */
+  /** The name a new maze gets unless named: "Untitled maze", unique in My mazes. */
   readonly newName: string;
   readonly phone: boolean;
-  /** What the "Mine and files" menu does. */
+  /** What the "My mazes and files" menu does. */
   readonly files: MineAndFilesActions;
   /** What the credit adds of the updates from GitHub, if anything. */
   readonly updateNote?: string | undefined;
@@ -95,14 +95,14 @@ interface MenuProps {
   readonly newName: string;
 }
 
-/** The "Mine and files" menu (DESIGN.md 6.1) of the notebook's actions island. */
+/** The "My mazes and files" menu (DESIGN.md 6.1) of the notebook's actions island. */
 function MineAndFiles({ files }: { readonly files: MineAndFilesActions }) {
   return (
     <MineAndFilesItems actions={files}>
       {(items) => (
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <IslandButton aria-label="Mine and files">
+            <IslandButton aria-label="My mazes and files">
               <FolderSimple aria-hidden size={18} />
             </IslandButton>
           </DropdownMenuTrigger>
@@ -115,7 +115,7 @@ function MineAndFiles({ files }: { readonly files: MineAndFilesActions }) {
   );
 }
 
-/** A phone's `+` menu: New maze, Open a .txt file, the "Mine and files" items and the theme. */
+/** A phone's `+` menu: New maze, Open a .txt file, the "My mazes and files" items and the theme. */
 function PhoneMenu({ onOpenFile, files, onNew, newName }: MenuProps) {
   const input = useRef<HTMLInputElement>(null);
   const theme = useTheme((state) => state.theme);

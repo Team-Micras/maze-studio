@@ -7,7 +7,7 @@
 import type { CatalogEntry } from './catalog';
 import type { SearchIndex } from './search';
 
-/** Where the mazes come from: the repository, Mine, or an opened folder. */
+/** Where the mazes come from: the repository, My mazes, or an opened folder. */
 export type LibrarySource = 'repo' | 'mine' | 'folder';
 
 /** A repository folder to show, or `''` for all of them. */

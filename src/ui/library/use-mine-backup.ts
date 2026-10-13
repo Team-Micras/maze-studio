@@ -21,22 +21,22 @@ export interface MineBackup {
   /** The report on screen, if any. */
   readonly report: Report | undefined;
   readonly closeReport: () => void;
-  /** Downloads Mine as a zip and says how many mazes went in. */
+  /** Downloads My mazes as a zip and says how many mazes went in. */
   readonly exportAll: () => Promise<void>;
-  /** Adds the mazes of `files` to Mine and shows the report; resolves to how many were added. */
+  /** Adds the mazes of `files` to My mazes and shows the report; resolves to how many were added. */
   readonly importFiles: (files: readonly File[]) => Promise<number>;
 }
 
-const NO_STORAGE = 'Mine is not available in this browser. Use Download .txt instead';
+const NO_STORAGE = 'My mazes is not available in this browser. Use Download .txt instead';
 
 function reasonOf(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
 }
 
 /**
- * Export all and Import of the "Mine and files" menu (DESIGN.md 6.1): the zip of `exportMine`, with
+ * Export all and Import of the "My mazes and files" menu (DESIGN.md 6.1): the zip of `exportMine`, with
  * a Details action when it left mazes out, and the drafts of `readImport` stored under names unique
- * in Mine, with the report of what was added, renamed and skipped.
+ * in My mazes, with the report of what was added, renamed and skipped.
  */
 export function useMineBackup(): MineBackup {
   const [report, setReport] = useState<Report | undefined>(undefined);

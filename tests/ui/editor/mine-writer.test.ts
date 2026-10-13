@@ -45,7 +45,7 @@ function wallsOf(...xs: number[]): Maze {
   return xs.reduce((current, x) => toggleWall(current, edge(x)), EMPTY);
 }
 
-/** Mine in memory, whose writes can be held back and can fail. */
+/** My mazes in memory, whose writes can be held back and can fail. */
 class FakeMine implements MineStore {
   readonly items = new Map<string, MineMaze>();
   readonly log: string[] = [];
@@ -140,7 +140,7 @@ function writerOn(mine: FakeMine): { writer: MineWriter; heard: Heard } {
   return { writer, heard };
 }
 
-describe('The writer of Mine', () => {
+describe('The writer of My mazes', () => {
   test('copies on the first edit, then saves, in the order asked', async () => {
     const mine = new FakeMine();
     const { writer } = writerOn(mine);
@@ -219,7 +219,7 @@ describe('The writer of Mine', () => {
     expect([...mine.items.values()][0]?.profile).toBe('classic');
   });
 
-  test('makes one copy for two Save to Mine asked at once', async () => {
+  test('makes one copy for two Save to My mazes asked at once', async () => {
     const mine = new FakeMine();
     const { writer } = writerOn(mine);
     const link: OpenMaze = { ...opened('shared'), key: 'link:abc' };
@@ -233,7 +233,7 @@ describe('The writer of Mine', () => {
     expect(mine.log).toEqual(['create shared']);
   });
 
-  test('saves an edit made while Save to Mine copies, into that copy', async () => {
+  test('saves an edit made while Save to My mazes copies, into that copy', async () => {
     const mine = new FakeMine();
     const { writer } = writerOn(mine);
     const link: OpenMaze = { ...opened('shared'), key: 'link:abc' };
@@ -248,7 +248,7 @@ describe('The writer of Mine', () => {
     expect(mazesEqual(mine.mazeNamed('shared') ?? EMPTY, wallsOf(0))).toBe(true);
   });
 
-  test('idle waits for a Save to Mine on its way, and for a copy that fails', async () => {
+  test('idle waits for a Save to My mazes on its way, and for a copy that fails', async () => {
     const mine = new FakeMine();
     const { writer } = writerOn(mine);
     const link: OpenMaze = { ...opened('shared'), key: 'link:abc' };

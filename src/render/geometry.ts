@@ -48,6 +48,12 @@ const PROPORTIONS: Readonly<Record<TrackScale, TrackProportions>> = {
 
 const MARGIN_GAP = 0.02;
 
+/** The thinnest wall or post of a thumbnail, in device pixels, so a 32 × 32 maze keeps its walls. */
+const MIN_THUMBNAIL_STROKE = 1;
+
+/** The floor left around a thumbnail's outer walls, in device pixels. */
+const THUMBNAIL_EDGE = 1;
+
 /** A point of a maze in cells: `u` east from the west border, `v` north from the south border. */
 export interface MazePoint {
   readonly u: number;
@@ -107,17 +113,23 @@ export function boardGeometry(
   { scale = 'board', size = ARTBOARD_SIZE }: { scale?: TrackScale; size?: number } = {}
 ): BoardGeometry {
   const proportions = PROPORTIONS[scale];
-  const marginCells = proportions.post / 2 + MARGIN_GAP;
-  const pitch = size / (Math.max(maze.width, maze.height) + 2 * marginCells);
-  const margin = marginCells * pitch;
+  const longest = Math.max(maze.width, maze.height);
+  const pitch = scale === 'thumbnail' ? thumbnailPitch(size, longest) : boardPitch(size, longest);
+  const wall = proportions.wall * pitch;
+  const post = proportions.post * pitch;
+  const thick = scale === 'thumbnail' ? Math.max(wall, post, MIN_THUMBNAIL_STROKE) : post;
+  const margin =
+    scale === 'thumbnail'
+      ? thick / 2 + THUMBNAIL_EDGE
+      : (proportions.post / 2 + MARGIN_GAP) * pitch;
 
   return {
     scale,
     columns: maze.width,
     rows: maze.height,
     pitch,
-    wall: proportions.wall * pitch,
-    post: proportions.post * pitch,
+    wall: scale === 'thumbnail' ? Math.max(wall, MIN_THUMBNAIL_STROKE) : wall,
+    post: scale === 'thumbnail' ? Math.max(post, MIN_THUMBNAIL_STROKE) : post,
     postOutline: proportions.postOutline * pitch,
     rails: proportions.rails,
     startStroke: proportions.startStroke * pitch,
@@ -126,6 +138,24 @@ export function boardGeometry(
     width: maze.width * pitch + 2 * margin,
     height: maze.height * pitch + 2 * margin,
   };
+}
+
+function boardPitch(size: number, longest: number): number {
+  return size / (longest + 2 * (PROPORTIONS.board.post / 2 + MARGIN_GAP));
+}
+
+/**
+ * The pitch of a thumbnail `size` device pixels long: the outer walls and posts, at least
+ * {@link MIN_THUMBNAIL_STROKE} thick, end {@link THUMBNAIL_EDGE} inside the bitmap, so the last row
+ * and column of pixels never cut them, at any band.
+ */
+function thumbnailPitch(size: number, longest: number): number {
+  const thickness = Math.max(PROPORTIONS.thumbnail.wall, PROPORTIONS.thumbnail.post);
+  const scaled = (size - 2 * THUMBNAIL_EDGE) / (longest + thickness);
+
+  return thickness * scaled >= MIN_THUMBNAIL_STROKE
+    ? scaled
+    : (size - 2 * THUMBNAIL_EDGE - MIN_THUMBNAIL_STROKE) / longest;
 }
 
 /** The board point of a maze point. */

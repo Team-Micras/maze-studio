@@ -77,7 +77,7 @@ function mazeOf(item: MineMaze | undefined): Maze {
   return content.value.maze;
 }
 
-describe('Mine', () => {
+describe('My mazes', () => {
   test('creates, reads, lists, saves and removes', async () => {
     const [{ mine }] = await tabs();
     const first = await mine.create({

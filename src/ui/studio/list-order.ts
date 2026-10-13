@@ -1,5 +1,5 @@
 /**
- * The order of the quick maze list (PLAN.md 3.4): Mine first, then the repository, each in the
+ * The order of the quick maze list (PLAN.md 3.4): My mazes first, then the repository, each in the
  * catalog's order, and stepping through it.
  *
  * @module
@@ -7,7 +7,7 @@
 
 import type { CatalogEntry } from '@/library';
 
-/** The entries in the list's order: Mine first, then the repository. */
+/** The entries in the list's order: My mazes first, then the repository. */
 export function listOrder<Entry extends CatalogEntry>(entries: readonly Entry[]): Entry[] {
   return [
     ...entries.filter((entry) => entry.origin === 'mine'),

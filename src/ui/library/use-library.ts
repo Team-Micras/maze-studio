@@ -15,17 +15,17 @@ import { decodeMazeCode, profileOfPath, type Maze } from '@/maze';
 import type { MazeDocument } from '@/ui/open-maze';
 import { appStorage } from '@/ui/storage';
 
-/** Fired on `window` when this tab writes to Mine, which other tabs learn through Mine itself. */
+/** Fired on `window` when this tab writes to My mazes, which other tabs learn through My mazes itself. */
 const MINE_WRITTEN = 'maze-studio:mine-written';
 
-/** Has every library of this tab load again, after this tab wrote to Mine. */
+/** Has every library of this tab load again, after this tab wrote to My mazes. */
 export function reloadLibrary(): void {
   window.dispatchEvent(new Event(MINE_WRITTEN));
 }
 
 /** Everything the library shows, once loaded. */
 export interface Library {
-  /** The repository's entries in path order, then Mine's. */
+  /** The repository's entries in path order, then My mazes'. */
   readonly entries: readonly CatalogEntry[];
   readonly index: SearchIndex;
   /** The repository commit the entries come from. */
@@ -50,7 +50,7 @@ interface Decoded {
   readonly document: MazeDocument;
 }
 
-/** What the library is built from: the repository's files, Mine, and maybe an opened folder. */
+/** What the library is built from: the repository's files, My mazes, and maybe an opened folder. */
 interface Loaded {
   readonly commit: string;
   readonly files: readonly RepoFile[];
@@ -147,7 +147,7 @@ async function loadLibrary(): Promise<Loaded> {
 
 /**
  * The library, or `undefined` while it loads, with the mazes of `folder` when one is open. It loads
- * again when another tab writes to Mine, or when this one says it did with {@link reloadLibrary}.
+ * again when another tab writes to My mazes, or when this one says it did with {@link reloadLibrary}.
  */
 export function useLibrary(folder?: FolderContents): Library | undefined {
   const [loaded, setLoaded] = useState<Loaded | undefined>(undefined);

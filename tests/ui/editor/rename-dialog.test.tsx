@@ -24,12 +24,12 @@ async function mount(): Promise<string[]> {
 }
 
 describe('The Rename dialog', () => {
-  test('refuses a name another maze of Mine has, in any case, beside the field', async () => {
+  test('refuses a name another maze of My mazes has, in any case, beside the field', async () => {
     const renamed = await mount();
     const field = page.getByRole('textbox', { name: 'Name' });
     await userEvent.fill(field, 'shared ONE');
 
-    await expect.element(page.getByText('Name already in Mine. Pick another')).toBeVisible();
+    await expect.element(page.getByText('Name already in My mazes. Pick another')).toBeVisible();
     await expect.element(page.getByRole('button', { name: 'Save' })).toBeDisabled();
     await expect.element(field).toHaveAttribute('aria-invalid', 'true');
     expect(await axeViolations()).toEqual([]);

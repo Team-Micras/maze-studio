@@ -269,7 +269,7 @@ describe('A finding of the checks', () => {
 });
 
 describe('New maze', () => {
-  test('of a custom 7 × 5 opens with its border only, and comes to Mine at its first edit as "Untitled maze"', async () => {
+  test('of a custom 7 × 5 opens with its border only, and comes to My mazes at its first edit as "Untitled maze"', async () => {
     const page = await openPage(browser, contexts, app);
     await page.getByRole('button', { name: 'New maze' }).click();
     await page.getByRole('menuitem', { name: 'Custom size…' }).click();

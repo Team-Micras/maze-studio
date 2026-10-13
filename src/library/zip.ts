@@ -1,5 +1,5 @@
 /**
- * A minimal zip writer and reader for the backup of "Mine": the writer stores files without
+ * A minimal zip writer and reader for the backup of "My mazes": the writer stores files without
  * compression, which costs little for maze text and needs no dependency; the reader also takes
  * deflated entries, through the platform's `DecompressionStream`, so a zip made by another tool
  * imports too. Names are UTF-8. No ZIP64, no encryption, no multi-disk archives.

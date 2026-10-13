@@ -1,6 +1,6 @@
 /**
  * The open board of the built studio, for the editor's e2e tests: where a point of the maze is on
- * the page, what autosave has written to Mine, and the repository file a maze came from.
+ * the page, what autosave has written to My mazes, and the repository file a maze came from.
  *
  * @module
  */
@@ -55,7 +55,7 @@ export function edgeMiddle(edge: Edge): MazePoint {
     : { u: edge.x, v: edge.y + 0.5 };
 }
 
-/** The id of the item of Mine the page shows, from its route. */
+/** The id of the item of My mazes the page shows, from its route. */
 export function mineId(page: Page): string | undefined {
   const match = /^#\/mine\/(.+)$/.exec(new URL(page.url()).hash);
   return match?.[1] === undefined ? undefined : decodeURIComponent(match[1]);
@@ -74,7 +74,7 @@ function isMineMaze(value: unknown): value is MineMaze {
   );
 }
 
-/** The item of Mine with `id`, as stored. */
+/** The item of My mazes with `id`, as stored. */
 export async function storedMine(page: Page, id: string): Promise<MineMaze | undefined> {
   const stored: unknown = await page.evaluate(
     ([database, key]) =>
@@ -96,7 +96,7 @@ export async function storedMine(page: Page, id: string): Promise<MineMaze | und
   return isMineMaze(stored) ? stored : undefined;
 }
 
-/** What an item of Mine holds. */
+/** What an item of My mazes holds. */
 export function contentOf(item: MineMaze): MazeContent {
   const decoded = decodeMazeCode(item.code);
 
@@ -133,7 +133,7 @@ export function sameMaze(expected: Maze): (content: MazeContent) => boolean {
   return (content) => mazesEqual(content.maze, expected);
 }
 
-/** How many items Mine holds in the page's browser. */
+/** How many items My mazes holds in the page's browser. */
 export function mineCount(page: Page): Promise<number> {
   return page.evaluate(
     (database) =>

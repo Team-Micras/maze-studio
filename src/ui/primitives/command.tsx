@@ -19,12 +19,16 @@ function Command({ className, ...props }: React.ComponentProps<typeof CommandPri
 
 function CommandInput({
   className,
+  wrapperClassName,
   ...props
-}: React.ComponentProps<typeof CommandPrimitive.Input>) {
+}: React.ComponentProps<typeof CommandPrimitive.Input> & { wrapperClassName?: string }) {
   return (
     <div
       data-slot="command-input-wrapper"
-      className="flex h-9 items-center gap-2 border-b px-3 has-[input:focus-visible]:ring-2 has-[input:focus-visible]:ring-ring has-[input:focus-visible]:ring-inset"
+      className={cn(
+        'flex h-9 items-center gap-2 border-b px-3 has-[input:focus-visible]:ring-2 has-[input:focus-visible]:ring-ring has-[input:focus-visible]:ring-inset',
+        wrapperClassName
+      )}
     >
       <MagnifyingGlass aria-hidden className="size-4 shrink-0 opacity-50" />
       <CommandPrimitive.Input

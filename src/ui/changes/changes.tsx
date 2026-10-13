@@ -239,7 +239,7 @@ function Body({
 }
 
 /**
- * The Changes panel (DESIGN.md 6 and 6.2): the mazes created or edited in Mine in this session,
+ * The Changes panel (DESIGN.md 6 and 6.2): the mazes created or edited in My mazes in this session,
  * each with its thumbnail and the diff on it, what changed, and Open, Keep and Discard; and "Show
  * on board", which `D` toggles too. A popover under the islands at the top right on a notebook, a
  * sheet on a phone.
@@ -255,7 +255,7 @@ export function ChangesPanel({ open, onOpenChange, phone, ...body }: ChangesPane
             onOpenChange={onOpenChange}
           />
           <SheetDescription className="sr-only">
-            The mazes created or edited in Mine since the app opened.
+            The mazes created or edited in My mazes since the app opened.
           </SheetDescription>
         </SheetContent>
       </Sheet>

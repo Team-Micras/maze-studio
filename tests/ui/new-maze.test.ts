@@ -4,7 +4,7 @@ import { hasWall } from '@/maze';
 import { newMazeName, openNewMaze, sideOf, UNTITLED } from '@/ui/new-maze';
 
 describe('A new maze', () => {
-  test('is "Untitled maze", made unique among the names of Mine', () => {
+  test('is "Untitled maze", made unique among the names of My mazes', () => {
     expect(newMazeName('', [])).toBe(UNTITLED);
     expect(newMazeName('  ', ['untitled MAZE'])).toBe('Untitled maze 2');
     expect(newMazeName(' Practice ', ['Untitled maze'])).toBe('Practice');

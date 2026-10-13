@@ -2,7 +2,14 @@ import { describe, expect, test, vi } from 'vitest';
 import { render } from 'vitest-browser-react';
 
 import { diffMazes, encodeMazeCode, setStart, toggleWall } from '@/maze';
-import { drawThumbnail, ThumbnailCache, thumbnailBand, thumbnailBytes } from '@/render';
+import {
+  boardGeometry,
+  drawThumbnail,
+  THUMBNAIL_BANDS,
+  ThumbnailCache,
+  thumbnailBand,
+  thumbnailBytes,
+} from '@/render';
 import { thumbnailCache } from '@/ui/board/thumbnail-cache';
 import { ThumbnailCanvas } from '@/ui/board/thumbnail-canvas';
 import { REPO_MAZES, repoMaze } from '@tests/support/ui/repo-mazes';
@@ -49,11 +56,12 @@ describe('drawThumbnail', () => {
   test('paints the floor, red walls, and posts at the size of its band', async () => {
     const maze = await repoMaze(REPO_MAZES.classic);
     const canvas = drawThumbnail(maze, 256);
-    const cell = 256 / (16 + 0.14 + 0.04);
+    const geometry = boardGeometry(maze, { scale: 'thumbnail', size: 256 });
+    const cell = geometry.pitch;
 
     expect([canvas.width, canvas.height]).toEqual([256, 256]);
     expect(isFloor(pixel(canvas, 128 + cell / 2, 128 + cell / 2 + cell * 3))).toBe(true);
-    expect(isRed(pixel(canvas, 256 - cell * 0.09, 256 / 2))).toBe(true);
+    expect(isRed(pixel(canvas, 256 - geometry.margin, 256 / 2))).toBe(true);
   });
 
   test('draws the diff in blue on top', async () => {
@@ -66,11 +74,52 @@ describe('drawThumbnail', () => {
     const marked = drawThumbnail(after, 128, diffMazes(maze, after));
     const differs = (x: number, y: number) =>
       pixel(plain, x, y).join() !== pixel(marked, x, y).join();
-    const cell = 128 / (16 + 0.18);
-    const margin = 0.09 * cell;
+    const { pitch: cell, margin } = boardGeometry(after, { scale: 'thumbnail', size: 128 });
 
     expect(differs(margin + cell * 5.5, 128 - margin - cell * 5)).toBe(true);
     expect(differs(margin + cell * 10.5, 128 - margin - cell * 10.5)).toBe(false);
+  });
+});
+
+/** How many pixels of column `x`, or of row `y` when `across` is set, are red. */
+function redCount(canvas: OffscreenCanvas, at: number, across = false): number {
+  const data = across
+    ? canvas.getContext('2d')?.getImageData(0, at, canvas.width, 1).data
+    : canvas.getContext('2d')?.getImageData(at, 0, 1, canvas.height).data;
+  let red = 0;
+
+  for (let index = 0; index < (data?.length ?? 0); index += 4) {
+    red += isRed([data?.[index] ?? 0, data?.[index + 1] ?? 0, data?.[index + 2] ?? 0]) ? 1 : 0;
+  }
+
+  return red;
+}
+
+/** Whether a full outer wall shows within the three pixels next to `edge`, and the edge is floor. */
+function outerWallShows(canvas: OffscreenCanvas, edge: number, inward: 1 | -1, across: boolean) {
+  const side = across ? canvas.width : canvas.height;
+  const strongest = Math.max(
+    ...[1, 2, 3].map((step) => redCount(canvas, edge + inward * step, across))
+  );
+  return redCount(canvas, edge, across) === 0 && strongest >= side * 0.85;
+}
+
+describe('the outer walls of a thumbnail', () => {
+  test.each([
+    { name: 'classic', size: '16 × 16' },
+    { name: 'halfsize', size: '32 × 32' },
+  ] as const)('show whole on all four sides of a $size maze in every band', async ({ name }) => {
+    const maze = await repoMaze(REPO_MAZES[name]);
+
+    for (const band of THUMBNAIL_BANDS) {
+      const canvas = drawThumbnail(maze, band);
+      const last = band - 1;
+
+      expect([band, outerWallShows(canvas, 0, 1, false)]).toEqual([band, true]);
+      expect([band, outerWallShows(canvas, last, -1, false)]).toEqual([band, true]);
+      expect([band, outerWallShows(canvas, 0, 1, true)]).toEqual([band, true]);
+      expect([band, outerWallShows(canvas, last, -1, true)]).toEqual([band, true]);
+    }
   });
 });
 

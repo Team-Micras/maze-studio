@@ -59,16 +59,16 @@ describe('The changes of the session', () => {
     expect(withoutChange(changes, 'u-1').items).toEqual([]);
   });
 
-  test('compare a maze of Mine from before with the state first seen in the session', () => {
+  test('compare a maze of My mazes from before with the state first seen in the session', () => {
     const seen = walls(BASE, A);
     let changes = noteSeen(NO_CHANGES, 'm-1', { maze: seen, profile: 'training' });
     changes = noteSeen(changes, 'm-1', { maze: walls(BASE, A, B), profile: 'free' });
-    changes = addExisting(changes, 'm-1', 'Mine one');
+    changes = addExisting(changes, 'm-1', 'My mazes one');
 
     const item = changeOf(changes, 'm-1');
 
     expect(item?.kind).toBe('existing');
-    expect(item?.name).toBe('Mine one');
+    expect(item?.name).toBe('My mazes one');
     expect(item?.source).toBeUndefined();
     expect(mazesEqual(item?.baseline ?? BASE, seen)).toBe(true);
     expect(item?.baselineProfile).toBe('training');

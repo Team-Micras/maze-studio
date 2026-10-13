@@ -1,5 +1,5 @@
 /**
- * "Mine": the user's own mazes, kept in the browser.
+ * "My mazes": the user's own mazes, kept in the browser.
  *
  * Every item has a version that each save raises. A save names the version it was made from; if
  * another tab saved a newer one in between, or removed the item, the save is refused, so the tab
@@ -29,13 +29,13 @@ import type { Database } from './database';
 /** The channel the tabs of the app announce their writes on. */
 export const MINE_CHANNEL = 'maze-studio-mine';
 
-/** Where an item of Mine was copied from, when it came from the repository. */
+/** Where an item of My mazes was copied from, when it came from the repository. */
 export interface MineOrigin {
   readonly path: string;
   readonly sha: string;
 }
 
-/** A maze of Mine, as stored. */
+/** A maze of My mazes, as stored. */
 export interface MineMaze {
   readonly id: string;
   readonly name: string;
@@ -50,7 +50,7 @@ export interface MineMaze {
   readonly origin?: MineOrigin;
 }
 
-/** What a new item of Mine is made of. */
+/** What a new item of My mazes is made of. */
 export interface MineDraft {
   readonly name: string;
   readonly maze: Maze;
@@ -85,13 +85,13 @@ export interface MineNotice {
 /** Whether the browser keeps the site's storage: unknown before the first write. */
 export type Persistence = 'unknown' | 'persistent' | 'best-effort';
 
-/** The parts of `navigator.storage` Mine uses. */
+/** The parts of `navigator.storage` My mazes uses. */
 export interface PersistentStorage {
   persisted(): Promise<boolean>;
   persist(): Promise<boolean>;
 }
 
-/** The part of a `BroadcastChannel` Mine uses. */
+/** The part of a `BroadcastChannel` My mazes uses. */
 export interface NoticeChannel {
   postMessage(message: unknown): void;
   addEventListener(type: 'message', listener: (event: MessageEvent) => void): void;
@@ -99,7 +99,7 @@ export interface NoticeChannel {
   close(): void;
 }
 
-/** What Mine runs on; the browser's own by default. */
+/** What My mazes runs on; the browser's own by default. */
 export interface MineOptions {
   readonly channel?: NoticeChannel;
   readonly storage?: PersistentStorage;

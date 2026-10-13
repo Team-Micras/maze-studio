@@ -9,6 +9,7 @@ import type { CanvasCamera } from '@/ui/board/use-canvas-camera';
 import { Hint, Island, IslandButton } from '@/ui/islands/island';
 import { ZoomIsland } from '@/ui/islands/zoom-island';
 import { zoomPercent } from '@/ui/islands/zoom-percent';
+import { TitleName, type TitleRename } from '@/ui/editor/title-name';
 import type { OpenMaze } from '@/ui/open-maze';
 
 /** The minimap's longest side on a phone. */
@@ -41,8 +42,10 @@ export interface EditorChromeProps {
   readonly children?: ReactNode;
   /** The checks and the menu, in the island at the top right. */
   readonly actions?: ReactNode;
-  /** Save to Mine or Save to folder, after the title. */
+  /** Save to My mazes or Save to folder, after the title. */
   readonly titleActions?: ReactNode;
+  /** Renaming from the title, for a maze of My mazes. */
+  readonly rename?: TitleRename | undefined;
 }
 
 /**
@@ -65,6 +68,7 @@ export function EditorChrome({
   children,
   actions,
   titleActions,
+  rename,
 }: EditorChromeProps) {
   const settled = useDeferredValue(landed, false) && landed;
 
@@ -93,9 +97,7 @@ export function EditorChrome({
             </IslandButton>
           </Hint>
           <div className="flex min-w-0 flex-col pr-2 pl-1">
-            <h1 className="truncate text-[13px] leading-[18px] font-semibold" translate="no">
-              {open.name}
-            </h1>
+            <TitleName name={open.name} rename={rename} />
             <p className="truncate text-[11px] leading-[14px] text-muted-foreground">
               {open.detail}
             </p>

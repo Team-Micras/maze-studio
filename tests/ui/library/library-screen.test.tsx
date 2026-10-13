@@ -168,14 +168,16 @@ describe('Search and filters', () => {
     ).toBe(true);
   });
 
-  test('says Mine is empty, and that nothing matches a search', async () => {
+  test('says My mazes is empty, and that nothing matches a search', async () => {
     await mountApp();
-    await userEvent.click(page.getByRole('radio', { name: 'Mine' }));
+    await userEvent.click(page.getByRole('radio', { name: 'My mazes' }));
 
-    await expect.element(page.getByRole('heading', { name: 'Nothing in Mine yet' })).toBeVisible();
+    await expect
+      .element(page.getByRole('heading', { name: 'Nothing in My mazes yet' }))
+      .toBeVisible();
     expect(window.location.hash).toBe('#/?src=mine');
     const empty = page
-      .getByRole('heading', { name: 'Nothing in Mine yet' })
+      .getByRole('heading', { name: 'Nothing in My mazes yet' })
       .element().parentElement;
     expect(empty?.querySelector('button')?.textContent).toBe('New maze');
 

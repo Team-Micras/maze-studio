@@ -1,5 +1,5 @@
 /**
- * Autosave (PLAN.md 3.4): the first edit of a maze that is not in Mine copies it there, and every
+ * Autosave (PLAN.md 3.4): the first edit of a maze that is not in My mazes copies it there, and every
  * gesture after that saves the item. One write runs at a time and the latest state wins, so a
  * burst of gestures makes at most one more write.
  *
@@ -12,12 +12,12 @@ import type { MineCopy, OpenMaze } from '@/ui/open-maze';
 
 import { copyName, needsCopy, type EditSession } from './edit-session';
 
-/** The item of Mine a session writes to, with its name. */
+/** The item of My mazes a session writes to, with its name. */
 export type NamedCopy = MineCopy & { readonly name: string };
 
 /** What the writer tells the editor, naming each session by the maze it opened on. */
 export interface MineWriterEvents {
-  /** The maze `opened` now has its copy in Mine. */
+  /** The maze `opened` now has its copy in My mazes. */
   readonly copied: (opened: OpenMaze, copy: NamedCopy, item: MineMaze) => void;
   /** The item of `opened`'s session was saved. */
   readonly saved: (opened: OpenMaze, copy: NamedCopy) => void;
@@ -33,11 +33,11 @@ interface Written {
   readonly profile: Profile;
 }
 
-/** What the writer needs of Mine. */
+/** What the writer needs of My mazes. */
 export type MineStore = Pick<MineLibrary, 'list' | 'create' | 'save'>;
 
 /**
- * Writes the sessions of the editor to Mine, one write at a time. Each maze keeps its latest
+ * Writes the sessions of the editor to My mazes, one write at a time. Each maze keeps its latest
  * session waiting, so leaving a maze while a write runs never drops its last change. What the
  * writer learns, the copy and the maze last written, belongs to one session, the one that opened
  * on a maze; the last version this tab wrote of each item outlives the sessions, so a session that
@@ -68,7 +68,7 @@ export class MineWriter {
   }
 
   /**
-   * Copies `session`'s maze to Mine under its own name, edited or not, as Save to Mine does for a
+   * Copies `session`'s maze to My mazes under its own name, edited or not, as Save to My mazes does for a
    * link or a file; nothing happens once it has a copy, and a copy on its way is the one. The copy
    * is registered at once, so an edit written meanwhile waits for it and saves into it.
    */
@@ -81,9 +81,9 @@ export class MineWriter {
   }
 
   /**
-   * Renames `session`'s item of Mine on the version this tab knows.
+   * Renames `session`'s item of My mazes on the version this tab knows.
    *
-   * @returns Whether Mine took the name; another tab's newer save refuses it.
+   * @returns Whether My mazes took the name; another tab's newer save refuses it.
    */
   async rename(session: EditSession, name: string): Promise<boolean> {
     await this.idle();

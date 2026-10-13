@@ -28,6 +28,7 @@ import { RenameDialog } from '@/ui/editor/rename-dialog';
 import { ShortcutHelp } from '@/ui/editor/shortcut-help';
 import { CopyLinkButton, TitleActions } from '@/ui/editor/title-actions';
 import type { MazeEditor } from '@/ui/editor/use-maze-editor';
+import { useWriting } from '@/ui/editor/use-writing';
 import { useCoarsePointer, usePhoneLayout } from '@/ui/hooks/use-media-query';
 import { useViewportWidth } from '@/ui/hooks/use-viewport-width';
 import { ZoomIsland } from '@/ui/islands/zoom-island';
@@ -71,13 +72,13 @@ export interface StudioProps {
   readonly onNew: (request: NewMazeRequest) => void;
   /** The name a new maze gets unless named. */
   readonly newName: string;
-  /** Discards an item of Changes: deletes a copy or puts back a maze of Mine. */
+  /** Discards an item of Changes: deletes a copy or puts back a maze of My mazes. */
   readonly onDiscard: (item: ChangeItem) => void;
   /** Writes `text` over the opened folder's `fileName`. */
   readonly onSaveToFolder: (fileName: string, text: string) => void;
-  /** Deletes the maze of Mine `id` and opens the library on Mine. */
+  /** Deletes the maze of My mazes `id` and opens the library on My mazes. */
   readonly onDelete: (id: string) => void;
-  /** What the library's "Mine and files" menu does. */
+  /** What the library's "My mazes and files" menu does. */
   readonly files: MineAndFilesActions;
   /** What the credit adds of the updates from GitHub, if anything. */
   readonly updateNote?: string | undefined;
@@ -163,6 +164,7 @@ export function Studio({
         : libraryLimits(grid, viewport, insets),
   });
   const coarse = useCoarsePointer();
+  const writing = useWriting();
   const theme = useTheme((current) => current.theme);
   const toggleTheme = useTheme((current) => current.toggle);
   const changes = useStudioChanges({ store, state, library, onScreen, phone, onDiscard });
@@ -412,6 +414,11 @@ export function Studio({
           }
           cursor={editing.cursor}
           titleActions={<TitleActions {...actions.title} />}
+          rename={
+            actions.rename === undefined || previewed !== undefined
+              ? undefined
+              : { taken: actions.rename.taken, onRename: actions.rename.onRename }
+          }
           landed={mode === 'editor'}
           listOpen={state.listOpen}
           onLibrary={onLibrary}
@@ -447,6 +454,13 @@ export function Studio({
           }}
           onPreview={(key) => store.setState({ preview: key })}
           phone={phone}
+          saveState={
+            writing
+              ? { kind: 'saving' }
+              : opened?.document.mine === undefined
+                ? undefined
+                : { kind: 'saved', name: opened.name }
+          }
         />
       ) : null}
     </div>

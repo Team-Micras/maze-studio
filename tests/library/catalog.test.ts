@@ -32,7 +32,7 @@ describe('the catalog', () => {
     expect(new Set(entries.map((entry) => entry.key)).size).toBe(files.length);
   });
 
-  test('lists the items of Mine by their name and profile, leaving out one that does not read', () => {
+  test('lists the items of My mazes by their name and profile, leaving out one that does not read', () => {
     const item: MineMaze = {
       id: 'one',
       name: 'My practice maze',

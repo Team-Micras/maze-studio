@@ -1,5 +1,5 @@
 /**
- * The browser storage the app runs on, opened once: the repository's cache, Mine and the settings. When the
+ * The browser storage the app runs on, opened once: the repository's cache, My mazes and the settings. When the
  * browser gives no IndexedDB, as some private windows do, there is none, and the library shows
  * the built-in snapshot alone.
  *

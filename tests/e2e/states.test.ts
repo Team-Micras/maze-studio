@@ -36,7 +36,7 @@ function scratch(name: string): string {
   return folder;
 }
 
-/** Puts `items` in Mine as stored, beside whatever is there, and reloads the page to show them. */
+/** Puts `items` in My mazes as stored, beside whatever is there, and reloads the page to show them. */
 async function storeMine(
   page: Page,
   items: readonly { id: string; name: string; code: string }[]
@@ -73,7 +73,7 @@ async function storeMine(
 }
 
 async function mineMenu(page: Page, item: string): Promise<void> {
-  await page.getByRole('button', { name: 'Mine and files' }).click();
+  await page.getByRole('button', { name: 'My mazes and files' }).click();
   await page.getByRole('menuitem', { name: item }).click();
 }
 
@@ -114,7 +114,7 @@ describe('Empty and error states (DESIGN.md 12)', () => {
     expect(await page.locator('#maze-list [cmdk-item]').count()).toBe(0);
   });
 
-  test('the first save to Mine where the storage may be cleared says so once', async () => {
+  test('the first save to My mazes where the storage may be cleared says so once', async () => {
     const context = await browser.newContext({ viewport: { width: 1440, height: 900 } });
     contexts.push(context);
     await context.addInitScript(() => {
@@ -131,14 +131,14 @@ describe('Empty and error states (DESIGN.md 12)', () => {
     await page.mouse.click(point.x, point.y);
     await expectSaved(page, sameMaze(toggleWall(maze, EDGE)));
 
-    await expectToast(page, 'This browser may clear Mine. Export a backup from the menu.');
+    await expectToast(page, 'This browser may clear My mazes. Export a backup from the menu.');
     await page.mouse.click(point.x, point.y);
     await expectSaved(page, sameMaze(maze));
     await expect
       .poll(() =>
         page
           .getByRole('region', { name: /^Notifications/ })
-          .locator('li', { hasText: 'may clear Mine' })
+          .locator('li', { hasText: 'may clear My mazes' })
           .count()
       )
       .toBeLessThanOrEqual(1);
@@ -173,7 +173,7 @@ describe('Empty and error states (DESIGN.md 12)', () => {
     expect(await dialog.getByRole('listitem').textContent()).toContain('Broken maze');
   });
 
-  test('Import adds, renames on a clash and skips with the reason, then shows Mine', async () => {
+  test('Import adds, renames on a clash and skips with the reason, then shows My mazes', async () => {
     const page = await openPage(browser, contexts, app);
     const text = repoText(CLASSIC);
     await page.locator('input[data-import]').setInputFiles([

@@ -76,7 +76,7 @@ open borders, which the repository never has.
 - `mine.ts`: `MineLibrary`, the user's mazes with a version per item. A save names the version
   it was made from and is refused over a newer one or a removed item. Every write is announced on
   a `BroadcastChannel`, and the first write asks for `navigator.storage.persist()`.
-- `backup.ts`, `zip.ts`, `file-names.ts`: export of Mine as a stored zip of `.txt` files with an
+- `backup.ts`, `zip.ts`, `file-names.ts`: export of My mazes as a stored zip of `.txt` files with an
   index, and import of `.txt` files and zips, deflated ones included.
 - `catalog.ts`, `maze-names.ts`: one entry per maze for search and filters, with the competition
   and year read from the file name by a fixed list, without guessing.
@@ -141,7 +141,7 @@ free of the limits while it lasts.
   tool), the open board (`OpenBoard`), the editor's islands (`EditorChrome`) and the quick list
   (`MazeList`, `list-order.ts`).
 - `editor/`: editing the maze on screen. `edit-session.ts` is pure: the history, one step per
-  gesture, and the copy in Mine the first edit makes; `use-maze-editor.ts` keeps the session in
+  gesture, and the copy in My mazes the first edit makes; `use-maze-editor.ts` keeps the session in
   `App`, so a route that names a copy just made is never missing, and `mine-writer.ts` copies and
   autosaves, one write at a time. `use-wall-drawing.ts` turns the stage's gestures into strokes,
   `use-cell-drawing.ts` the rectangle, clear area, start and goal (`cellEdit` is pure),
@@ -150,19 +150,19 @@ free of the limits while it lasts.
   tools, the hint and the phone's Edit button. `Checks` (with `checks-summary.ts`) is the chip and
   the panel, `MoreActions` the ⋯ menu and `ShortcutHelp` the `?` dialog. `studio/use-studio-editing.ts`
   wires them into the studio.
-- `editor/share.ts`, `RenameDialog`, `TitleActions`: the link, the download, Save to Mine and Save
+- `editor/share.ts`, `RenameDialog`, `TitleActions`: the link, the download, Save to My mazes and Save
   to folder, and Rename; `studio/use-maze-actions.ts` puts them in the menu and the islands, and
   `library/use-local-folder.ts` keeps the local folder over `src/library/folder.ts`.
 - `changes/`: the session's Changes, `session-changes.ts` (pure, one store per tab) and
   `ChangesChip` and `ChangesPanel`; `studio/use-studio-changes.ts` wires them into the studio, and
   `App` discards.
 - `library/`: `LibraryChrome` draws the library's islands (search, source and category, the
-  "Mine and files" menu of `mine-and-files.tsx`, Open, New maze with `new-maze-button.tsx`,
+  "My mazes and files" menu of `mine-and-files.tsx`, Open, New maze with `new-maze-button.tsx`,
   `new-maze-menu.tsx` and its Custom size dialog, theme, and the credit with the note of
   `update-note.ts`), and `new-maze.ts` in `src/ui` makes the maze it asks for. `use-mine-backup.ts`
   runs Export all and Import (`backup-report.ts` words them, `ReportDialog` shows the reports), and
   `use-repo-updates.ts` asks GitHub once a day and on Check for updates. `EmptyLibrary` is an empty
-  Mine, with New maze, or a search that finds nothing; `LibraryCanvas` mounts the visible rows of `Artboard`s, keeps the active one,
+  My mazes, with New maze, or a search that finds nothing; `LibraryCanvas` mounts the visible rows of `Artboard`s, keeps the active one,
   fades the others while a maze is open, and reveals the one Tab reaches.
 - `islands/`: the island, its buttons, separator and tooltip, the zoom island and the theme button.
 - `board/`: as above, plus `paint-queue.ts`, which paints thumbnails in idle time.
@@ -199,7 +199,7 @@ Every row of DESIGN.md 12, the empty and error states, has a test: the ones slic
 `tests/e2e/states.test.ts` (maze list filter, persistence, Export with a skipped maze, Import,
 failed update check), `tests/e2e/files.test.ts` (Save to folder fails, Open folder absent),
 `tests/ui/new-version.test.tsx`, `tests/ui/library/artboard.test.tsx` (thumbnail not drawn yet)
-and `tests/ui/library/library-screen.test.tsx` (empty Mine, no result); the rest sit with their
+and `tests/ui/library/library-screen.test.tsx` (empty My mazes, no result); the rest sit with their
 feature's tests. `tests/e2e/pwa.test.ts` opens, searches, edits and saves offline after a first
 visit.
 

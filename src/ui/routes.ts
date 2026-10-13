@@ -118,7 +118,7 @@ export function routeHash(route: Route): string {
   }
 }
 
-/** The route of a catalog entry's maze: in the repository, in Mine, or in the opened folder. */
+/** The route of a catalog entry's maze: in the repository, in My mazes, or in the opened folder. */
 export function routeOfEntry(entry: CatalogEntry): Route {
   if (entry.origin === 'mine' && entry.id !== undefined) {
     return { kind: 'mine', id: entry.id };

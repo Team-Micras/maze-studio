@@ -92,7 +92,7 @@ describe('An editing session', () => {
     expect(sessionAnswers(session, 'mine:u-1')).toBe(true);
     expect(sessionAnswers(session, 'repo:classic/other.txt')).toBe(false);
     expect(view.name).toBe('test (edited)');
-    expect(view.detail).toBe('Saved in Mine');
+    expect(view.detail).toBe('Saved in My mazes');
     expect(view.document.trailer).toBe('notes\n');
     expect(view.document.origin?.path).toBe('classic/test.txt');
     expect(view.document.mine).toEqual({ id: 'u-1', version: 1 });
@@ -113,18 +113,18 @@ describe('An editing session', () => {
     expect(followRoute(session, 'mine:u-1')).toBe(session);
   });
 
-  test('of a maze of Mine saves to itself from the start', () => {
+  test('of a maze of My mazes saves to itself from the start', () => {
     const opened: OpenMaze = {
       ...repoMaze(),
       key: 'mine:u-2',
-      name: 'Mine one',
-      detail: 'Saved in Mine',
+      name: 'My mazes one',
+      detail: 'Saved in My mazes',
       document: { trailer: '', profile: 'free', mine: { id: 'u-2', version: 4 } },
     };
     const session = changeMaze(openSession(opened), toggleWall(opened.maze, FIRST));
 
     expect(needsCopy(session)).toBe(false);
-    expect(session.mine).toEqual({ id: 'u-2', version: 4, name: 'Mine one' });
+    expect(session.mine).toEqual({ id: 'u-2', version: 4, name: 'My mazes one' });
     expect(sessionKey(session)).toBe('mine:u-2');
   });
 

@@ -38,8 +38,8 @@ import { appStorage } from './storage';
 import { showToast } from './toasts';
 
 /**
- * The maze on screen at the route before this one, if any: leaving a maze of Mine changed in the
- * session for the library shows Mine, so the flight lands on it.
+ * The maze on screen at the route before this one, if any: leaving a maze of My mazes changed in the
+ * session for the library shows My mazes, so the flight lands on it.
  */
 interface RouteTrail {
   readonly hash: string;
@@ -47,7 +47,7 @@ interface RouteTrail {
   readonly left: string | undefined;
 }
 
-/** The library's filter after leaving a maze of Mine changed in the session (PLAN.md 3.4). */
+/** The library's filter after leaving a maze of My mazes changed in the session (PLAN.md 3.4). */
 const MINE_FILTER: LibraryFilter = { ...DEFAULT_FILTER, source: 'mine' };
 
 /** A maze opened from a file or made new, shown while the URL stays where it was opened. */
@@ -66,8 +66,8 @@ function focusCanvas(): void {
  * The whole app: the studio, showing the library or the maze the route opens, as edited, with the
  * toasts on top. A `.txt` file and a new maze open without a route of their own; the Library button
  * closes them (PLAN.md 3.4). A route that names the copy an edit has just made is not missing
- * while the library loads it. Leaving a maze of Mine changed in the session lands on it, in Mine,
- * and Discard of the Changes panel deletes a copy or puts back a maze of Mine, leaving it if open.
+ * while the library loads it. Leaving a maze of My mazes changed in the session lands on it, in My mazes,
+ * and Discard of the Changes panel deletes a copy or puts back a maze of My mazes, leaving it if open.
  */
 export function App() {
   const route = useRoute();

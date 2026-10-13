@@ -1,5 +1,5 @@
 /**
- * The changes of the session (PLAN.md 3.4, DESIGN.md 6.2): the mazes created or edited in Mine
+ * The changes of the session (PLAN.md 3.4, DESIGN.md 6.2): the mazes created or edited in My mazes
  * since the app loaded in this tab, each with the baseline it is compared with. In memory only; a
  * reload starts another session.
  *
@@ -11,12 +11,12 @@ import { createStore, type StoreApi } from 'zustand/vanilla';
 import { diffMazes, mazesEqual, type Maze, type MazeDiff, type Profile } from '@/maze';
 import type { Route } from '@/ui/routes';
 
-/** How an item came into the session: a copy, a new maze, or a maze of Mine from before. */
+/** How an item came into the session: a copy, a new maze, or a maze of My mazes from before. */
 export type ChangeKind = 'copy' | 'new' | 'existing';
 
-/** A maze of Mine changed in the session. */
+/** A maze of My mazes changed in the session. */
 export interface ChangeItem {
-  /** Its id in Mine. */
+  /** Its id in My mazes. */
   readonly id: string;
   readonly kind: ChangeKind;
   readonly name: string;
@@ -31,14 +31,14 @@ export interface ChangeItem {
   readonly source: Route | undefined;
 }
 
-/** A state of a maze of Mine that a later change is compared with. */
+/** A state of a maze of My mazes that a later change is compared with. */
 export interface SeenState {
   readonly maze: Maze;
   readonly profile: Profile;
 }
 
 /**
- * The session's changes, and the state each maze of Mine is compared with: the first one seen, or
+ * The session's changes, and the state each maze of My mazes is compared with: the first one seen, or
  * the one Keep left.
  */
 export interface SessionChanges {
@@ -54,7 +54,7 @@ export function changeOf(changes: SessionChanges, id: string): ChangeItem | unde
   return changes.items.find((item) => item.id === id);
 }
 
-/** The session with a copy or a new maze, once its first edit has written it to Mine. */
+/** The session with a copy or a new maze, once its first edit has written it to My mazes. */
 export function addCreated(
   changes: SessionChanges,
   item: Omit<ChangeItem, 'kind'> & { readonly kind: 'copy' | 'new' }
@@ -64,7 +64,7 @@ export function addCreated(
     : changes;
 }
 
-/** Notes the state of a maze of Mine when the session first opens it; later states are ignored. */
+/** Notes the state of a maze of My mazes when the session first opens it; later states are ignored. */
 export function noteSeen(changes: SessionChanges, id: string, seen: SeenState): SessionChanges {
   if (changes.firstSeen.has(id)) {
     return changes;
@@ -74,7 +74,7 @@ export function noteSeen(changes: SessionChanges, id: string, seen: SeenState): 
 }
 
 /**
- * The session with a maze of Mine changed by a save of the session, compared with the state noted
+ * The session with a maze of My mazes changed by a save of the session, compared with the state noted
  * for it; nothing changes for a maze already listed or never noted.
  */
 export function addExisting(changes: SessionChanges, id: string, name: string): SessionChanges {
@@ -117,7 +117,7 @@ export function withoutChange(changes: SessionChanges, id: string): SessionChang
 
 /**
  * The session after Keep: the item is out, and `kept`, its state now, is what a later edit of it
- * is compared with, as for a maze of Mine from before the session.
+ * is compared with, as for a maze of My mazes from before the session.
  */
 export function keepChange(changes: SessionChanges, id: string, kept: SeenState): SessionChanges {
   return {

@@ -31,7 +31,7 @@ function item(id: string, name: string, trailer = ''): MineMaze {
   };
 }
 
-describe('the backup of Mine', () => {
+describe('the backup of My mazes', () => {
   test('writes each maze as a .txt with a valid, unique name, and an index, and lists what it could not write', async () => {
     const { zip, skipped } = exportMine([
       item('1', 'My maze ✓', 'notes\n'),

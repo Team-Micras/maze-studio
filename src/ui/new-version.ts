@@ -9,7 +9,7 @@ import { writesSettled } from './editor/pending-writes';
 import { showToast } from './toasts';
 
 /**
- * Offers the version waiting; Reload waits for the writes to Mine on their way (`settle`), then
+ * Offers the version waiting; Reload waits for the writes to My mazes on their way (`settle`), then
  * `reload` activates the new version and reloads the page.
  */
 export function offerReload(reload: () => void, settle: () => Promise<void> = writesSettled): void {

@@ -38,9 +38,9 @@ export interface MoreActionsProps {
   readonly onCopyLink?: () => void;
   /** Shares the link with Web Share, where the browser has it. */
   readonly onShare?: () => void;
-  /** Renames the maze, only for a maze of Mine. */
+  /** Renames the maze, only for a maze of My mazes. */
   readonly onRename?: () => void;
-  /** Deletes the maze from Mine, only for a maze of Mine, on the second select. */
+  /** Deletes the maze from My mazes, only for a maze of My mazes, on the second select. */
   readonly onDelete?: () => void;
   /** Fits the board, as `0` does. */
   readonly onFit: () => void;
@@ -55,7 +55,7 @@ const ITEM = 'rounded-[9px]';
 
 /**
  * The editor's ⋯ menu (DESIGN.md 6, 6.1 and 9.2): Download .txt, Copy link and Share… on a phone,
- * Close outer walls, Changes, Rename and Delete for a maze of Mine, Fit, the theme and the
+ * Close outer walls, Changes, Rename and Delete for a maze of My mazes, Fit, the theme and the
  * shortcut help. Delete
  * takes two selects: the first keeps the menu open and turns it into "Confirm delete". A download
  * and Web Share start once the menu has closed.

@@ -25,7 +25,7 @@ export interface StudioChangesInput {
   /** The maze on screen, as edited, if any. */
   readonly onScreen: OpenMaze | undefined;
   readonly phone: boolean;
-  /** Discards an item: deletes a copy or puts back a maze of Mine, and leaves it if it is open. */
+  /** Discards an item: deletes a copy or puts back a maze of My mazes, and leaves it if it is open. */
   readonly onDiscard: (item: ChangeItem) => void;
 }
 

@@ -20,7 +20,7 @@ export interface SourceFilterProps {
 }
 
 /**
- * Repo or Mine, with Mine's count in mono, and Folder while a folder is open, named with the files
+ * Repo or My mazes, with My mazes' count in mono, and Folder while a folder is open, named with the files
  * it skipped in its tooltip (DESIGN.md 6.1 and 9.1).
  */
 export function SourceFilter({ value, mineCount, folder, onChange }: SourceFilterProps) {
@@ -40,7 +40,7 @@ export function SourceFilter({ value, mineCount, folder, onChange }: SourceFilte
         Repo
       </ToggleGroupItem>
       <ToggleGroupItem className={SEGMENT} value="mine">
-        Mine
+        My mazes
         {mineCount > 0 ? (
           <span className="ml-1.5 font-mono text-[11px] text-muted-foreground tabular-nums">
             {mineCount}

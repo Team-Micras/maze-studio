@@ -3,7 +3,7 @@ import { Hint, IslandButton } from '@/ui/islands/island';
 
 /** The props of {@link TitleActions}. */
 export interface TitleActionsProps {
-  /** Copies a link or a file to Mine; absent when the maze is already there or neither. */
+  /** Copies a link or a file to My mazes; absent when the maze is already there or neither. */
   readonly onSaveToMine?: () => void;
   /** Writes the copy back to its file in the folder, named; absent until the first edit. */
   readonly folderFile?: string;
@@ -11,8 +11,8 @@ export interface TitleActionsProps {
 }
 
 /**
- * The buttons of the title island (DESIGN.md 6 and 6.1): Save to Mine, in ink, for a link or a
- * `.txt` not yet in Mine; Save to folder for a folder maze once its first edit has made the copy.
+ * The buttons of the title island (DESIGN.md 6 and 6.1): Save to My mazes, in ink, for a link or a
+ * `.txt` not yet in My mazes; Save to folder for a folder maze once its first edit has made the copy.
  */
 export function TitleActions({ onSaveToMine, folderFile, onSaveToFolder }: TitleActionsProps) {
   return (
@@ -20,7 +20,7 @@ export function TitleActions({ onSaveToMine, folderFile, onSaveToFolder }: Title
       {onSaveToMine === undefined ? null : (
         <IslandButton onClick={onSaveToMine} variant="default">
           <FloppyDisk aria-hidden size={16} />
-          Save to Mine
+          Save to My mazes
         </IslandButton>
       )}
       {folderFile === undefined || onSaveToFolder === undefined ? null : (

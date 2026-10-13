@@ -7,16 +7,16 @@ the browser on a laptop or a phone, installs, and works offline at a competition
 ## What it does
 
 - **Library.** Every maze of the mazefiles repository on one canvas, with thumbnails, search, and
-  filters by source (Repo, Mine, and a local Folder where the browser can open one) and category.
+  filters by source (Repo, My mazes, and a local Folder where the browser can open one) and category.
   Pan with a drag, zoom with the wheel, a pinch or `+`/`-`.
 - **Viewer.** Opening a maze flies into it and draws it like the real track: walls, posts, start and
   goal, with checks against the classic rules ("Passes", or what is wrong and where).
 - **Editor.** Walls by drag or click, rectangles, clear area, start and goal, with undo and redo,
   a cell cursor on the keyboard, and New maze in the classic, half-size and training sizes or a
-  custom one. The first edit of a repository maze makes a copy in **Mine**, kept in the browser and
+  custom one. The first edit of a repository maze makes a copy in **My mazes**, kept in the browser and
   saved as you go; the Changes chip lists what changed in the session, to discard or keep.
 - **Sharing and files.** Copy link (the maze in the URL), Share… on a phone, Download .txt, Open a
-  `.txt`, Save to folder, and Export all and Import of Mine as a zip.
+  `.txt`, Save to folder, and Export all and Import of My mazes as a zip.
 - **Offline and installable.** After the first visit the app opens, searches, edits and saves with
   no network; it installs as an app, says "New version." with Reload when there is one, and checks
   GitHub for newer mazes once a day and on Check for updates.

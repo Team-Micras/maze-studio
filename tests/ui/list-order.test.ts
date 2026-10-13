@@ -8,7 +8,7 @@ function entry(key: string, origin: 'repo' | 'mine'): CatalogEntry {
 }
 
 describe('listOrder', () => {
-  test('puts Mine first and keeps each origin in catalog order', () => {
+  test('puts My mazes first and keeps each origin in catalog order', () => {
     const entries = [
       entry('r1', 'repo'),
       entry('m1', 'mine'),

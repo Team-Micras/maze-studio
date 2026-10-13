@@ -56,7 +56,7 @@ describe('A new version', () => {
     expect(reload).not.toHaveBeenCalled();
   });
 
-  test('Reload waits for the writes to Mine on their way', async () => {
+  test('Reload waits for the writes to My mazes on their way', async () => {
     const reload = vi.fn<() => void>();
     const { promise: writes, resolve: written } = deferred();
     await render(<Toaster />);

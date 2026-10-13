@@ -9,7 +9,7 @@ import type { SkippedExport, SkippedImport } from '@/library';
 
 import type { Report } from './report-dialog';
 
-/** A maze an import added to Mine: the name it got, and the one it came with when that was taken. */
+/** A maze an import added to My mazes: the name it got, and the one it came with when that was taken. */
 export interface ImportedMaze {
   readonly name: string;
   readonly asked: string;
@@ -45,7 +45,7 @@ export function exportReport(skipped: readonly SkippedExport[]): Report {
 
 /**
  * The report of an import: the mazes added under their own name, those renamed because the name was
- * taken in Mine, and the files left out with the reason.
+ * taken in My mazes, and the files left out with the reason.
  */
 export function importReport(
   added: readonly ImportedMaze[],

@@ -1,6 +1,6 @@
 /**
  * The editing of the maze on screen (PLAN.md 3.4): its history, one step per gesture, and the copy
- * in Mine its first edit makes. Pure: the editor's hook keeps a session and does the writing.
+ * in My mazes its first edit makes. Pure: the editor's hook keeps a session and does the writing.
  *
  * @module
  */
@@ -22,7 +22,7 @@ import {
 } from '@/maze';
 import type { MineCopy, OpenMaze } from '@/ui/open-maze';
 
-/** What Mine calls a copy of a maze that is not in it, before {@link uniqueName}. */
+/** What My mazes calls a copy of a maze that is not in it, before {@link uniqueName}. */
 export function copyName(name: string): string {
   return `${name} (edited)`;
 }
@@ -34,7 +34,7 @@ export interface EditSession {
   readonly history: History<Maze>;
   /** The rules it is checked by, which the Checks panel may change; not a step of undo. */
   readonly profile: Profile;
-  /** The item of Mine it saves to: itself, or the copy its first edit made. */
+  /** The item of My mazes it saves to: itself, or the copy its first edit made. */
   readonly mine?: MineCopy & { readonly name: string };
   /**
    * Whether the route has moved to the copy; after that the original's route opens the original
@@ -43,7 +43,7 @@ export interface EditSession {
   readonly moved?: boolean;
 }
 
-/** A session on `opened`, with nothing to undo; a maze of Mine saves to itself. */
+/** A session on `opened`, with nothing to undo; a maze of My mazes saves to itself. */
 export function openSession(opened: OpenMaze): EditSession {
   const { mine } = opened.document;
   return {
@@ -54,7 +54,7 @@ export function openSession(opened: OpenMaze): EditSession {
   };
 }
 
-/** The route key of the maze the session shows: its item of Mine once it has one. */
+/** The route key of the maze the session shows: its item of My mazes once it has one. */
 export function sessionKey(session: EditSession): string {
   return session.mine === undefined ? session.opened.key : `mine:${session.mine.id}`;
 }
@@ -75,7 +75,7 @@ export function followRoute(session: EditSession, key: string): EditSession {
 }
 
 /**
- * The maze on screen, as it is now, under the name and line of its item of Mine once it has one,
+ * The maze on screen, as it is now, under the name and line of its item of My mazes once it has one,
  * checked by the session's profile; the file it came from counts only while it is unchanged.
  */
 export function sessionView(session: EditSession): OpenMaze {
@@ -86,7 +86,7 @@ export function sessionView(session: EditSession): OpenMaze {
     key: sessionKey(session),
     maze: history.present,
     name: mine?.name ?? opened.name,
-    detail: mine === undefined ? opened.detail : 'Saved in Mine',
+    detail: mine === undefined ? opened.detail : 'Saved in My mazes',
     document: {
       ...document,
       profile: session.profile,
@@ -101,12 +101,12 @@ export function withProfile(session: EditSession, profile: Profile): EditSession
   return profile === session.profile ? session : { ...session, profile };
 }
 
-/** Whether the maze has changed and has no item of Mine to keep the change in yet. */
+/** Whether the maze has changed and has no item of My mazes to keep the change in yet. */
 export function needsCopy(session: EditSession): boolean {
   return session.mine === undefined && !mazesEqual(session.history.present, session.opened.maze);
 }
 
-/** The session with its item of Mine, made or saved at `version`. */
+/** The session with its item of My mazes, made or saved at `version`. */
 export function withMine(
   session: EditSession,
   mine: MineCopy & { readonly name: string }

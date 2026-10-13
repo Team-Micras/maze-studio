@@ -51,7 +51,7 @@ afterEach(async () => {
 });
 
 describe('The editor and the writes on their way', () => {
-  test('writesSettled waits for the copy an edit makes in a slow Mine', async () => {
+  test('writesSettled waits for the copy an edit makes in a slow My mazes', async () => {
     let release: () => void = nothing;
     const held = new Promise<void>((resolve) => {
       release = resolve;

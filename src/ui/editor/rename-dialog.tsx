@@ -8,11 +8,7 @@ import { Dialog, DialogClose, DialogContent, DialogTitle } from '@/ui/primitives
 import { Input } from '@/ui/primitives/input';
 import { Label } from '@/ui/primitives/label';
 
-/** What the dialog says of an empty name (DESIGN.md 12). */
-const EMPTY_NAME = 'Name cannot be empty';
-
-/** What the dialog says of a name another maze of Mine has. */
-const TAKEN_NAME = 'Name already in Mine. Pick another';
+import { nameError } from './name-check';
 
 /** The props of {@link RenameDialog}. */
 export interface RenameDialogProps {
@@ -20,7 +16,7 @@ export interface RenameDialogProps {
   readonly onOpenChange: (open: boolean) => void;
   /** The name now, which the field starts with. */
   readonly name: string;
-  /** The names of the other mazes of Mine, which this one cannot take, compared without case. */
+  /** The names of the other mazes of My mazes, which this one cannot take, compared without case. */
   readonly taken: readonly string[];
   /** Renames; resolves `false` when the name could not be saved. */
   readonly onRename: (name: string) => Promise<boolean>;
@@ -36,12 +32,7 @@ function RenameForm({ name, taken, onDone }: FormProps) {
   const [value, setValue] = useState(name);
   const id = useId();
   const trimmed = value.trim();
-  const error =
-    trimmed === ''
-      ? EMPTY_NAME
-      : taken.some((other) => other.toLowerCase() === trimmed.toLowerCase())
-        ? TAKEN_NAME
-        : undefined;
+  const error = nameError(value, taken);
   const submit = (event: FormEvent<HTMLFormElement>): void => {
     event.preventDefault();
 
@@ -79,7 +70,7 @@ function RenameForm({ name, taken, onDone }: FormProps) {
 
 /**
  * Rename (DESIGN.md 6 and 12): one field, which takes the focus, Enter saves; an empty name says
- * "Name cannot be empty", a name another maze of Mine has says "Name already in Mine", and either
+ * "Name cannot be empty", a name another maze of My mazes has says "Name already in My mazes", and either
  * disables Save.
  */
 export function RenameDialog({ open, onOpenChange, name, taken, onRename }: RenameDialogProps) {

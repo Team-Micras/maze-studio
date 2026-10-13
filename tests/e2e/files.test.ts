@@ -264,26 +264,26 @@ describe('Download .txt', () => {
   });
 });
 
-describe('Save to Mine', () => {
-  test('keeps a link in Mine under its own name, and editing would too', async () => {
+describe('Save to My mazes', () => {
+  test('keeps a link in My mazes under its own name, and editing would too', async () => {
     const { maze } = await repoContent(CLASSIC);
     const code = encodeMazeCode(maze, { name: 'Shared one' });
     const page = await openMaze(`#/m/${code}`);
-    await page.getByRole('button', { name: 'Save to Mine' }).click();
+    await page.getByRole('button', { name: 'Save to My mazes' }).click();
     await page.waitForFunction(() => window.location.hash.startsWith('#/mine/'));
 
     await expect.poll(() => page.locator('h1').textContent()).toBe('Shared one');
     expect(await mineCount(page)).toBe(1);
-    expect(await page.getByRole('button', { name: 'Save to Mine' }).count()).toBe(0);
+    expect(await page.getByRole('button', { name: 'Save to My mazes' }).count()).toBe(0);
   });
 
-  test('keeps a .txt in Mine with its notes', async () => {
+  test('keeps a .txt in My mazes with its notes', async () => {
     const page = await openPage(browser, contexts, app);
     const file = join(scratch('save-'), 'corridor.txt');
     writeFileSync(file, `${repoText(CLASSIC)}Notes\n`);
     await page.locator('input[data-open-file]').setInputFiles(file);
     await waitForMode(page, 'editor');
-    await page.getByRole('button', { name: 'Save to Mine' }).click();
+    await page.getByRole('button', { name: 'Save to My mazes' }).click();
     await page.waitForFunction(() => window.location.hash.startsWith('#/mine/'));
     const item = await storedMine(page, mineId(page) ?? '');
     const decoded = item === undefined ? undefined : decodeMazeCode(item.code);
@@ -371,7 +371,28 @@ describe('Rename and Delete', () => {
     await expectSaved(page, sameMaze(maze));
   });
 
-  test('Delete asks a second select, then deletes and opens the library on Mine', async () => {
+  test('a click on the title renames from there, and Escape leaves the name as it was', async () => {
+    const { maze } = await repoContent(CLASSIC);
+    const page = await openMaze(`#/repo/${CLASSIC}`);
+    await clickEdge(page, maze, EDGE);
+    await expectSaved(page, sameMaze(toggleWall(maze, EDGE)));
+    await page.getByRole('button', { name: 'AAMC15Maze (edited)' }).click();
+    const field = page.getByRole('textbox', { name: 'Maze name' });
+    await field.fill('Draft name');
+    await page.keyboard.press('Escape');
+
+    await expect.poll(() => page.locator('h1').textContent()).toBe('AAMC15Maze (edited)');
+    await page.getByRole('button', { name: 'AAMC15Maze (edited)' }).click();
+    await field.fill('Practice run');
+    await page.keyboard.press('Enter');
+
+    await expect.poll(() => page.locator('h1').textContent()).toBe('Practice run');
+    await expect
+      .poll(async () => (await storedMine(page, mineId(page) ?? ''))?.name)
+      .toBe('Practice run');
+  });
+
+  test('Delete asks a second select, then deletes and opens the library on My mazes', async () => {
     const { maze } = await repoContent(CLASSIC);
     const page = await openMaze(`#/repo/${CLASSIC}`);
     await clickEdge(page, maze, EDGE);
@@ -399,7 +420,7 @@ describe('A local folder', () => {
       'b.txt': repoText(CLASSIC),
       'bad.txt': 'no',
     });
-    await page.getByRole('button', { name: 'Mine and files' }).click();
+    await page.getByRole('button', { name: 'My mazes and files' }).click();
     await page.getByRole('menuitem', { name: 'Open folder…' }).click();
 
     await page.waitForFunction(() => window.location.hash === '#/?src=folder');
@@ -429,7 +450,7 @@ describe('A local folder', () => {
     const page = await context.newPage();
     await page.goto(app);
     await fillFolder(page, { 'a.txt': repoText(CLASSIC) });
-    await page.getByRole('button', { name: 'Mine and files' }).click();
+    await page.getByRole('button', { name: 'My mazes and files' }).click();
     await page.getByRole('menuitem', { name: 'Open folder…' }).click();
     await page.locator('a[data-artboard="folder:a.txt"]').click();
     await waitForMode(page, 'editor');
@@ -460,13 +481,13 @@ describe('A local folder', () => {
     await expect.poll(() => page.locator('h1').textContent()).toBe('a');
   });
 
-  test('a failed Save to folder says why and keeps the copy in Mine', async () => {
+  test('a failed Save to folder says why and keeps the copy in My mazes', async () => {
     const { maze } = await repoContent(CLASSIC);
     const context = await folderContext();
     const page = await context.newPage();
     await page.goto(app);
     await fillFolder(page, { 'a.txt': repoText(CLASSIC) });
-    await page.getByRole('button', { name: 'Mine and files' }).click();
+    await page.getByRole('button', { name: 'My mazes and files' }).click();
     await page.getByRole('menuitem', { name: 'Open folder…' }).click();
     await page.locator('a[data-artboard="folder:a.txt"]').click();
     await waitForMode(page, 'editor');
@@ -490,7 +511,7 @@ describe('A local folder', () => {
     const page = await context.newPage();
     await page.goto(app);
     await fillFolder(page, { 'a.txt': repoText(CLASSIC) });
-    await page.getByRole('button', { name: 'Mine and files' }).click();
+    await page.getByRole('button', { name: 'My mazes and files' }).click();
     await page.getByRole('menuitem', { name: 'Open folder…' }).click();
     await page.locator('a[data-artboard="folder:a.txt"]').click();
     await waitForMode(page, 'editor');
@@ -526,7 +547,7 @@ describe('A local folder', () => {
     const page = await context.newPage();
     await page.goto(app);
     await fillFolder(page, { 'a.txt': repoText(CLASSIC) });
-    await page.getByRole('button', { name: 'Mine and files' }).click();
+    await page.getByRole('button', { name: 'My mazes and files' }).click();
     await page.getByRole('menuitem', { name: 'Open folder…' }).click();
     await expect.poll(() => page.locator('a[data-artboard^="folder:"]').count()).toBe(1);
 
@@ -543,7 +564,7 @@ describe('A local folder', () => {
     await page.goto(app);
     await page.locator('a[data-artboard]').first().waitFor();
 
-    await page.getByRole('button', { name: 'Mine and files' }).click();
+    await page.getByRole('button', { name: 'My mazes and files' }).click();
     await page.getByRole('menuitem', { name: 'Check for updates' }).waitFor();
 
     expect(await page.getByRole('menuitem', { name: 'Open folder…' }).count()).toBe(0);

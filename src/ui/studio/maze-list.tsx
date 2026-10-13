@@ -10,6 +10,7 @@ import {
 
 import type { CatalogEntry } from '@/library';
 import { ThumbnailCanvas } from '@/ui/board/thumbnail-canvas';
+import { CheckCircle } from '@/ui/icons';
 import { useInView } from '@/ui/hooks/use-in-view';
 import { categoryLabel, sizeLabel } from '@/ui/labels';
 import type { Library } from '@/ui/library/use-library';
@@ -21,6 +22,7 @@ import {
   CommandList,
 } from '@/ui/primitives/command';
 import { Sheet, SheetContent, SheetDescription, SheetTitle } from '@/ui/primitives/sheet';
+import { Verbatim } from '@/ui/verbatim';
 
 import { MAZE_LIST_ID } from './editor-chrome';
 import { listOrder, steppedKey } from './list-order';
@@ -40,7 +42,17 @@ export interface MazeListProps {
   readonly onPin: (key: string) => void;
   /** Closes the list and puts back the maze that was pinned. */
   readonly onCancel: () => void;
+  /**
+   * Where the edits of the pinned maze stand, shown under the list so that switching mazes never
+   * leaves a doubt about them: writes on their way, or the name it is saved under in My mazes.
+   */
+  readonly saveState?: SaveState | undefined;
 }
+
+/** Where the edits of the pinned maze stand. */
+export type SaveState =
+  | { readonly kind: 'saving' }
+  | { readonly kind: 'saved'; readonly name: string };
 
 interface RowProps {
   readonly entry: CatalogEntry;
@@ -68,7 +80,9 @@ function Row({ entry, library, root }: RowProps) {
           {entry.name}
         </b>
         <small className="truncate text-[11px] text-muted-foreground">
-          {entry.origin === 'mine' ? 'Mine' : (entry.competition ?? categoryLabel(entry.category))}
+          {entry.origin === 'mine'
+            ? 'My mazes'
+            : (entry.competition ?? categoryLabel(entry.category))}
         </small>
       </span>
       <span className="flex-none font-mono text-[11px] text-muted-foreground tabular-nums">
@@ -92,7 +106,7 @@ interface ItemsProps {
 const Items = memo(function Items({ entries, library, root, onPin }: ItemsProps) {
   return entries.map((entry) => (
     <CommandItem
-      className="gap-2.5 rounded-[9px] px-2 py-1.5 [contain-intrinsic-size:auto_48px] [content-visibility:auto]"
+      className="gap-2.5 rounded-[9px] px-2 py-1.5 hover:bg-muted/60 [contain-intrinsic-size:auto_48px] [content-visibility:auto]"
       key={entry.key}
       onSelect={() => onPin(entry.key)}
       value={entry.key}
@@ -103,14 +117,22 @@ const Items = memo(function Items({ entries, library, root, onPin }: ItemsProps)
 });
 
 /**
- * The quick maze list (PLAN.md 3.4, DESIGN.md 6): Mine first, then the repository, filtered by
+ * The quick maze list (PLAN.md 3.4, DESIGN.md 6): My mazes first, then the repository, filtered by
  * the library's own search. Moving the highlight with the arrows, or with `[` and `]`, which never
  * reach the filter, previews that maze in place; Enter or a click pins it and closes; Esc puts
  * back the pinned one and closes. A drawer at the left on a notebook, with the filter focused; a
  * sheet on a phone, where the list itself takes the focus, so the arrows work and the on-screen
  * keyboard does not cover the list until the filter is tapped. Row thumbnails are drawn as they scroll into view.
  */
-export function MazeList({ library, current, phone, onPreview, onPin, onCancel }: MazeListProps) {
+export function MazeList({
+  library,
+  current,
+  phone,
+  onPreview,
+  onPin,
+  onCancel,
+  saveState,
+}: MazeListProps) {
   const [query, setQuery] = useState('');
   const [list, setList] = useState<HTMLDivElement | null>(null);
   const input = useRef<HTMLInputElement>(null);
@@ -148,6 +170,7 @@ export function MazeList({ library, current, phone, onPreview, onPin, onCancel }
   const command = (
     <Command
       className="h-full bg-transparent outline-none"
+      disablePointerSelection
       label="Maze list"
       onValueChange={(key) => {
         if (keys.includes(key)) {
@@ -164,12 +187,27 @@ export function MazeList({ library, current, phone, onPreview, onPin, onCancel }
         onValueChange={setQuery}
         placeholder="Filter mazes…"
         ref={input}
+        wrapperClassName="mx-1.5 mt-1.5 rounded-[10px] border-b-0 bg-muted/60"
         value={query}
       />
       <CommandList className="max-h-none flex-1 p-1" ref={setList}>
         <CommandEmpty>No maze matches</CommandEmpty>
         <Items entries={entries} library={library} onPin={pin} root={list} />
       </CommandList>
+      <output
+        className="flex h-9 flex-none items-center gap-1.5 border-t px-3 text-xs text-muted-foreground empty:hidden"
+        data-save-state=""
+      >
+        {saveState?.kind === 'saving' ? 'Saving to My mazes…' : null}
+        {saveState?.kind === 'saved' ? (
+          <>
+            <CheckCircle aria-hidden className="flex-none text-success" size={14} />
+            <span className="truncate">
+              <Verbatim text={`${saveState.name} is saved in My mazes`} verbatim={saveState.name} />
+            </span>
+          </>
+        ) : null}
+      </output>
     </Command>
   );
 

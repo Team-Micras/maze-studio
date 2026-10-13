@@ -5,6 +5,7 @@ import { chromium, type Browser, type BrowserContext, type Page } from 'playwrig
 import { afterAll, beforeAll, describe, expect, inject, test } from 'vitest';
 
 import {
+  borderedMaze,
   edgeOfCell,
   encodeMazeCode,
   hasWall,
@@ -282,8 +283,8 @@ describe('The wall tool', () => {
   });
 });
 
-describe('The first edit of a maze that is not in Mine', () => {
-  test('of a repository maze copies it to Mine as "<name> (edited)", replacing the route, and leaves the original', async () => {
+describe('The first edit of a maze that is not in My mazes', () => {
+  test('of a repository maze copies it to My mazes as "<name> (edited)", replacing the route, and leaves the original', async () => {
     const { maze, trailer } = await repoContent(CLASSIC);
     const page = await openMaze(CLASSIC);
     const length = await page.evaluate(() => window.history.length);
@@ -393,6 +394,85 @@ describe('The first edit of a maze that is not in Mine', () => {
   });
 });
 
+describe('The Library button while editing', () => {
+  test.each([
+    ['a new maze', 'new'],
+    ['a .txt file', 'file'],
+  ] as const)('leaves %s once its first edit put it in My mazes', async (_name, kind) => {
+    const page = await openPage(browser, contexts, app);
+    const { maze: classic } = await repoContent(CLASSIC);
+    const maze = kind === 'new' ? borderedMaze(16, 16) : classic;
+
+    if (kind === 'new') {
+      await page.getByRole('button', { name: 'New maze' }).click();
+      await page.getByRole('menuitem', { name: 'Training, 16 × 16' }).click();
+    } else {
+      const file = join(mkdtempSync(join(ROOT, 'node_modules', '.tmp', 'library-')), 'a.txt');
+      writeFileSync(file, repoText(CLASSIC));
+      await page.locator('input[data-open-file]').setInputFiles(file);
+    }
+
+    await waitForMode(page, 'editor');
+    const edge: Edge = { direction: 'horizontal', x: 4, y: 5 };
+    const point = await pagePoint(page, maze, edgeMiddle(edge));
+    await page.mouse.click(point.x, point.y);
+    await expectSaved(page, sameMaze(toggleWall(maze, edge)));
+    await page.getByRole('button', { name: 'Back to the library' }).click();
+
+    await waitForMode(page, 'library');
+    await page.waitForTimeout(800);
+    expect(await page.locator('[data-studio-mode]').getAttribute('data-studio-mode')).toBe(
+      'library'
+    );
+    expect(new URL(page.url()).hash).toMatch(/^#\/(\?.*)?$/);
+    await page.goForward();
+    await page.waitForFunction(() => window.location.hash.startsWith('#/mine/'));
+    await waitForMode(page, 'editor');
+  });
+
+  test('leaves a repository maze opened from the library after its first edit', async () => {
+    const { maze } = await repoContent(CLASSIC);
+    const page = await openPage(browser, contexts, app);
+    await page.locator(`a[data-artboard="repo:${CLASSIC}"]`).click();
+    await waitForMode(page, 'editor');
+    const edge: Edge = { direction: 'horizontal', x: 4, y: 5 };
+    const point = await pagePoint(page, maze, edgeMiddle(edge));
+    await page.mouse.click(point.x, point.y);
+    await expectSaved(page, sameMaze(toggleWall(maze, edge)));
+    await page.getByRole('button', { name: 'Back to the library' }).click();
+
+    await waitForMode(page, 'library');
+  });
+});
+
+describe('The maze list after an edit', () => {
+  test('says the edited maze is saved in My mazes, and keeps saying so while the arrows switch', async () => {
+    const { maze } = await repoContent(CLASSIC);
+    const page = await openMaze(CLASSIC);
+    const edge: Edge = { direction: 'horizontal', x: 4, y: 5 };
+    const point = await pagePoint(page, maze, edgeMiddle(edge));
+    await page.mouse.click(point.x, point.y);
+    await expectSaved(page, sameMaze(toggleWall(maze, edge)));
+    await page.keyboard.press('l');
+    const state = page.locator('[data-save-state]');
+
+    await expect.poll(() => state.textContent()).toBe('AAMC15Maze (edited) is saved in My mazes');
+    await page.keyboard.press('ArrowDown');
+    await page.waitForFunction(
+      () => document.querySelector('h1')?.textContent !== 'AAMC15Maze (edited)'
+    );
+    expect(await state.textContent()).toBe('AAMC15Maze (edited) is saved in My mazes');
+  });
+
+  test('says nothing for a maze not edited', async () => {
+    const page = await openMaze(CLASSIC);
+    await page.keyboard.press('l');
+    await page.getByPlaceholder('Filter mazes…').waitFor();
+
+    expect(await page.locator('[data-save-state]').textContent()).toBe('');
+  });
+});
+
 describe('The keyboard cursor', () => {
   test('on the canvas, the first arrow shows the cursor and the next ones move it', async () => {
     const page = await openMaze(CLASSIC);
@@ -495,7 +575,7 @@ describe('Editing on a phone', () => {
 
     await tapEdge();
     expect(await page.getByRole('toolbar', { name: 'Tools' }).count()).toBe(0);
-    await page.getByRole('button', { name: 'Edit' }).tap();
+    await page.getByRole('button', { name: 'Edit', exact: true }).tap();
     await page.getByRole('toolbar', { name: 'Tools' }).waitFor();
 
     await tapEdge();
@@ -513,7 +593,7 @@ describe('Editing on a phone', () => {
     await expectSaved(page, sameMaze(toggleWall(maze, edge)));
 
     await page.getByRole('button', { name: 'Done editing, back to viewing' }).tap();
-    await page.getByRole('button', { name: 'Edit' }).waitFor();
+    await page.getByRole('button', { name: 'Edit', exact: true }).waitFor();
     expect(await page.getByRole('toolbar', { name: 'Tools' }).count()).toBe(0);
   });
 
@@ -522,7 +602,7 @@ describe('Editing on a phone', () => {
     async (path) => {
       const { maze } = await repoContent(path);
       const page = await openMaze(path, PHONE);
-      await page.getByRole('button', { name: 'Edit' }).tap();
+      await page.getByRole('button', { name: 'Edit', exact: true }).tap();
       await page.getByRole('toolbar', { name: 'Tools' }).waitFor();
       const edge: Edge = {
         direction: 'vertical',
@@ -559,7 +639,7 @@ describe('Editing on a phone', () => {
   test('in edit mode, a second finger takes back the walls the first one painted', async () => {
     const { maze } = await repoContent(CLASSIC);
     const page = await openMaze(CLASSIC, PHONE);
-    await page.getByRole('button', { name: 'Edit' }).tap();
+    await page.getByRole('button', { name: 'Edit', exact: true }).tap();
 
     for (let zoom = 0; zoom < 3; zoom++) {
       await page.getByRole('button', { name: 'Zoom in' }).tap();
@@ -610,7 +690,7 @@ describe('Editing on a phone', () => {
   test('in edit mode, a finger previews its slot, and a second one pans and leaves the walls alone', async () => {
     const { maze } = await repoContent(CLASSIC);
     const page = await openMaze(CLASSIC, PHONE);
-    await page.getByRole('button', { name: 'Edit' }).tap();
+    await page.getByRole('button', { name: 'Edit', exact: true }).tap();
 
     for (let zoom = 0; zoom < 3; zoom++) {
       await page.getByRole('button', { name: 'Zoom in' }).tap();

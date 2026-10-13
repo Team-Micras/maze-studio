@@ -14,25 +14,25 @@ import type { Route } from './routes';
 /** The largest `.txt` file the app opens, 1 MiB: a 64×64 maze is under 40 kB. */
 export const MAX_FILE_BYTES = 1024 * 1024;
 
-/** The item of Mine a maze is, and the version on screen. */
+/** The item of My mazes a maze is, and the version on screen. */
 export interface MineCopy {
   readonly id: string;
   readonly version: number;
 }
 
-/** What a maze carries besides its walls, which a copy in Mine keeps (PLAN.md 3.1). */
+/** What a maze carries besides its walls, which a copy in My mazes keeps (PLAN.md 3.1). */
 export interface MazeDocument {
   /** The text after the grid. */
   readonly trailer: string;
-  /** The rules it is checked by: the repository folder's, Mine's own, or free. */
+  /** The rules it is checked by: the repository folder's, My mazes' own, or free. */
   readonly profile: Profile;
   /** The repository file it is or was copied from. */
   readonly origin?: MineOrigin;
-  /** The item of Mine it is, when it is one. */
+  /** The item of My mazes it is, when it is one. */
   readonly mine?: MineCopy;
   /** The file it was read from, for the rules of the file, while it is unchanged. */
   readonly source?: MazeTextSource;
-  /** Whether it was made in the app, so that its copy in Mine keeps its name. */
+  /** Whether it was made in the app, so that its copy in My mazes keeps its name. */
   readonly created?: boolean;
 }
 
@@ -131,7 +131,10 @@ export function openingOf(
           message: `No maze at ${route.file} in the folder. Pick one from the library`,
           verbatim: route.file,
         }
-      : { status: 'missing', message: 'That maze is no longer in Mine. Pick one from the library' };
+      : {
+          status: 'missing',
+          message: 'That maze is no longer in My mazes. Pick one from the library',
+        };
   }
 
   return { status: 'open', open };
@@ -155,7 +158,7 @@ export function openEntry(entry: CatalogEntry, library: Library): OpenMaze | und
     name: entry.name,
     detail:
       entry.origin === 'mine'
-        ? 'Saved in Mine'
+        ? 'Saved in My mazes'
         : entry.origin === 'folder'
           ? `In the folder ${library.folder?.name ?? ''}`
           : `${categoryLabel(entry.category)}, ${sizeLabel(entry.width, entry.height)}`,

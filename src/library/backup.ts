@@ -1,5 +1,5 @@
 /**
- * The backup of "Mine": every maze as a `.txt` file in one zip, with an index that keeps what a
+ * The backup of "My mazes": every maze as a `.txt` file in one zip, with an index that keeps what a
  * `.txt` cannot (the name as typed, the profile, the dates and the origin), and the import that
  * reads such a zip back, or any `.txt` files and zips of them.
  *
@@ -38,7 +38,7 @@ export interface SkippedImport {
   readonly message: string;
 }
 
-/** What an import read: drafts for Mine, and what it left out. */
+/** What an import read: drafts for My mazes, and what it left out. */
 export interface ImportReport {
   readonly drafts: readonly MineDraft[];
   readonly skipped: readonly SkippedImport[];
@@ -197,7 +197,7 @@ async function expand(
 }
 
 /**
- * Reads `.txt` files and zips of them, such as a backup, into drafts for Mine. Files that are not
+ * Reads `.txt` files and zips of them, such as a backup, into drafts for My mazes. Files that are not
  * `.txt`, or do not read as a maze, are left out with the reason.
  */
 export async function readImport(files: readonly ImportFile[]): Promise<ImportReport> {

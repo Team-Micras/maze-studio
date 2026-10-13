@@ -2,7 +2,8 @@ import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react
 
 import type { Maze, Profile } from '@/maze';
 import { reloadLibrary } from '@/ui/library/use-library';
-import { replaceRoute } from '@/ui/navigation';
+import { pushRoute, replaceRoute } from '@/ui/navigation';
+import type { Route } from '@/ui/routes';
 import {
   addCreated,
   addExisting,
@@ -33,7 +34,7 @@ import {
   type EditSession,
 } from './edit-session';
 import { MineWriter } from './mine-writer';
-import { trackWriter } from './pending-writes';
+import { noteWrites, trackWriter } from './pending-writes';
 
 /** What the editor needs to know about the app's route. */
 export interface MazeEditorInput {
@@ -67,17 +68,17 @@ export interface MazeEditor {
   readonly cancel: () => void;
   readonly undo: () => void;
   readonly redo: () => void;
-  /** Checks the maze by `profile` from now on, saved with it once it is in Mine. */
+  /** Checks the maze by `profile` from now on, saved with it once it is in My mazes. */
   readonly setProfile: (profile: Profile) => void;
-  /** Whether the maze is a link or a file not yet in Mine, which Save to Mine copies there. */
+  /** Whether the maze is a link or a file not yet in My mazes, which Save to My mazes copies there. */
   readonly canSaveToMine: boolean;
-  /** The file of the opened folder the maze came from, once its copy is in Mine. */
+  /** The file of the opened folder the maze came from, once its copy is in My mazes. */
   readonly folderFile: string | undefined;
-  /** Copies a link or a file to Mine under its own name, edited or not. */
+  /** Copies a link or a file to My mazes under its own name, edited or not. */
   readonly saveToMine: () => void;
-  /** Renames the maze's item of Mine; `false` when Mine refused it. */
+  /** Renames the maze's item of My mazes; `false` when My mazes refused it. */
   readonly rename: (name: string) => Promise<boolean>;
-  /** The version of item `id` of Mine this tab saved last, if it saved one. */
+  /** The version of item `id` of My mazes this tab saved last, if it saved one. */
   readonly savedVersion: (id: string) => number | undefined;
   /** Starts a new session on `open`, as when Discard has put back the maze on screen. */
   readonly reopen: (open: OpenMaze) => void;
@@ -86,7 +87,7 @@ export interface MazeEditor {
 /** What the editor says while another tab holds a newer version (DESIGN.md 12). */
 export const NEWER_ELSEWHERE = 'Opened in another tab. Reload to edit.';
 
-const MAY_BE_CLEARED = 'This browser may clear Mine. Export a backup from the menu.';
+const MAY_BE_CLEARED = 'This browser may clear My mazes. Export a backup from the menu.';
 
 function sessionFor(
   session: EditSession | undefined,
@@ -105,7 +106,7 @@ function sessionFor(
 
 /**
  * The editing of the maze on screen (PLAN.md 3.4): one step of undo per gesture, a history that
- * starts again with every other maze, and autosave. The first edit of a maze that is not in Mine
+ * starts again with every other maze, and autosave. The first edit of a maze that is not in My mazes
  * copies it there as "<name> (edited)" and replaces the route with the copy's, without adding a
  * history entry; the original never changes.
  */
@@ -143,7 +144,13 @@ export function useMazeEditor(input: MazeEditorInput): MazeEditor {
         );
 
         if (openedNow.current === opened) {
-          replaceRoute({ kind: 'mine', id: item.id });
+          const route: Route = { kind: 'mine', id: item.id };
+
+          if (routeOfKey(opened.key) === undefined) {
+            pushRoute(route);
+          } else {
+            replaceRoute(route);
+          }
         }
 
         reloadLibrary();
@@ -160,7 +167,7 @@ export function useMazeEditor(input: MazeEditorInput): MazeEditor {
       refused: (opened) => setRefused((before) => new Set([...before, opened])),
       failed: (error) => {
         showToast(
-          `Could not save to Mine (${error instanceof Error ? error.message : String(error)}). Download .txt to keep it`
+          `Could not save to My mazes (${error instanceof Error ? error.message : String(error)}). Download .txt to keep it`
         );
       },
     });
@@ -181,8 +188,11 @@ export function useMazeEditor(input: MazeEditorInput): MazeEditor {
   }, [opened]);
 
   useEffect(() => {
-    if (session !== undefined && !editing(session) && !readOnly) {
-      writer.current?.write(session);
+    const mineWriter = writer.current;
+
+    if (session !== undefined && !editing(session) && !readOnly && mineWriter !== undefined) {
+      mineWriter.write(session);
+      noteWrites(mineWriter.idle());
     }
   }, [session, readOnly]);
 
@@ -243,8 +253,10 @@ export function useMazeEditor(input: MazeEditorInput): MazeEditor {
     saveToMine: () => {
       const now = latest.current;
 
-      if (now !== undefined) {
-        void writer.current?.saveToMine(now);
+      const mineWriter = writer.current;
+
+      if (now !== undefined && mineWriter !== undefined) {
+        noteWrites(mineWriter.saveToMine(now));
       }
     },
     rename: async (name) => {
