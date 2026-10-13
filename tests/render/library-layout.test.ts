@@ -2,18 +2,18 @@ import { describe, expect, test } from 'vitest';
 
 import {
   artboardIn,
-  cellOf,
-  constrainCamera,
+  cameraOnto,
   LIBRARY_INSETS,
   libraryColumns,
-  libraryGrid,
-  libraryLimits,
+  libraryLayout,
+  libraryRect,
   mountedRows,
   revealCamera,
+  revealScroll,
   rowOf,
+  SLOT_GAP_X,
+  SLOT_GAP_Y,
   toScreen,
-  zoomAround,
-  zoomOf,
 } from '@/render';
 
 const SQUARE = { width: 16, height: 16 };
@@ -31,110 +31,106 @@ describe('libraryColumns', () => {
   });
 });
 
-describe('libraryGrid', () => {
-  test('places artboards left to right, 640 wide with gaps of 200 and 210', () => {
-    const grid = libraryGrid([SQUARE, SQUARE, SQUARE, SQUARE, SQUARE], 2);
+describe('libraryLayout', () => {
+  test('fills the width between the insets with its columns and their gaps', () => {
+    const layout = libraryLayout(1440, 'notebook', 12);
+    const span = layout.columns * layout.side + (layout.columns - 1) * layout.side * SLOT_GAP_X;
 
-    expect(grid.rows).toBe(3);
-    expect(grid.width).toBe(2 * 640 + 200);
-    expect(grid.height).toBe(3 * 640 + 2 * 210);
-    expect(grid.places[1]).toEqual({ x: 840, y: 0, width: 640, height: 640 });
-    expect(grid.places[4]).toEqual({ x: 0, y: 1700, width: 640, height: 640 });
-    expect(rowOf(4, grid)).toBe(2);
+    expect(layout.columns).toBe(5);
+    expect(layout.rows).toBe(3);
+    expect(span).toBeCloseTo(1440 - NOTEBOOK.left - NOTEBOOK.right, 9);
+    expect(layout.columnPitch).toBeCloseTo(layout.side * (1 + SLOT_GAP_X), 9);
+    expect(layout.rowPitch).toBeCloseTo(layout.side * (1 + SLOT_GAP_Y), 9);
   });
 
-  test('keeps the longest side 640 and sets a narrow maze on the bottom of its slot, centred', () => {
-    const grid = libraryGrid(
-      [
-        { width: 10, height: 5 },
-        { width: 5, height: 10 },
-      ],
-      2
+  test('is as tall as its rows, their gaps and the insets, with one row when empty', () => {
+    const layout = libraryLayout(390, 'phone', 5);
+    const empty = libraryLayout(390, 'phone', 0);
+    const phone = LIBRARY_INSETS.phone;
+
+    expect(layout.rows).toBe(3);
+    expect(layout.height).toBeCloseTo(
+      phone.top + 3 * layout.side + 2 * layout.side * SLOT_GAP_Y + phone.bottom,
+      9
     );
-
-    expect(grid.places[0]).toEqual({ x: 0, y: 320, width: 640, height: 320 });
-    expect(grid.places[1]).toEqual({ x: 840 + 160, y: 0, width: 320, height: 640 });
-  });
-
-  test('has one row even when empty', () => {
-    expect(libraryGrid([], 4).rows).toBe(1);
+    expect(empty.rows).toBe(1);
   });
 });
 
-describe('cellOf and artboardIn', () => {
-  test('put the cell of an index in the grid and the artboard of a size in its cell', () => {
-    expect(cellOf(7, 5)).toEqual({ x: 2 * 840, y: 850 });
-    expect(artboardIn({ x: 100, y: 50 }, { width: 10, height: 5 })).toEqual({
-      x: 100,
-      y: 50 + 320,
+describe('libraryRect and artboardIn', () => {
+  test('put a maze left to right and then down, its slot from the insets', () => {
+    const layout = libraryLayout(1440, 'notebook', 12);
+    const sixth = libraryRect(layout, 6, SQUARE);
+
+    expect(libraryRect(layout, 0, SQUARE)).toEqual({
+      x: NOTEBOOK.left,
+      y: NOTEBOOK.top,
+      width: layout.side,
+      height: layout.side,
+    });
+    expect(sixth.x).toBeCloseTo(NOTEBOOK.left + layout.columnPitch, 9);
+    expect(sixth.y).toBeCloseTo(NOTEBOOK.top + layout.rowPitch, 9);
+  });
+
+  test('keep the longest side and stand a narrow maze on the bottom of its slot, centred', () => {
+    expect(artboardIn({ x: 0, y: 0 }, { width: 8, height: 16 }, 200)).toEqual({
+      x: 50,
+      y: 0,
+      width: 100,
+      height: 200,
+    });
+    expect(artboardIn({ x: 10, y: 20 }, { width: 16, height: 8 })).toEqual({
+      x: 10,
+      y: 340,
       width: 640,
       height: 320,
     });
   });
 });
 
-describe('libraryLimits', () => {
-  const grid = libraryGrid(
-    Array.from({ length: 581 }, () => SQUARE),
-    5
-  );
-  const limits = libraryLimits(grid, VIEWPORT, NOTEBOOK);
-
-  test('fit the grid width between the side insets, top aligned', () => {
-    expect(toScreen(limits.fit, { x: 0, y: 0 })).toEqual({ x: 56, y: 112 });
-    expect(toScreen(limits.fit, { x: grid.width, y: 0 }).x).toBeCloseTo(1440 - 56, 9);
-  });
-
-  test('scroll the grid down to its end and no further', () => {
-    const end = constrainCamera({ ...limits.fit, y: -1e9 }, limits);
-    const start = constrainCamera({ ...limits.fit, y: 1e9 }, limits);
-
-    expect(toScreen(end, { x: 0, y: grid.height }).y).toBeCloseTo(900 - 72, 6);
-    expect(start.y).toBe(112);
-  });
-
-  test('zoom from half to four times the fit, centring a grid narrower than the room', () => {
-    const out = zoomAround(limits.fit, 0.01, { x: 720, y: 450 }, limits);
-
-    expect(zoomOf(out, limits)).toBeCloseTo(0.5, 9);
-    expect(toScreen(out, { x: grid.width / 2, y: 0 }).x).toBeCloseTo(720, 9);
-    expect(zoomOf(zoomAround(limits.fit, 100, { x: 720, y: 450 }, limits), limits)).toBeCloseTo(
-      4,
-      9
-    );
-  });
-
-  test('keep a grid shorter than the room at the top inset', () => {
-    const short = libraryLimits(libraryGrid([SQUARE, SQUARE], 5), VIEWPORT, NOTEBOOK);
-
-    expect(constrainCamera({ ...short.fit, y: 500 }, short).y).toBe(112);
-  });
-});
-
 describe('mountedRows', () => {
-  const grid = libraryGrid(
-    Array.from({ length: 581 }, () => SQUARE),
-    5
-  );
+  const layout = libraryLayout(1440, 'notebook', 100);
 
   test('are the rows on screen and one more above and below', () => {
-    const k = 0.25;
-    const camera = { x: 0, y: -10 * 850 * k, k };
-    const shown = { first: 10, last: Math.ceil((10 * 850 + 900 / k) / 850) - 1 };
-
-    expect(mountedRows(camera, VIEWPORT, grid)).toEqual({
-      first: shown.first - 1,
-      last: shown.last + 1,
+    expect(mountedRows(layout, 0, 900)).toEqual({ first: 0, last: 3 });
+    expect(mountedRows(layout, NOTEBOOK.top + 6 * layout.rowPitch + 1, 900)).toEqual({
+      first: 5,
+      last: 10,
     });
   });
 
   test('count a row whose bottom edge shows, and stay within the grid', () => {
-    const k = 0.25;
-    const peeking = { x: 0, y: -(10 * 850 + 600) * k, k };
+    const justBelow = NOTEBOOK.top + 3 * layout.rowPitch + layout.side - 1;
 
-    expect(mountedRows(peeking, VIEWPORT, grid).first).toBe(9);
-    expect(mountedRows({ x: 0, y: 112, k }, VIEWPORT, grid).first).toBe(0);
-    expect(mountedRows({ x: 0, y: -1e7, k }, VIEWPORT, grid).last).toBe(grid.rows - 1);
+    expect(mountedRows(layout, justBelow, 900).first).toBe(2);
+    expect(mountedRows(layout, layout.height, 900).last).toBe(layout.rows - 1);
+    expect(rowOf(11, layout)).toBe(2);
+  });
+});
+
+describe('revealScroll', () => {
+  test('leaves the scroll alone when the slot is inside the insets', () => {
+    expect(revealScroll({ y: 300, height: 200 }, 0, 900, NOTEBOOK)).toBe(0);
+  });
+
+  test('scrolls just enough to bring a slot below into view, its bottom at the bottom inset', () => {
+    expect(revealScroll({ y: 2000, height: 200 }, 0, 900, NOTEBOOK)).toBe(2200 - 900 + 72);
+  });
+
+  test('scrolls up to a slot above, its top at the top inset', () => {
+    expect(revealScroll({ y: 800, height: 200 }, 3000, 900, NOTEBOOK)).toBe(800 - 112);
+  });
+});
+
+describe('cameraOnto', () => {
+  test('puts a world rectangle exactly over a screen rectangle', () => {
+    const camera = cameraOnto(
+      { x: 80, y: 0, width: 480, height: 640 },
+      { x: 300, y: 200, width: 120, height: 160 }
+    );
+
+    expect(toScreen(camera, { x: 80, y: 0 })).toEqual({ x: 300, y: 200 });
+    expect(toScreen(camera, { x: 560, y: 640 })).toEqual({ x: 420, y: 360 });
   });
 });
 

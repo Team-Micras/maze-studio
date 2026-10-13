@@ -29,13 +29,20 @@ const contexts: BrowserContext[] = [];
 interface Frame {
   readonly mode: string;
   readonly board?: { x: number; y: number; width: number; height: number };
-  /** The scale the labels and rings follow, `--k` on the world. */
-  readonly labelScale: string;
+  /** The height of the first artboard's name, which never scales with the flight. */
+  readonly labelHeight: number;
+  /** The library grid's opacity, which fades out as the flight starts and back in as it ends. */
+  readonly gridOpacity: number;
 }
 
 interface WorldSample {
   readonly at: number;
   readonly transform: string;
+}
+
+/** How far the library is scrolled. */
+function scrollTop(page: Page): Promise<number | undefined> {
+  return page.evaluate(() => document.querySelector('[data-library-scroller]')?.scrollTop);
 }
 
 function open(hash = '#/', options: PageOptions = {}): Promise<Page> {
@@ -92,7 +99,10 @@ function easingError(samples: readonly WorldSample[], from: Camera, to: Camera, 
   return { samples: progress.length, error: best };
 }
 
-/** Records the mode, the open board's box and `--k` at every frame until `stop` is called. */
+/**
+ * Records the mode, the open board's box, the height of an artboard's name and the grid's opacity
+ * at every frame until `stop` is called.
+ */
 async function recordFrames(page: Page): Promise<() => Promise<Frame[]>> {
   await page.evaluate(() => {
     const frames: Frame[] = [];
@@ -102,8 +112,12 @@ async function recordFrames(page: Page): Promise<() => Promise<Frame[]>> {
       const box = document.querySelector('[data-open-board]')?.getBoundingClientRect();
       frames.push({
         mode: document.querySelector('[data-studio-mode]')?.getAttribute('data-studio-mode') ?? '',
-        labelScale:
-          document.querySelector<HTMLElement>('[data-world]')?.style.getPropertyValue('--k') ?? '',
+        labelHeight:
+          document.querySelector('a[data-artboard] > span')?.getBoundingClientRect().height ?? 0,
+        gridOpacity: Number(
+          getComputedStyle(document.querySelector('[data-library-scroller]') ?? document.body)
+            .opacity
+        ),
         ...(box === undefined
           ? {}
           : { board: { x: box.x, y: box.y, width: box.width, height: box.height } }),
@@ -186,8 +200,12 @@ describe('The flight into a maze and back', () => {
       `flight in: ${flying.length} frames, farthest ${worst.toFixed(2)} px from the line`
     );
 
+    const fading = flying.slice(0, Math.ceil(flying.length / 3));
+
     expect(flying.length).toBeGreaterThan(10);
-    expect(new Set(flying.map((frame) => frame.labelScale)).size).toBe(1);
+    expect(new Set(flying.map((frame) => Math.round(frame.labelHeight))).size).toBe(1);
+    expect(fading.some((frame) => frame.gridOpacity < 0.5)).toBe(true);
+    expect(flying.at(-1)?.gridOpacity).toBe(0);
     expect(landed).not.toBeNull();
     expect(worst).toBeLessThan(2);
     expect(Math.abs((later?.x ?? 0) - (landed?.x ?? 0))).toBeLessThan(0.5);
@@ -196,13 +214,22 @@ describe('The flight into a maze and back', () => {
     expect(new URL(page.url()).hash).toMatch(/^#\/repo\//);
   });
 
-  test('follows cubic-bezier(0.45, 0, 0.12, 1) over 620 ms', async () => {
+  test('starts the board over the thumbnail and follows cubic-bezier(0.45, 0, 0.12, 1) over 620 ms', async () => {
     const page = await open();
-    const from = await camera(page);
+    const thumbnail = await page.locator('a[data-artboard] canvas').nth(6).boundingBox();
     const stop = await recordWorld(page);
     await openFirstMaze(page);
     const to = await camera(page);
-    const { samples, error } = easingError(await stop(), from, to, FLIGHT_IN_MS);
+    const recorded = await stop();
+    const from = parseCamera(recorded[0]?.transform ?? '');
+    const width = (thumbnail?.width ?? 0) / from.k;
+    const height = (thumbnail?.height ?? 0) / from.k;
+    const board = { x: (640 - width) / 2, y: 640 - height };
+    const { samples, error } = easingError(recorded, from, to, FLIGHT_IN_MS);
+
+    expect(Math.max(width, height)).toBeCloseTo(640, 0);
+    expect(Math.abs(from.x + board.x * from.k - (thumbnail?.x ?? 0))).toBeLessThan(1);
+    expect(Math.abs(from.y + board.y * from.k - (thumbnail?.y ?? 0))).toBeLessThan(1);
     console.info(`flight easing: ${samples} samples, at most ${error.toFixed(3)} off the curve`);
 
     expect(samples).toBeGreaterThan(10);
@@ -245,7 +272,9 @@ describe('The flight into a maze and back', () => {
 
     expect(
       new Set(
-        frames.filter((frame) => frame.mode === 'flying-out').map((frame) => frame.labelScale)
+        frames
+          .filter((frame) => frame.mode === 'flying-out')
+          .map((frame) => Math.round(frame.labelHeight))
       ).size
     ).toBe(1);
     expect(new Set(widths.map((width) => Math.round(width))).size).toBeGreaterThan(10);
@@ -256,6 +285,9 @@ describe('The flight into a maze and back', () => {
     expect(Math.abs((widths.at(-1) ?? 0) - (landed?.width ?? 0))).toBeLessThan(
       0.1 * (landed?.width ?? 1)
     );
+    const last = frames.findLast((frame) => frame.mode === 'flying-out')?.board;
+    expect(Math.abs((last?.x ?? 0) - (landed?.x ?? 0))).toBeLessThan(1.5);
+    expect(Math.abs((last?.y ?? 0) - (landed?.y ?? 0))).toBeLessThan(1.5);
     expect(new URL(page.url()).hash).toBe('#/');
     expect(await page.evaluate(() => document.activeElement?.getAttribute('data-artboard'))).toBe(
       key
@@ -284,23 +316,123 @@ describe('The flight into a maze and back', () => {
   });
 });
 
+describe('The way back to a thumbnail off screen', () => {
+  test('scrolls the hidden grid to bring the artboard in, and lands the board on it', async () => {
+    const page = await open();
+    const key = await openFirstMaze(page);
+    await page.evaluate(() =>
+      document
+        .querySelector('[data-library-scroller]')
+        ?.scrollTo({ top: 6000, behavior: 'instant' })
+    );
+    const stop = await recordFrames(page);
+    await page.goBack();
+    await page.waitForFunction(
+      () =>
+        document.querySelector('[data-studio-mode]')?.getAttribute('data-studio-mode') === 'library'
+    );
+    const last = (await stop()).findLast((frame) => frame.mode === 'flying-out')?.board;
+    const landed = await page.locator(`a[data-artboard="${key}"] canvas`).boundingBox();
+
+    expect(await scrollTop(page)).toBeLessThan(6000);
+    expect(landed?.y).toBeGreaterThanOrEqual(111);
+    expect((landed?.y ?? 0) + (landed?.height ?? 0)).toBeLessThanOrEqual(900 - 71);
+    expect(Math.abs((last?.y ?? 0) - (landed?.y ?? 0))).toBeLessThan(1.5);
+  });
+});
+
+describe('With classic scrollbars', () => {
+  test('the flight back lands on the thumbnail once the page has its scrollbar again', async () => {
+    const visible = await chromium.launch({ ignoreDefaultArgs: ['--hide-scrollbars'] });
+
+    try {
+      const page = await visible.newPage({ viewport: { width: 1440, height: 900 } });
+      await page.goto(app);
+      const link = page.locator('a[data-artboard]').nth(6);
+      await link.waitFor();
+      await page.waitForTimeout(300);
+      const scrollbar = await page.evaluate(() => {
+        const scroller = document.querySelector<HTMLElement>('[data-library-scroller]');
+        return (scroller?.offsetWidth ?? 0) - (scroller?.clientWidth ?? 0);
+      });
+      const before = await link.locator('canvas').boundingBox();
+      await link.click();
+      await page.waitForFunction(
+        () =>
+          document.querySelector('[data-studio-mode]')?.getAttribute('data-studio-mode') ===
+          'editor'
+      );
+      const stop = await recordFrames(page);
+      await page.goBack();
+      await page.waitForFunction(
+        () =>
+          document.querySelector('[data-studio-mode]')?.getAttribute('data-studio-mode') ===
+          'library'
+      );
+      const last = (await stop()).findLast((frame) => frame.mode === 'flying-out')?.board;
+      const after = await link.locator('canvas').boundingBox();
+
+      expect(scrollbar).toBeGreaterThan(0);
+      expect(before?.width).toBeCloseTo((1440 - scrollbar - 112) / (5 + 4 * (200 / 640)), 1);
+      expect(after?.x).toBeCloseTo(before?.x ?? 0, 1);
+      expect(Math.abs((last?.x ?? 0) - (after?.x ?? 0))).toBeLessThan(1.5);
+      expect(Math.abs((last?.width ?? 0) - (after?.width ?? 0))).toBeLessThan(1.5);
+    } finally {
+      await visible.close();
+    }
+  });
+});
+
 describe('The library', () => {
-  test('a drag that starts on an artboard pans and does not open it', async () => {
+  test('the wheel scrolls the page, and opens nothing', async () => {
     const page = await open();
     const box = await page.locator('a[data-artboard]').nth(6).boundingBox();
     const start = center(box ?? { x: 0, y: 0, width: 0, height: 0 });
-    const before = await camera(page);
     await page.mouse.move(start.x, start.y);
-    await page.mouse.down();
-    await page.mouse.move(start.x, start.y - 8, { steps: 2 });
-    await page.mouse.move(start.x, start.y - 60, { steps: 6 });
-    await page.mouse.up();
-    await page.waitForTimeout(300);
-    const after = await camera(page);
+    await page.mouse.wheel(0, 600);
 
-    expect(after.y - before.y).toBeCloseTo(-60, 0);
+    await expect.poll(() => scrollTop(page)).toBe(600);
     expect(new URL(page.url()).hash).toBe('#/');
     expect(await mode(page)).toBe('library');
+  });
+
+  test('opening a maze from far down the page flies from where its thumbnail is, and Back lands there', async () => {
+    const page = await open();
+    await page.evaluate(() =>
+      document
+        .querySelector('[data-library-scroller]')
+        ?.scrollTo({ top: 3000, behavior: 'instant' })
+    );
+    const key = await page.waitForFunction(() => {
+      const shown = [...document.querySelectorAll('a[data-artboard]')].find((link) => {
+        const box = link.getBoundingClientRect();
+        return box.top > 200 && box.bottom < window.innerHeight - 100;
+      });
+      return shown?.getAttribute('data-artboard') ?? false;
+    });
+    const link = page.locator(`a[data-artboard="${String(await key.jsonValue())}"]`);
+    const scrolled = await scrollTop(page);
+    await link.click();
+    await page.waitForFunction(
+      () =>
+        document.querySelector('[data-studio-mode]')?.getAttribute('data-studio-mode') === 'editor'
+    );
+
+    expect(
+      await page.evaluate(() =>
+        document.querySelector('[data-library-scroller]')?.hasAttribute('inert')
+      )
+    ).toBe(true);
+    await page.goBack();
+    await page.waitForFunction(
+      () =>
+        document.querySelector('[data-studio-mode]')?.getAttribute('data-studio-mode') === 'library'
+    );
+
+    expect(await scrollTop(page)).toBe(scrolled);
+    expect(await page.evaluate(() => document.activeElement?.getAttribute('data-artboard'))).toBe(
+      String(await key.jsonValue())
+    );
   });
 });
 

@@ -35,57 +35,18 @@ const RUNS = 3;
 let browser: Browser;
 let slowdown = 1;
 
-type Motion = 'drag' | 'zoom';
-
 /**
- * Runs one motion in the page, one input per animation frame, and returns the intervals between
- * the frames; the page's own code, as built for production, does the work.
+ * Scrolls the library on down 60 px at every animation frame, 3600 px a second as a fling goes,
+ * from where the last run stopped, and returns the intervals between the frames; the page's own
+ * code, as built for production, does the work.
  */
-function runMotion(page: Page, motion: Motion): Promise<number[]> {
+function runScroll(page: Page): Promise<number[]> {
   return page.evaluate(
-    ([kind, steps]) =>
+    (steps) =>
       new Promise<number[]>((resolve) => {
-        const stage = document.querySelector<HTMLElement>('[role="application"]');
         const stamps: number[] = [];
-        const pointer = (type: string, y: number, buttons: number): void => {
-          stage?.dispatchEvent(
-            new PointerEvent(type, {
-              bubbles: true,
-              cancelable: true,
-              pointerId: 1,
-              pointerType: 'mouse',
-              button: 1,
-              buttons,
-              clientX: 720,
-              clientY: y,
-            })
-          );
-        };
-        const step = (index: number): void => {
-          if (kind === 'zoom') {
-            stage?.dispatchEvent(
-              new WheelEvent('wheel', {
-                bubbles: true,
-                cancelable: true,
-                ctrlKey: true,
-                deltaY: index < steps / 2 ? -1.5 : 1.5,
-                clientX: 700,
-                clientY: 500,
-              })
-            );
-            return;
-          }
-
-          if (index === 0) {
-            pointer('pointerdown', 800, 4);
-          }
-
-          pointer('pointermove', 800 - (index + 1) * 18, 4);
-
-          if (index === steps - 1) {
-            pointer('pointerup', 800 - steps * 18, 0);
-          }
-        };
+        const scroller = document.querySelector<HTMLElement>('[data-library-scroller]');
+        const start = scroller?.scrollTop ?? 0;
         const frame = (now: number): void => {
           stamps.push(now);
 
@@ -94,16 +55,16 @@ function runMotion(page: Page, motion: Motion): Promise<number[]> {
             return;
           }
 
-          step(stamps.length - 1);
+          scroller?.scrollTo({ top: start + stamps.length * 60, behavior: 'instant' });
           requestAnimationFrame(frame);
         };
         requestAnimationFrame(frame);
       }),
-    [motion, STEPS] as const
+    STEPS
   );
 }
 
-async function measure(motion: Motion): Promise<FrameReport> {
+async function measureScroll(): Promise<FrameReport> {
   const context = await browser.newContext({ viewport: { width: 1440, height: 900 } });
   const page = await context.newPage();
   await page.goto(app);
@@ -115,7 +76,7 @@ async function measure(motion: Motion): Promise<FrameReport> {
 
   try {
     for (let run = 0; run < RUNS; run++) {
-      reports.push(frameReport(await runMotion(page, motion)));
+      reports.push(frameReport(await runScroll(page)));
     }
   } finally {
     await context.close();
@@ -234,17 +195,14 @@ afterAll(async () => {
 });
 
 describe('The built library as slow as the reference notebook at 4× CPU throttling', () => {
-  test.each<Motion>(['drag', 'zoom'])(
-    '%s keeps the frame budget of DESIGN.md 8',
-    async (motion) => {
-      const report = await measure(motion);
-      console.info(describeRun(motion, report));
+  test('scrolls through every maze within the frame budget of DESIGN.md 8', async () => {
+    const report = await measureScroll();
+    console.info(describeRun('scroll', report));
 
-      expect(report.frames).toBe(STEPS);
-      expect(report.p95).toBeLessThanOrEqual(FRAME_BUDGET.p95);
-      expect(report.slowShare).toBeLessThanOrEqual(FRAME_BUDGET.slowShare);
-    }
-  );
+    expect(report.frames).toBe(STEPS);
+    expect(report.p95).toBeLessThanOrEqual(FRAME_BUDGET.p95);
+    expect(report.slowShare).toBeLessThanOrEqual(FRAME_BUDGET.slowShare);
+  });
 });
 
 describe('The built studio as slow as the reference notebook at 4× CPU throttling', () => {

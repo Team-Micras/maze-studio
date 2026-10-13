@@ -106,13 +106,14 @@ open borders, which the repository never has.
   `paintWalls`.
 - `camera.ts`, `camera-input.ts`, `easing.ts`: the camera `{ x, y, k }` as pure functions: fit
   between insets, zoom range and the 96 px pan limit, zoom at a point, pinch, centring, the flight
-  path (straight on screen, geometric in size) and the curves of DESIGN.md 8; what a wheel event
-  or a zoom key asks (DESIGN.md 7).
+  path (straight on screen, geometric in size) and the curves of DESIGN.md 8, the camera that puts
+  a board over a rectangle on screen (where a flight starts and lands), the move that reveals a
+  cell; what a wheel event or a zoom key asks (DESIGN.md 7).
 - `minimap.ts`: when the minimap shows (past 1.06 times the fit), its frame, the visible area on
   it and the world point under a click.
-- `library-layout.ts`: the library's grid of artboards (640 world units, gaps 200 and 210, 2 to 6
-  columns), its camera limits (fit to the width, scroll down), the rows to keep mounted and the
-  camera that reveals an artboard.
+- `library-layout.ts`: the library's grid on the page, in CSS pixels (2 to 6 columns that fill the
+  width, square slots, gaps of 200/640 and 210/640 of a slot), where a maze's thumbnail lies, the
+  rows a scroll position keeps mounted and the scroll that reveals a slot.
 - `thumbnails.ts`, `lru-cache.ts`: thumbnails painted on an `OffscreenCanvas` in bands of 64, 128,
   256 and 512 pixels, in an LRU bounded at 64 MB of bitmaps; `diffThumbnail` keeps those with a
   diff on top under their own key. `paintTrack` paints on any 2D context.
@@ -133,12 +134,12 @@ toasts (`toasts.ts`, `toaster.tsx`; a toast may carry an action or stay until cl
 (`theme.ts`). `main.tsx` registers the service worker (`sw/sw.ts`, which precaches the whole build,
 the snapshot's chunk included, so the app opens and edits offline) and, when a new version waits,
 `new-version.ts` offers it in a persistent "New version." toast with Reload. The studio flies between the
-library and a maze (DESIGN.md 8); the camera hook (`board/use-canvas-camera.ts`) runs the flight,
-free of the limits while it lasts.
+library, a grid the browser scrolls, and a maze on a canvas above it (DESIGN.md 8); the camera
+hook (`board/use-canvas-camera.ts`) runs the flight, free of the limits while it lasts.
 
-- `studio/`: `Studio` puts the library and the open maze on one canvas under one camera, with the
-  flights between them (`use-studio-flight.ts` runs them, `studio-store.ts` holds the mode and the
-  tool), the open board (`OpenBoard`), the editor's islands (`EditorChrome`) and the quick list
+- `studio/`: `Studio` puts the library grid on the page and the open maze on a canvas above it,
+  with the flights between them (`use-studio-flight.ts` runs them from a thumbnail on screen and
+  back onto it, `studio-store.ts` holds the mode and the tool), the open board (`OpenBoard`), the editor's islands (`EditorChrome`) and the quick list
   (`MazeList`, `list-order.ts`).
 - `editor/`: editing the maze on screen. `edit-session.ts` is pure: the history, one step per
   gesture, and the copy in My mazes the first edit makes; `use-maze-editor.ts` keeps the session in
@@ -162,9 +163,11 @@ free of the limits while it lasts.
   `update-note.ts`), and `new-maze.ts` in `src/ui` makes the maze it asks for. `use-mine-backup.ts`
   runs Export all and Import (`backup-report.ts` words them, `ReportDialog` shows the reports), and
   `use-repo-updates.ts` asks GitHub once a day and on Check for updates. `EmptyLibrary` is an empty
-  My mazes, with New maze, or a search that finds nothing; `LibraryCanvas` mounts the visible rows of `Artboard`s, keeps the active one,
-  fades the others while a maze is open, and reveals the one Tab reaches.
-- `islands/`: the island, its buttons, separator and tooltip, the zoom island and the theme button.
+  My mazes, with New maze, or a search that finds nothing; `LibraryGrid` mounts the rows of
+  `Artboard`s on screen, keeps the focused one, scrolls to the one Tab reaches under an island,
+  and fades out while a maze is open.
+- `islands/`: the island, its buttons, separator and tooltip, the editor's zoom island and the
+  theme button.
 - `board/`: as above, plus `paint-queue.ts`, which paints thumbnails in idle time.
 - `primitives/`: the shadcn components.
 - `icons.tsx`: the Phosphor icons the app uses, one component each in the regular weight, written by
@@ -192,7 +195,7 @@ Chromium, one file at a time, outside the check) and `e2e` (`tests/e2e/`, which 
 under `/maze-studio/` into `node_modules/.tmp/` and drives it with Playwright).
 `tests/config/vitest-projects.test.ts` guards that split. The e2e project builds the app once,
 in its global setup (`tests/support/e2e/serve-app.ts`), for all its files; one of them,
-`production-frames.test.ts`, measures the built library's drag and zoom and the flights into a
+`production-frames.test.ts`, measures the built library's scroll and the flights into a
 maze and back at 4× the reference notebook's slowness, the throttle calibrated to the machine.
 
 Every row of DESIGN.md 12, the empty and error states, has a test: the ones slice 7 added are in

@@ -729,3 +729,20 @@ The machine's rule is no builds in `/tmp`, so `tests/e2e/pwa.test.ts` builds the
 - **Thumbnails keep their outer walls:** walls and posts at least 1 device pixel, and the outer ones end 1 device
   pixel inside the bitmap, in every band; a 32 × 32 maze at 64 px kept almost no walls before.
 - **The list's filter sits inset** in the drawer, so the drawer's rounded corners no longer cut its focus ring.
+- **The library is a grid the browser scrolls** (owner decision 1): no camera and no zoom in the library; the grid
+  lives in an element that fills the screen (`data-library-scroller`) and scrolls with the browser's own momentum,
+  its columns follow that element's width, and only the rows on screen and one more above and below are mounted.
+  The open maze keeps its canvas and camera, now a stage fixed above the grid; the grid keeps its scroll and fades
+  out with its scrollbar while a maze is open. The board flies from the thumbnail clicked (`cameraOnto`) to the
+  editor's fit, and back onto its thumbnail after the grid, hidden, scrolls it into view. Scrolling the document
+  itself was tried first: hiding its scrollbar while a maze is open (`overflow: hidden` or `scrollbar-width: none` on
+  the root) left headless Chromium without a frame on the first page that loaded a maze's route, and a visible
+  scrollbar beside the editor was the other choice; the scroller avoids both. Removed with the
+  library camera: its limits and zoom, the zoom island of the library, the lazy pan of the stage, the counter-scaled
+  labels, the library zoom kept for the thumbnails. The skip link goes to the content: the canvas of an open maze,
+  else the first maze of the library.
+- **Only the board flies** (bug 5): the grid, the clicked artboard's name, size and ring included, fades out in
+  200 ms as the flight starts, and back in on the way out; nothing in it scales.
+- **The library's frame gate scrolls** 60 px a frame from where the last run stopped, at 4× CPU throttling: p95
+  16.8 ms, 0 % of frames over 25 ms. Starting each run from the top again mounted twenty cached thumbnails at once
+  and cost two frames; that is the test's jump, not a scroll.

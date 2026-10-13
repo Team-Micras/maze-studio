@@ -13,17 +13,8 @@ const INSETS = { top: 112, bottom: 72 };
 afterEach(async () => {
   document.documentElement.classList.remove('dark');
   await page.viewport(1440, 900);
+  scroller()?.scrollTo({ top: 0, behavior: 'instant' });
 });
-
-function stage(): HTMLElement {
-  const element = document.querySelector<HTMLElement>('[role="application"]');
-
-  if (element === null) {
-    throw new Error('no library canvas');
-  }
-
-  return element;
-}
 
 function onScreen(element: Element): boolean {
   const box = element.getBoundingClientRect();
@@ -38,31 +29,49 @@ function rowsOnScreen(): number {
   ).size;
 }
 
-function world(): string | undefined {
-  return document.querySelector<HTMLElement>('[data-world]')?.style.transform;
+function scroller(): HTMLElement | null {
+  return document.querySelector<HTMLElement>('[data-library-scroller]');
 }
 
-async function scroll(deltaY: number): Promise<void> {
-  stage().dispatchEvent(new WheelEvent('wheel', { bubbles: true, cancelable: true, deltaY }));
+function rowTops(): number {
+  return new Set(artboards().map((board) => Math.round(board.getBoundingClientRect().top))).size;
+}
+
+function firstRow(): number {
+  const bottom = Math.round(artboards()[0]?.getBoundingClientRect().bottom ?? 0);
+  return artboards().filter((board) => Math.round(board.getBoundingClientRect().bottom) === bottom)
+    .length;
+}
+
+async function scrollTo(top: number): Promise<void> {
+  scroller()?.scrollTo({ top, behavior: 'instant' });
   await settled();
 }
 
-describe('The library canvas', () => {
-  test('mounts only the rows on screen and one more above and below', async () => {
+describe('The library grid', () => {
+  test('scrolls with the page, mounting only the rows on screen and one more above and below', async () => {
     await mountApp();
 
+    expect(scroller()?.scrollHeight).toBeGreaterThan(window.innerHeight * 10);
     expect(artboards().length).toBeLessThanOrEqual((rowsOnScreen() + 1) * COLUMNS_AT_1440);
 
-    const before = world();
-    await scroll(4000);
-    await expect.poll(world).not.toBe(before);
+    await scrollTo(4000);
     await expect
       .poll(() => artboards()[0]?.getAttribute('data-artboard'))
       .not.toBe('repo:classic/001-anomaly-test.txt');
     await settled();
 
+    expect(scroller()?.scrollTop).toBe(4000);
     expect(artboards().length).toBeLessThanOrEqual((rowsOnScreen() + 2) * COLUMNS_AT_1440);
     expect(artboards().length).toBeGreaterThanOrEqual(rowsOnScreen() * COLUMNS_AT_1440);
+  });
+
+  test('lays the columns out to the width, and again as it changes', async () => {
+    await mountApp();
+    expect(firstRow()).toBe(COLUMNS_AT_1440);
+    await page.viewport(1000, 900);
+    await expect.poll(firstRow).toBe(3);
+    expect(rowTops()).toBeGreaterThan(1);
   });
 
   test('names each artboard by maze, competition and size, as a link that opens it', async () => {
@@ -88,15 +97,29 @@ describe('The library canvas', () => {
     expect(box?.top).toBeGreaterThanOrEqual(INSETS.top - 1);
     expect(box?.bottom).toBeLessThanOrEqual(window.innerHeight - INSETS.bottom + 1);
 
-    await scroll(20_000);
+    await scrollTo(20_000);
 
     expect(below === undefined ? false : document.contains(below)).toBe(true);
     expect(below === undefined ? true : onScreen(below)).toBe(false);
   });
 
-  test('a click on an artboard half below the insets does not move the camera', async () => {
+  test('Shift+Tab onto an artboard under the top islands scrolls it out from under them', async () => {
     await mountApp();
-    const before = world();
+    const second = artboards()[COLUMNS_AT_1440];
+    const top = (second?.getBoundingClientRect().top ?? 0) + (scroller()?.scrollTop ?? 0);
+    await scrollTo(top - 40);
+    const under = artboards().find((board) => board.dataset.artboard === second?.dataset.artboard);
+    const next = under === undefined ? undefined : artboards()[artboards().indexOf(under) + 1];
+    next?.focus();
+    await userEvent.tab({ shift: true });
+    await settled();
+
+    expect(document.activeElement).toBe(under);
+    expect(under?.getBoundingClientRect().top).toBeGreaterThanOrEqual(INSETS.top - 1);
+  });
+
+  test('a click on an artboard half below the insets does not scroll the page', async () => {
+    await mountApp();
     const cut = artboards().find((board) => {
       const box = board.getBoundingClientRect();
       return (
@@ -113,7 +136,7 @@ describe('The library canvas', () => {
 
     expect(cut).toBeDefined();
     expect(document.activeElement).toBe(cut);
-    expect(world()).toBe(before);
+    expect(scroller()?.scrollTop).toBe(0);
   });
 });
 
@@ -190,7 +213,7 @@ describe('Search and filters', () => {
 
   test('/ focuses the search from the canvas and never types itself', async () => {
     await mountApp();
-    stage().focus();
+    artboards()[0]?.focus();
     await userEvent.keyboard('/');
 
     await expect.element(page.getByRole('searchbox', { name: 'Search mazes' })).toHaveFocus();
@@ -211,14 +234,12 @@ describe('Filtering', () => {
     expect(window.history.length).toBe(length);
   });
 
-  test('fits the grid again after the filter changes', async () => {
+  test('goes back to the top of the grid after the filter changes', async () => {
     await mountApp();
-    const fitted = world();
-    await scroll(3000);
-    await expect.poll(world).not.toBe(fitted);
+    await scrollTo(3000);
     await userEvent.click(page.getByRole('radio', { name: 'Classic' }));
 
-    await expect.poll(world, { timeout: 2000 }).toBe(fitted);
+    await expect.poll(() => scroller()?.scrollTop, { timeout: 2000 }).toBe(0);
   });
 
   test('slides the artboards that stay mounted to their new places', async () => {
@@ -260,20 +281,6 @@ describe('Filtering', () => {
     await expect
       .element(page.getByRole('searchbox', { name: 'Search mazes' }))
       .toHaveAttribute('name', 'q');
-  });
-});
-
-describe('The library zoom', () => {
-  test('shows the zoom of the fit and changes it with the buttons and the keys', async () => {
-    await mountApp();
-    const zoom = page.getByText(/^Zoom \d+%$/);
-
-    await expect.element(zoom).toHaveTextContent('100%');
-    await userEvent.click(page.getByRole('button', { name: 'Zoom in' }));
-    await expect.element(zoom).toHaveTextContent('125%');
-    stage().focus();
-    await userEvent.keyboard('-');
-    await expect.element(zoom).toHaveTextContent('100%');
   });
 });
 

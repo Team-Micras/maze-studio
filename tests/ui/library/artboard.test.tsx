@@ -24,7 +24,7 @@ describe('Artboard', () => {
           }}
           maze={maze}
           onFocus={() => undefined}
-          place={{ x: 0, y: 0, width: 160, height: 160 }}
+          rect={{ x: 0, y: 0, width: 160, height: 160 }}
         />
       </div>
     );

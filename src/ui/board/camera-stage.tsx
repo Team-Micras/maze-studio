@@ -35,11 +35,6 @@ export interface CameraStageProps {
    * (DESIGN.md 8): a promoted layer scales a texture instead of repainting, but blurs when zoomed.
    */
   readonly promoted?: boolean;
-  /**
-   * The scale counter-scaled content follows instead of the camera's, as during a flight: content
-   * whose size changed at every frame would repaint the promoted layer at every frame.
-   */
-  readonly fixedScale?: number;
   /** What the primary button or one finger draws when it does not pan. */
   readonly drawing?: StageDrawing;
   /** Runs before the stage's own keys; a key it prevents is left alone. */
@@ -71,22 +66,10 @@ export interface StageDrawing {
   readonly hover?: (point: ScreenPoint | undefined) => void;
 }
 
-/** How far, in pixels, a press must move before a lazy pan takes it over from a click. */
-const DRAG_THRESHOLD = 5;
-
-/**
- * What the primary button or one finger does: nothing (`off`), pan at once (`on`), or pan once it
- * moves past a few pixels, so that a tap or a click still reaches the content (`lazy`).
- */
-export type PrimaryPan = 'off' | 'on' | 'lazy';
+/** What the primary button or one finger does: nothing (`off`) or pan (`on`). */
+export type PrimaryPan = 'off' | 'on';
 
 type Gesture =
-  | {
-      readonly kind: 'press';
-      readonly pointer: number;
-      readonly origin: ScreenPoint;
-      readonly from: Camera;
-    }
   | {
       readonly kind: 'pan';
       readonly pointer: number;
@@ -99,20 +82,9 @@ type Gesture =
 const MIDDLE_BUTTON = 1;
 const PRIMARY_BUTTON = 0;
 
-/**
- * The world layer's transform, and the scale and its inverse for counter-scaled content: the
- * camera's, or `fixedScale` when given.
- */
-function worldStyle(
-  camera: Camera,
-  fixedScale: number | undefined
-): CSSProperties & Record<'--k' | '--ik', number> {
-  const scale = fixedScale ?? camera.k;
-  return {
-    transform: `translate(${camera.x}px, ${camera.y}px) scale(${camera.k})`,
-    '--k': scale,
-    '--ik': 1 / scale,
-  };
+/** The world layer's transform. */
+function worldStyle(camera: Camera): CSSProperties {
+  return { transform: `translate(${camera.x}px, ${camera.y}px) scale(${camera.k})` };
 }
 
 function localPoint(
@@ -131,8 +103,8 @@ function pairOf(pointers: ReadonlyMap<number, ScreenPoint>): PointerPair | undef
 /**
  * The canvas a board lies on (DESIGN.md 7): the wheel pans, Ctrl or Cmd with the wheel and a
  * pinch zoom, Space with a drag and the middle button pan, and `+` (also `=`), `-` and `0` zoom in,
- * out and fit. The primary button and one finger pan as `primaryPan` says; a lazy pan swallows
- * the click that ends it. When they do not pan, they draw what `drawing` says. It is the `application` the keyboard focuses; whatever else the pointer
+ * out and fit. The primary button and one finger pan as `primaryPan` says; when they do not, they
+ * draw what `drawing` says. It is the `application` the keyboard focuses; whatever else the pointer
  * does on it is left to the content.
  */
 export function CameraStage({
@@ -142,13 +114,11 @@ export function CameraStage({
   id,
   primaryPan = 'off',
   promoted = false,
-  fixedScale,
   drawing,
   onKeyDown: onContentKey,
   className,
 }: CameraStageProps) {
   const pointers = useRef(new Map<number, ScreenPoint>());
-  const dragged = useRef(false);
   const gesture = useRef<Gesture | undefined>(undefined);
   const [spaceHeld, setSpaceHeld] = useState(false);
   const [panning, setPanning] = useState(false);
@@ -171,11 +141,9 @@ export function CameraStage({
     const point = localPoint(event.currentTarget, event);
     const primary = event.button === PRIMARY_BUTTON;
     const pans = event.button === MIDDLE_BUTTON || (primary && (spaceHeld || primaryPan === 'on'));
-    const presses = primary && primaryPan === 'lazy';
     const draws = primary && !pans && primaryPan === 'off' && drawing !== undefined;
-    dragged.current = false;
 
-    if (event.pointerType !== 'mouse' || pans || presses || draws) {
+    if (event.pointerType !== 'mouse' || pans || draws) {
       pointers.current.set(event.pointerId, point);
     }
 
@@ -207,8 +175,6 @@ export function CameraStage({
       event.currentTarget.setPointerCapture(event.pointerId);
       gesture.current = { kind: 'pan', pointer: event.pointerId, origin: point, from: camera };
       setPanning(true);
-    } else if (pointers.current.size === 1 && presses && camera !== undefined) {
-      gesture.current = { kind: 'press', pointer: event.pointerId, origin: point, from: camera };
     }
   };
 
@@ -233,17 +199,6 @@ export function CameraStage({
         { pointerType: event.pointerType, shiftKey: event.shiftKey }
       );
       return;
-    }
-
-    if (
-      current?.kind === 'press' &&
-      current.pointer === event.pointerId &&
-      Math.hypot(point.x - current.origin.x, point.y - current.origin.y) > DRAG_THRESHOLD
-    ) {
-      event.currentTarget.setPointerCapture(event.pointerId);
-      gesture.current = { ...current, kind: 'pan' };
-      dragged.current = true;
-      setPanning(true);
     }
 
     if (current?.kind === 'pinch') {
@@ -279,8 +234,7 @@ export function CameraStage({
 
     if (
       current?.kind === 'pinch' ||
-      ((current?.kind === 'pan' || current?.kind === 'press') &&
-        current.pointer === event.pointerId)
+      (current?.kind === 'pan' && current.pointer === event.pointerId)
     ) {
       gesture.current = undefined;
       setPanning(false);
@@ -330,7 +284,7 @@ export function CameraStage({
       aria-label={label}
       aria-roledescription="canvas"
       className={cn(
-        'relative touch-none overflow-hidden bg-background outline-none select-none',
+        'relative touch-none overflow-hidden outline-none select-none',
         'focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset',
         className,
         spaceHeld && 'cursor-grab',
@@ -339,13 +293,6 @@ export function CameraStage({
       data-panning={panning ? '' : undefined}
       id={id}
       onBlur={() => setSpaceHeld(false)}
-      onClickCapture={(event) => {
-        if (dragged.current) {
-          dragged.current = false;
-          event.preventDefault();
-          event.stopPropagation();
-        }
-      }}
       onKeyDown={onKeyDown}
       onKeyUp={onKeyUp}
       onPointerCancel={onPointerEnd}
@@ -367,7 +314,7 @@ export function CameraStage({
         style={
           camera === undefined
             ? undefined
-            : { ...worldStyle(camera, fixedScale), willChange: promoted ? 'transform' : undefined }
+            : { ...worldStyle(camera), willChange: promoted ? 'transform' : undefined }
         }
       >
         {children}

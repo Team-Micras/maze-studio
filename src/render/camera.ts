@@ -260,3 +260,43 @@ export function flightPath(from: Camera, to: Camera, anchor: WorldRect): (eased:
     return { k, x: x - center.x * k, y: y - center.y * k };
   };
 }
+
+function revealAxis(start: number, end: number, low: number, high: number): number {
+  if (end - start > high - low || start < low) {
+    return low - start;
+  }
+
+  return end > high ? high - end : 0;
+}
+
+/**
+ * The camera moved as little as needed to bring `rect` inside the insets, as when the keyboard
+ * focuses an artboard off screen; its top-left corner wins when it does not fit.
+ */
+export function revealCamera(
+  camera: Camera,
+  rect: WorldRect,
+  viewport: ViewportSize,
+  insets: Insets
+): Camera {
+  const left = camera.x + rect.x * camera.k;
+  const top = camera.y + rect.y * camera.k;
+  return {
+    k: camera.k,
+    x:
+      camera.x +
+      revealAxis(left, left + rect.width * camera.k, insets.left, viewport.width - insets.right),
+    y:
+      camera.y +
+      revealAxis(top, top + rect.height * camera.k, insets.top, viewport.height - insets.bottom),
+  };
+}
+
+/**
+ * The camera that shows the world rectangle `rect` exactly over the screen rectangle `on`, as at
+ * the start of the flight into a maze, the board over the thumbnail it was opened from.
+ */
+export function cameraOnto(rect: WorldRect, on: WorldRect): Camera {
+  const k = on.width / rect.width;
+  return { k, x: on.x - rect.x * k, y: on.y - rect.y * k };
+}

@@ -8,6 +8,7 @@
 
 export {
   boardLimits,
+  cameraOnto,
   centerOn,
   clamp,
   constrainCamera,
@@ -20,6 +21,7 @@ export {
   flightPath,
   panCamera,
   pinchCamera,
+  revealCamera,
   toScreen,
   toWorld,
   visibleWorld,
@@ -73,19 +75,17 @@ export {
   type TrackScale,
 } from './geometry';
 export {
-  ARTBOARD_GAP_X,
-  ARTBOARD_GAP_Y,
   artboardIn,
-  cellOf,
   LIBRARY_INSETS,
-  LIBRARY_ZOOM,
   libraryColumns,
-  libraryGrid,
-  libraryLimits,
+  libraryLayout,
   mountedRows,
-  revealCamera,
+  revealScroll,
   rowOf,
-  type LibraryGrid,
+  SLOT_GAP_X,
+  SLOT_GAP_Y,
+  libraryRect,
+  type LibraryLayout,
   type MazeSize,
   type RowRange,
 } from './library-layout';

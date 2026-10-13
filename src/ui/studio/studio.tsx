@@ -3,22 +3,20 @@ import { useStore } from 'zustand';
 
 import { filterCatalog, type LibraryFilter } from '@/library';
 import {
-  artboardIn,
   boardLimits,
-  cellOf,
   EDITOR_INSETS,
   EDITOR_KEEP,
   EDITOR_PHONE_EDIT_INSETS,
   EDITOR_PHONE_INSETS,
   EDITOR_ZOOM,
-  LIBRARY_INSETS,
-  libraryColumns,
-  libraryGrid,
-  libraryLimits,
+  type CameraLimits,
   type Insets,
+  type ViewportSize,
   type WorldRect,
 } from '@/render';
+import { CameraStage } from '@/ui/board/camera-stage';
 import { useCanvasCamera } from '@/ui/board/use-canvas-camera';
+import { CANVAS_ID } from '@/ui/canvas-id';
 import { ChangesChip, ChangesPanel } from '@/ui/changes/changes';
 import type { ChangeItem } from '@/ui/changes/session-changes';
 import { Checks } from '@/ui/editor/checks';
@@ -30,13 +28,11 @@ import { CopyLinkButton, TitleActions } from '@/ui/editor/title-actions';
 import type { MazeEditor } from '@/ui/editor/use-maze-editor';
 import { useWriting } from '@/ui/editor/use-writing';
 import { useCoarsePointer, usePhoneLayout } from '@/ui/hooks/use-media-query';
-import { useViewportWidth } from '@/ui/hooks/use-viewport-width';
-import { ZoomIsland } from '@/ui/islands/zoom-island';
-import { zoomPercent } from '@/ui/islands/zoom-percent';
 import { EmptyLibrary } from '@/ui/library/empty-library';
 import type { MineAndFilesActions } from '@/ui/library/mine-and-files';
 import { emptyTitle } from '@/ui/library/empty-title';
-import { LibraryCanvas } from '@/ui/library/library-canvas';
+import { LibraryGrid } from '@/ui/library/library-grid';
+import { libraryScroller } from '@/ui/library/library-scroller';
 import { LibraryChrome } from '@/ui/library/library-chrome';
 import type { Library } from '@/ui/library/use-library';
 import { openEntry, type OpenMaze } from '@/ui/open-maze';
@@ -54,7 +50,7 @@ import { useMazeActions } from './use-maze-actions';
 import { useStudioChanges } from './use-studio-changes';
 import { useStudioEditing } from './use-studio-editing';
 import { useStudioFlight } from './use-studio-flight';
-import { createStudioStore, type StudioState } from './studio-store';
+import { boardOf, createStudioStore, type StudioState } from './studio-store';
 
 /** The props of {@link Studio}. */
 export interface StudioProps {
@@ -100,10 +96,20 @@ function editorInsetsFor(phone: boolean, viewing: boolean): Insets {
   return viewing ? EDITOR_PHONE_INSETS : EDITOR_PHONE_EDIT_INSETS;
 }
 
+/** Where the content is while no board is on the stage, as in the library. */
+const NO_BOARD: WorldRect = { x: 0, y: 0, width: 1, height: 1 };
+
+/** The camera's limits while no board is on the stage: it stays where it is. */
+function stillLimits(viewport: ViewportSize): CameraLimits {
+  const fit = { x: 0, y: 0, k: 1 };
+  return { viewport, fit, zoom: { min: 1, max: 1 }, place: () => fit };
+}
+
 /**
- * The library and the open maze on one canvas (PLAN.md 3.4, DESIGN.md 8). Opening an artboard
- * flies the camera to it in 620 ms while its full board cross-fades over the thumbnail and the
- * other artboards fade out; leaving flies back in 520 ms and lands on the artboard of the maze on
+ * The library and the open maze (PLAN.md 3.4, DESIGN.md 8): the library a grid the browser
+ * scrolls, the maze a board on a canvas above it. Opening an artboard flies its board from the
+ * thumbnail to the editor's fit in 620 ms while its full board cross-fades over the thumbnail and
+ * the grid fades out; leaving flies back in 520 ms and lands on the artboard of the maze on
  * screen. A maze opened by its route on a fresh load, from a link or from a file, or with reduced
  * motion, arrives without a flight. The quick list previews mazes in place, on the same board. An
  * open maze is edited in place (PLAN.md 3.4): the wall tool draws, the arrows move a cell cursor,
@@ -129,13 +135,8 @@ export function Studio({
   const [store] = useState(createStudioStore);
   const state: StudioState = useStore(store);
   const phone = usePhoneLayout();
-  const viewportWidth = useViewportWidth();
-  const layout = phone ? 'phone' : 'notebook';
-  const insets = LIBRARY_INSETS[layout];
   const editorInsets = editorInsetsFor(phone, state.viewing);
   const shown = library === undefined ? [] : filterCatalog(library.entries, filter, library.index);
-  const grid = libraryGrid(shown, libraryColumns(viewportWidth, layout));
-  const gridRect: WorldRect = { x: 0, y: 0, width: grid.width, height: grid.height };
   const { mode } = state;
 
   const previewEntry =
@@ -147,21 +148,21 @@ export function Studio({
       ? undefined
       : openEntry(previewEntry, library);
   const onScreen = previewed ?? opened ?? state.leaving;
-  const board = onScreen === undefined ? undefined : artboardIn(state.cell, onScreen.maze);
+  const board = onScreen === undefined ? undefined : boardOf(onScreen.maze);
   const inEditor = mode === 'editor' && board !== undefined;
 
   const camera = useCanvasCamera({
-    content: inEditor ? board : gridRect,
+    content: board ?? NO_BOARD,
     limits: (viewport) =>
-      inEditor
-        ? boardLimits({
+      board === undefined
+        ? stillLimits(viewport)
+        : boardLimits({
             board,
             viewport,
             insets: editorInsets,
             zoom: EDITOR_ZOOM,
             keep: EDITOR_KEEP,
-          })
-        : libraryLimits(grid, viewport, insets),
+          }),
   });
   const coarse = useCoarsePointer();
   const writing = useWriting();
@@ -214,31 +215,18 @@ export function Studio({
     listOpener.current = null;
   };
 
-  const preparedIndex =
-    mode === 'library' && state.prepared !== undefined
-      ? shown.findIndex((entry) => entry.key === state.prepared)
-      : -1;
   const preparedMaze =
-    preparedIndex < 0 || state.prepared === undefined ? undefined : library?.mazeOf(state.prepared);
-  const prepared =
-    preparedMaze === undefined || state.prepared === undefined
-      ? undefined
-      : {
-          key: state.prepared,
-          maze: preparedMaze,
-          rect: artboardIn(cellOf(preparedIndex, grid.columns), preparedMaze),
-        };
+    mode === 'library' && state.prepared !== undefined
+      ? library?.mazeOf(state.prepared)
+      : undefined;
 
   const { notePointer } = useStudioFlight({
     store,
     camera,
-    grid,
     shown,
-    insets,
     editorInsetsFor: (viewing: boolean) => editorInsetsFor(phone, viewing),
     opened,
     onScreen,
-    board,
     phone,
     mode,
     libraryLoaded: library !== undefined,
@@ -287,42 +275,23 @@ export function Studio({
   const flying = mode === 'flying-in' || mode === 'flying-out';
   const chromeMounted = useDeferredValue(mode !== 'library', false);
   const editorVisible = mode === 'editor' || (mode === 'flying-in' && state.chromeIn);
-  const primaryPan =
-    mode === 'library'
-      ? 'lazy'
-      : mode === 'editor' && (state.viewing || state.tool === 'hand')
-        ? 'on'
-        : 'off';
-  const { refit, zoomBy } = camera;
+  const primaryPan = mode === 'editor' && (state.viewing || state.tool === 'hand') ? 'on' : 'off';
+  const { refit } = camera;
   const changeFilter = useCallback(
     (next: LibraryFilter): void => {
       onFilter(next);
-      refit({ animate: true });
+      libraryScroller()?.scrollTo({ top: 0, behavior: 'instant' });
     },
-    [onFilter, refit]
+    [onFilter]
   );
 
   return (
     <div data-studio-mode={mode} data-viewing={mode === 'editor' && state.viewing ? '' : undefined}>
       <main>
         {library === undefined ? null : (
-          <LibraryCanvas
-            activeHidden={mode === 'editor'}
-            activeKey={mode === 'library' ? undefined : (state.leaving?.key ?? opened?.key)}
-            bandScale={mode === 'library' ? undefined : state.libraryZoom}
-            className={cn(
-              'fixed inset-0',
-              editing.drawingTool && 'cursor-crosshair',
-              mode === 'editor' && !state.viewing && state.tool === 'hand' && 'cursor-grab'
-            )}
-            controller={camera}
-            drawing={editing.drawing}
+          <LibraryGrid
             entries={shown}
-            grid={grid}
-            insets={insets}
-            label={
-              inEditor && onScreen !== undefined ? `${onScreen.name}, maze board` : 'Maze library'
-            }
+            hidden={!libraryVisible}
             library={library}
             onArtboardPointer={(pointerType, key) => {
               notePointer(pointerType);
@@ -331,26 +300,35 @@ export function Studio({
                 store.setState({ prepared: key });
               }
             }}
-            onCanvasKey={editing.onCanvasKey}
-            othersHidden={!libraryVisible}
-            primaryPan={primaryPan}
-            {...(flying && state.libraryZoom !== undefined
-              ? { fixedScale: state.libraryZoom }
-              : {})}
-            promoted={flying}
-          >
-            {mode !== 'library' && onScreen !== undefined && board !== undefined ? (
-              <OpenBoard
-                maze={onScreen.maze}
-                overlays={mode === 'editor' ? editing.overlays : undefined}
-                rect={board}
-                shown={mode !== 'flying-out'}
-              />
-            ) : prepared === undefined ? null : (
-              <OpenBoard maze={prepared.maze} rect={prepared.rect} shown={false} />
-            )}
-          </LibraryCanvas>
+            phone={phone}
+          />
         )}
+        <CameraStage
+          className={cn(
+            'fixed inset-0 z-[1]',
+            mode === 'library' && 'pointer-events-none invisible',
+            editing.drawingTool && 'cursor-crosshair',
+            mode === 'editor' && !state.viewing && state.tool === 'hand' && 'cursor-grab'
+          )}
+          controller={camera}
+          drawing={editing.drawing}
+          id={CANVAS_ID}
+          label={inEditor && onScreen !== undefined ? `${onScreen.name}, maze board` : 'Maze board'}
+          onKeyDown={editing.onCanvasKey}
+          primaryPan={primaryPan}
+          promoted={flying}
+        >
+          {mode !== 'library' && onScreen !== undefined && board !== undefined ? (
+            <OpenBoard
+              maze={onScreen.maze}
+              overlays={mode === 'editor' ? editing.overlays : undefined}
+              rect={board}
+              shown={mode !== 'flying-out'}
+            />
+          ) : preparedMaze === undefined ? null : (
+            <OpenBoard maze={preparedMaze} rect={boardOf(preparedMaze)} shown={false} />
+          )}
+        </CameraStage>
         {library !== undefined && mode === 'library' && shown.length === 0 ? (
           <EmptyLibrary
             mineIsEmpty={filter.source === 'mine' && library.mineCount === 0}
@@ -377,21 +355,6 @@ export function Studio({
         phone={phone}
         visible={libraryVisible}
       />
-      {phone ? null : (
-        <aside
-          aria-label="Zoom"
-          className="transition-opacity duration-200 ease-(--ease) data-hidden:pointer-events-none data-hidden:opacity-0"
-          data-hidden={libraryVisible ? undefined : ''}
-          inert={!libraryVisible}
-        >
-          <ZoomIsland
-            className="right-safe-4 bottom-safe-[18px]"
-            percent={zoomPercent(camera)}
-            refit={refit}
-            zoomBy={zoomBy}
-          />
-        </aside>
-      )}
       {chromeMounted && onScreen !== undefined && board !== undefined && mode !== 'library' ? (
         <EditorChrome
           board={board}

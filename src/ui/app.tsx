@@ -58,8 +58,15 @@ interface LooseMaze {
   readonly id: number;
 }
 
-function focusCanvas(): void {
-  document.getElementById(CANVAS_ID)?.focus();
+/** Focuses the open maze's canvas, or the library's first maze when no maze is open. */
+function focusContent(): void {
+  const canvas = document.getElementById(CANVAS_ID);
+
+  if (canvas !== null && getComputedStyle(canvas).visibility !== 'hidden') {
+    canvas.focus();
+  } else {
+    document.querySelector<HTMLElement>('a[data-artboard]')?.focus();
+  }
 }
 
 /**
@@ -285,10 +292,10 @@ export function App() {
           href={`#${CANVAS_ID}`}
           onClick={(event) => {
             event.preventDefault();
-            focusCanvas();
+            focusContent();
           }}
         >
-          Skip to the canvas
+          Skip to the content
         </a>
       </nav>
       <Studio

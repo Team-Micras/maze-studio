@@ -80,21 +80,6 @@ function pointer(type: string, init: PointerEventInit): void {
   );
 }
 
-const LAZY_BOARD = { x: 0, y: 0, width: 640, height: 640 } as const;
-
-/** A stage whose primary press pans lazily, over one button that counts its clicks. */
-function LazyStage({ onClick }: { readonly onClick: () => void }) {
-  const camera = useBoardCamera({ board: LAZY_BOARD });
-
-  return (
-    <CameraStage className="fixed inset-0" controller={camera} label="Lazy stage" primaryPan="lazy">
-      <button className="size-[640px]" onClick={onClick} type="button">
-        Content
-      </button>
-    </CameraStage>
-  );
-}
-
 /** What a drawing on the stage was told, in order. */
 type DrawCall = readonly [string, ...unknown[]];
 
@@ -112,9 +97,11 @@ function recorder(calls: DrawCall[], accepts = true): StageDrawing {
   };
 }
 
+const DRAWING_BOARD = { x: 0, y: 0, width: 640, height: 640 } as const;
+
 /** A stage that draws with `drawing` over the editor's board. */
 function DrawingStage({ drawing }: { readonly drawing: StageDrawing }) {
-  const camera = useBoardCamera({ board: LAZY_BOARD });
+  const camera = useBoardCamera({ board: DRAWING_BOARD });
 
   return (
     <CameraStage className="fixed inset-0" controller={camera} drawing={drawing} label="Drawing">
@@ -136,21 +123,6 @@ function moveAt(clientX: number): PointerEvent {
 
 function names(calls: readonly DrawCall[]): string[] {
   return calls.map(([name]) => name);
-}
-
-function press(target: Element, type: string, x: number): void {
-  target.dispatchEvent(
-    new PointerEvent(type, {
-      bubbles: true,
-      cancelable: true,
-      pointerId: 1,
-      pointerType: 'mouse',
-      button: 0,
-      buttons: type === 'pointerup' ? 0 : 1,
-      clientX: x,
-      clientY: 400,
-    })
-  );
 }
 
 function key(type: 'keydown' | 'keyup', name: string): void {
@@ -299,30 +271,6 @@ describe('The camera stage', () => {
     await settled();
 
     expect(shownCamera().x).toBeCloseTo(fit.x + 100, 3);
-  });
-
-  test('lazily swallows the click that ends a drag, and only that one', async () => {
-    let clicks = 0;
-    await render(<LazyStage onClick={() => clicks++} />);
-    await expect.poll(() => shownCamera().k).toBeGreaterThan(0);
-    const content = page.getByRole('button', { name: 'Content' }).element();
-    const fit = shownCamera();
-    press(content, 'pointerdown', 600);
-    press(content, 'pointermove', 603);
-    press(content, 'pointermove', 620);
-    press(content, 'pointermove', 660);
-    press(content, 'pointerup', 660);
-    content.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }));
-
-    await expect.poll(() => shownCamera().x).toBeCloseTo(fit.x + 60, 3);
-    expect(clicks).toBe(0);
-
-    press(content, 'pointerdown', 600);
-    press(content, 'pointermove', 603);
-    press(content, 'pointerup', 603);
-    content.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }));
-
-    expect(clicks).toBe(1);
   });
 
   test('draws with the primary button, keeping the camera, and ends on release', async () => {

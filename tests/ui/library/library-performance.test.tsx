@@ -4,7 +4,6 @@ import '@/ui/styles.css';
 import { cpuBenchmarkHere, throttleRate } from '@tests/support/cpu-rate';
 import { FRAME_BUDGET, medianOfRuns, type FrameReport } from '@tests/support/ui/frames';
 import { artboards, mountApp } from '@tests/support/ui/library-app';
-import { shownCamera } from '@tests/support/ui/shown-camera';
 import { throttled } from '@tests/support/ui/throttle';
 
 const STEPS = 200;
@@ -25,29 +24,8 @@ function slowdown(): number {
   return rate;
 }
 
-function stage(): HTMLElement {
-  const element = document.querySelector<HTMLElement>('[role="application"]');
-
-  if (element === null) {
-    throw new Error('no library canvas');
-  }
-
-  return element;
-}
-
-function pointer(type: string, clientY: number, buttons: number): void {
-  stage().dispatchEvent(
-    new PointerEvent(type, {
-      bubbles: true,
-      cancelable: true,
-      pointerId: 1,
-      pointerType: 'mouse',
-      button: 1,
-      buttons,
-      clientX: 720,
-      clientY,
-    })
-  );
+function scroller(): HTMLElement | null {
+  return document.querySelector<HTMLElement>('[data-library-scroller]');
 }
 
 function describeRun(name: string, report: FrameReport, mounted: number): string {
@@ -60,57 +38,18 @@ function expectWithinBudget(report: FrameReport): void {
   expect(report.slowShare).toBeLessThanOrEqual(DEV_SLOW_SHARE);
 }
 
-test('dragging every maze of the repository keeps 2 % of frames over 25 ms at most, at 4× CPU throttling', async () => {
+test('scrolling every maze of the repository keeps 2 % of frames over 25 ms at most, at 4× CPU throttling', async () => {
   await mountApp();
-  const start = shownCamera();
   let mounted = 0;
-  let travelled = 0;
 
   const median = await throttled(slowdown(), () =>
-    medianOfRuns(RUNS, STEPS, (index) => {
-      if (index === 0) {
-        pointer('pointerdown', 800, 4);
-      }
-
+    medianOfRuns(RUNS, STEPS, () => {
       mounted = Math.max(mounted, artboards().length);
-      travelled = Math.max(travelled, Math.abs(shownCamera().y - start.y));
-      pointer('pointermove', 800 - (index + 1) * 18, 4);
-
-      if (index === STEPS - 1) {
-        pointer('pointerup', 800 - STEPS * 18, 0);
-      }
+      scroller()?.scrollTo({ top: (scroller()?.scrollTop ?? 0) + 40, behavior: 'instant' });
     })
   );
-  console.info(describeRun('library drag', median, mounted));
+  console.info(describeRun('library scroll', median, mounted));
 
-  expect(travelled).toBeGreaterThan(2000);
-  expectWithinBudget(median);
-});
-
-test('zooming every maze of the repository keeps 2 % of frames over 25 ms at most, at 4× CPU throttling', async () => {
-  await mountApp();
-  const fit = shownCamera().k;
-  let mounted = 0;
-  let deepest = 1;
-
-  const median = await throttled(slowdown(), () =>
-    medianOfRuns(RUNS, STEPS, (index) => {
-      mounted = Math.max(mounted, artboards().length);
-      deepest = Math.max(deepest, shownCamera().k / fit);
-      stage().dispatchEvent(
-        new WheelEvent('wheel', {
-          bubbles: true,
-          cancelable: true,
-          ctrlKey: true,
-          deltaY: index < STEPS / 2 ? -1.5 : 1.5,
-          clientX: 700,
-          clientY: 500,
-        })
-      );
-    })
-  );
-  console.info(describeRun('library zoom', median, mounted));
-
-  expect(deepest).toBeGreaterThan(3);
+  expect(scroller()?.scrollTop).toBe(RUNS * STEPS * 40);
   expectWithinBudget(median);
 });

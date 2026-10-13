@@ -160,7 +160,7 @@ describe('The shell', () => {
     meta.remove();
   });
 
-  test('has a skip link that puts the focus on the canvas', async () => {
+  test('has a skip link that puts the focus on the first maze of the library', async () => {
     await mountApp();
     if (document.activeElement instanceof HTMLElement) {
       document.activeElement.blur();
@@ -168,11 +168,20 @@ describe('The shell', () => {
 
     await userEvent.tab();
 
-    await expect.element(page.getByRole('link', { name: 'Skip to the canvas' })).toHaveFocus();
+    await expect.element(page.getByRole('link', { name: 'Skip to the content' })).toHaveFocus();
+    await userEvent.keyboard('{Enter}');
+
+    expect(document.activeElement).toBe(document.querySelector('a[data-artboard]'));
+    expect(window.location.hash).toBe('#/');
+  });
+
+  test('has a skip link that puts the focus on the canvas of an open maze', async () => {
+    await mountOnMaze('#/repo/classic/AAMC15Maze.txt');
+    await expect.element(page.getByRole('heading', { level: 1 })).toBeVisible();
+    page.getByRole('link', { name: 'Skip to the content' }).element().focus();
     await userEvent.keyboard('{Enter}');
 
     expect(document.activeElement?.getAttribute('role')).toBe('application');
-    expect(window.location.hash).toBe('#/');
   });
 
   test.each(['light', 'dark'])(
