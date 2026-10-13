@@ -118,6 +118,20 @@ describe('The library grid', () => {
     expect(under?.getBoundingClientRect().top).toBeGreaterThanOrEqual(INSETS.top - 1);
   });
 
+  test('Page Down and End scroll the grid when nothing has the focus', async () => {
+    await mountApp();
+    if (document.activeElement instanceof HTMLElement) {
+      document.activeElement.blur();
+    }
+
+    await userEvent.keyboard('{PageDown}');
+    await expect.poll(() => scroller()?.scrollTop).toBeGreaterThan(500);
+    await userEvent.keyboard('{End}');
+    await expect
+      .poll(() => (scroller()?.scrollTop ?? 0) + (scroller()?.clientHeight ?? 0))
+      .toBe(scroller()?.scrollHeight);
+  });
+
   test('a click on an artboard half below the insets does not scroll the page', async () => {
     await mountApp();
     const cut = artboards().find((board) => {

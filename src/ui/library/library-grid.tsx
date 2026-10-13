@@ -29,6 +29,30 @@ export interface LibraryGridProps {
   readonly onArtboardPointer?: (pointerType: string, key: string | undefined) => void;
 }
 
+/** How far a key scrolls the grid, as it would scroll a page; `undefined` for other keys. */
+function keyScroll(key: string, shiftKey: boolean, scroller: HTMLElement): number | undefined {
+  const page = scroller.clientHeight * 0.9;
+
+  switch (key) {
+    case 'PageDown':
+      return page;
+    case 'PageUp':
+      return -page;
+    case ' ':
+      return shiftKey ? -page : page;
+    case 'ArrowDown':
+      return 40;
+    case 'ArrowUp':
+      return -40;
+    case 'Home':
+      return -scroller.scrollTop;
+    case 'End':
+      return scroller.scrollHeight;
+    default:
+      return undefined;
+  }
+}
+
 /** What the grid lays out and mounts for the scroller as it is now. */
 interface View {
   readonly width: number;
@@ -99,6 +123,35 @@ export function LibraryGrid({
       scroller.removeEventListener('scroll', update);
     };
   }, [scroller, phone, count]);
+
+  useEffect(() => {
+    if (scroller === null || hidden) {
+      return undefined;
+    }
+
+    const onKey = (event: KeyboardEvent): void => {
+      const active = document.activeElement;
+
+      if (
+        event.defaultPrevented ||
+        event.ctrlKey ||
+        event.metaKey ||
+        event.altKey ||
+        (active !== null && active !== document.body)
+      ) {
+        return;
+      }
+
+      const by = keyScroll(event.key, event.shiftKey, scroller);
+
+      if (by !== undefined) {
+        event.preventDefault();
+        scroller.scrollBy({ top: by });
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [scroller, hidden]);
 
   const reveal = useCallback(
     (key: string, event: FocusEvent<HTMLAnchorElement>): void => {
@@ -176,10 +229,14 @@ export function LibraryGrid({
             <Artboard
               band={band}
               entry={entry}
+              height={rect.height}
               key={entry.key}
               maze={maze}
               onFocus={reveal}
-              rect={rect}
+              slot={layout.side}
+              width={rect.width}
+              x={rect.x}
+              y={rect.y}
             />
           ))}
         </div>

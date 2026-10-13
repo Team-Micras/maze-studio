@@ -185,6 +185,7 @@ export function MazeList({
       <CommandInput
         onKeyDown={onKeyDown}
         onValueChange={setQuery}
+        className="h-full py-0"
         placeholder="Filter mazes…"
         ref={input}
         wrapperClassName="mx-1.5 mt-1.5 rounded-[10px] border-b-0 bg-muted/60"
@@ -194,7 +195,7 @@ export function MazeList({
         <CommandEmpty>No maze matches</CommandEmpty>
         <Items entries={entries} library={library} onPin={pin} root={list} />
       </CommandList>
-      <output
+      <p
         className="flex h-9 flex-none items-center gap-1.5 border-t px-3 text-xs text-muted-foreground empty:hidden"
         data-save-state=""
       >
@@ -207,7 +208,7 @@ export function MazeList({
             </span>
           </>
         ) : null}
-      </output>
+      </p>
     </Command>
   );
 

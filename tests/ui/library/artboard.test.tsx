@@ -24,7 +24,11 @@ describe('Artboard', () => {
           }}
           maze={maze}
           onFocus={() => undefined}
-          rect={{ x: 0, y: 0, width: 160, height: 160 }}
+          height={160}
+          slot={160}
+          width={160}
+          x={0}
+          y={0}
         />
       </div>
     );
@@ -35,5 +39,36 @@ describe('Artboard', () => {
     expect(canvas?.getBoundingClientRect().height).toBe(160);
     expect(canvas === null ? '' : getComputedStyle(canvas).backgroundColor).toBe('oklch(0.17 0 0)');
     expect(link?.querySelectorAll('svg, [role="progressbar"], [aria-busy]')).toHaveLength(0);
+  });
+
+  test('spans its name and size over the whole slot, even for a tall and narrow maze', async () => {
+    const maze = await repoMaze(REPO_MAZES.halfsize);
+    await render(
+      <div style={{ position: 'relative', width: 400, height: 400, padding: 40 }}>
+        <Artboard
+          band={thumbnailBand(160)}
+          entry={{
+            key: 'mine:narrow',
+            origin: 'mine',
+            name: 'A rather long name for a narrow maze',
+            category: 'free',
+            width: 4,
+            height: 16,
+          }}
+          height={160}
+          maze={maze}
+          onFocus={() => undefined}
+          slot={160}
+          width={40}
+          x={60}
+          y={60}
+        />
+      </div>
+    );
+    const label = document.querySelector('a[data-artboard] > span')?.getBoundingClientRect();
+    const thumbnail = document.querySelector('a[data-artboard] canvas')?.getBoundingClientRect();
+
+    expect(label?.width).toBe(160);
+    expect((label?.left ?? 0) + 60).toBeCloseTo(thumbnail?.left ?? 0, 3);
   });
 });

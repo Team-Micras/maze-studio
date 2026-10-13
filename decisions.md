@@ -746,3 +746,13 @@ The machine's rule is no builds in `/tmp`, so `tests/e2e/pwa.test.ts` builds the
 - **The library's frame gate scrolls** 60 px a frame from where the last run stopped, at 4× CPU throttling: p95
   16.8 ms, 0 % of frames over 25 ms. Starting each run from the top again mounted twenty cached thumbnails at once
   and cost two frames; that is the test's jump, not a scroll.
+- **Audit of the round's screens.** Fixed: the title's focus ring is whole and its touch area 44 px tall; leaving the
+  field by Tab or a click no longer pulls the focus back (only Enter and Escape return it); the field keeps an `h1`
+  and, when the rename fails, the name typed; a return to the library without a flight focuses the maze left (or
+  the first maze on screen), as the skip link does; with nothing focused the page keys scroll the grid; an artboard's
+  name spans its slot and is part of the link; artboards take plain numbers so `memo` holds; the save line is not a
+  live region, says "Saving…" only after 300 ms and "saved" only after an edit in this session; the skip link has no
+  `nav` of its own and a hover state; the list's filter input fills its box.
+- **Left as they are.** The grid's insets do not add the safe-area insets: a phone held sideways uses the notebook
+  layout, whose 56 px sides clear a notch, and the phone layout's 14 px is portrait only; to revisit with the owner's
+  test on a real phone.

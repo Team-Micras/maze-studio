@@ -14,7 +14,7 @@ import {
   type WorldRect,
 } from '@/render';
 import type { CanvasCamera } from '@/ui/board/use-canvas-camera';
-import { libraryScroller } from '@/ui/library/library-scroller';
+import { focusArtboard, libraryScroller } from '@/ui/library/library-scroller';
 import type { OpenMaze } from '@/ui/open-maze';
 
 import {
@@ -190,6 +190,7 @@ export function useStudioFlight(input: StudioFlightInput): StudioFlight {
       });
 
       if (!flies) {
+        requestAnimationFrame(() => requestAnimationFrame(() => focusArtboard(leaving?.key)));
         return;
       }
 
@@ -201,9 +202,7 @@ export function useStudioFlight(input: StudioFlightInput): StudioFlight {
         land: 'keep',
         onLand: () => {
           store.setState({ mode: 'library', leaving: undefined });
-          document
-            .querySelector<HTMLElement>(`a[data-artboard="${CSS.escape(leaving?.key ?? '')}"]`)
-            ?.focus({ preventScroll: true });
+          focusArtboard(leaving?.key);
         },
       });
     }

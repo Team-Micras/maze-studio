@@ -16,6 +16,7 @@ import {
   type Edge,
   type Maze,
 } from '@/maze';
+import { DATABASE_NAME } from '@/library/database';
 import { boardGeometry, MIN_TOUCH_CELL } from '@/render';
 import {
   contentOf,
@@ -462,6 +463,45 @@ describe('The maze list after an edit', () => {
       () => document.querySelector('h1')?.textContent !== 'AAMC15Maze (edited)'
     );
     expect(await state.textContent()).toBe('AAMC15Maze (edited) is saved in My mazes');
+  });
+
+  test('says nothing for a maze of My mazes not edited in this session', async () => {
+    const { maze } = await repoContent(CLASSIC);
+    const page = await openPage(browser, contexts, app);
+    await page.evaluate(
+      ([database, code]) =>
+        new Promise<void>((resolve, reject) => {
+          const request = indexedDB.open(database);
+          request.addEventListener('error', () =>
+            reject(request.error ?? new Error('no database'))
+          );
+          request.addEventListener('success', () => {
+            const db = request.result;
+            const transaction = db.transaction('mine', 'readwrite');
+            transaction.objectStore('mine').put({
+              id: 'kept',
+              name: 'Kept maze',
+              code,
+              profile: 'classic',
+              createdAt: 1,
+              updatedAt: 1,
+              version: 1,
+            });
+            transaction.addEventListener('complete', () => {
+              db.close();
+              resolve();
+            });
+          });
+        }),
+      [DATABASE_NAME, encodeMazeCode(maze)] as const
+    );
+    await page.goto(`${app}#/mine/kept`);
+    await page.reload();
+    await waitForMode(page, 'editor');
+    await page.keyboard.press('l');
+    await page.getByPlaceholder('Filter mazes…').waitFor();
+
+    expect(await page.locator('[data-save-state]').textContent()).toBe('');
   });
 
   test('says nothing for a maze not edited', async () => {

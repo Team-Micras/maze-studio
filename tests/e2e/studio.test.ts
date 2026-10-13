@@ -294,6 +294,20 @@ describe('The flight into a maze and back', () => {
     );
   });
 
+  test('with reduced motion, Back lands on the library with the focus on the maze left', async () => {
+    const page = await open('#/', { reduced: true });
+    const key = await openFirstMaze(page);
+    await page.getByRole('button', { name: 'Back to the library' }).click();
+    await page.waitForFunction(
+      () =>
+        document.querySelector('[data-studio-mode]')?.getAttribute('data-studio-mode') === 'library'
+    );
+
+    await expect
+      .poll(() => page.evaluate(() => document.activeElement?.getAttribute('data-artboard')))
+      .toBe(key);
+  });
+
   test('with reduced motion, the editor is there in the frame after the click', async () => {
     const page = await open('#/', { reduced: true });
     await page.evaluate(() => {

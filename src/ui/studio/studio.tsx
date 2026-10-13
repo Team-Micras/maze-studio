@@ -18,7 +18,7 @@ import { CameraStage } from '@/ui/board/camera-stage';
 import { useCanvasCamera } from '@/ui/board/use-canvas-camera';
 import { CANVAS_ID } from '@/ui/canvas-id';
 import { ChangesChip, ChangesPanel } from '@/ui/changes/changes';
-import type { ChangeItem } from '@/ui/changes/session-changes';
+import { changeOf, sessionChanges, type ChangeItem } from '@/ui/changes/session-changes';
 import { Checks } from '@/ui/editor/checks';
 import { EditControls } from '@/ui/editor/edit-controls';
 import { MoreActions } from '@/ui/editor/more-actions';
@@ -166,6 +166,7 @@ export function Studio({
   });
   const coarse = useCoarsePointer();
   const writing = useWriting();
+  const sessionChangesNow = useStore(sessionChanges);
   const theme = useTheme((current) => current.theme);
   const toggleTheme = useTheme((current) => current.toggle);
   const changes = useStudioChanges({ store, state, library, onScreen, phone, onDiscard });
@@ -420,7 +421,8 @@ export function Studio({
           saveState={
             writing
               ? { kind: 'saving' }
-              : opened?.document.mine === undefined
+              : opened?.document.mine === undefined ||
+                  changeOf(sessionChangesNow, opened.document.mine.id) === undefined
                 ? undefined
                 : { kind: 'saved', name: opened.name }
           }

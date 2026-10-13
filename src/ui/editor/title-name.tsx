@@ -52,8 +52,8 @@ export function TitleName({ name, rename }: TitleNameProps) {
     const trimmed = draft.trim();
     stop();
 
-    if (trimmed !== name) {
-      await rename.onRename(trimmed);
+    if (trimmed !== name && !(await rename.onRename(trimmed))) {
+      setDraft(trimmed);
     }
   };
 
@@ -71,16 +71,16 @@ export function TitleName({ name, rename }: TitleNameProps) {
   if (draft === undefined) {
     return (
       <>
-        <h1 className={TITLE}>
+        <h1 className="min-w-0 text-[13px] leading-[18px] font-semibold">
           <button
             aria-describedby={`${id}-how`}
-            className="max-w-full truncate rounded-[6px] px-1 -mx-1 text-left outline-none hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring"
+            className="relative -mx-1 block max-w-full rounded-[6px] px-1 text-left outline-none after:absolute after:inset-x-0 after:-inset-y-[13px] after:content-[''] hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
             onClick={() => setDraft(name)}
             ref={button}
             translate="no"
             type="button"
           >
-            {name}
+            <span className="block truncate">{name}</span>
           </button>
         </h1>
         <span hidden id={`${id}-how`}>
@@ -92,6 +92,9 @@ export function TitleName({ name, rename }: TitleNameProps) {
 
   return (
     <div className="relative min-w-0">
+      <h1 className="sr-only" translate="no">
+        {name}
+      </h1>
       <input
         aria-describedby={error === undefined ? undefined : `${id}-error`}
         aria-invalid={error !== undefined}
@@ -99,7 +102,7 @@ export function TitleName({ name, rename }: TitleNameProps) {
         autoComplete="off"
         className="-mx-1 h-[22px] w-[min(240px,40vw)] rounded-[6px] bg-muted px-1 text-[13px] font-semibold outline-none focus-visible:ring-2 focus-visible:ring-ring aria-invalid:ring-2 aria-invalid:ring-destructive"
         name="name"
-        onBlur={stop}
+        onBlur={() => setDraft(undefined)}
         onChange={(event) => setDraft(event.target.value)}
         onFocus={(event) => event.currentTarget.select()}
         onKeyDown={onKeyDown}

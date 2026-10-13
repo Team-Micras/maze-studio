@@ -34,6 +34,7 @@ import { TooltipProvider } from './primitives/tooltip';
 import { LIBRARY_ROUTE, parseRoute, routeHash, type Route } from './routes';
 import { Studio } from './studio/studio';
 import { Toaster } from './toaster';
+import { focusArtboard } from './library/library-scroller';
 import { appStorage } from './storage';
 import { showToast } from './toasts';
 
@@ -58,14 +59,14 @@ interface LooseMaze {
   readonly id: number;
 }
 
-/** Focuses the open maze's canvas, or the library's first maze when no maze is open. */
+/** Focuses the open maze's canvas, or the library's first maze on screen when no maze is open. */
 function focusContent(): void {
   const canvas = document.getElementById(CANVAS_ID);
 
   if (canvas !== null && getComputedStyle(canvas).visibility !== 'hidden') {
     canvas.focus();
   } else {
-    document.querySelector<HTMLElement>('a[data-artboard]')?.focus();
+    focusArtboard();
   }
 }
 
@@ -286,18 +287,16 @@ export function App() {
 
   return (
     <TooltipProvider delayDuration={350} skipDelayDuration={300}>
-      <nav aria-label="Skip link">
-        <a
-          className="fixed top-safe-3 left-safe-3 z-40 -translate-y-[160%] rounded-[10px] bg-primary px-3 py-2 text-[13px] text-primary-foreground focus-visible:translate-y-0"
-          href={`#${CANVAS_ID}`}
-          onClick={(event) => {
-            event.preventDefault();
-            focusContent();
-          }}
-        >
-          Skip to the content
-        </a>
-      </nav>
+      <a
+        className="fixed top-safe-3 left-safe-3 z-40 -translate-y-[160%] rounded-[10px] bg-primary px-3 py-2 text-[13px] text-primary-foreground hover:bg-primary/90 focus-visible:translate-y-0"
+        href={`#${CANVAS_ID}`}
+        onClick={(event) => {
+          event.preventDefault();
+          focusContent();
+        }}
+      >
+        Skip to the content
+      </a>
       <Studio
         filter={route.kind === 'library' ? (landing ?? route.filter) : lastFilter.filter}
         library={library}

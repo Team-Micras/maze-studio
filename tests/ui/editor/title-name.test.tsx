@@ -64,4 +64,49 @@ describe('The title of a maze of My mazes', () => {
     await expect.element(page.getByRole('heading', { level: 1 })).toHaveTextContent('AAMC15Maze');
     expect(document.querySelector('h1 button')).toBeNull();
   });
+
+  test('lets Tab leave the field, closing it without taking the focus back', async () => {
+    const onRename = renamer();
+    await render(
+      <header>
+        <TitleName name="Alpha" rename={{ taken: [], onRename }} />
+        <button type="button">Next</button>
+      </header>
+    );
+    await userEvent.click(page.getByRole('button', { name: 'Alpha' }));
+    await userEvent.tab();
+    await new Promise((resolve) => setTimeout(resolve, 50));
+
+    await expect.element(page.getByRole('button', { name: 'Next' })).toHaveFocus();
+    expect(document.querySelector('input')).toBeNull();
+    expect(onRename).not.toHaveBeenCalled();
+  });
+
+  test('keeps a heading while the field is open, and the name typed when the rename fails', async () => {
+    const onRename = vi.fn<(name: string) => Promise<boolean>>(() => Promise.resolve(false));
+    await render(<TitleName name="Alpha" rename={{ taken: [], onRename }} />);
+    await userEvent.click(page.getByRole('button', { name: 'Alpha' }));
+
+    await expect.element(page.getByRole('heading', { level: 1 })).toHaveTextContent('Alpha');
+    await userEvent.fill(page.getByRole('textbox', { name: 'Maze name' }), 'Gamma');
+    await userEvent.keyboard('{Enter}');
+
+    await expect.element(page.getByRole('textbox', { name: 'Maze name' })).toHaveValue('Gamma');
+    expect(onRename).toHaveBeenCalledExactlyOnceWith('Gamma');
+  });
+
+  test('draws its focus ring whole, and takes a touch 44 px tall', async () => {
+    await render(
+      <div style={{ padding: 40 }}>
+        <TitleName name="Alpha" rename={{ taken: [], onRename: renamer() }} />
+      </div>
+    );
+    const button = page.getByRole('button', { name: 'Alpha' }).element();
+    const box = button.getBoundingClientRect();
+    const middle = box.left + box.width / 2;
+
+    expect(getComputedStyle(button.parentElement ?? button).overflow).toBe('visible');
+    expect(document.elementFromPoint(middle, box.top - 12)).toBe(button);
+    expect(document.elementFromPoint(middle, box.bottom + 12)).toBe(button);
+  });
 });
