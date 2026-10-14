@@ -2,11 +2,11 @@ import { useCallback } from 'react';
 import { mineIdOf, mineKey } from '@/library';
 import { useStore, type StoreApi } from 'zustand';
 
-import { mazesEqual } from '@/maze';
 import type { ChangeRow, ChangesPanelProps } from '@/ui/changes/changes';
 import {
   changeDiff,
   changeOf,
+  differs,
   keepChange,
   sessionChanges,
   withoutChange,
@@ -41,19 +41,17 @@ export function useStudioChanges({
   const showDiff = useStore(store, (state) => state.showDiff);
   const onScreen = screen.kind === 'library' ? undefined : screen.maze;
   const changes = useStore(sessionChanges);
-  const rows: ChangeRow[] = changes.items
-    .map((item) => {
-      const key = mineKey(item.id);
-      return { item, current: onScreen?.key === key ? onScreen.maze : library?.mazeOf(key) };
-    })
-    .filter(
-      ({ item, current }) =>
-        item.baseline === undefined || current === undefined || !mazesEqual(item.baseline, current)
-    );
+  const rows: ChangeRow[] = changes.items.flatMap((item) => {
+    const key = mineKey(item.id);
+    const shown = onScreen?.key === key ? onScreen : undefined;
+    const current = shown?.maze ?? library?.mazeOf(key);
+    const profile = shown?.document.profile ?? library?.documentOf(key)?.profile;
+    return differs(item, current, profile) ? [{ item, current }] : [];
+  });
   const screenId = mineIdOf(onScreen?.key);
   const screenItem = screenId === undefined ? undefined : changeOf(changes, screenId);
   const screenDiff =
-    screenItem === undefined || onScreen === undefined
+    screenItem === undefined || onScreen === undefined || !differs(screenItem, onScreen.maze)
       ? undefined
       : changeDiff(screenItem, onScreen.maze);
   const setOpen = useCallback((next: boolean) => store.setState({ changesOpen: next }), [store]);

@@ -14,6 +14,7 @@ import {
   addExisting,
   changeOf,
   changeSummary,
+  differs,
   keepChange,
   NO_CHANGES,
   noteSeen,
@@ -90,6 +91,19 @@ describe('The line of a change', () => {
 
   test('says "New maze" without a baseline', () => {
     expect(changeSummary(NEW, walls(BASE, A))).toBe('New maze');
+  });
+});
+
+describe('differs', () => {
+  test('lists an item while its maze or profile is not its baseline, a new maze, and one not loaded', () => {
+    const item: ChangeItem = { ...copy(), baselineProfile: 'classic' };
+
+    expect(differs(item, BASE, 'classic')).toBe(false);
+    expect(differs(item, walls(BASE, A), 'classic')).toBe(true);
+    expect(differs(item, BASE, 'training')).toBe(true);
+    expect(differs(item, BASE)).toBe(false);
+    expect(differs(item, undefined)).toBe(true);
+    expect(differs(NEW, BASE)).toBe(true);
   });
 });
 

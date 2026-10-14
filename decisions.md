@@ -146,8 +146,9 @@ reached, and the measurements of the day, are in the git history of this file.
   with the file's source until the first edit.
 - **Changes** live in one in-memory store per tab, fed by the writer: a copy or new maze from its first write, a maze
   of My mazes from its first save, against the state the session first opened. Discard, armed for 3 s, deletes a copy
-  or saves back the first state; Keep takes the item out. An item back at its baseline is neither listed nor counted
-  (owner, 14/10) and nothing is deleted on its own. Save to My mazes of a link or `.txt` not edited is no change
+  or saves back the first state; Keep takes the item out. An item back at its baseline, maze and profile (`differs`), is
+  neither listed nor counted (owner, 14/10), nor turns the library to My mazes on leaving; nothing is deleted on its
+  own. Save to My mazes of a link or `.txt` not edited is no change
   (owner, 14/10): the copy is noted as a maze of My mazes from before the session, its saved state the baseline, so it
   enters Changes only at a later save and Discard saves that state back.
 - **Save to My mazes is in the ⋯ menu** (owner, 14/10), so the title keeps the island's width on a phone; it is not
@@ -184,9 +185,10 @@ reached, and the measurements of the day, are in the git history of this file.
   by share of slow frames, then worst frame, then p95. The production gate in `e2e` holds it on the built app. The
   library's gate in `performance`, on React's development build in the tester's iframe, allows 2 %: it spreads from 0
   to 1.5 % between runs on the reference notebook. The flights also allow no frame over 33 ms. A flight lasts about 45
-  intervals, so the production gate pools the intervals of its three runs (about 135) for the p95 and the 1 %; with the
-  median run, one slow frame in 45 (2.2 %) failed it. The 33 ms ceiling stays on the median run: over all three runs a
-  frame of 33.3 ms, two refreshes at 60 Hz, shows up in most measurements.
+  intervals, so one slow frame is 2.2 % of a run, and the median run failed the gate whenever two of the three runs had
+  one. The production gate pools the intervals of its three runs (about 135) for the p95 and the 1 %, rounded up to
+  whole frames (2 slow frames in 135). The 33 ms ceiling stays on the median run: over all three runs a frame of 33.3
+  ms, two refreshes at 60 Hz, shows up in most measurements.
 - **Throttling is calibrated to the machine**: a fixed workload is timed unthrottled and the throttle is
   `clamp(4 × 27 ms / measured, 1, 4)`, 27 ms being the reference notebook (i5-12500H).
 - **Reference screenshots are committed** next to their test, made in `mcr.microsoft.com/playwright:v1.63.0`; the

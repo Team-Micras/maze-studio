@@ -7,7 +7,7 @@ import { parseMazeText } from '@/maze';
 import { CANVAS_ID } from './canvas-id';
 import { ConfirmDialog } from './confirm-dialog';
 import { discardChange } from './changes/discard';
-import { changeOf, sessionChanges, withoutChange } from './changes/session-changes';
+import { changeOf, differs, sessionChanges, withoutChange } from './changes/session-changes';
 import { openNewMaze } from './new-maze';
 import { useMazeEditor } from './editor/use-maze-editor';
 import { useRoute } from './hooks/use-route';
@@ -106,12 +106,13 @@ export function App() {
     setTrail({ ...trail, key: screenKey });
   }
 
-  const leftId = mineIdOf(trail.left);
+  const leftItem = changeOf(changes, mineIdOf(trail.left) ?? '');
   const landing =
     route.kind === 'library' &&
     route.filter.source !== 'mine' &&
-    leftId !== undefined &&
-    changeOf(changes, leftId) !== undefined
+    trail.left !== undefined &&
+    leftItem !== undefined &&
+    differs(leftItem, library?.mazeOf(trail.left), library?.documentOf(trail.left)?.profile)
       ? MINE_FILTER
       : undefined;
   const missingOpening =

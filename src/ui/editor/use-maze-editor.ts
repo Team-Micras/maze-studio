@@ -147,6 +147,7 @@ export function useMazeEditor(input: MazeEditorInput): MazeEditor {
                 kind: created ? 'new' : 'copy',
                 name: copy.name,
                 baseline: created ? undefined : opened.maze,
+                baselineProfile: opened.document.profile,
                 source: refOf(opened.key),
               })
         );

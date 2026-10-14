@@ -231,6 +231,53 @@ describe('Changes of the session', () => {
       .toBe(1);
   });
 
+  test('a copy undone to the original comes back with only its profile changed', async () => {
+    const { maze } = await repoContent(CLASSIC);
+    const page = await openMaze(`#/repo/${CLASSIC}`);
+    await clickEdge(page, maze, EDGE);
+    await expectSaved(page, sameMaze(toggleWall(maze, EDGE)));
+    await page.keyboard.press('Control+z');
+    await expectSaved(page, sameMaze(maze));
+    await expect.poll(() => page.locator('[data-changes-chip]').count()).toBe(0);
+
+    await page.getByRole('button', { name: /^Checks/ }).click();
+    await page
+      .getByRole('dialog', { name: 'Checks' })
+      .getByRole('radio', { name: 'Training' })
+      .click();
+    await page.keyboard.press('Escape');
+    await expect
+      .poll(() => page.getByRole('button', { name: 'Changes in this session: 1' }).count())
+      .toBe(1);
+  });
+
+  test('leaving a copy undone to the original keeps the library on its filter', async () => {
+    const { maze } = await repoContent(CLASSIC);
+    const page = await openMaze(`#/repo/${CLASSIC}`);
+    await clickEdge(page, maze, EDGE);
+    await expectSaved(page, sameMaze(toggleWall(maze, EDGE)));
+    await page.keyboard.press('Control+z');
+    await expectSaved(page, sameMaze(maze));
+    await page.waitForTimeout(300);
+    await page.getByRole('button', { name: 'Back to the library' }).click();
+    await waitForMode(page, 'library');
+    await page.waitForTimeout(300);
+
+    expect(new URL(page.url()).hash).toBe('#/');
+  });
+
+  test('Show on board is off for a maze back at its baseline', async () => {
+    const { maze } = await repoContent(CLASSIC);
+    const page = await openMaze(`#/repo/${CLASSIC}`);
+    await clickEdge(page, maze, EDGE);
+    await expectSaved(page, sameMaze(toggleWall(maze, EDGE)));
+    await page.keyboard.press('Control+z');
+    await expectSaved(page, sameMaze(maze));
+    await openChangesFromMenu(page);
+
+    expect(await page.getByRole('button', { name: /Show on board/ }).isDisabled()).toBe(true);
+  });
+
   test('Keep takes the item out and keeps the copy, and the chip hides with nothing left', async () => {
     const { maze } = await repoContent(CLASSIC);
     const page = await openMaze(`#/repo/${CLASSIC}`);

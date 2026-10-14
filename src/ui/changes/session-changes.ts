@@ -8,7 +8,7 @@
 
 import { createStore, type StoreApi } from 'zustand/vanilla';
 
-import { diffMazes, type Maze, type MazeDiff, type Profile } from '@/maze';
+import { diffMazes, mazesEqual, type Maze, type MazeDiff, type Profile } from '@/maze';
 import type { Route } from '@/ui/routes';
 
 /** How an item came into the session: a copy, a new maze, or a maze of My mazes from before. */
@@ -25,7 +25,7 @@ export interface ChangeItem {
    * session; none for a new maze.
    */
   readonly baseline: Maze | undefined;
-  /** The profile of the baseline, which Discard puts back with it; none for a copy. */
+  /** The profile of the baseline, which Discard of a maze of My mazes puts back with it. */
   readonly baselineProfile?: Profile;
   /** Where a copy came from, which Discard goes back to; none for a file or a new maze. */
   readonly source: Route | undefined;
@@ -124,6 +124,22 @@ export function keepChange(changes: SessionChanges, id: string, kept: SeenState)
     items: changes.items.filter((item) => item.id !== id),
     firstSeen: new Map([...changes.firstSeen, [id, kept]]),
   };
+}
+
+/**
+ * Whether an item differs from its baseline now, so Changes lists it and the chip counts it: a new
+ * maze always does, and so does one not loaded yet; else its maze, or with `profile` its profile
+ * too. Without `profile` it says whether the board has a diff to draw.
+ */
+export function differs(item: ChangeItem, maze: Maze | undefined, profile?: Profile): boolean {
+  return (
+    item.baseline === undefined ||
+    maze === undefined ||
+    !mazesEqual(item.baseline, maze) ||
+    (profile !== undefined &&
+      item.baselineProfile !== undefined &&
+      profile !== item.baselineProfile)
+  );
 }
 
 /** The diff of an item, current against its baseline, or none for a new maze. */
