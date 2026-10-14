@@ -175,6 +175,10 @@ export function useStudioFlight(input: StudioFlightInput): StudioFlight {
           ? undefined
           : { ...page, y: page.y - scroller.scrollTop };
       const board = leaving === undefined ? undefined : boardOf(leaving.maze);
+      if (leftCamera !== undefined) {
+        now.camera.jump(leftCamera);
+      }
+
       const flies =
         back !== undefined &&
         board !== undefined &&

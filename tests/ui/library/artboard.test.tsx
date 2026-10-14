@@ -71,4 +71,45 @@ describe('Artboard', () => {
     expect(label?.width).toBe(160);
     expect((label?.left ?? 0) + 60).toBeCloseTo(thumbnail?.left ?? 0, 3);
   });
+
+  test('keeps the menu of a held finger away, not the one of the mouse, and selects no text', async () => {
+    const maze = await repoMaze(REPO_MAZES.halfsize);
+    await render(
+      <div style={{ position: 'relative', width: 400, height: 400 }}>
+        <Artboard
+          band={thumbnailBand(160)}
+          entry={{
+            key: 'repo:halfsize/x.txt',
+            origin: 'repo',
+            name: 'x',
+            category: 'halfsize',
+            width: maze.width,
+            height: maze.height,
+            path: 'halfsize/x.txt',
+          }}
+          height={160}
+          maze={maze}
+          onFocus={() => undefined}
+          slot={160}
+          width={160}
+          x={0}
+          y={40}
+        />
+      </div>
+    );
+    const link = document.querySelector('a[data-artboard]');
+    const menu = (pointerType: string): boolean => {
+      const event = new PointerEvent('contextmenu', {
+        bubbles: true,
+        cancelable: true,
+        pointerType,
+      });
+      link?.dispatchEvent(event);
+      return event.defaultPrevented;
+    };
+
+    expect(menu('touch')).toBe(true);
+    expect(menu('mouse')).toBe(false);
+    expect(link === null ? '' : getComputedStyle(link).userSelect).toBe('none');
+  });
 });

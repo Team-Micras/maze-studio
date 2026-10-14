@@ -1,4 +1,4 @@
-import { memo, type CSSProperties, type FocusEvent } from 'react';
+import { memo, useRef, type CSSProperties, type FocusEvent } from 'react';
 
 import type { CatalogEntry } from '@/library';
 import type { Maze } from '@/maze';
@@ -25,6 +25,9 @@ export interface ArtboardProps {
   readonly onFocus: (key: string, event: FocusEvent<HTMLAnchorElement>) => void;
 }
 
+/** How far a finger may move, in CSS pixels, and still open the artboard it lifts from. */
+const TOUCH_SLOP = 10;
+
 function artboardStyle(x: number, y: number, width: number, height: number): CSSProperties {
   return { transform: `translate(${x}px, ${y}px)`, width, height };
 }
@@ -33,7 +36,9 @@ function artboardStyle(x: number, y: number, width: number, height: number): CSS
  * One maze of the library's grid (DESIGN.md 7): a link that opens it, its thumbnail, and its name
  * and size above. Hover and keyboard focus ring it. A new place slides there, so a reflow moves the
  * artboards that stay mounted. A plain click pushes the route at once, so the maze opens in the
- * next frame; a modified one opens a new tab. The link is not draggable.
+ * next frame; a modified one opens a new tab. The link is not draggable, and a finger held on it
+ * opens no menu and selects nothing: held, it stays put; lifted without moving, even after a long
+ * press, it opens the maze; moved, it scrolls the grid.
  */
 export const Artboard = memo(function Artboard({
   entry,
@@ -46,14 +51,25 @@ export const Artboard = memo(function Artboard({
   band,
   onFocus,
 }: ArtboardProps) {
+  const press = useRef<{ readonly id: number; readonly x: number; readonly y: number } | undefined>(
+    undefined
+  );
+  const openedByTouch = useRef(false);
+
   return (
     <a
       aria-label={artboardLabel(entry)}
-      className="group absolute top-0 left-0 block text-inherit no-underline outline-none transition-transform duration-[360ms] ease-(--ease-out) active:scale-[0.98]"
+      className="group absolute top-0 left-0 block text-inherit no-underline outline-none transition-transform duration-[360ms] ease-(--ease-out) select-none [-webkit-touch-callout:none]"
       data-artboard={entry.key}
       draggable={false}
       href={routeHash(routeOfEntry(entry))}
       onClick={(event) => {
+        if (openedByTouch.current) {
+          openedByTouch.current = false;
+          event.preventDefault();
+          return;
+        }
+
         if (
           !event.defaultPrevented &&
           !event.ctrlKey &&
@@ -63,6 +79,41 @@ export const Artboard = memo(function Artboard({
         ) {
           event.preventDefault();
           pushRoute(routeOfEntry(entry));
+        }
+      }}
+      onPointerCancel={() => {
+        press.current = undefined;
+      }}
+      onPointerDown={(event) => {
+        openedByTouch.current = false;
+        press.current =
+          event.pointerType === 'touch'
+            ? { id: event.pointerId, x: event.clientX, y: event.clientY }
+            : undefined;
+      }}
+      onPointerMove={(event) => {
+        const start = press.current;
+
+        if (
+          start !== undefined &&
+          Math.hypot(event.clientX - start.x, event.clientY - start.y) > TOUCH_SLOP
+        ) {
+          press.current = undefined;
+        }
+      }}
+      onPointerUp={(event) => {
+        if (press.current?.id === event.pointerId) {
+          press.current = undefined;
+          openedByTouch.current = true;
+          pushRoute(routeOfEntry(entry));
+        }
+      }}
+      onContextMenu={(event) => {
+        if (
+          event.nativeEvent instanceof PointerEvent &&
+          event.nativeEvent.pointerType === 'touch'
+        ) {
+          event.preventDefault();
         }
       }}
       onFocus={(event) => onFocus(entry.key, event)}

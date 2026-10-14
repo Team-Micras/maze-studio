@@ -555,6 +555,40 @@ describe('The maze list after an edit', () => {
   });
 });
 
+describe('The Library button after ] put another maze in place', () => {
+  test.each(['file', 'new', 'repo'] as const)(
+    'returns to the library from a %s maze, never out of the app',
+    async (kind) => {
+      const page = await openPage(browser, contexts, app);
+
+      if (kind === 'file') {
+        const file = join(mkdtempSync(join(ROOT, 'node_modules', '.tmp', 'pin-')), 'a.txt');
+        writeFileSync(file, repoText(CLASSIC));
+        await page.locator('input[data-open-file]').setInputFiles(file);
+      } else if (kind === 'new') {
+        await page.getByRole('button', { name: 'New maze' }).first().click();
+        await page.getByRole('menuitem', { name: 'Training, 16 × 16' }).click();
+      } else {
+        await page.locator(`a[data-artboard="repo:${CLASSIC}"]`).click();
+      }
+
+      await waitForMode(page, 'editor');
+      const before = await page.locator('h1').textContent();
+      await page.locator('[role="application"]').focus();
+      await page.keyboard.press(']');
+      await page.waitForFunction(
+        (title) => document.querySelector('h1')?.textContent !== title,
+        before
+      );
+      await page.getByRole('button', { name: 'Back to the library' }).click();
+
+      await waitForMode(page, 'library');
+      expect(new URL(page.url()).origin).toBe(new URL(app).origin);
+      expect(new URL(page.url()).hash).toMatch(/^#\/(\?.*)?$/);
+    }
+  );
+});
+
 describe('The keyboard cursor', () => {
   test('on the canvas, the first arrow shows the cursor and the next ones move it', async () => {
     const page = await openMaze(CLASSIC);

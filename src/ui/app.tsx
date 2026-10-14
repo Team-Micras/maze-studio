@@ -21,7 +21,7 @@ import { useLocalFolder } from './library/use-local-folder';
 import { reloadLibrary, useLibrary } from './library/use-library';
 import { useMineBackup } from './library/use-mine-backup';
 import { useRepoUpdates } from './library/use-repo-updates';
-import { pushRoute, replaceRoute } from './navigation';
+import { libraryBelow, pushRoute, replaceRoute } from './navigation';
 import {
   looseDocument,
   MAX_FILE_BYTES,
@@ -87,8 +87,6 @@ export function App() {
   const [loose, setLoose] = useState<LooseMaze | undefined>(undefined);
   const [onDisk, setOnDisk] = useState<{ fileName: string; text: string } | undefined>(undefined);
   const lastLibrary = useRef<Route>(LIBRARY_ROUTE);
-  const fromLibrary = useRef(false);
-  const previous = useRef<Route>(route);
   const opening = openingOf(route, library, folder.restoring);
   const shownLoose = loose?.at === hash ? loose.open : undefined;
 
@@ -130,9 +128,6 @@ export function App() {
 
   useEffect(() => {
     const current = parseRoute(hash);
-    fromLibrary.current =
-      current.kind !== 'library' && (previous.current.kind === 'library' || fromLibrary.current);
-    previous.current = current;
 
     if (current.kind === 'library') {
       lastLibrary.current = current;
@@ -155,7 +150,7 @@ export function App() {
   const toLibrary = (): void => {
     if (shownLoose !== undefined) {
       setLoose(undefined);
-    } else if (fromLibrary.current) {
+    } else if (libraryBelow()) {
       window.history.back();
     } else {
       pushRoute(lastLibrary.current);

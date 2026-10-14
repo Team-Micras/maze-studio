@@ -774,3 +774,25 @@ The machine's rule is no builds in `/tmp`, so `tests/e2e/pwa.test.ts` builds the
   mounts for the flight, and gives way to the thumbnail on landing. The e2e that checked the landing measured the
   board's box, which exists at opacity 0; the new one checks the board's opacity in every frame, for a maze looked
   at, edited and opened from a scrolled grid, by the button and by Back.
+
+## 13/10/2026 — Owner's Android test of 08137a6
+
+- **The board grew before flying back.** The route's change renders once without the board, and the camera, with
+  no board, falls to its still fit at scale 1; the flight back started from there, the board 640 px wide at (0, 0),
+  before it shrank. On a notebook scale 1 is near the editor's fit and went unseen; on a phone it is about twice it.
+  `f0118d8` started the flight from the camera before the change (`jump`), and the grid's rewrite (`1c2ddad`) lost it.
+  The flight back starts again where the board was, and the jump also stops a flight in still on its way.
+- **The blank screen.** Back during the flight in set the library and left the flight in running; its landing then
+  set the editor with no maze. The jump above cancels it. Guards in the landings were tried and dropped: with the
+  jump no test can tell them apart.
+- **Library after `]`.** `]` on a `.txt` or a new maze puts a maze in place of the library's own entry, and Library
+  went back out of the app. Each history entry the app makes now says whether the library's is below it
+  (`history.state.libraryBelow`); Library goes back only then, else it pushes the library.
+- **A tap opens from its lift.** A finger lifted from a thumbnail without moving opens it, even after a long press,
+  which Chrome follows with no click; a held finger opens no menu (`contextmenu` of a touch prevented), selects
+  nothing and moves nothing (no press scale). Moving it scrolls. The rise the owner saw on a long press is Chrome's
+  own link preview, which headless Chromium does not show; the test checks the menu's event and the selection, and
+  that the thumbnail does not move and opens when lifted. The guard that ignores the click after a touch that opened
+  the maze is not caught by any test: in Chromium the grid is inert before that click; it stays for other browsers.
+- **Tests of the flight back measure what shows**: the opacity and visibility of the board and every ancestor.
+- **The stage lets taps through while the board flies back**, so a tap there opens that maze.

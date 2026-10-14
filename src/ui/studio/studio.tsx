@@ -308,6 +308,7 @@ export function Studio({
           className={cn(
             'fixed inset-0 z-[1]',
             mode === 'library' && 'pointer-events-none invisible',
+            mode === 'flying-out' && 'pointer-events-none',
             editing.drawingTool && 'cursor-crosshair',
             mode === 'editor' && !state.viewing && state.tool === 'hand' && 'cursor-grab'
           )}

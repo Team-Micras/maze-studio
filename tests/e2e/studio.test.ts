@@ -33,7 +33,7 @@ interface Frame {
   readonly labelHeight: number;
   /** The library grid's opacity, which fades out as the flight starts and back in as it ends. */
   readonly gridOpacity: number;
-  /** The open board's opacity: what flies has to be seen. */
+  /** How much of the open board shows, through every ancestor's opacity and visibility. */
   readonly boardOpacity?: number;
 }
 
@@ -124,10 +124,20 @@ async function recordFrames(page: Page): Promise<() => Promise<Frame[]>> {
           ? {}
           : {
               board: { x: box.x, y: box.y, width: box.width, height: box.height },
-              boardOpacity: Number(
-                getComputedStyle(document.querySelector('[data-open-board]') ?? document.body)
-                  .opacity
-              ),
+              boardOpacity: (() => {
+                let seen = 1;
+
+                for (
+                  let element: Element | null = document.querySelector('[data-open-board]');
+                  element !== null;
+                  element = element.parentElement
+                ) {
+                  const style = getComputedStyle(element);
+                  seen *= style.visibility === 'hidden' ? 0 : Number(style.opacity);
+                }
+
+                return seen;
+              })(),
             }),
       });
 
