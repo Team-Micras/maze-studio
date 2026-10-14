@@ -1,6 +1,6 @@
 /**
- * The e2e project's global setup: builds the app once under `/maze-studio/`, the GitHub Pages
- * base path, into `node_modules/.tmp/` (never `/tmp`), serves it with Vite's preview server, and
+ * The e2e project's global setup: builds the app once under `/maze-studio/`, a non-root base so path bugs show up,
+ * into `node_modules/.tmp/` (never `/tmp`), serves it with Vite's preview server, and
  * hands its URL to every e2e file through `inject('appUrl')`.
  *
  * @module
