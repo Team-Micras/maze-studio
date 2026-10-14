@@ -21,6 +21,7 @@ export const ICONS_MODULE = join(ROOT, 'src', 'ui', 'icons.tsx');
 export const ICONS: readonly string[] = [
   'ArrowClockwise',
   'ArrowCounterClockwise',
+  'ArrowSquareOut',
   'ArrowsClockwise',
   'BoundingBox',
   'CaretCircleUp',
