@@ -1,7 +1,6 @@
 import { useCallback, type KeyboardEvent } from 'react';
-import type { StoreApi } from 'zustand';
 
-import { fillBorder, validateMaze, type Cell, type Finding, type MazeDiff } from '@/maze';
+import { fillBorder, validateMaze, type Finding, type MazeDiff } from '@/maze';
 import {
   areaInWorld,
   boardGeometry,
@@ -9,9 +8,7 @@ import {
   revealCamera,
   type BoardOverlays,
   type Insets,
-  type WorldRect,
 } from '@/render';
-import type { StageDrawing } from '@/ui/board/camera-stage';
 import type { CanvasCamera } from '@/ui/board/use-canvas-camera';
 import type { ChecksProps } from '@/ui/editor/checks';
 import { findingKey } from '@/ui/editor/checks-summary';
@@ -21,47 +18,11 @@ import type { ShortcutHelpProps } from '@/ui/editor/shortcut-help';
 import { toolInfo, type Tool } from '@/ui/editor/tools';
 import { useBoardKeys, type BoardKey } from '@/ui/editor/use-board-keys';
 import { isCellTool, useCellDrawing } from '@/ui/editor/use-cell-drawing';
-import { useEditorShortcuts } from '@/ui/editor/use-editor-shortcuts';
+import { useEditorShortcuts, type EditorShortcuts } from '@/ui/editor/use-editor-shortcuts';
 import type { MazeEditor } from '@/ui/editor/use-maze-editor';
 import { useWallDrawing } from '@/ui/editor/use-wall-drawing';
-import type { OpenMaze } from '@/ui/open-maze';
 
-import type { StudioState } from './studio-store';
-
-/** What editing the maze on screen depends on. */
-export interface StudioEditingInput {
-  readonly store: StoreApi<StudioState>;
-  readonly state: StudioState;
-  readonly editor: MazeEditor;
-  readonly camera: CanvasCamera;
-  /** The maze on screen, if any, and whether it is a preview of the quick list. */
-  readonly onScreen: OpenMaze | undefined;
-  readonly previewing: boolean;
-  readonly board: WorldRect | undefined;
-  readonly insets: Insets;
-  readonly phone: boolean;
-  /** Whether the main pointer is a finger, which has no shortcut help. */
-  readonly coarse: boolean;
-  /** The diff the board shows, if any. */
-  readonly diff: MazeDiff | undefined;
-  readonly onToggleDiff: () => void;
-  readonly onChanges: () => void;
-}
-
-/** What the studio hands the canvas, the board and the editor's islands. */
-export interface StudioEditing {
-  readonly drawing: StageDrawing | undefined;
-  readonly overlays: BoardOverlays;
-  readonly cursor: Cell | undefined;
-  /** Whether a tool draws with the pointer, which shows a crosshair. */
-  readonly drawingTool: boolean;
-  readonly onCanvasKey: (event: KeyboardEvent<HTMLDivElement>) => void;
-  readonly controls: EditControlsProps;
-  readonly checks: ChecksProps | undefined;
-  /** The editing part of the ⋯ menu; the studio adds the file actions. */
-  readonly actions: Pick<MoreActionsProps, 'editable' | 'onCloseBorder' | 'onChanges' | 'onHelp'>;
-  readonly help: ShortcutHelpProps;
-}
+import { useStudio, useStudioStore, type StudioScreen } from './studio-store';
 
 const EDIT_HINT = 'Tap a slot to toggle. Drag to draw. Two fingers pan';
 
@@ -74,24 +35,39 @@ const TOO_SMALL_HINT = 'Zoom in to edit';
  * held by a newer version in another tab.
  */
 export function useStudioEditing({
-  store,
-  state,
+  screen,
   editor,
   camera,
-  onScreen,
-  previewing,
-  board,
   insets,
   phone,
   coarse,
   diff,
   onToggleDiff,
   onChanges,
-}: StudioEditingInput): StudioEditing {
-  const open = state.mode === 'editor' && board !== undefined && onScreen !== undefined;
+  list,
+}: {
+  readonly screen: StudioScreen;
+  readonly editor: MazeEditor;
+  readonly camera: CanvasCamera;
+  readonly insets: Insets;
+  readonly phone: boolean;
+  /** Whether the main pointer is a finger, which has no shortcut help. */
+  readonly coarse: boolean;
+  /** The diff the board shows, if any. */
+  readonly diff: MazeDiff | undefined;
+  readonly onToggleDiff: () => void;
+  readonly onChanges: () => void;
+  /** The quick list's keys, while a maze is open in the editor. */
+  readonly list: EditorShortcuts['list'];
+}) {
+  const store = useStudioStore();
+  const state = useStudio((current) => current);
+  const onScreen = screen.kind === 'library' ? undefined : screen.maze;
+  const board = screen.kind === 'library' ? undefined : screen.board;
+  const editing = screen.kind === 'editing';
   const editable = !editor.readOnly;
-  const drawable = open && !previewing && !state.listOpen && !state.viewing && editable;
-  const maze = open ? onScreen.maze : undefined;
+  const drawable = editing && screen.drawable;
+  const maze = editing || screen.kind === 'previewing' ? screen.maze.maze : undefined;
   const showHint = useCallback(
     (text: string, spoken = false) =>
       store.setState({ hint: { text, at: performance.now(), spoken } }),
@@ -100,7 +76,7 @@ export function useStudioEditing({
   const boardKeys = useBoardKeys({
     editor,
     camera,
-    maze: open && !previewing ? maze : undefined,
+    maze: editing ? maze : undefined,
     board,
     insets,
     editable: editable && !state.viewing,
@@ -154,7 +130,8 @@ export function useStudioEditing({
   const focused = findings.find((finding, index) => findingKey(finding, index) === selected);
 
   useEditorShortcuts({
-    active: open && !state.viewing && !state.listOpen && !previewing,
+    list,
+    active: editing && !state.viewing && !state.listOpen,
     hand: !phone,
     onUndo: undo,
     onRedo: redo,
@@ -183,7 +160,7 @@ export function useStudioEditing({
   };
 
   const onCanvasKey = (event: KeyboardEvent<HTMLDivElement>): void => {
-    if (!open || event.ctrlKey || event.metaKey || event.altKey) {
+    if (maze === undefined || event.ctrlKey || event.metaKey || event.altKey) {
       return;
     }
 
@@ -208,7 +185,7 @@ export function useStudioEditing({
       selection: cells.selection ?? boardKeys.selection,
       focus: focused,
       diff,
-    },
+    } satisfies BoardOverlays,
     cursor: boardKeys.cursor,
     drawingTool: wall.drawing !== undefined || cells.drawing !== undefined,
     onCanvasKey,
@@ -230,11 +207,11 @@ export function useStudioEditing({
       tool: state.tool,
       touchMode: state.touchOpened,
       viewing: state.viewing,
-    },
+    } satisfies EditControlsProps,
     checks:
       onScreen === undefined
         ? undefined
-        : {
+        : ({
             findings,
             profile: onScreen.document.profile,
             onProfile: editor.setProfile,
@@ -249,16 +226,16 @@ export function useStudioEditing({
               }
             },
             phone,
-          },
+          } satisfies ChecksProps),
     actions: {
       editable,
       onCloseBorder: closeBorder,
       onChanges,
       onHelp: coarse ? undefined : openHelp,
-    },
+    } satisfies Pick<MoreActionsProps, 'editable' | 'onCloseBorder' | 'onChanges' | 'onHelp'>,
     help: {
       open: state.helpOpen,
       onOpenChange: (helpOpen) => store.setState({ helpOpen }),
-    },
+    } satisfies ShortcutHelpProps,
   };
 }

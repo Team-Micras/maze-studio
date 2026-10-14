@@ -6,7 +6,12 @@ import { toolOfKey, type Tool } from './tools';
 
 /** What the editor's shortcuts do. */
 export interface EditorShortcuts {
-  /** Whether a maze is open in the editor, where the shortcuts work. */
+  /**
+   * The quick list's keys while a maze is open in the editor: `L` opens the list, `[` and `]` step
+   * to the maze before or after; none while nothing is open.
+   */
+  readonly list?: { readonly onOpen: () => void; readonly onStep: (step: 1 | -1) => void };
+  /** Whether the maze open is edited, where the other shortcuts work. */
   readonly active: boolean;
   /** Whether the hand is offered, as on a notebook. */
   readonly hand: boolean;
@@ -24,9 +29,11 @@ export interface EditorShortcuts {
 /**
  * The editor's keys anywhere on the page (DESIGN.md 11): Ctrl or Cmd with Z undoes, with Shift and
  * Z or with Y redoes; `H`, `W`, `R`, `C`, `S` and `G` pick the tools, `B` closes the outer walls,
- * `D` shows or hides the diff and `?` opens the shortcut help. None fires while the focus is in a text field.
+ * `D` shows or hides the diff and `?` opens the shortcut help; `L`, `[` and `]` work the quick list
+ * whenever a maze is open. None fires while the focus is in a text field.
  */
 export function useEditorShortcuts({
+  list,
   active,
   hand,
   onUndo,
@@ -37,7 +44,7 @@ export function useEditorShortcuts({
   onHelp,
 }: EditorShortcuts): void {
   useEffect(() => {
-    if (!active) {
+    if (list === undefined && !active) {
       return undefined;
     }
 
@@ -47,6 +54,24 @@ export function useEditorShortcuts({
       }
 
       const key = event.key.toLowerCase();
+
+      if (list !== undefined && !event.ctrlKey && !event.metaKey) {
+        if (key === 'l') {
+          event.preventDefault();
+          list.onOpen();
+          return;
+        }
+
+        if (key === '[' || key === ']') {
+          event.preventDefault();
+          list.onStep(key === ']' ? 1 : -1);
+          return;
+        }
+      }
+
+      if (!active) {
+        return;
+      }
 
       if (event.ctrlKey || event.metaKey) {
         if (key === 'z' && !event.shiftKey) {
@@ -87,5 +112,5 @@ export function useEditorShortcuts({
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [active, hand, onUndo, onRedo, onTool, onCloseBorder, onToggleDiff, onHelp]);
+  }, [list, active, hand, onUndo, onRedo, onTool, onCloseBorder, onToggleDiff, onHelp]);
 }

@@ -1,8 +1,7 @@
 import { useCallback } from 'react';
 import { keyOf, mineIdOf } from '@/library';
-import { useStore, type StoreApi } from 'zustand';
+import { useStore } from 'zustand';
 
-import type { MazeDiff } from '@/maze';
 import type { ChangeRow, ChangesChipProps, ChangesPanelProps } from '@/ui/changes/changes';
 import {
   changeDiff,
@@ -14,32 +13,8 @@ import {
 } from '@/ui/changes/session-changes';
 import type { Library } from '@/ui/library/use-library';
 import { pushRoute } from '@/ui/navigation';
-import type { OpenMaze } from '@/ui/open-maze';
 
-import type { StudioState } from './studio-store';
-
-/** What the changes of the studio depend on. */
-export interface StudioChangesInput {
-  readonly store: StoreApi<StudioState>;
-  readonly state: StudioState;
-  readonly library: Library | undefined;
-  /** The maze on screen, as edited, if any. */
-  readonly onScreen: OpenMaze | undefined;
-  readonly phone: boolean;
-  /** Discards an item: deletes a copy or puts back a maze of My mazes, and leaves it if it is open. */
-  readonly onDiscard: (item: ChangeItem) => void;
-}
-
-/** The chip, the panel, and the diff the board shows. */
-export interface StudioChanges {
-  readonly chip: ChangesChipProps;
-  readonly panel: ChangesPanelProps;
-  /** The diff of the maze on screen, while "Show on board" is on. */
-  readonly diff: MazeDiff | undefined;
-  /** Toggles "Show on board", as `D` does. */
-  readonly toggleDiff: () => void;
-  readonly openPanel: () => void;
-}
+import { useStudio, useStudioStore, type StudioScreen } from './studio-store';
 
 /**
  * The Changes of the session in the studio (PLAN.md 3.4, DESIGN.md 6.2): the rows with each maze
@@ -47,13 +22,21 @@ export interface StudioChanges {
  * shown on the board while "Show on board" is on; Open, Keep and Discard.
  */
 export function useStudioChanges({
-  store,
-  state,
+  screen,
   library,
-  onScreen,
   phone,
   onDiscard,
-}: StudioChangesInput): StudioChanges {
+}: {
+  readonly screen: StudioScreen;
+  readonly library: Library | undefined;
+  readonly phone: boolean;
+  /** Discards an item: deletes a copy or puts back a maze of My mazes, and leaves it if it is open. */
+  readonly onDiscard: (item: ChangeItem) => void;
+}) {
+  const store = useStudioStore();
+  const changesOpen = useStudio((state) => state.changesOpen);
+  const showDiff = useStudio((state) => state.showDiff);
+  const onScreen = screen.kind === 'library' ? undefined : screen.maze;
   const changes = useStore(sessionChanges);
   const rows: ChangeRow[] = changes.items.map((item) => {
     const key = keyOf({ kind: 'mine', id: item.id });
@@ -65,7 +48,7 @@ export function useStudioChanges({
     screenItem === undefined || onScreen === undefined
       ? undefined
       : changeDiff(screenItem, onScreen.maze);
-  const setOpen = useCallback((changesOpen: boolean) => store.setState({ changesOpen }), [store]);
+  const setOpen = useCallback((next: boolean) => store.setState({ changesOpen: next }), [store]);
   const toggleDiff = useCallback(
     () => store.setState((before) => ({ showDiff: !before.showDiff })),
     [store]
@@ -74,17 +57,17 @@ export function useStudioChanges({
   return {
     chip: {
       count: changes.items.length,
-      open: state.changesOpen,
-      onToggle: () => setOpen(!state.changesOpen),
-    },
+      open: changesOpen,
+      onToggle: () => setOpen(!changesOpen),
+    } satisfies ChangesChipProps,
     panel: {
-      open: state.changesOpen,
+      open: changesOpen,
       onOpenChange: setOpen,
       rows,
       phone,
       canShowDiff: screenDiff !== undefined,
-      showDiff: state.showDiff,
-      onShowDiff: (showDiff) => store.setState({ showDiff }),
+      showDiff,
+      onShowDiff: (next) => store.setState({ showDiff: next }),
       onOpenItem: (item) => {
         setOpen(false);
 
@@ -104,8 +87,8 @@ export function useStudioChanges({
         );
       },
       onDiscard,
-    },
-    diff: state.showDiff ? screenDiff : undefined,
+    } satisfies ChangesPanelProps,
+    diff: showDiff ? screenDiff : undefined,
     toggleDiff,
     openPanel: () => setOpen(true),
   };

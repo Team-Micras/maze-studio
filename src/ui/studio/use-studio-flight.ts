@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useLayoutEffect, useRef } from 'react';
-import type { StoreApi } from 'zustand';
 
 import type { CatalogEntry } from '@/library';
 import {
@@ -22,32 +21,9 @@ import {
   FLIGHT_IN_MS,
   FLIGHT_OUT_MS,
   boardOf,
-  type StudioMode,
-  type StudioState,
+  useStudio,
+  useStudioStore,
 } from './studio-store';
-
-/** What the studio's flights depend on, as of the current render. */
-export interface StudioFlightInput {
-  readonly store: StoreApi<StudioState>;
-  readonly camera: CanvasCamera;
-  /** The entries of the library's grid, in order. */
-  readonly shown: readonly CatalogEntry[];
-  /** The editor's insets in view mode or in edit mode. */
-  readonly editorInsetsFor: (viewing: boolean) => Insets;
-  /** The maze the route or a file opens. */
-  readonly opened: OpenMaze | undefined;
-  /** The maze on the board, a preview included. */
-  readonly onScreen: OpenMaze | undefined;
-  readonly phone: boolean;
-  readonly mode: StudioMode;
-  readonly libraryLoaded: boolean;
-}
-
-/** What the studio hands the flights. */
-export interface StudioFlight {
-  /** Notes the kind of pointer that pressed an artboard, which decides view mode. */
-  readonly notePointer: (pointerType: string) => void;
-}
 
 /** Where the thumbnail of the artboard `key` is on screen, if it is mounted. */
 function thumbnailOnScreen(key: string): WorldRect | undefined {
@@ -65,10 +41,25 @@ function thumbnailOnScreen(key: string): WorldRect | undefined {
  * editor's fit while the grid fades out; it arrives at once when there is no thumbnail on screen,
  * the library was never shown, or motion is reduced. When it leaves, the page scrolls the
  * maze's artboard into view, hidden, and the camera flies the board 520 ms back onto its thumbnail
- * while the grid fades in.
+ * while the grid fades in. Returns what notes the kind of pointer that pressed an artboard, which
+ * decides view mode.
  */
-export function useStudioFlight(input: StudioFlightInput): StudioFlight {
-  const { store, opened, mode, libraryLoaded } = input;
+export function useStudioFlight(input: {
+  readonly camera: CanvasCamera;
+  /** The entries of the library's grid, in order. */
+  readonly shown: readonly CatalogEntry[];
+  /** The editor's insets in view mode or in edit mode. */
+  readonly editorInsetsFor: (viewing: boolean) => Insets;
+  /** The maze the route or a file opens. */
+  readonly opened: OpenMaze | undefined;
+  /** The maze on the board, a preview included. */
+  readonly onScreen: OpenMaze | undefined;
+  readonly phone: boolean;
+  readonly libraryLoaded: boolean;
+}): (pointerType: string) => void {
+  const { opened, libraryLoaded } = input;
+  const store = useStudioStore();
+  const mode = useStudio((state) => state.mode);
   const latest = useRef(input);
   const lastPointer = useRef('mouse');
   const libraryShown = useRef(false);
@@ -216,9 +207,7 @@ export function useStudioFlight(input: StudioFlightInput): StudioFlight {
     previousShown.current = { onScreen: input.onScreen, camera: input.camera.camera };
   });
 
-  const notePointer = useCallback((pointerType: string) => {
+  return useCallback((pointerType: string) => {
     lastPointer.current = pointerType;
   }, []);
-
-  return { notePointer };
 }

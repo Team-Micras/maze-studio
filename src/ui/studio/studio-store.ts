@@ -5,6 +5,8 @@
  * @module
  */
 
+import { createContext, useContext } from 'react';
+import { useStore } from 'zustand';
 import { createStore, type StoreApi } from 'zustand/vanilla';
 
 import type { Maze } from '@/maze';
@@ -83,4 +85,38 @@ export const INITIAL_STUDIO: StudioState = {
 /** A new store of the studio's state. */
 export function createStudioStore(): StoreApi<StudioState> {
   return createStore<StudioState>()(() => INITIAL_STUDIO);
+}
+
+/**
+ * What the studio shows, derived once a render from its mode, the route and the quick list: the
+ * library, a maze in flight, a maze the quick list previews, or the maze open in the editor, which
+ * the pointer draws on unless it is only looked at, the list is open or another tab holds it.
+ */
+export type StudioScreen =
+  | { readonly kind: 'library' }
+  | { readonly kind: 'flying' | 'previewing'; readonly maze: OpenMaze; readonly board: WorldRect }
+  | {
+      readonly kind: 'editing';
+      readonly maze: OpenMaze;
+      readonly board: WorldRect;
+      readonly drawable: boolean;
+    };
+
+/** The store of the studio its components and hooks share. */
+export const StudioContext = createContext<StoreApi<StudioState> | undefined>(undefined);
+
+/** The store of the studio around the caller. */
+export function useStudioStore(): StoreApi<StudioState> {
+  const store = useContext(StudioContext);
+
+  if (store === undefined) {
+    throw new Error('useStudioStore needs a StudioContext');
+  }
+
+  return store;
+}
+
+/** What `select` reads of the studio's state, kept up to date. */
+export function useStudio<T>(select: (state: StudioState) => T): T {
+  return useStore(useStudioStore(), select);
 }

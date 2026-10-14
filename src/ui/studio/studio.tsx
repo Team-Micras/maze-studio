@@ -1,4 +1,4 @@
-import { useCallback, useDeferredValue, useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { useCallback, useDeferredValue, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useStore } from 'zustand';
 
 import { filterCatalog, type LibraryFilter } from '@/library';
@@ -22,7 +22,6 @@ import { changeOf, sessionChanges, type ChangeItem } from '@/ui/changes/session-
 import { Checks } from '@/ui/editor/checks';
 import { EditControls } from '@/ui/editor/edit-controls';
 import { MoreActions } from '@/ui/editor/more-actions';
-import { typingIn } from '@/ui/typing-in';
 import { RenameDialog } from '@/ui/editor/rename-dialog';
 import { ShortcutHelp } from '@/ui/editor/shortcut-help';
 import { CopyLinkButton, TitleActions } from '@/ui/editor/title-actions';
@@ -49,7 +48,14 @@ import { useMazeActions } from './use-maze-actions';
 import { useStudioChanges } from './use-studio-changes';
 import { useStudioEditing } from './use-studio-editing';
 import { useStudioFlight } from './use-studio-flight';
-import { boardOf, createStudioStore, type StudioState } from './studio-store';
+import {
+  boardOf,
+  createStudioStore,
+  StudioContext,
+  useStudio,
+  useStudioStore,
+  type StudioScreen,
+} from './studio-store';
 
 /** The props of {@link Studio}. */
 export interface StudioProps {
@@ -114,7 +120,17 @@ function stillLimits(viewport: ViewportSize): CameraLimits {
  * open maze is edited in place (PLAN.md 3.4): the wall tool draws, the arrows move a cell cursor,
  * and a phone, or a maze opened by touch, opens to look at until Edit.
  */
-export function Studio({
+export function Studio(props: StudioProps) {
+  const [store] = useState(createStudioStore);
+
+  return (
+    <StudioContext value={store}>
+      <StudioView {...props} />
+    </StudioContext>
+  );
+}
+
+function StudioView({
   library,
   opened,
   editor,
@@ -131,8 +147,8 @@ export function Studio({
   onLibrary,
   onPin,
 }: StudioProps) {
-  const [store] = useState(createStudioStore);
-  const state: StudioState = useStore(store);
+  const store = useStudioStore();
+  const state = useStudio((current) => current);
   const phone = usePhoneLayout();
   const editorInsets = editorInsetsFor(phone, state.viewing);
   const shown = library === undefined ? [] : filterCatalog(library.entries, filter, library.index);
@@ -157,6 +173,19 @@ export function Studio({
   const onScreen = previewed ?? opened ?? state.leaving;
   const board = onScreen === undefined ? undefined : boardOf(onScreen.maze);
   const inEditor = mode === 'editor' && board !== undefined;
+  const screen: StudioScreen =
+    onScreen === undefined || board === undefined || mode === 'library'
+      ? { kind: 'library' }
+      : mode !== 'editor'
+        ? { kind: 'flying', maze: onScreen, board }
+        : previewed !== undefined
+          ? { kind: 'previewing', maze: onScreen, board }
+          : {
+              kind: 'editing',
+              maze: onScreen,
+              board,
+              drawable: !state.listOpen && !state.viewing && !editor.readOnly,
+            };
 
   const camera = useCanvasCamera({
     content: board ?? NO_BOARD,
@@ -176,33 +205,15 @@ export function Studio({
   const sessionChangesNow = useStore(sessionChanges);
   const theme = useTheme((current) => current.theme);
   const toggleTheme = useTheme((current) => current.toggle);
-  const changes = useStudioChanges({ store, state, library, onScreen, phone, onDiscard });
+  const changes = useStudioChanges({ screen, library, phone, onDiscard });
   const actions = useMazeActions({
-    store,
-    state,
+    screen,
     editor,
-    open: mode === 'editor' && previewed === undefined ? onScreen : undefined,
     phone,
     onSaveToFolder,
     onDelete,
     mineNames,
   });
-  const editing = useStudioEditing({
-    store,
-    state,
-    editor,
-    camera,
-    onScreen,
-    previewing: previewed !== undefined,
-    board,
-    insets: editorInsets,
-    phone,
-    coarse,
-    diff: mode === 'editor' ? changes.diff : undefined,
-    onToggleDiff: changes.toggleDiff,
-    onChanges: changes.openPanel,
-  });
-
   const onScreenKey = useRef(onScreen?.key);
   const listOpener = useRef<HTMLElement | null>(null);
 
@@ -215,6 +226,36 @@ export function Studio({
       document.activeElement instanceof HTMLElement ? document.activeElement : null;
     store.setState({ listOpen: true, preview: undefined });
   }, [store]);
+  const list = useMemo(
+    () =>
+      mode === 'editor' && library !== undefined
+        ? {
+            onOpen: openList,
+            onStep: (step: 1 | -1) => {
+              const keys = listOrder(library.entries).map((entry) => entry.key);
+              const next = steppedKey(keys, onScreenKey.current, step);
+              const entry = library.entries.find((candidate) => candidate.key === next);
+
+              if (entry !== undefined) {
+                onPin(routeOfEntry(entry));
+              }
+            },
+          }
+        : undefined,
+    [mode, library, onPin, openList]
+  );
+  const editing = useStudioEditing({
+    screen,
+    editor,
+    camera,
+    insets: editorInsets,
+    phone,
+    coarse,
+    diff: mode === 'editor' ? changes.diff : undefined,
+    onToggleDiff: changes.toggleDiff,
+    onChanges: changes.openPanel,
+    list,
+  });
 
   const closeList = (): void => {
     (listOpener.current ?? camera.element)?.focus({ preventScroll: true });
@@ -226,15 +267,13 @@ export function Studio({
       ? library?.mazeOf(state.prepared)
       : undefined;
 
-  const { notePointer } = useStudioFlight({
-    store,
+  const notePointer = useStudioFlight({
     camera,
     shown,
     editorInsetsFor: (viewing: boolean) => editorInsetsFor(phone, viewing),
     opened,
     onScreen,
     phone,
-    mode,
     libraryLoaded: library !== undefined,
   });
 
@@ -248,34 +287,6 @@ export function Studio({
 
     store.setState({ preview: undefined });
   };
-
-  useEffect(() => {
-    if (mode !== 'editor' || library === undefined) {
-      return undefined;
-    }
-
-    const onKey = (event: KeyboardEvent): void => {
-      if (event.ctrlKey || event.metaKey || event.altKey || typingIn(event.target)) {
-        return;
-      }
-
-      if (event.key === 'l' || event.key === 'L') {
-        event.preventDefault();
-        openList();
-      } else if (event.key === '[' || event.key === ']') {
-        event.preventDefault();
-        const keys = listOrder(library.entries).map((entry) => entry.key);
-        const next = steppedKey(keys, onScreenKey.current, event.key === ']' ? 1 : -1);
-        const entry = library.entries.find((candidate) => candidate.key === next);
-
-        if (entry !== undefined) {
-          onPin(routeOfEntry(entry));
-        }
-      }
-    };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [mode, library, onPin, openList]);
 
   const libraryVisible = mode === 'library' || mode === 'flying-out';
   const flying = mode === 'flying-in' || mode === 'flying-out';
