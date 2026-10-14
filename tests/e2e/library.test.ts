@@ -5,7 +5,7 @@ import { chromium, type Browser, type BrowserContext, type Page } from 'playwrig
 import { afterAll, beforeAll, describe, expect, inject, test } from 'vitest';
 
 import { decodeMazeCode, encodeMazeCode, parseMazeText } from '@/maze';
-import { storeMine } from '@tests/support/e2e/board-page';
+import { mineCount, storeMine } from '@tests/support/e2e/board-page';
 
 const ROOT = join(import.meta.dirname, '..', '..');
 const app = inject('appUrl');
@@ -208,6 +208,17 @@ async function holdFinger(page: Page, target: string, ms: number, drift = 0): Pr
   await session.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
 }
 
+/** Holds the mouse on artboard `id` for `ms`. */
+async function holdMouse(page: Page, id: string, ms: number): Promise<void> {
+  const box = await page.locator(`a[data-artboard="mine:${id}"]`).boundingBox();
+  const x = (box?.x ?? 0) + 30;
+  const y = (box?.y ?? 0) + 30;
+  await page.mouse.move(x, y);
+  await page.mouse.down();
+  await page.waitForTimeout(ms);
+  await page.mouse.up();
+}
+
 function selection(page: Page) {
   return page.getByRole('toolbar', { name: 'Selection' });
 }
@@ -304,5 +315,61 @@ describe('Selecting in My mazes', () => {
 
     await expect.poll(() => page.locator('a[data-artboard^="mine:"]').count()).toBe(1);
     await expect.poll(() => page.locator('[data-changes-chip]').count()).toBe(0);
+  });
+
+  test('a search counts and deletes only the selected mazes it shows, and Delete keeps the search', async () => {
+    const page = await mineLibrary(false);
+    await holdMouse(page, 'one', 700);
+    await artboard(page, 'two').click();
+    await expect.poll(() => selection(page).textContent()).toContain('2 selected');
+    await page.getByRole('searchbox', { name: 'Search mazes' }).fill('three');
+    await expect.poll(() => page.locator('a[data-artboard^="mine:"]').count()).toBe(1);
+
+    await expect.poll(() => selection(page).textContent()).toContain('0 selected');
+    expect(await selection(page).getByRole('button', { name: 'Delete' }).isDisabled()).toBe(true);
+    await artboard(page, 'three').click();
+    await selection(page).getByRole('button', { name: 'Delete' }).click();
+    await selection(page).getByRole('button', { name: 'Confirm delete' }).click();
+
+    await expect.poll(() => mineCount(page)).toBe(2);
+    expect(new URL(page.url()).hash).toBe('#/?src=mine&q=three');
+    await page.getByRole('searchbox', { name: 'Search mazes' }).fill('');
+    await expect.poll(() => page.locator('a[data-artboard^="mine:"]').count()).toBe(2);
+  });
+
+  test('a mouse that moves 15 px while held selects nothing', async () => {
+    const page = await mineLibrary(false);
+    const box = await artboard(page, 'one').boundingBox();
+    const x = (box?.x ?? 0) + 30;
+    const y = (box?.y ?? 0) + 30;
+    await page.mouse.move(x, y);
+    await page.mouse.down();
+    await page.mouse.move(x + 15, y, { steps: 3 });
+    await page.waitForTimeout(700);
+
+    expect(await selection(page).count()).toBe(0);
+    await page.mouse.up();
+  });
+
+  test('Shift and Space on a focused artboard start selecting, and opening a maze clears it', async () => {
+    const page = await mineLibrary(false);
+    await artboard(page, 'one').focus();
+    await page.keyboard.press('Shift+Space');
+    await expect.poll(() => selection(page).textContent()).toContain('1 selected');
+    expect(
+      await page
+        .locator('[data-selection-count][aria-live="polite"]', { hasText: '1 selected' })
+        .count()
+    ).toBe(1);
+
+    await page.evaluate(() => {
+      window.location.hash = '#/mine/two';
+    });
+    await page.getByRole('heading', { level: 1, name: 'Maze two' }).waitFor();
+    await page.getByRole('button', { name: 'Back to the library' }).click();
+    await expect.poll(() => page.locator('a[data-artboard^="mine:"]').count()).toBe(3);
+
+    expect(await selection(page).count()).toBe(0);
+    expect(await page.locator('[role="checkbox"]').count()).toBe(0);
   });
 });

@@ -101,6 +101,7 @@ export function LibraryGrid({
   const [selected, setSelected] = useState<ReadonlySet<string> | undefined>(undefined);
   const [armed, setArmed] = useState(false);
   const selecting = selected !== undefined;
+  const picked = entries.flatMap((entry) => (selected?.has(entry.key) === true ? [entry.key] : []));
 
   if (selecting && (onDelete === undefined || hidden)) {
     setSelected(undefined);
@@ -298,28 +299,31 @@ export function LibraryGrid({
           </div>
         </section>
       </div>
+      <span aria-live="polite" className="sr-only" data-selection-count="">
+        {selecting ? `${picked.length} selected` : ''}
+      </span>
       {selected === undefined || onDelete === undefined ? null : (
         <Island
           aria-label="Selection"
           className="fixed bottom-safe-6 left-1/2 z-20 h-11 -translate-x-1/2 gap-1 pl-3 text-[13px]"
           role="toolbar"
         >
-          <span aria-live="polite" className="pr-2 tabular-nums">
-            {selected.size} selected
+          <span aria-hidden className="pr-2 tabular-nums">
+            {picked.length} selected
           </span>
           <IslandButton
             className={cn(
               armed &&
                 'bg-destructive text-destructive-foreground hover:bg-destructive hover:text-destructive-foreground'
             )}
-            disabled={selected.size === 0}
+            disabled={picked.length === 0}
             onClick={() => {
               if (!armed) {
                 setArmed(true);
                 return;
               }
 
-              onDelete([...selected].flatMap((key) => mineIdOf(key) ?? []));
+              onDelete(picked.flatMap((key) => mineIdOf(key) ?? []));
               stopSelecting();
             }}
           >

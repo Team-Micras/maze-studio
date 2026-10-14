@@ -1,4 +1,4 @@
-import { memo, useRef, type CSSProperties, type FocusEvent } from 'react';
+import { memo, useEffect, useRef, type CSSProperties, type FocusEvent } from 'react';
 
 import type { CatalogEntry } from '@/library';
 import type { Maze } from '@/maze';
@@ -101,6 +101,8 @@ export const Artboard = memo(function Artboard({
     window.clearTimeout(hold.current?.timer);
     hold.current = undefined;
   };
+  useEffect(() => () => window.clearTimeout(hold.current?.timer), []);
+
   const activate = (): void => {
     if (selecting) {
       onToggle?.(entry.key);
@@ -143,11 +145,19 @@ export const Artboard = memo(function Artboard({
         }
       }}
       onKeyDown={(event) => {
-        if (selecting && event.key === ' ') {
+        if (event.key !== ' ') {
+          return;
+        }
+
+        if (selecting) {
           event.preventDefault();
           onToggle?.(entry.key);
+        } else if (event.shiftKey && onHold !== undefined) {
+          event.preventDefault();
+          onHold(entry.key);
         }
       }}
+      onPointerLeave={letGo}
       onPointerCancel={() => {
         press.current = undefined;
         letGo();

@@ -173,7 +173,11 @@ export function App() {
 
   const deleteMine = async (ids: readonly string[]): Promise<void> => {
     sessionChanges.setState((before) => ids.reduce(withoutChange, before));
-    replaceRoute({ kind: 'library', filter: MINE_FILTER });
+
+    if (route.kind !== 'library') {
+      replaceRoute({ kind: 'library', filter: MINE_FILTER });
+    }
+
     const mine = (await appStorage())?.mine;
 
     if (mine !== undefined) {
