@@ -28,6 +28,8 @@ export interface ArtboardProps {
   readonly slot: number;
   /** The thumbnail band its size on screen needs. */
   readonly band: ThumbnailBand;
+  /** Whether it is hidden, while the board flies from or onto it. */
+  readonly concealed?: boolean;
   readonly onFocus: (key: string, event: FocusEvent<HTMLAnchorElement>) => void;
 }
 
@@ -37,8 +39,19 @@ const CLICK_AFTER_TOUCH_MS = 400;
 /** How far a finger may move, in CSS pixels, and still open the artboard it lifts from. */
 const TOUCH_SLOP = 10;
 
-function artboardStyle(x: number, y: number, width: number, height: number): CSSProperties {
-  return { transform: `translate(${x}px, ${y}px)`, width, height };
+function artboardStyle(
+  x: number,
+  y: number,
+  width: number,
+  height: number,
+  concealed: boolean
+): CSSProperties {
+  return {
+    transform: `translate(${x}px, ${y}px)`,
+    width,
+    height,
+    opacity: concealed ? 0 : undefined,
+  };
 }
 
 /**
@@ -58,6 +71,7 @@ export const Artboard = memo(function Artboard({
   height,
   slot,
   band,
+  concealed = false,
   onFocus,
 }: ArtboardProps) {
   const press = useRef<{ readonly id: number; readonly x: number; readonly y: number } | undefined>(
@@ -129,7 +143,7 @@ export const Artboard = memo(function Artboard({
         }
       }}
       onFocus={(event) => onFocus(entry.key, event)}
-      style={artboardStyle(x, y, width, height)}
+      style={artboardStyle(x, y, width, height, concealed)}
     >
       <span
         aria-hidden

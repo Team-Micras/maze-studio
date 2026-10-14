@@ -25,6 +25,8 @@ export interface LibraryGridProps {
   readonly phone: boolean;
   /** Whether the grid fades out and leaves the keyboard and the pointer, as while a maze is open. */
   readonly hidden: boolean;
+  /** The artboard the board flies from or onto, hidden until the board gives way to it. */
+  readonly inFlight?: string | undefined;
   /** Hands on the kind of pointer that pressed the grid, and the key of the artboard pressed. */
   readonly onArtboardPointer?: (pointerType: string, key: string | undefined) => void;
 }
@@ -86,6 +88,7 @@ export function LibraryGrid({
   entries,
   phone,
   hidden,
+  inFlight,
   onArtboardPointer,
 }: LibraryGridProps) {
   const [scroller, setScroller] = useState<HTMLElement | null>(null);
@@ -228,6 +231,7 @@ export function LibraryGrid({
           {mounted.map(({ entry, maze, rect }) => (
             <Artboard
               band={band}
+              concealed={entry.key === inFlight}
               entry={entry}
               height={rect.height}
               key={entry.key}

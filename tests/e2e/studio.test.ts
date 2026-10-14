@@ -10,6 +10,7 @@ import {
   worldCamera as camera,
   type Camera,
   type PageOptions,
+  waitForMode,
 } from '@tests/support/e2e/studio-page';
 
 const app = inject('appUrl');
@@ -35,6 +36,8 @@ interface Frame {
   readonly gridOpacity: number;
   /** How much of the open board shows, through every ancestor's opacity and visibility. */
   readonly boardOpacity?: number;
+  /** How much of the artboard asked for shows, the same way. */
+  readonly artboardOpacity?: number;
 }
 
 interface WorldSample {
@@ -103,16 +106,30 @@ function easingError(samples: readonly WorldSample[], from: Camera, to: Camera, 
 
 /**
  * Records the mode, the open board's box, the height of an artboard's name and the grid's opacity
- * at every frame until `stop` is called.
+ * at every frame until `stop` is called, and how much of the artboard `key` shows.
  */
-async function recordFrames(page: Page): Promise<() => Promise<Frame[]>> {
-  await page.evaluate(() => {
+async function recordFrames(page: Page, key = ''): Promise<() => Promise<Frame[]>> {
+  await page.evaluate((artboard) => {
     const frames: Frame[] = [];
     window.studioFrames = frames;
     window.studioRecording = true;
     const sample = (): void => {
       const box = document.querySelector('[data-open-board]')?.getBoundingClientRect();
+      const [artboardOpacity = 1, boardOpacity = 1] = [
+        document.querySelector(`a[data-artboard="${artboard}"]`),
+        document.querySelector('[data-open-board]'),
+      ].map((start) => {
+        let seen = 1;
+
+        for (let element = start; element !== null; element = element.parentElement) {
+          const style = getComputedStyle(element);
+          seen *= style.visibility === 'hidden' ? 0 : Number(style.opacity);
+        }
+
+        return seen;
+      });
       frames.push({
+        artboardOpacity,
         mode: document.querySelector('[data-studio-mode]')?.getAttribute('data-studio-mode') ?? '',
         labelHeight:
           document.querySelector('a[data-artboard] > span')?.getBoundingClientRect().height ?? 0,
@@ -124,20 +141,7 @@ async function recordFrames(page: Page): Promise<() => Promise<Frame[]>> {
           ? {}
           : {
               board: { x: box.x, y: box.y, width: box.width, height: box.height },
-              boardOpacity: (() => {
-                let seen = 1;
-
-                for (
-                  let element: Element | null = document.querySelector('[data-open-board]');
-                  element !== null;
-                  element = element.parentElement
-                ) {
-                  const style = getComputedStyle(element);
-                  seen *= style.visibility === 'hidden' ? 0 : Number(style.opacity);
-                }
-
-                return seen;
-              })(),
+              boardOpacity,
             }),
       });
 
@@ -146,12 +150,17 @@ async function recordFrames(page: Page): Promise<() => Promise<Frame[]>> {
       }
     };
     requestAnimationFrame(sample);
-  });
+  }, key);
   return () =>
     page.evaluate(() => {
       window.studioRecording = false;
       return window.studioFrames ?? [];
     });
+}
+
+/** How much of the recorded artboard showed in each frame of `wanted`. */
+function during(frames: readonly Frame[], wanted: string): number[] {
+  return frames.filter((frame) => frame.mode === wanted).map((frame) => frame.artboardOpacity ?? 1);
 }
 
 function distanceToLine(
@@ -271,6 +280,29 @@ describe('The flight into a maze and back', () => {
     );
 
     expect(await page.locator('[data-open-board]').count()).toBe(1);
+  });
+
+  test('hides the artboard the board flies from and onto until the board gives way to it', async () => {
+    const page = await open();
+    const link = page.locator('a[data-artboard]').nth(6);
+    const key = (await link.getAttribute('data-artboard')) ?? '';
+    const inward = await recordFrames(page, key);
+    await link.click();
+    await waitForMode(page, 'editor');
+    const flownIn = await inward();
+    const outward = await recordFrames(page, key);
+    await page.goBack();
+    await waitForMode(page, 'library');
+    await page.evaluate(
+      () => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)))
+    );
+    const flownOut = await outward();
+    expect(during(flownIn, 'flying-in').length).toBeGreaterThan(10);
+    expect(during(flownIn, 'flying-in').every((opacity) => opacity === 0)).toBe(true);
+    expect(during(flownOut, 'flying-out').length).toBeGreaterThan(10);
+    expect(during(flownOut, 'flying-out').every((opacity) => opacity === 0)).toBe(true);
+    expect(flownOut.at(-1)?.mode).toBe('library');
+    expect(flownOut.at(-1)?.artboardOpacity).toBe(1);
   });
 
   test('the browser Back flies back, shrinking the board to its artboard, and lands focused', async () => {

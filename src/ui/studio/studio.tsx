@@ -295,6 +295,7 @@ export function Studio({
           <LibraryGrid
             entries={shown}
             hidden={!libraryVisible}
+            inFlight={flying ? onScreen?.key : undefined}
             library={library}
             onArtboardPointer={(pointerType, key) => {
               notePointer(pointerType);
