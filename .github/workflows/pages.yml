@@ -44,6 +44,8 @@ jobs:
       - run: bun run test
 
       - run: bun run build
+        env:
+          BASE_PATH: /${{ github.event.repository.name }}/
 
       - uses: actions/configure-pages@v5
 

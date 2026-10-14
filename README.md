@@ -50,7 +50,7 @@ In a clone made without `--recurse-submodules`, run `git submodule update --init
 | Script                     | What it does                                                               |
 | -------------------------- | -------------------------------------------------------------------------- |
 | `bun run dev`              | Development server                                                         |
-| `bun run build`            | Typecheck and build into `dist/` (served at the root of maze.desanti.dev)  |
+| `bun run build`            | Typecheck and build into `dist/`; `BASE_PATH=/maze-studio/` for Pages      |
 | `bun run preview`          | Serve the built app                                                        |
 | `bun run test`             | Unit tests (Node) and browser tests (Chromium)                             |
 | `bun run test:performance` | Frame-time tests in Chromium, one file at a time, outside the check        |
