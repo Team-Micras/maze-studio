@@ -260,6 +260,7 @@ describe('Changes of the session', () => {
     await expectSaved(page, sameMaze(toggleWall(maze, EDGE)));
     await page.keyboard.press('Control+z');
     await expectSaved(page, sameMaze(maze));
+    await page.locator('button', { hasText: /^My mazes1$/ }).waitFor({ state: 'attached' });
     await page.getByRole('button', { name: /^Checks/ }).click();
     await page
       .getByRole('dialog', { name: 'Checks' })
@@ -270,7 +271,7 @@ describe('Changes of the session', () => {
     await page.getByRole('button', { name: 'Back to the library' }).click();
     await waitForMode(page, 'library');
 
-    await expect.poll(() => new URL(page.url()).hash).toBe('#/?src=mine');
+    expect(new URL(page.url()).hash).toBe('#/?src=mine');
   });
 
   test('leaving a copy undone to the original keeps the library on its filter', async () => {
