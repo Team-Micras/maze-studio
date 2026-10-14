@@ -73,41 +73,34 @@ export function useMazeActions({
   const { folderFile } = editor;
 
   const rename: RenameDialogProps | undefined =
-    open === undefined
+    open === undefined || (mineId === undefined && open.document.created !== true)
       ? undefined
-      : mineId === undefined
-        ? open.document.created === true
-          ? {
-              open: false,
-              onOpenChange: () => undefined,
-              name: open.name,
-              taken: mineNames,
-              onRename: (name) => {
-                editor.reopen({ ...open, name });
-                return Promise.resolve(true);
-              },
-            }
-          : undefined
-        : {
-            open: renameOpen,
-            onOpenChange: (next) => store.setState({ renameOpen: next }),
-            name: open.name,
-            taken: mineNames.filter((name) => name.toLowerCase() !== open.name.toLowerCase()),
-            onRename: async (name) => {
-              const done = await editor.rename(name);
+      : {
+          open: renameOpen,
+          onOpenChange: (next) => store.setState({ renameOpen: next }),
+          name: open.name,
+          taken: mineNames.filter((name) => name.toLowerCase() !== open.name.toLowerCase()),
+          onRename:
+            mineId === undefined
+              ? (name) => {
+                  editor.reopen({ ...open, name });
+                  return Promise.resolve(true);
+                }
+              : async (name) => {
+                  const done = await editor.rename(name);
 
-              if (!done) {
-                showToast(
-                  `Could not rename ${open.name} (changed in another tab). Reload to rename`,
-                  {
-                    verbatim: open.name,
+                  if (!done) {
+                    showToast(
+                      `Could not rename ${open.name} (changed in another tab). Reload to rename`,
+                      {
+                        verbatim: open.name,
+                      }
+                    );
                   }
-                );
-              }
 
-              return done;
-            },
-          };
+                  return done;
+                },
+        };
 
   return {
     menu: {

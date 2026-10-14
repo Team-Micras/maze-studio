@@ -130,12 +130,13 @@ describe('The Changes panel', () => {
     }
   );
 
-  test('names D as the key of Show on board, and is 40 px tall per button on a phone', async () => {
+  test('names D as the key of Show changes, shows no key on a phone, and is 40 px tall per button there', async () => {
     await page.viewport(390, 844);
     await mount(ROWS, true);
-    const show = page.getByRole('button', { name: 'Show on board' });
+    const show = page.getByRole('button', { name: 'Show changes' });
 
     await expect.element(show).toHaveAttribute('aria-keyshortcuts', 'D');
+    expect(show.element().querySelector('kbd')).toBeNull();
     expect(show.element().getBoundingClientRect().height).toBe(40);
     expect(
       page.getByRole('button', { name: 'Keep Untitled maze' }).element().getBoundingClientRect()

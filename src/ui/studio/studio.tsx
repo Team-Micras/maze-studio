@@ -381,10 +381,10 @@ export function Studio({
           }
           cursor={editing.cursor}
           titleActions={<TitleActions {...actions.title} />}
-          rename={
+          onRename={
             actions.rename === undefined || previewed !== undefined
               ? undefined
-              : { taken: actions.rename.taken, onRename: actions.rename.onRename }
+              : () => store.setState({ renameOpen: true })
           }
           landed={mode === 'editor'}
           listOpen={state.listOpen}

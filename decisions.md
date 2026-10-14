@@ -151,6 +151,8 @@ reached, and the measurements of the day, are in the git history of this file.
   own. Save to My mazes of a link or `.txt` not edited is no change
   (owner, 14/10): the copy is noted as a maze of My mazes from before the session, its saved state the baseline, so it
   enters Changes only at a later save and Discard saves that state back.
+- **The title opens Rename** (owner, 14/10), the dialog of the ⋯ menu, for a maze of My mazes and a new maze: an inline
+  field had no confirm button on a phone. "Show changes" shows its `D` only on a fine pointer outside the phone layout.
 - **Save to My mazes is in the ⋯ menu** (owner, 14/10), so the title keeps the island's width on a phone; it is not
   offered while editing on a phone, since the first edit saves anyway. A mouse has no view mode, so a notebook keeps it.
 

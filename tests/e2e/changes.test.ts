@@ -289,7 +289,7 @@ describe('Changes of the session', () => {
     expect(new URL(page.url()).hash).toBe('#/');
   });
 
-  test('Show on board is off for a maze back at its baseline', async () => {
+  test('Show changes is off for a maze back at its baseline', async () => {
     const { maze } = await repoContent(CLASSIC);
     const page = await openMaze(`#/repo/${CLASSIC}`);
     await clickEdge(page, maze, EDGE);
@@ -298,7 +298,7 @@ describe('Changes of the session', () => {
     await expectSaved(page, sameMaze(maze));
     await openChangesFromMenu(page);
 
-    expect(await page.getByRole('button', { name: /Show on board/ }).isDisabled()).toBe(true);
+    expect(await page.getByRole('button', { name: /Show changes/ }).isDisabled()).toBe(true);
   });
 
   test('Keep takes the item out and keeps the copy, and the chip hides with nothing left', async () => {

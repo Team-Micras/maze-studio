@@ -56,7 +56,7 @@ export interface StudioState {
   readonly prepared: string | undefined;
   /** Whether the Changes panel is open. */
   readonly changesOpen: boolean;
-  /** Whether the board shows the diff of the maze on screen ("Show on board", `D`). */
+  /** Whether the board shows the diff of the maze on screen ("Show changes", `D`). */
   readonly showDiff: boolean;
   readonly renameOpen: boolean;
 }

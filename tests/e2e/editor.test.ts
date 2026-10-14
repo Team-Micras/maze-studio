@@ -400,10 +400,14 @@ describe('A new maze before its first edit', () => {
     await page.getByRole('menuitem', { name: 'Training, 16 × 16' }).click();
     await waitForMode(page, 'editor');
     await page.getByRole('button', { name: 'Untitled maze' }).click();
-    await page.getByRole('textbox', { name: 'Maze name' }).fill('Practice run');
-    await page.keyboard.press('Enter');
+    await page
+      .getByRole('dialog', { name: 'Rename' })
+      .getByRole('textbox', { name: 'Name' })
+      .fill('Practice run');
+    await page.getByRole('button', { name: 'Save' }).click();
 
     await expect.poll(() => page.locator('h1').textContent()).toBe('Practice run');
+    await expect.poll(() => page.getByRole('dialog', { name: 'Rename' }).count()).toBe(0);
     expect(new URL(page.url()).hash).toBe('#/');
     const maze = borderedMaze(16, 16);
     const edge: Edge = { direction: 'horizontal', x: 4, y: 5 };
@@ -809,6 +813,41 @@ describe('The top islands on a phone', () => {
       await expectIslandsApart(page, '.txt, editing');
     }
   );
+});
+
+/** A phone with the classic maze edited once, so it is a maze of My mazes in Changes. */
+async function editedOnPhone(): Promise<Page> {
+  const { maze } = await repoContent(CLASSIC);
+  const page = await openMaze(CLASSIC, PHONE);
+  const edge: Edge = { direction: 'vertical', x: 8, y: 8 };
+  await page.getByRole('button', { name: 'Edit', exact: true }).tap();
+  await page.getByRole('toolbar', { name: 'Tools' }).waitFor();
+  const point = await pagePoint(page, maze, edgeMiddle(edge));
+  await page.touchscreen.tap(point.x, point.y);
+  await expectSaved(page, sameMaze(toggleWall(maze, edge)));
+  return page;
+}
+
+describe('Round 3 on a phone', () => {
+  test('a tap on the title opens Rename, whose Save renames', async () => {
+    const page = await editedOnPhone();
+    await page.getByRole('button', { name: 'AAMC15Maze (edited)' }).tap();
+    const dialog = page.getByRole('dialog', { name: 'Rename' });
+    await dialog.getByRole('textbox', { name: 'Name' }).fill('Practice run');
+    await dialog.getByRole('button', { name: 'Save' }).tap();
+
+    await expect.poll(() => page.locator('h1').textContent()).toBe('Practice run');
+  });
+
+  test('Show changes names D as its shortcut but shows no key', async () => {
+    const page = await editedOnPhone();
+    await page.locator('[data-changes-chip]').first().tap();
+    const show = page.getByRole('button', { name: 'Show changes' });
+    await show.waitFor();
+
+    expect(await show.getAttribute('aria-keyshortcuts')).toBe('D');
+    expect(await show.locator('kbd').count()).toBe(0);
+  });
 });
 
 describe('Editing on a phone', () => {

@@ -20,8 +20,8 @@ import type { StudioScreen, StudioState } from './studio-store';
 /**
  * The Changes of the session in the studio (PLAN.md 3.4, DESIGN.md 6.2): the rows of the mazes
  * that differ from their baseline, each as it is now, the one on screen as edited, which the chip
- * counts; the diff of the maze on screen against its baseline, shown on the board while "Show on
- * board" is on; Open, Keep and Discard.
+ * counts; the diff of the maze on screen against its baseline, shown on the board while "Show
+ * changes" is on; Open, Keep and Discard.
  */
 export function useStudioChanges({
   store,

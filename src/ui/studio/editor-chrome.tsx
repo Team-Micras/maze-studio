@@ -8,7 +8,6 @@ import { Minimap } from '@/ui/board/minimap';
 import type { CanvasCamera } from '@/ui/board/use-canvas-camera';
 import { Hint, Island, IslandButton } from '@/ui/islands/island';
 import { ZoomIsland } from '@/ui/islands/zoom-island';
-import { TitleName, type TitleRename } from '@/ui/editor/title-name';
 import type { OpenMaze } from '@/ui/open-maze';
 
 /** The camera's zoom as a whole percentage of the fit; 100 before the camera is measured. */
@@ -50,8 +49,8 @@ export interface EditorChromeProps {
   readonly actions?: ReactNode;
   /** Save to folder, after the title. */
   readonly titleActions?: ReactNode;
-  /** Renaming from the title, for a maze of My mazes. */
-  readonly rename?: TitleRename | undefined;
+  /** Opens Rename from the title, for a maze of My mazes or a new maze; without it the title is plain. */
+  readonly onRename?: (() => void) | undefined;
 }
 
 /**
@@ -74,7 +73,7 @@ export function EditorChrome({
   children,
   actions,
   titleActions,
-  rename,
+  onRename,
 }: EditorChromeProps) {
   const settled = useDeferredValue(landed, false) && landed;
 
@@ -103,7 +102,20 @@ export function EditorChrome({
             </IslandButton>
           </Hint>
           <div className="flex min-w-0 flex-col pr-2 pl-1">
-            <TitleName name={open.name} rename={rename} />
+            <h1 className="min-w-0 text-[13px] leading-[18px] font-semibold" translate="no">
+              {onRename === undefined ? (
+                <span className="block truncate">{open.name}</span>
+              ) : (
+                <button
+                  aria-haspopup="dialog"
+                  className="relative -mx-1 block max-w-full rounded-[6px] px-1 text-left outline-none after:absolute after:inset-x-0 after:-inset-y-[13px] after:content-[''] hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
+                  onClick={onRename}
+                  type="button"
+                >
+                  <span className="block truncate">{open.name}</span>
+                </button>
+              )}
+            </h1>
             <p className="truncate text-[11px] leading-[14px] text-muted-foreground">
               {open.detail}
             </p>

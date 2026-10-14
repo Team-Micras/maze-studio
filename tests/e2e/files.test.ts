@@ -425,20 +425,23 @@ describe('Rename and Delete', () => {
     await expectSaved(page, sameMaze(maze));
   });
 
-  test('a click on the title renames from there, and Escape leaves the name as it was', async () => {
+  test('a click on the title opens Rename, and Escape leaves the name as it was', async () => {
     const { maze } = await repoContent(CLASSIC);
     const page = await openMaze(`#/repo/${CLASSIC}`);
     await clickEdge(page, maze, EDGE);
     await expectSaved(page, sameMaze(toggleWall(maze, EDGE)));
     await page.getByRole('button', { name: 'AAMC15Maze (edited)' }).click();
-    const field = page.getByRole('textbox', { name: 'Maze name' });
+    const field = page
+      .getByRole('dialog', { name: 'Rename' })
+      .getByRole('textbox', { name: 'Name' });
     await field.fill('Draft name');
     await page.keyboard.press('Escape');
 
-    await expect.poll(() => page.locator('h1').textContent()).toBe('AAMC15Maze (edited)');
+    await expect.poll(() => page.getByRole('dialog', { name: 'Rename' }).count()).toBe(0);
+    expect(await page.locator('h1').textContent()).toBe('AAMC15Maze (edited)');
     await page.getByRole('button', { name: 'AAMC15Maze (edited)' }).click();
     await field.fill('Practice run');
-    await page.keyboard.press('Enter');
+    await page.getByRole('button', { name: 'Save' }).click();
 
     await expect.poll(() => page.locator('h1').textContent()).toBe('Practice run');
     await expect

@@ -3,6 +3,7 @@ import { useEffect, useState, type ReactNode } from 'react';
 import { encodeMazeCode, type Maze, type Profile } from '@/maze';
 import { ThumbnailCanvas } from '@/ui/board/thumbnail-canvas';
 import { Check, Eye, GitDiff, Trash, X } from '@/ui/icons';
+import { useCoarsePointer, usePhoneLayout } from '@/ui/hooks/use-media-query';
 import { IslandButton } from '@/ui/islands/island';
 import { Popover, PopoverAnchor, PopoverContent } from '@/ui/primitives/popover';
 import { Sheet, SheetContent, SheetDescription, SheetTitle } from '@/ui/primitives/sheet';
@@ -188,6 +189,9 @@ function Body({
   onOpenChange,
   heading,
 }: Omit<ChangesPanelProps, 'open' | 'phone'> & { readonly heading: ReactNode }) {
+  const coarse = useCoarsePointer();
+  const touch = usePhoneLayout() || coarse;
+
   return (
     <>
       <div className="flex items-center gap-2 pt-2.5 pr-2 pb-1.5 pl-4">
@@ -217,10 +221,12 @@ function Body({
           onClick={() => onShowDiff(!showDiff)}
         >
           <Eye aria-hidden size={14} />
-          Show on board
-          <kbd aria-hidden className="font-mono text-[11px] text-muted-foreground">
-            D
-          </kbd>
+          Show changes
+          {touch ? null : (
+            <kbd aria-hidden className="font-mono text-[11px] text-muted-foreground">
+              D
+            </kbd>
+          )}
         </IslandButton>
       </div>
       <ul className="min-h-0 flex-1 overflow-auto overscroll-contain px-2 pt-1 pb-2.5">
