@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useStore } from 'zustand';
 
 import { DEFAULT_FILTER, keyOf, looseKey, mineIdOf, type LibraryFilter } from '@/library';
-import { parseMazeText } from '@/maze';
+import { parseMazeText, type Maze, type Profile } from '@/maze';
 
 import { CANVAS_ID } from './canvas-id';
 import { ConfirmDialog } from './confirm-dialog';
@@ -33,14 +33,21 @@ import { focusArtboard } from './library/library-scroller';
 import { appStorage } from './storage';
 import { showToast } from './toasts';
 
+/** A maze on screen: its key, and its maze and profile as they were. */
+interface Seen {
+  readonly key: string;
+  readonly maze: Maze;
+  readonly profile: Profile;
+}
+
 /**
- * The maze on screen at the route before this one, if any: leaving a maze of My mazes changed in the
- * session for the library shows My mazes, so the flight lands on it.
+ * The maze on screen at this route and at the route before, if any: leaving a maze of My mazes
+ * changed in the session for the library shows My mazes, so the flight lands on it.
  */
 interface RouteTrail {
   readonly hash: string;
-  readonly key: string | undefined;
-  readonly left: string | undefined;
+  readonly at: Seen | undefined;
+  readonly left: Seen | undefined;
 }
 
 /** The library's filter after leaving a maze of My mazes changed in the session (PLAN.md 3.4). */
@@ -97,22 +104,29 @@ export function App() {
   const routeKey = route.kind === 'library' ? undefined : keyOf(route);
   const editor = useMazeEditor({ opened, wanted: shownLoose?.key ?? routeKey });
   const changes = useStore(sessionChanges);
-  const screenKey = editor.shown?.key;
-  const [trail, setTrail] = useState<RouteTrail>({ hash, key: screenKey, left: undefined });
+  const shown = editor.shown;
+  const seen =
+    shown === undefined
+      ? undefined
+      : { key: shown.key, maze: shown.maze, profile: shown.document.profile };
+  const [trail, setTrail] = useState<RouteTrail>({ hash, at: seen, left: undefined });
 
   if (trail.hash !== hash) {
-    setTrail({ hash, key: screenKey, left: trail.key });
-  } else if (screenKey !== undefined && screenKey !== trail.key) {
-    setTrail({ ...trail, key: screenKey });
+    setTrail({ hash, at: seen, left: trail.at });
+  } else if (
+    seen !== undefined &&
+    (seen.key !== trail.at?.key || seen.maze !== trail.at.maze || seen.profile !== trail.at.profile)
+  ) {
+    setTrail({ ...trail, at: seen });
   }
 
-  const leftItem = changeOf(changes, mineIdOf(trail.left) ?? '');
+  const leftItem = changeOf(changes, mineIdOf(trail.left?.key) ?? '');
   const landing =
     route.kind === 'library' &&
     route.filter.source !== 'mine' &&
     trail.left !== undefined &&
     leftItem !== undefined &&
-    differs(leftItem, library?.mazeOf(trail.left), library?.documentOf(trail.left)?.profile)
+    differs(leftItem, trail.left.maze, trail.left.profile)
       ? MINE_FILTER
       : undefined;
   const missingOpening =

@@ -9,6 +9,7 @@
 import { createStore, type StoreApi } from 'zustand/vanilla';
 
 import { diffMazes, mazesEqual, type Maze, type MazeDiff, type Profile } from '@/maze';
+import { categoryLabel } from '@/ui/labels';
 import type { Route } from '@/ui/routes';
 
 /** How an item came into the session: a copy, a new maze, or a maze of My mazes from before. */
@@ -153,9 +154,10 @@ function counted(count: number, noun: string): string {
 
 /**
  * The line under an item (DESIGN.md 6.2): "New maze", or what changed, as in "3 walls added, 1
- * removed, goal changed"; an item back at its baseline is not shown.
+ * removed, goal changed" or "Rules changed to Training" with the `profile` it has now; an item back
+ * at its baseline is not shown.
  */
-export function changeSummary(item: ChangeItem, current: Maze): string {
+export function changeSummary(item: ChangeItem, current: Maze, profile?: Profile): string {
   if (item.baseline === undefined) {
     return 'New maze';
   }
@@ -186,6 +188,14 @@ export function changeSummary(item: ChangeItem, current: Maze): string {
 
   if (diff.startBefore?.x !== diff.startAfter?.x || diff.startBefore?.y !== diff.startAfter?.y) {
     parts.push('start moved');
+  }
+
+  if (
+    profile !== undefined &&
+    item.baselineProfile !== undefined &&
+    profile !== item.baselineProfile
+  ) {
+    parts.push(`rules changed to ${categoryLabel(profile)}`);
   }
 
   const line = parts.join(', ');

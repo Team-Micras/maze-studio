@@ -89,6 +89,16 @@ describe('The line of a change', () => {
     expect(changeSummary(copy(BASE), setGoals(BASE, [{ x: 2, y: 2 }]))).toBe('Goal changed');
   });
 
+  test('says the rules changed when only the profile did, beside what the walls did', () => {
+    const item: ChangeItem = { ...copy(), baselineProfile: 'classic' };
+
+    expect(changeSummary(item, BASE, 'training')).toBe('Rules changed to Training');
+    expect(changeSummary(item, walls(BASE, A), 'halfsize')).toBe(
+      '1 wall added, rules changed to Half size'
+    );
+    expect(changeSummary(item, walls(BASE, A), 'classic')).toBe('1 wall added');
+  });
+
   test('says "New maze" without a baseline', () => {
     expect(changeSummary(NEW, walls(BASE, A))).toBe('New maze');
   });

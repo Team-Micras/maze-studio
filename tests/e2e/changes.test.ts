@@ -249,6 +249,28 @@ describe('Changes of the session', () => {
     await expect
       .poll(() => page.getByRole('button', { name: 'Changes in this session: 1' }).count())
       .toBe(1);
+    await openChanges(page);
+    await expect.poll(() => summary(page)).toBe('Rules changed to Training');
+  });
+
+  test('leaving a copy with only its profile changed turns the library to My mazes', async () => {
+    const { maze } = await repoContent(CLASSIC);
+    const page = await openMaze(`#/repo/${CLASSIC}`);
+    await clickEdge(page, maze, EDGE);
+    await expectSaved(page, sameMaze(toggleWall(maze, EDGE)));
+    await page.keyboard.press('Control+z');
+    await expectSaved(page, sameMaze(maze));
+    await page.getByRole('button', { name: /^Checks/ }).click();
+    await page
+      .getByRole('dialog', { name: 'Checks' })
+      .getByRole('radio', { name: 'Training' })
+      .click();
+    await page.keyboard.press('Escape');
+    await page.getByRole('button', { name: 'Changes in this session: 1' }).waitFor();
+    await page.getByRole('button', { name: 'Back to the library' }).click();
+    await waitForMode(page, 'library');
+
+    await expect.poll(() => new URL(page.url()).hash).toBe('#/?src=mine');
   });
 
   test('leaving a copy undone to the original keeps the library on its filter', async () => {

@@ -1,6 +1,6 @@
 import { useEffect, useState, type ReactNode } from 'react';
 
-import { encodeMazeCode, type Maze } from '@/maze';
+import { encodeMazeCode, type Maze, type Profile } from '@/maze';
 import { ThumbnailCanvas } from '@/ui/board/thumbnail-canvas';
 import { Check, Eye, GitDiff, Trash, X } from '@/ui/icons';
 import { IslandButton } from '@/ui/islands/island';
@@ -20,6 +20,8 @@ const ROW_THUMBNAIL = 56;
 export interface ChangeRow {
   readonly item: ChangeItem;
   readonly current: Maze | undefined;
+  /** The profile it has now, if known. */
+  readonly profile?: Profile;
 }
 
 /** The props of {@link ChangesChip}. */
@@ -135,7 +137,7 @@ function Row({ row, onOpen, onKeep, onDiscard }: RowProps) {
         <small className="truncate text-xs text-muted-foreground" data-summary="">
           {current === undefined
             ? 'Not readable. Discard it or open it again'
-            : changeSummary(item, current)}
+            : changeSummary(item, current, row.profile)}
         </small>
         <span className="mt-1 flex gap-1">
           <IslandButton

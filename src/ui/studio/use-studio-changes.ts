@@ -46,7 +46,7 @@ export function useStudioChanges({
     const shown = onScreen?.key === key ? onScreen : undefined;
     const current = shown?.maze ?? library?.mazeOf(key);
     const profile = shown?.document.profile ?? library?.documentOf(key)?.profile;
-    return differs(item, current, profile) ? [{ item, current }] : [];
+    return differs(item, current, profile) ? [{ item, current, profile }] : [];
   });
   const screenId = mineIdOf(onScreen?.key);
   const screenItem = screenId === undefined ? undefined : changeOf(changes, screenId);
