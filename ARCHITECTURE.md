@@ -41,7 +41,8 @@ Each of `src/maze`, `src/library` and `src/render` has an `index.ts` as its publ
     between them (`use-studio-flight.ts`), the open board, the editor's islands and the quick list.
   - `editor/`: the pure session (`edit-session.ts`), its hook (`use-maze-editor.ts`), the writer that copies and
     autosaves (`mine-writer.ts`), the wall and cell gestures, the keys, the tools, Checks, sharing and Rename.
-  - `changes/`: the session's Changes (`session-changes.ts`, pure over one store per tab) and their chip and panel.
+  - `changes/`: the session's Changes (`session-changes.ts`, pure over one store per tab), Discard (`discard.ts`)
+    and their chip and panel.
   - `library/`: the library's islands, grid and artboards, New maze, backup and updates.
   - `board/`: `Board` (the SVG), `CameraStage` (the canvas with wheel, pinch, pan and the drawing gesture),
     `useCanvasCamera`, `Minimap`, `ThumbnailCanvas` and `paint-queue.ts`.

@@ -38,7 +38,7 @@ import type { Library } from '@/ui/library/use-library';
 import { openEntry, type OpenMaze } from '@/ui/open-maze';
 import { cn } from '@/ui/primitives/utils';
 import { useTheme } from '@/ui/theme';
-import type { NewMazeRequest } from '@/ui/new-maze';
+import { newMazeName, type NewMazeRequest } from '@/ui/new-maze';
 import { routeOfEntry, type Route } from '@/ui/routes';
 
 import { EditorChrome } from './editor-chrome';
@@ -65,8 +65,8 @@ export interface StudioProps {
   readonly onOpenFile: (file: File) => void;
   /** Opens a new maze in the editor. */
   readonly onNew: (request: NewMazeRequest) => void;
-  /** The name a new maze gets unless named. */
-  readonly newName: string;
+  /** The names in My mazes, which a new or renamed maze must not take. */
+  readonly mineNames: readonly string[];
   /** Discards an item of Changes: deletes a copy or puts back a maze of My mazes. */
   readonly onDiscard: (item: ChangeItem) => void;
   /** Writes `text` over the opened folder's `fileName`. */
@@ -122,7 +122,7 @@ export function Studio({
   onFilter,
   onOpenFile,
   onNew,
-  newName,
+  mineNames,
   onDiscard,
   onSaveToFolder,
   onDelete,
@@ -137,6 +137,7 @@ export function Studio({
   const editorInsets = editorInsetsFor(phone, state.viewing);
   const shown = library === undefined ? [] : filterCatalog(library.entries, filter, library.index);
   const { mode } = state;
+  const newName = newMazeName('', mineNames);
   const mineIsEmpty = filter.source === 'mine' && library?.mineCount === 0;
   const emptyTitle =
     library !== undefined && mode === 'library' && shown.length === 0
@@ -184,9 +185,7 @@ export function Studio({
     phone,
     onSaveToFolder,
     onDelete,
-    mineNames: (library?.entries ?? [])
-      .filter((entry) => entry.origin === 'mine')
-      .map((entry) => entry.name),
+    mineNames,
   });
   const editing = useStudioEditing({
     store,

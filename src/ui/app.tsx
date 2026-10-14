@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useStore } from 'zustand';
 
 import { DEFAULT_FILTER, type LibraryFilter } from '@/library';
@@ -6,13 +6,9 @@ import { parseMazeText } from '@/maze';
 
 import { CANVAS_ID } from './canvas-id';
 import { ConfirmDialog } from './confirm-dialog';
-import {
-  changeOf,
-  sessionChanges,
-  withoutChange,
-  type ChangeItem,
-} from './changes/session-changes';
-import { newMazeName, openNewMaze } from './new-maze';
+import { discardChange } from './changes/discard';
+import { changeOf, sessionChanges, withoutChange } from './changes/session-changes';
+import { openNewMaze } from './new-maze';
 import { useMazeEditor } from './editor/use-maze-editor';
 import { useRoute } from './hooks/use-route';
 import { ReportDialog } from './library/report-dialog';
@@ -31,7 +27,7 @@ import {
   type OpenMaze,
 } from './open-maze';
 import { TooltipProvider } from './primitives/tooltip';
-import { LIBRARY_ROUTE, parseRoute, routeHash, type Route } from './routes';
+import { routeHash, type Route } from './routes';
 import { Studio } from './studio/studio';
 import { Toaster } from './toaster';
 import { focusArtboard } from './library/library-scroller';
@@ -47,6 +43,9 @@ interface RouteTrail {
   readonly key: string | undefined;
   readonly left: string | undefined;
 }
+
+/** A route to the library. */
+type LibraryRoute = Extract<Route, { readonly kind: 'library' }>;
 
 /** The library's filter after leaving a maze of My mazes changed in the session (PLAN.md 3.4). */
 const MINE_FILTER: LibraryFilter = { ...DEFAULT_FILTER, source: 'mine' };
@@ -86,22 +85,24 @@ export function App() {
   const hash = routeHash(route);
   const [loose, setLoose] = useState<LooseMaze | undefined>(undefined);
   const [onDisk, setOnDisk] = useState<{ fileName: string; text: string } | undefined>(undefined);
-  const lastLibrary = useRef<Route>(LIBRARY_ROUTE);
   const opening = openingOf(route, library, folder.restoring);
   const shownLoose = loose?.at === hash ? loose.open : undefined;
 
   if (loose !== undefined && loose.at !== hash) {
     setLoose(undefined);
   }
-  const [lastFilter, setLastFilter] = useState({ hash: '#/', filter: DEFAULT_FILTER });
+  const [lastLibrary, setLastLibrary] = useState<{ hash: string; route: LibraryRoute }>({
+    hash: '#/',
+    route: { kind: 'library', filter: DEFAULT_FILTER },
+  });
 
-  if (route.kind === 'library' && lastFilter.hash !== hash) {
-    setLastFilter({ hash, filter: route.filter });
+  if (route.kind === 'library' && lastLibrary.hash !== hash) {
+    setLastLibrary({ hash, route });
   }
 
   const opened = shownLoose ?? (opening.status === 'open' ? opening.open : undefined);
-  const editor = useMazeEditor({ opened, wanted: shownLoose?.key ?? mazeKeyOf(route) });
   const routeKey = mazeKeyOf(route);
+  const editor = useMazeEditor({ opened, wanted: shownLoose?.key ?? routeKey });
   const changes = useStore(sessionChanges);
   const screenKey = editor.shown?.key;
   const [trail, setTrail] = useState<RouteTrail>({ hash, key: screenKey, left: undefined });
@@ -127,14 +128,6 @@ export function App() {
   const missingName = missingOpening?.verbatim;
 
   useEffect(() => {
-    const current = parseRoute(hash);
-
-    if (current.kind === 'library') {
-      lastLibrary.current = current;
-    }
-  }, [hash]);
-
-  useEffect(() => {
     if (landing !== undefined) {
       replaceRoute({ kind: 'library', filter: landing });
     }
@@ -143,9 +136,9 @@ export function App() {
   useEffect(() => {
     if (missing !== undefined) {
       showToast(missing, { verbatim: missingName });
-      replaceRoute(lastLibrary.current);
+      replaceRoute(lastLibrary.route);
     }
-  }, [missing, missingName]);
+  }, [missing, missingName, lastLibrary.route]);
 
   const toLibrary = (): void => {
     if (shownLoose !== undefined) {
@@ -153,59 +146,7 @@ export function App() {
     } else if (libraryBelow()) {
       window.history.back();
     } else {
-      pushRoute(lastLibrary.current);
-    }
-  };
-
-  const discard = async (item: ChangeItem): Promise<void> => {
-    const shown = editor.shown;
-    const open = shown?.key === `mine:${item.id}`;
-    const mine = (await appStorage())?.mine;
-
-    if (item.kind !== 'existing') {
-      sessionChanges.setState((before) => withoutChange(before, item.id));
-
-      if (open) {
-        setLoose(undefined);
-        replaceRoute(item.source ?? lastLibrary.current);
-      }
-
-      await mine?.remove(item.id);
-      reloadLibrary();
-      return;
-    }
-
-    const stored = await mine?.get(item.id);
-    const saved =
-      mine === undefined || stored === undefined || item.baseline === undefined
-        ? undefined
-        : await mine.save(
-            item.id,
-            {
-              maze: item.baseline,
-              profile: item.baselineProfile,
-            },
-            editor.savedVersion(item.id) ?? stored.version
-          );
-
-    if (saved?.ok !== true) {
-      showToast(`Could not discard ${item.name} (changed in another tab)`, { verbatim: item.name });
-      return;
-    }
-
-    sessionChanges.setState((before) => withoutChange(before, item.id));
-    reloadLibrary();
-
-    if (open && shown !== undefined) {
-      editor.reopen({
-        ...shown,
-        maze: item.baseline ?? shown.maze,
-        document: {
-          ...shown.document,
-          profile: item.baselineProfile ?? shown.document.profile,
-          mine: { id: item.id, version: saved.value.version },
-        },
-      });
+      pushRoute(lastLibrary.route);
     }
   };
 
@@ -297,14 +238,19 @@ export function App() {
         Skip to the content
       </a>
       <Studio
-        filter={route.kind === 'library' ? (landing ?? route.filter) : lastFilter.filter}
+        filter={route.kind === 'library' ? (landing ?? route.filter) : lastLibrary.route.filter}
         library={library}
         onFilter={(filter: LibraryFilter) => replaceRoute({ kind: 'library', filter })}
         onLibrary={toLibrary}
-        newName={newMazeName('', mineNames)}
+        mineNames={mineNames}
         onNew={(request) => openLoose((id) => openNewMaze(request, id, mineNames))}
         onOpenFile={(picked) => void openFile(picked)}
-        onDiscard={(item) => void discard(item)}
+        onDiscard={(item) =>
+          void discardChange(item, editor, (source) => {
+            setLoose(undefined);
+            replaceRoute(source ?? lastLibrary.route);
+          })
+        }
         onDelete={(id) => void deleteMine(id)}
         onSaveToFolder={(fileName, text) => void saveToFolder(fileName, text)}
         files={{
