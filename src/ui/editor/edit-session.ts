@@ -7,16 +7,10 @@
 
 import { mineKey } from '@/library';
 import {
-  beginGesture,
-  canRedo,
-  canUndo,
   createHistory,
   endGesture,
-  inGesture,
   mazesEqual,
   record,
-  redo,
-  undo,
   type History,
   type Maze,
   type Profile,
@@ -115,57 +109,11 @@ export function withMine(
   return { ...session, mine };
 }
 
-function withHistory(session: EditSession, history: History<Maze>): EditSession {
-  return history === session.history ? session : { ...session, history };
-}
-
-/** Starts a gesture: what changes until {@link endEdit} is one step. */
-export function beginEdit(session: EditSession): EditSession {
-  return withHistory(session, beginGesture(session.history));
-}
-
-/** Puts `maze` on screen, inside the gesture in progress or as one step of its own. */
-export function changeMaze(session: EditSession, maze: Maze): EditSession {
-  return withHistory(session, record(session.history, maze));
-}
-
-/** Ends the gesture in progress, one step if it changed anything. */
-export function endEdit(session: EditSession): EditSession {
-  return withHistory(session, endGesture(session.history));
-}
-
-/** Takes back everything the gesture in progress did, leaving no step, as when a pinch starts. */
-export function cancelEdit(session: EditSession): EditSession {
-  const base = session.history.gestureBase;
-
-  if (base === undefined) {
-    return session;
-  }
-
-  return withHistory(session, endGesture(record(session.history, base)));
-}
-
-/** Whether a gesture is in progress. */
-export function editing(session: EditSession): boolean {
-  return inGesture(session.history);
-}
-
-/** Goes back one step. */
-export function undoEdit(session: EditSession): EditSession {
-  return withHistory(session, undo(session.history));
-}
-
-/** Goes forward one undone step. */
-export function redoEdit(session: EditSession): EditSession {
-  return withHistory(session, redo(session.history));
-}
-
-/** Whether there is a step to undo. */
-export function canUndoEdit(session: EditSession): boolean {
-  return canUndo(session.history);
-}
-
-/** Whether there is a step to redo. */
-export function canRedoEdit(session: EditSession): boolean {
-  return canRedo(session.history);
+/**
+ * Takes back everything the gesture in progress did, leaving no step, as when a pinch starts.
+ * The history itself when no gesture is in progress.
+ */
+export function cancelEdit(history: History<Maze>): History<Maze> {
+  const base = history.gestureBase;
+  return base === undefined ? history : endGesture(record(history, base));
 }

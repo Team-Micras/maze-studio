@@ -1,34 +1,33 @@
 import { describe, expect, test } from 'vitest';
 
-import { createMaze, hasWall, mazesEqual, toggleWall, type Edge } from '@/maze';
 import {
-  beginEdit,
+  beginGesture,
+  canUndo,
+  createMaze,
+  mazesEqual,
+  record,
+  toggleWall,
+  undo,
+  type Edge,
+  type History,
+  type Maze,
+} from '@/maze';
+import {
   cancelEdit,
-  canRedoEdit,
-  canUndoEdit,
-  changeMaze,
   copyName,
-  endEdit,
   followRoute,
   needsCopy,
   openSession,
-  redoEdit,
   sessionAnswers,
   sessionKey,
   sessionView,
-  undoEdit,
   withMine,
   withProfile,
+  type EditSession,
 } from '@/ui/editor/edit-session';
 import type { OpenMaze } from '@/ui/open-maze';
 
 const FIRST: Edge = { direction: 'horizontal', x: 1, y: 1 };
-
-const EDGES: readonly Edge[] = [
-  FIRST,
-  { direction: 'horizontal', x: 2, y: 1 },
-  { direction: 'vertical', x: 3, y: 1 },
-];
 
 function repoMaze(): OpenMaze {
   return {
@@ -44,45 +43,40 @@ function repoMaze(): OpenMaze {
   };
 }
 
+/** The session with its history changed by `step`, as the editor's hook does it. */
+function edit(session: EditSession, step: (history: History<Maze>) => History<Maze>): EditSession {
+  return { ...session, history: step(session.history) };
+}
+
+/** The session with the wall `edge` toggled as one step. */
+function toggled(session: EditSession, edge: Edge): EditSession {
+  return edit(session, (history) => record(history, toggleWall(history.present, edge)));
+}
+
 describe('An editing session', () => {
-  test('makes a whole gesture one step, however many walls it paints', () => {
-    let session = beginEdit(openSession(repoMaze()));
-
-    for (const edge of EDGES) {
-      session = changeMaze(session, toggleWall(session.history.present, edge));
-    }
-
-    session = endEdit(session);
-
-    expect(EDGES.every((edge) => hasWall(session.history.present, edge))).toBe(true);
-    session = undoEdit(session);
-    expect(mazesEqual(session.history.present, repoMaze().maze)).toBe(true);
-    expect(canUndoEdit(session)).toBe(false);
-    expect(canRedoEdit(session)).toBe(true);
-    session = redoEdit(session);
-    expect(EDGES.every((edge) => hasWall(session.history.present, edge))).toBe(true);
-  });
-
   test('cancels a gesture without leaving a step, as when a second finger lands', () => {
-    let session = beginEdit(openSession(repoMaze()));
-    session = changeMaze(session, toggleWall(session.history.present, FIRST));
-    session = cancelEdit(session);
+    const history = record(
+      beginGesture(openSession(repoMaze()).history),
+      toggleWall(repoMaze().maze, FIRST)
+    );
+    const cancelled = cancelEdit(history);
 
-    expect(mazesEqual(session.history.present, repoMaze().maze)).toBe(true);
-    expect(canUndoEdit(session)).toBe(false);
+    expect(mazesEqual(cancelled.present, repoMaze().maze)).toBe(true);
+    expect(canUndo(cancelled)).toBe(false);
+    expect(cancelEdit(cancelled)).toBe(cancelled);
   });
 
   test('needs a copy once the maze differs from what opened, and not after undoing back', () => {
     let session = openSession(repoMaze());
     expect(needsCopy(session)).toBe(false);
-    session = changeMaze(session, toggleWall(session.history.present, FIRST));
+    session = toggled(session, FIRST);
     expect(needsCopy(session)).toBe(true);
-    session = undoEdit(session);
+    session = edit(session, undo);
     expect(needsCopy(session)).toBe(false);
   });
 
   test('once copied, answers to both keys and shows the copy, keeping the document', () => {
-    let session = changeMaze(openSession(repoMaze()), toggleWall(repoMaze().maze, FIRST));
+    let session = toggled(openSession(repoMaze()), FIRST);
     session = withMine(session, { id: 'u-1', version: 1, name: copyName('test') });
     const view = sessionView(session);
 
@@ -99,7 +93,7 @@ describe('An editing session', () => {
   });
 
   test('once the route has moved to the copy, leaves the key of the original to a new session', () => {
-    let session = changeMaze(openSession(repoMaze()), toggleWall(repoMaze().maze, FIRST));
+    let session = toggled(openSession(repoMaze()), FIRST);
 
     expect(followRoute(session, 'repo:classic/test.txt')).toBe(session);
     session = withMine(session, { id: 'u-1', version: 1, name: 'test (edited)' });
@@ -121,7 +115,7 @@ describe('An editing session', () => {
       detail: 'Saved in My mazes',
       document: { trailer: '', profile: 'free', mine: { id: 'u-2', version: 4 } },
     };
-    const session = changeMaze(openSession(opened), toggleWall(opened.maze, FIRST));
+    const session = toggled(openSession(opened), FIRST);
 
     expect(needsCopy(session)).toBe(false);
     expect(session.mine).toEqual({ id: 'u-2', version: 4, name: 'My mazes one' });
@@ -141,10 +135,10 @@ describe('An editing session', () => {
     expect(sessionView(session).document.source).toEqual(source);
     session = withProfile(session, 'free');
     expect(sessionView(session).document.profile).toBe('free');
-    expect(canUndoEdit(session)).toBe(false);
-    session = changeMaze(session, toggleWall(opened.maze, FIRST));
+    expect(canUndo(session.history)).toBe(false);
+    session = toggled(session, FIRST);
     expect(sessionView(session).document.source).toBeUndefined();
-    session = undoEdit(session);
+    session = edit(session, undo);
     expect(sessionView(session).document.source).toEqual(source);
   });
 });

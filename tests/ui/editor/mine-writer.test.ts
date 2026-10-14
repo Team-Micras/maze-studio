@@ -7,13 +7,14 @@ import {
   encodeMazeCode,
   failure,
   mazesEqual,
+  record,
   success,
   toggleWall,
   type Edge,
   type Maze,
   type Result,
 } from '@/maze';
-import { changeMaze, openSession, withProfile, type EditSession } from '@/ui/editor/edit-session';
+import { openSession, withProfile, type EditSession } from '@/ui/editor/edit-session';
 import { MineWriter, type MineStore } from '@/ui/editor/mine-writer';
 import type { OpenMaze } from '@/ui/open-maze';
 
@@ -35,10 +36,14 @@ function opened(name: string, mine?: { id: string; version: number }): OpenMaze 
 
 /** A session on `maze`, with the walls `xs` toggled since it opened. */
 function edited(maze: OpenMaze, ...xs: number[]): EditSession {
-  return changeMaze(
-    openSession(maze),
-    xs.reduce((current, x) => toggleWall(current, edge(x)), maze.maze)
-  );
+  const session = openSession(maze);
+  return {
+    ...session,
+    history: record(
+      session.history,
+      xs.reduce((current, x) => toggleWall(current, edge(x)), maze.maze)
+    ),
+  };
 }
 
 function wallsOf(...xs: number[]): Maze {

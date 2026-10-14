@@ -1,7 +1,19 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 
 import { folderFileOf } from '@/library';
-import type { Maze, Profile } from '@/maze';
+import {
+  beginGesture,
+  canRedo,
+  canUndo,
+  endGesture,
+  inGesture,
+  record,
+  redo,
+  undo,
+  type History,
+  type Maze,
+  type Profile,
+} from '@/maze';
 import { reloadLibrary } from '@/ui/library/use-library';
 import { pushRoute, replaceRoute } from '@/ui/navigation';
 import type { Route } from '@/ui/routes';
@@ -17,19 +29,11 @@ import { appStorage } from '@/ui/storage';
 import { showToast } from '@/ui/toasts';
 
 import {
-  beginEdit,
   cancelEdit,
-  canRedoEdit,
-  canUndoEdit,
-  changeMaze,
-  editing,
-  endEdit,
   followRoute,
   openSession,
-  redoEdit,
   sessionAnswers,
   sessionView,
-  undoEdit,
   withMine,
   withProfile,
   type EditSession,
@@ -191,7 +195,12 @@ export function useMazeEditor(input: MazeEditorInput): MazeEditor {
   useEffect(() => {
     const mineWriter = writer.current;
 
-    if (session !== undefined && !editing(session) && !readOnly && mineWriter !== undefined) {
+    if (
+      session !== undefined &&
+      !inGesture(session.history) &&
+      !readOnly &&
+      mineWriter !== undefined
+    ) {
       mineWriter.write(session);
       noteWrites(mineWriter.idle());
     }
@@ -209,23 +218,19 @@ export function useMazeEditor(input: MazeEditorInput): MazeEditor {
     setStored(next);
   }, []);
 
-  const guarded = useCallback(
-    (step: (session: EditSession) => EditSession) => () => {
+  const edit = useCallback(
+    (step: (history: History<Maze>) => History<Maze>): void => {
       if (!readOnly) {
-        update(step);
+        update((before) => {
+          const history = step(before.history);
+          return history === before.history ? before : { ...before, history };
+        });
       }
     },
     [readOnly, update]
   );
 
-  const change = useCallback(
-    (maze: Maze) => {
-      if (!readOnly) {
-        update((current) => changeMaze(current, maze));
-      }
-    },
-    [readOnly, update]
-  );
+  const change = useCallback((maze: Maze) => edit((history) => record(history, maze)), [edit]);
 
   const current = useCallback(() => latest.current?.history.present, []);
 
@@ -233,15 +238,15 @@ export function useMazeEditor(input: MazeEditorInput): MazeEditor {
     shown: session === undefined ? undefined : sessionView(session),
     answers: (key) => session !== undefined && sessionAnswers(session, key),
     readOnly,
-    canUndo: session !== undefined && canUndoEdit(session),
-    canRedo: session !== undefined && canRedoEdit(session),
+    canUndo: session !== undefined && canUndo(session.history),
+    canRedo: session !== undefined && canRedo(session.history),
     current,
-    begin: guarded(beginEdit),
+    begin: () => edit(beginGesture),
     change,
-    end: guarded(endEdit),
-    cancel: guarded(cancelEdit),
-    undo: guarded(undoEdit),
-    redo: guarded(redoEdit),
+    end: () => edit(endGesture),
+    cancel: () => edit(cancelEdit),
+    undo: () => edit(undo),
+    redo: () => edit(redo),
     setProfile: (profile) => update((before) => withProfile(before, profile)),
     canSaveToMine:
       session?.mine === undefined &&
