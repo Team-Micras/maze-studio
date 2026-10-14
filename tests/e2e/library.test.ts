@@ -351,6 +351,18 @@ describe('Selecting in My mazes', () => {
     await page.mouse.up();
   });
 
+  test('a mouse pressed on an artboard and released far away selects nothing', async () => {
+    const page = await mineLibrary(false);
+    const box = await artboard(page, 'one').boundingBox();
+    await page.mouse.move((box?.x ?? 0) + 30, (box?.y ?? 0) + 30);
+    await page.mouse.down();
+    await page.mouse.move(5, 5);
+    await page.waitForTimeout(700);
+    await page.mouse.up();
+
+    expect(await selection(page).count()).toBe(0);
+  });
+
   test('Shift and Space on a focused artboard start selecting, and opening a maze clears it', async () => {
     const page = await mineLibrary(false);
     await artboard(page, 'one').focus();
