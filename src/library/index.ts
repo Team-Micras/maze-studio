@@ -66,7 +66,6 @@ export {
   type MineChanges,
   type MineDraft,
   type MineMaze,
-  type MineNotice,
   type MineOptions,
   type MineOrigin,
   type NoticeChannel,
@@ -82,6 +81,6 @@ export {
   type RepoMeta,
 } from './repo-cache';
 export { matchesTokens, queryTokens, SearchIndex, searchWords, type SearchWords } from './search';
-export { Settings, type Preferences } from './settings';
+export { Settings } from './settings';
 export { loadSnapshot, readSnapshot, type RepoFile, type Snapshot } from './snapshot';
 export { crc32, readZip, writeZip, type ZipEntry } from './zip';

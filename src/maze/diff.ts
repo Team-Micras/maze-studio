@@ -7,14 +7,7 @@
  */
 
 import type { Edge } from './edges';
-import {
-  cellIndex,
-  horizontalEdgeIndex,
-  sameCell,
-  verticalEdgeIndex,
-  type Cell,
-  type Maze,
-} from './maze';
+import { cellIndex, horizontalEdgeIndex, verticalEdgeIndex, type Cell, type Maze } from './maze';
 
 /** What changed between two mazes of the same size. */
 export interface MazeDiff {
@@ -71,17 +64,6 @@ function edgeChanges(before: Maze, after: Maze): { added: Edge[]; removed: Edge[
 function goalsMissingFrom(goals: readonly Cell[], other: readonly Cell[], width: number): Cell[] {
   const kept = new Set(other.map((cell) => cellIndex(width, cell)));
   return goals.filter((cell) => !kept.has(cellIndex(width, cell)));
-}
-
-/** Whether a diff changes nothing. */
-export function isEmptyDiff(diff: MazeDiff): boolean {
-  return (
-    diff.added.length === 0 &&
-    diff.removed.length === 0 &&
-    diff.goalsAdded.length === 0 &&
-    diff.goalsRemoved.length === 0 &&
-    sameCell(diff.startBefore, diff.startAfter)
-  );
 }
 
 /** The diff from `before` to `after`, or `undefined` when their sizes differ. */

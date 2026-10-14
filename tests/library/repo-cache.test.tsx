@@ -207,15 +207,6 @@ describe('the repository cache', () => {
 });
 
 describe('the settings', () => {
-  test('merge the preferences saved', async () => {
-    const settings = new Settings(await freshDatabase());
-    expect(await settings.preferences()).toEqual({});
-
-    await settings.savePreferences({ theme: 'dark' });
-    await settings.savePreferences({ zoom: 2 });
-    expect(await settings.preferences()).toEqual({ theme: 'dark', zoom: 2 });
-  });
-
   test('keep the handle of a local folder, and forget it (a stand-in: Chromium crashes reading a real one back in a test context)', async () => {
     const settings = new Settings<{ kind: string; name: string }>(await freshDatabase());
     const folder = { kind: 'directory', name: 'mazes' };

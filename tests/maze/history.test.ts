@@ -5,8 +5,8 @@ import {
   canRedo,
   canUndo,
   clearArea,
-  clearStart,
   createHistory,
+  createMaze,
   endGesture,
   fillBorder,
   HISTORY_LIMIT,
@@ -241,7 +241,9 @@ function randomEdit(random: Random, maze: Maze): Maze {
     case 4:
       return fillBorder(maze);
     case 5:
-      return random() < 0.9 ? setStart(maze, randomCell(random, maze)) : clearStart(maze);
+      return random() < 0.9
+        ? setStart(maze, randomCell(random, maze))
+        : createMaze({ ...maze, start: undefined });
     case 6:
       return setGoals(
         maze,

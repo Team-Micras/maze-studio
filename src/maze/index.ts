@@ -7,11 +7,10 @@
  */
 
 export { Bits } from './bits';
-export { diffMazes, isEmptyDiff, type MazeDiff } from './diff';
+export { diffMazes, type MazeDiff } from './diff';
 export { edgeIndex, edgeOfCell, hasWall, isMazeEdge, type CellSide, type Edge } from './edges';
 export {
   clearArea,
-  clearStart,
   fillBorder,
   paintWalls,
   setGoalArea,

@@ -59,7 +59,6 @@ export {
 export {
   ARTBOARD_SIZE,
   boardGeometry,
-  cellAtPoint,
   cellRect,
   EDGE_TOLERANCE,
   nearestCell,

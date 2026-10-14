@@ -4,7 +4,6 @@ import { createMaze } from '@/maze';
 import {
   ARTBOARD_SIZE,
   boardGeometry,
-  cellAtPoint,
   cellRect,
   nearestCell,
   nearestEdge,
@@ -160,12 +159,6 @@ describe('nearestEdge', () => {
 });
 
 describe('Cells under a point', () => {
-  test('cellAtPoint has none outside the maze', () => {
-    expect(cellAtPoint(WIDE, { u: 9.99, v: 4.99 })).toEqual({ x: 9, y: 4 });
-    expect(cellAtPoint(WIDE, { u: 10, v: 2 })).toBeUndefined();
-    expect(cellAtPoint(WIDE, { u: 2, v: -0.01 })).toBeUndefined();
-  });
-
   test('nearestCell takes the nearest cell of the maze from outside', () => {
     expect(nearestCell(WIDE, { u: 12, v: -3 })).toEqual({ x: 9, y: 0 });
     expect(nearestCell(WIDE, { u: -1, v: 9 })).toEqual({ x: 0, y: 4 });

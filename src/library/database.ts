@@ -3,8 +3,8 @@
  *
  * - `repo-files`: the repository's maze files fetched from GitHub, by path;
  * - `mine`: the user's own mazes, by id;
- * - `settings`: single values by key, such as the cached repository's commit, the preferences and
- *   the handle of a local folder.
+ * - `settings`: single values by key, such as the cached repository's commit and the handle of a
+ *   local folder.
  *
  * @module
  */
@@ -106,14 +106,6 @@ export class Database {
     }
 
     await done;
-  }
-
-  /** Replaces every value of a store with `values`, all or nothing. */
-  replaceAll(store: StoreName, values: readonly unknown[]): Promise<void> {
-    return this.write([store], (writer) => {
-      writer.clear(store);
-      values.forEach((value) => writer.put(store, value));
-    });
   }
 
   /**

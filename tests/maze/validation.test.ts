@@ -2,7 +2,6 @@ import { describe, expect, test } from 'vitest';
 
 import {
   Bits,
-  clearStart,
   createMaze,
   horizontalEdgeCount,
   setStart,
@@ -294,7 +293,9 @@ describe('validation', () => {
         { x: 1, y: 0 },
         { x: 0, y: 0 },
       ]);
-      expect(only(findings(clearStart(GOOD)), 'start-corner').message).toMatch(/no start/);
+      expect(
+        only(findings(createMaze({ ...GOOD, start: undefined })), 'start-corner').message
+      ).toMatch(/no start/);
 
       const walls = paintWalls(
         setWall(GOOD, { direction: 'horizontal', x: 0, y: 1 }, true),
@@ -409,7 +410,9 @@ describe('validation', () => {
       expect(only(findings(cut), 'goal-reachable').cells[0]).toEqual({ x: 0, y: 0 });
       expect(only(findings(cut, 'training'), 'goal-reachable').severity).toBe('warning');
       expect(
-        rules(findings(clearStart(cut))).some((rule) => rule.startsWith('goal-reachable'))
+        rules(findings(createMaze({ ...cut, start: undefined }))).some((rule) =>
+          rule.startsWith('goal-reachable')
+        )
       ).toBe(false);
     });
 

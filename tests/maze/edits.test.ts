@@ -3,7 +3,6 @@ import { describe, expect, test } from 'vitest';
 import {
   Bits,
   clearArea,
-  clearStart,
   createMaze,
   fillBorder,
   horizontalEdgeCount,
@@ -142,12 +141,9 @@ describe('start and goal edits', () => {
     ],
   });
 
-  test('set the start, or clear it', () => {
+  test('set the start', () => {
     expect(setStart(marked, { x: 3, y: 0 }).start).toEqual({ x: 3, y: 0 });
-    expect(clearStart(marked).start).toBeUndefined();
     expect(setStart(marked, { x: 0, y: 0 })).toBe(marked);
-    const cleared = clearStart(marked);
-    expect(clearStart(cleared)).toBe(cleared);
     expect(() => setStart(marked, { x: 4, y: 0 })).toThrow(RangeError);
   });
 

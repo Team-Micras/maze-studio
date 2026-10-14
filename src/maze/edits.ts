@@ -151,11 +151,6 @@ export function setStart(maze: Maze, cell: Cell): Maze {
   );
 }
 
-/** Leaves the maze with no start. */
-export function clearStart(maze: Maze): Maze {
-  return maze.start === undefined ? maze : createMaze({ ...maze, start: undefined });
-}
-
 /**
  * Makes `cells` the goals, in place of the ones before. Repeated cells count once; when the start
  * is among them, the maze is left with no start.

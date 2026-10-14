@@ -19,7 +19,7 @@ import {
 export interface AppStorage {
   readonly repo: RepoCache;
   readonly mine: MineLibrary;
-  /** The preferences and the handle of the local folder. */
+  /** The handle of the local folder. */
   readonly settings: Settings<FolderHandle>;
 }
 

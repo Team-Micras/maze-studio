@@ -6,7 +6,6 @@ import { describe, expect, test } from 'vitest';
 import {
   createMaze,
   diffMazes,
-  isEmptyDiff,
   parseMazeText,
   setGoals,
   setStart,
@@ -132,15 +131,6 @@ describe('diffMazes', () => {
     expect(diff?.goalsRemoved).toEqual([{ x: 1, y: 1 }]);
     expect(diff?.startBefore).toEqual({ x: 0, y: 0 });
     expect(diff?.startAfter).toEqual({ x: 1, y: 0 });
-  });
-
-  test('is empty only when nothing changed', () => {
-    const moved = setStart(empty, { x: 2, y: 1 });
-    const fromMoved = diffMazes(empty, moved);
-    const same = diffMazes(moved, moved);
-
-    expect(same && isEmptyDiff(same)).toBe(true);
-    expect(fromMoved && isEmptyDiff(fromMoved)).toBe(false);
   });
 
   test('has no diff between mazes of different sizes, even with the same area', () => {

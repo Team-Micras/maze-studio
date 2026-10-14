@@ -18,7 +18,7 @@ import '@/ui/styles.css';
 import { axeViolations } from '@tests/support/axe-check';
 import { settled } from '@tests/support/ui/animations';
 import { CameraStage, type StageDrawing } from '@/ui/board/camera-stage';
-import { useBoardCamera } from '@/ui/board/use-board-camera';
+import { useCanvasCamera } from '@/ui/board/use-canvas-camera';
 import { BoardHarness } from '@tests/support/ui/board-harness';
 import { REPO_MAZES, repoMaze } from '@tests/support/ui/repo-mazes';
 import { shownCamera } from '@tests/support/ui/shown-camera';
@@ -101,7 +101,17 @@ const DRAWING_BOARD = { x: 0, y: 0, width: 640, height: 640 } as const;
 
 /** A stage that draws with `drawing` over the editor's board. */
 function DrawingStage({ drawing }: { readonly drawing: StageDrawing }) {
-  const camera = useBoardCamera({ board: DRAWING_BOARD });
+  const camera = useCanvasCamera({
+    content: DRAWING_BOARD,
+    limits: (viewport) =>
+      boardLimits({
+        board: DRAWING_BOARD,
+        viewport,
+        insets: EDITOR_INSETS,
+        zoom: EDITOR_ZOOM,
+        keep: EDITOR_KEEP,
+      }),
+  });
 
   return (
     <CameraStage className="fixed inset-0" controller={camera} drawing={drawing} label="Drawing">

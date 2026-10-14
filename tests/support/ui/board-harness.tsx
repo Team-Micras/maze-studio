@@ -6,12 +6,20 @@
  */
 
 import type { Maze } from '@/maze';
-import { boardGeometry, type BoardOverlays, type Insets } from '@/render';
+import {
+  boardGeometry,
+  boardLimits,
+  EDITOR_INSETS,
+  EDITOR_KEEP,
+  EDITOR_ZOOM,
+  type BoardOverlays,
+  type Insets,
+} from '@/render';
 import { Board } from '@/ui/board/board';
 import { CameraStage } from '@/ui/board/camera-stage';
 import { CursorStatus } from '@/ui/board/cursor-status';
 import { Minimap } from '@/ui/board/minimap';
-import { useBoardCamera } from '@/ui/board/use-board-camera';
+import { useCanvasCamera } from '@/ui/board/use-canvas-camera';
 
 /** The props of {@link BoardHarness}. */
 export interface BoardHarnessProps {
@@ -25,10 +33,21 @@ export interface BoardHarnessProps {
 }
 
 /** The board, the camera stage, the minimap and the cursor status. */
-export function BoardHarness({ maze, overlays, insets, size, status = true }: BoardHarnessProps) {
+export function BoardHarness({
+  maze,
+  overlays,
+  insets = EDITOR_INSETS,
+  size,
+  status = true,
+}: BoardHarnessProps) {
   const geometry = boardGeometry(maze);
   const board = { x: 0, y: 0, width: geometry.width, height: geometry.height };
-  const camera = useBoardCamera({ board, insets, viewport: size });
+  const camera = useCanvasCamera({
+    content: board,
+    viewport: size,
+    limits: (viewport) =>
+      boardLimits({ board, viewport, insets, zoom: EDITOR_ZOOM, keep: EDITOR_KEEP }),
+  });
 
   return (
     <div

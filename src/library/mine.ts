@@ -76,12 +76,6 @@ export interface SaveConflict {
   readonly current?: MineMaze;
 }
 
-/** A write by another tab: the item's new version, or none when it was removed. */
-export interface MineNotice {
-  readonly id: string;
-  readonly version?: number;
-}
-
 /** Whether the browser keeps the site's storage: unknown before the first write. */
 export type Persistence = 'unknown' | 'persistent' | 'best-effort';
 
@@ -105,16 +99,6 @@ export interface MineOptions {
   readonly storage?: PersistentStorage;
   readonly now?: () => number;
   readonly newId?: () => string;
-}
-
-function isNotice(value: unknown): value is MineNotice {
-  return (
-    typeof value === 'object' &&
-    value !== null &&
-    'id' in value &&
-    typeof value.id === 'string' &&
-    (!('version' in value) || value.version === undefined || typeof value.version === 'number')
-  );
 }
 
 /** The maze and the text after its grid of an item. */
@@ -197,7 +181,7 @@ export class MineLibrary {
       ...(draft.origin === undefined ? {} : { origin: draft.origin }),
     };
     await this.#database.put('mine', item);
-    this.#announce({ id: item.id, version: item.version });
+    this.#announce();
     return item;
   }
 
@@ -232,14 +216,14 @@ export class MineLibrary {
       return failure(conflict ?? { reason: 'removed' });
     }
 
-    this.#announce({ id, version: saved.version });
+    this.#announce();
     return success(saved);
   }
 
   /** Removes the item, if there is one. */
   async remove(id: string): Promise<void> {
     await this.#database.delete('mine', id);
-    this.#announce({ id });
+    this.#announce();
   }
 
   /**
@@ -247,12 +231,8 @@ export class MineLibrary {
    *
    * @returns What stops listening.
    */
-  subscribe(listener: (notice: MineNotice) => void): () => void {
-    const receive = (event: MessageEvent) => {
-      if (isNotice(event.data)) {
-        listener(event.data);
-      }
-    };
+  subscribe(listener: () => void): () => void {
+    const receive = () => listener();
     this.#channel.addEventListener('message', receive);
     return () => this.#channel.removeEventListener('message', receive);
   }
@@ -273,8 +253,8 @@ export class MineLibrary {
     };
   }
 
-  #announce(notice: MineNotice): void {
-    this.#channel.postMessage(notice);
+  #announce(): void {
+    this.#channel.postMessage(null);
   }
 
   async #persist(): Promise<void> {

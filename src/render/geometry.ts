@@ -248,16 +248,6 @@ export function nearestEdge(
   return horizontalDistance <= verticalDistance ? horizontal : vertical;
 }
 
-/** The cell under `point`, or `undefined` outside the maze. */
-export function cellAtPoint(
-  maze: Pick<Maze, 'width' | 'height'>,
-  point: MazePoint
-): Cell | undefined {
-  const x = Math.floor(point.u);
-  const y = Math.floor(point.v);
-  return x >= 0 && y >= 0 && x < maze.width && y < maze.height ? { x, y } : undefined;
-}
-
 function cellLine(value: number, last: number): number {
   return Math.min(Math.max(Math.floor(value), 0), last);
 }
