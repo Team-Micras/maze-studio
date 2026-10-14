@@ -141,6 +141,10 @@ export function useStudioFlight(input: StudioFlightInput): StudioFlight {
           }
         },
         onLand: () => {
+          if (latest.current.opened === undefined) {
+            return;
+          }
+
           store.setState({ mode: 'editor', chromeIn: true });
           now.camera.element?.focus({ preventScroll: true });
         },

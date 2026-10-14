@@ -783,8 +783,8 @@ The machine's rule is no builds in `/tmp`, so `tests/e2e/pwa.test.ts` builds the
   `f0118d8` started the flight from the camera before the change (`jump`), and the grid's rewrite (`1c2ddad`) lost it.
   The flight back starts again where the board was, and the jump also stops a flight in still on its way.
 - **The blank screen.** Back during the flight in set the library and left the flight in running; its landing then
-  set the editor with no maze. The jump above cancels it. Guards in the landings were tried and dropped: with the
-  jump no test can tell them apart.
+  set the editor with no maze. The jump above cancels it; the landing of the flight in also sets the editor only while
+  a maze is still opened, which a test of the hook checks with a camera that lands late.
 - **Library after `]`.** `]` on a `.txt` or a new maze puts a maze in place of the library's own entry, and Library
   went back out of the app. Each history entry the app makes now says whether the library's is below it
   (`history.state.libraryBelow`); Library goes back only then, else it pushes the library.
@@ -796,3 +796,4 @@ The machine's rule is no builds in `/tmp`, so `tests/e2e/pwa.test.ts` builds the
   the maze is not caught by any test: in Chromium the grid is inert before that click; it stays for other browsers.
 - **Tests of the flight back measure what shows**: the opacity and visibility of the board and every ancestor.
 - **The stage lets taps through while the board flies back**, so a tap there opens that maze.
+- **The touch flag expires** 400 ms after the lift that opened a maze, so a later click is never ignored.

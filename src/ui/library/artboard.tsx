@@ -25,6 +25,9 @@ export interface ArtboardProps {
   readonly onFocus: (key: string, event: FocusEvent<HTMLAnchorElement>) => void;
 }
 
+/** How long after a touch opened the maze its click may still come, to be ignored. */
+const CLICK_AFTER_TOUCH_MS = 400;
+
 /** How far a finger may move, in CSS pixels, and still open the artboard it lifts from. */
 const TOUCH_SLOP = 10;
 
@@ -105,6 +108,9 @@ export const Artboard = memo(function Artboard({
         if (press.current?.id === event.pointerId) {
           press.current = undefined;
           openedByTouch.current = true;
+          window.setTimeout(() => {
+            openedByTouch.current = false;
+          }, CLICK_AFTER_TOUCH_MS);
           pushRoute(routeOfEntry(entry));
         }
       }}
