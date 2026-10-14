@@ -1,8 +1,8 @@
 import { useCallback } from 'react';
-import { keyOf, mineIdOf } from '@/library';
-import { useStore } from 'zustand';
+import { mineIdOf, mineKey } from '@/library';
+import { useStore, type StoreApi } from 'zustand';
 
-import type { ChangeRow, ChangesChipProps, ChangesPanelProps } from '@/ui/changes/changes';
+import type { ChangeRow, ChangesPanelProps } from '@/ui/changes/changes';
 import {
   changeDiff,
   changeOf,
@@ -14,7 +14,7 @@ import {
 import type { Library } from '@/ui/library/use-library';
 import { pushRoute } from '@/ui/navigation';
 
-import { useStudio, useStudioStore, type StudioScreen } from './studio-store';
+import type { StudioScreen, StudioState } from './studio-store';
 
 /**
  * The Changes of the session in the studio (PLAN.md 3.4, DESIGN.md 6.2): the rows with each maze
@@ -22,24 +22,25 @@ import { useStudio, useStudioStore, type StudioScreen } from './studio-store';
  * shown on the board while "Show on board" is on; Open, Keep and Discard.
  */
 export function useStudioChanges({
+  store,
   screen,
   library,
   phone,
   onDiscard,
 }: {
+  readonly store: StoreApi<StudioState>;
   readonly screen: StudioScreen;
   readonly library: Library | undefined;
   readonly phone: boolean;
   /** Discards an item: deletes a copy or puts back a maze of My mazes, and leaves it if it is open. */
   readonly onDiscard: (item: ChangeItem) => void;
 }) {
-  const store = useStudioStore();
-  const changesOpen = useStudio((state) => state.changesOpen);
-  const showDiff = useStudio((state) => state.showDiff);
+  const changesOpen = useStore(store, (state) => state.changesOpen);
+  const showDiff = useStore(store, (state) => state.showDiff);
   const onScreen = screen.kind === 'library' ? undefined : screen.maze;
   const changes = useStore(sessionChanges);
   const rows: ChangeRow[] = changes.items.map((item) => {
-    const key = keyOf({ kind: 'mine', id: item.id });
+    const key = mineKey(item.id);
     return { item, current: onScreen?.key === key ? onScreen.maze : library?.mazeOf(key) };
   });
   const screenId = mineIdOf(onScreen?.key);
@@ -59,7 +60,7 @@ export function useStudioChanges({
       count: changes.items.length,
       open: changesOpen,
       onToggle: () => setOpen(!changesOpen),
-    } satisfies ChangesChipProps,
+    },
     panel: {
       open: changesOpen,
       onOpenChange: setOpen,
@@ -76,7 +77,7 @@ export function useStudioChanges({
         }
       },
       onKeep: (item) => {
-        const key = keyOf({ kind: 'mine', id: item.id });
+        const key = mineKey(item.id);
         const shown = onScreen?.key === key ? onScreen : undefined;
         const maze = shown?.maze ?? library?.mazeOf(key);
         const profile = shown?.document.profile ?? library?.documentOf(key)?.profile ?? 'free';

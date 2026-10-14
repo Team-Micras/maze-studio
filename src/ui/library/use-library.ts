@@ -6,6 +6,7 @@ import {
   mineCatalog,
   repoCatalog,
   keyOf,
+  mineKey,
   SearchIndex,
   type CatalogEntry,
   type FolderContents,
@@ -76,7 +77,7 @@ function library({ commit, files, mine }: Loaded, folder: FolderContents | undef
       },
     ]),
     ...mine.map((item): [string, Stored] => [
-      keyOf({ kind: 'mine', id: item.id }),
+      mineKey(item.id),
       {
         code: item.code,
         document: {

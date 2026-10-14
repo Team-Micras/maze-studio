@@ -7,7 +7,7 @@
 
 import { decodeMazeCode, type Profile } from '@/maze';
 
-import { keyOf } from './maze-key';
+import { keyOf, mineKey } from './maze-key';
 import { mazeOrigin } from './maze-names';
 import type { FolderFile } from './folder';
 import type { MineMaze } from './mine';
@@ -73,7 +73,7 @@ export function mineCatalog(items: readonly MineMaze[]): CatalogEntry[] {
     return decoded.ok
       ? [
           {
-            key: keyOf({ kind: 'mine', id: item.id }),
+            key: mineKey(item.id),
             origin: 'mine',
             name: item.name,
             category,

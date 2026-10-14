@@ -1,19 +1,11 @@
+import { useStore, type StoreApi } from 'zustand';
 import { useCallback, type KeyboardEvent } from 'react';
 
 import { fillBorder, validateMaze, type Finding, type MazeDiff } from '@/maze';
-import {
-  areaInWorld,
-  boardGeometry,
-  focusArea,
-  revealCamera,
-  type BoardOverlays,
-  type Insets,
-} from '@/render';
+import { areaInWorld, boardGeometry, focusArea, revealCamera, type Insets } from '@/render';
 import type { CanvasCamera } from '@/ui/board/use-canvas-camera';
 import type { ChecksProps } from '@/ui/editor/checks';
 import { findingKey } from '@/ui/editor/checks-summary';
-import type { EditControlsProps } from '@/ui/editor/edit-controls';
-import type { MoreActionsProps } from '@/ui/editor/more-actions';
 import type { ShortcutHelpProps } from '@/ui/editor/shortcut-help';
 import { toolInfo, type Tool } from '@/ui/editor/tools';
 import { useBoardKeys, type BoardKey } from '@/ui/editor/use-board-keys';
@@ -22,7 +14,7 @@ import { useEditorShortcuts, type EditorShortcuts } from '@/ui/editor/use-editor
 import type { MazeEditor } from '@/ui/editor/use-maze-editor';
 import { useWallDrawing } from '@/ui/editor/use-wall-drawing';
 
-import { useStudio, useStudioStore, type StudioScreen } from './studio-store';
+import type { StudioScreen, StudioState } from './studio-store';
 
 const EDIT_HINT = 'Tap a slot to toggle. Drag to draw. Two fingers pan';
 
@@ -35,6 +27,7 @@ const TOO_SMALL_HINT = 'Zoom in to edit';
  * held by a newer version in another tab.
  */
 export function useStudioEditing({
+  store,
   screen,
   editor,
   camera,
@@ -46,6 +39,7 @@ export function useStudioEditing({
   onChanges,
   list,
 }: {
+  readonly store: StoreApi<StudioState>;
   readonly screen: StudioScreen;
   readonly editor: MazeEditor;
   readonly camera: CanvasCamera;
@@ -60,8 +54,13 @@ export function useStudioEditing({
   /** The quick list's keys, while a maze is open in the editor. */
   readonly list: EditorShortcuts['list'];
 }) {
-  const store = useStudioStore();
-  const state = useStudio((current) => current);
+  const tool = useStore(store, (state) => state.tool);
+  const viewing = useStore(store, (state) => state.viewing);
+  const listOpen = useStore(store, (state) => state.listOpen);
+  const hint = useStore(store, (state) => state.hint);
+  const shownFinding = useStore(store, (state) => state.finding);
+  const helpOpen = useStore(store, (state) => state.helpOpen);
+  const touchOpened = useStore(store, (state) => state.touchOpened);
   const onScreen = screen.kind === 'library' ? undefined : screen.maze;
   const board = screen.kind === 'library' ? undefined : screen.board;
   const editing = screen.kind === 'editing';
@@ -79,15 +78,15 @@ export function useStudioEditing({
     maze: editing ? maze : undefined,
     board,
     insets,
-    editable: editable && !state.viewing,
-    tool: state.tool,
+    editable: editable && !viewing,
+    tool,
   });
   const wall = useWallDrawing({
     editor,
     camera,
     maze,
     board,
-    enabled: drawable && state.tool === 'wall',
+    enabled: drawable && tool === 'wall',
     onTooSmall: () => showHint(TOO_SMALL_HINT, true),
     onPress: boardKeys.hide,
   });
@@ -96,14 +95,14 @@ export function useStudioEditing({
     camera,
     maze,
     board,
-    tool: drawable && isCellTool(state.tool) ? state.tool : undefined,
+    tool: drawable && isCellTool(tool) ? tool : undefined,
     onTooSmall: () => showHint(TOO_SMALL_HINT, true),
     onPress: boardKeys.hide,
   });
   const pickTool = useCallback(
-    (tool: Tool) => {
-      if (tool !== store.getState().tool) {
-        store.setState({ tool, hint: { text: toolInfo(tool).hint, at: performance.now() } });
+    (next: Tool) => {
+      if (next !== store.getState().tool) {
+        store.setState({ tool: next, hint: { text: toolInfo(next).hint, at: performance.now() } });
       }
     },
     [store]
@@ -126,12 +125,12 @@ export function useStudioEditing({
           source: onScreen.document.source,
         });
   const selected =
-    onScreen !== undefined && state.finding?.maze === onScreen.key ? state.finding.key : undefined;
+    onScreen !== undefined && shownFinding?.maze === onScreen.key ? shownFinding.key : undefined;
   const focused = findings.find((finding, index) => findingKey(finding, index) === selected);
 
   useEditorShortcuts({
     list,
-    active: editing && !state.viewing && !state.listOpen,
+    active: editing && !viewing && !listOpen,
     hand: !phone,
     onUndo: undo,
     onRedo: redo,
@@ -185,7 +184,7 @@ export function useStudioEditing({
       selection: cells.selection ?? boardKeys.selection,
       focus: focused,
       diff,
-    } satisfies BoardOverlays,
+    },
     cursor: boardKeys.cursor,
     drawingTool: wall.drawing !== undefined || cells.drawing !== undefined,
     onCanvasKey,
@@ -193,7 +192,7 @@ export function useStudioEditing({
       canRedo: editor.canRedo,
       canUndo: editor.canUndo,
       editable,
-      hint: state.hint,
+      hint,
       onBoardKey: boardKey,
       onEdit: () => {
         store.setState({ viewing: false });
@@ -204,10 +203,10 @@ export function useStudioEditing({
       onUndo: undo,
       onView: () => store.setState({ viewing: true }),
       phone,
-      tool: state.tool,
-      touchMode: state.touchOpened,
-      viewing: state.viewing,
-    } satisfies EditControlsProps,
+      tool,
+      touchMode: touchOpened,
+      viewing: viewing,
+    },
     checks:
       onScreen === undefined
         ? undefined
@@ -232,10 +231,10 @@ export function useStudioEditing({
       onCloseBorder: closeBorder,
       onChanges,
       onHelp: coarse ? undefined : openHelp,
-    } satisfies Pick<MoreActionsProps, 'editable' | 'onCloseBorder' | 'onChanges' | 'onHelp'>,
+    },
     help: {
-      open: state.helpOpen,
-      onOpenChange: (helpOpen) => store.setState({ helpOpen }),
+      open: helpOpen,
+      onOpenChange: (open) => store.setState({ helpOpen: open }),
     } satisfies ShortcutHelpProps,
   };
 }

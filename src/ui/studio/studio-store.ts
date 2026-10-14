@@ -5,8 +5,6 @@
  * @module
  */
 
-import { createContext, useContext } from 'react';
-import { useStore } from 'zustand';
 import { createStore, type StoreApi } from 'zustand/vanilla';
 
 import type { Maze } from '@/maze';
@@ -101,22 +99,3 @@ export type StudioScreen =
       readonly board: WorldRect;
       readonly drawable: boolean;
     };
-
-/** The store of the studio its components and hooks share. */
-export const StudioContext = createContext<StoreApi<StudioState> | undefined>(undefined);
-
-/** The store of the studio around the caller. */
-export function useStudioStore(): StoreApi<StudioState> {
-  const store = useContext(StudioContext);
-
-  if (store === undefined) {
-    throw new Error('useStudioStore needs a StudioContext');
-  }
-
-  return store;
-}
-
-/** What `select` reads of the studio's state, kept up to date. */
-export function useStudio<T>(select: (state: StudioState) => T): T {
-  return useStore(useStudioStore(), select);
-}

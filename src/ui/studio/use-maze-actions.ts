@@ -1,4 +1,5 @@
-import type { CopyLinkButtonProps, TitleActionsProps } from '@/ui/editor/title-actions';
+import { useStore, type StoreApi } from 'zustand';
+
 import type { RenameDialogProps } from '@/ui/editor/rename-dialog';
 import {
   copyText,
@@ -13,7 +14,7 @@ import { replaceRoute } from '@/ui/navigation';
 import { showToast } from '@/ui/toasts';
 import { encodeMazeCode } from '@/maze';
 
-import { useStudio, useStudioStore, type StudioScreen } from './studio-store';
+import type { StudioScreen, StudioState } from './studio-store';
 
 const COPY_FAILED = 'Copy failed, link is in the address bar';
 
@@ -30,6 +31,7 @@ function canShare(): boolean {
  * to My mazes and Save to folder; Rename and Delete for a maze of My mazes.
  */
 export function useMazeActions({
+  store,
   screen,
   editor,
   phone,
@@ -37,6 +39,7 @@ export function useMazeActions({
   onDelete,
   mineNames,
 }: {
+  readonly store: StoreApi<StudioState>;
   readonly screen: StudioScreen;
   readonly editor: MazeEditor;
   readonly phone: boolean;
@@ -47,8 +50,7 @@ export function useMazeActions({
   /** Every name in My mazes, with this maze's own. */
   readonly mineNames: readonly string[];
 }) {
-  const store = useStudioStore();
-  const renameOpen = useStudio((state) => state.renameOpen);
+  const renameOpen = useStore(store, (state) => state.renameOpen);
   const open = screen.kind === 'editing' ? screen.maze : undefined;
   const mineId = open?.document.mine?.id;
 
@@ -135,8 +137,8 @@ export function useMazeActions({
       ...(folderFile === undefined || open === undefined
         ? {}
         : { folderFile, onSaveToFolder: () => onSaveToFolder(folderFile, mazeFileText(open)) }),
-    } satisfies TitleActionsProps,
-    copyLink: phone ? undefined : ({ onCopy: copyLink } satisfies CopyLinkButtonProps),
+    },
+    copyLink: phone ? undefined : { onCopy: copyLink },
     rename,
   };
 }

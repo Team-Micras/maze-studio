@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useLayoutEffect, useRef } from 'react';
-import type { StoreApi } from 'zustand';
+import { useStore, type StoreApi } from 'zustand';
 
 import type { CatalogEntry } from '@/library';
 import {
@@ -22,8 +22,6 @@ import {
   FLIGHT_IN_MS,
   FLIGHT_OUT_MS,
   boardOf,
-  useStudio,
-  useStudioStore,
   type StudioState,
 } from './studio-store';
 
@@ -39,6 +37,7 @@ function thumbnailOnScreen(key: string): WorldRect | undefined {
 
 /** What the flights read of the studio, as of the latest render. */
 interface FlightInput {
+  readonly store: StoreApi<StudioState>;
   readonly camera: CanvasCamera;
   /** The entries of the library's grid, in order. */
   readonly shown: readonly CatalogEntry[];
@@ -52,28 +51,31 @@ interface FlightInput {
   readonly libraryLoaded: boolean;
 }
 
-/** What the last render showed: the maze the route opened, the maze on the board and the camera. */
-interface Shown {
+/** What the last render showed: the key of the maze the route opened, the board's maze and the camera. */
+interface Shown extends Partial<Pick<FlightInput, 'onScreen'>> {
   readonly key?: string;
-  readonly onScreen?: OpenMaze;
   readonly camera?: Camera;
 }
 
 /**
- * Opens `opened`: from the thumbnail on screen, 620 ms to the editor's fit, when the library was
+ * Opens the maze the route opened: from the thumbnail on screen, 620 ms to the editor's fit, when the library was
  * shown, nothing else flies and motion is not reduced; at once otherwise. A touch opens it to look
  * at. The landing puts the editor on screen only while `stillOpen` says a maze is open.
  */
 function flyIn(
-  store: StoreApi<StudioState>,
   now: FlightInput,
-  opened: OpenMaze,
   {
     touch,
     libraryShown,
     stillOpen,
   }: { touch: boolean; libraryShown: boolean; stillOpen: () => boolean }
 ): void {
+  const { store, opened } = now;
+
+  if (opened === undefined) {
+    return;
+  }
+
   const view = now.camera.limits?.viewport;
   const from = thumbnailOnScreen(opened.key);
   const viewing = now.phone || touch;
@@ -131,7 +133,8 @@ function flyIn(
  * the focus on the artboard, when there is no artboard, the editor was not on screen or motion is
  * reduced.
  */
-function flyOut(store: StoreApi<StudioState>, now: FlightInput, previous: Shown): void {
+function flyOut(now: FlightInput, previous: Shown): void {
+  const { store } = now;
   const { onScreen: leaving, camera: leftCamera } = previous;
   const index = now.shown.findIndex((entry) => entry.key === leaving?.key);
   const scroller = libraryScroller();
@@ -199,8 +202,8 @@ function flyOut(store: StoreApi<StudioState>, now: FlightInput, previous: Shown)
  * that pressed an artboard, which decides view mode.
  */
 export function useStudioFlight(input: FlightInput): (pointerType: string) => void {
-  const store = useStudioStore();
-  const mode = useStudio((state) => state.mode);
+  const { store } = input;
+  const mode = useStore(store, (state) => state.mode);
   const latest = useRef(input);
   const lastPointer = useRef('mouse');
   const libraryShown = useRef(false);
@@ -226,16 +229,16 @@ export function useStudioFlight(input: FlightInput): (pointerType: string) => vo
       return;
     }
 
-    if (openKey !== undefined && before.key === undefined && now.opened !== undefined) {
-      flyIn(store, now, now.opened, {
+    if (openKey !== undefined && before.key === undefined) {
+      flyIn(now, {
         touch: lastPointer.current === 'touch',
         libraryShown: libraryShown.current,
         stillOpen: () => latest.current.opened !== undefined,
       });
     } else if (openKey === undefined && before.key !== undefined) {
-      flyOut(store, now, before);
+      flyOut(now, before);
     }
-  }, [openKey, store]);
+  }, [openKey]);
 
   useLayoutEffect(() => {
     previous.current = { key: openKey, onScreen: input.onScreen, camera: input.camera.camera };

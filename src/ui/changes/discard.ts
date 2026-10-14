@@ -1,4 +1,4 @@
-import { keyOf } from '@/library';
+import { mineKey } from '@/library';
 import type { MazeEditor } from '@/ui/editor/use-maze-editor';
 import { reloadLibrary } from '@/ui/library/use-library';
 import type { Route } from '@/ui/routes';
@@ -21,7 +21,7 @@ export async function discardChange(
   leave: (source: Route | undefined) => void
 ): Promise<void> {
   const shown = editor.shown;
-  const open = shown?.key === keyOf({ kind: 'mine', id: item.id });
+  const open = shown?.key === mineKey(item.id);
   const mine = (await appStorage())?.mine;
 
   if (item.kind !== 'existing') {

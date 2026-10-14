@@ -18,6 +18,7 @@ describe('maze keys', () => {
     expect(looseKey('file', 3)).toBe('file:3');
     expect(looseKey('new', 3)).toBe('new:3');
     expect(kindOf('file:3')).toBe('file');
+    expect(kindOf('odd:3')).toBeUndefined();
     expect(refOf('file:3')).toBeUndefined();
     expect(refOf('new:3')).toBeUndefined();
     expect(refOf(undefined)).toBeUndefined();

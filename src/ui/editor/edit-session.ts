@@ -5,7 +5,7 @@
  * @module
  */
 
-import { keyOf } from '@/library';
+import { mineKey } from '@/library';
 import {
   createHistory,
   endGesture,
@@ -51,9 +51,7 @@ export function openSession(opened: OpenMaze): EditSession {
 
 /** The route key of the maze the session shows: its item of My mazes once it has one. */
 export function sessionKey(session: EditSession): string {
-  return session.mine === undefined
-    ? session.opened.key
-    : keyOf({ kind: 'mine', id: session.mine.id });
+  return session.mine === undefined ? session.opened.key : mineKey(session.mine.id);
 }
 
 /**

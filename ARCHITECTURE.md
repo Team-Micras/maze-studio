@@ -40,8 +40,8 @@ Each of `src/maze`, `src/library` and `src/render` has an `index.ts` as its publ
     the maze the route opens (`open-maze.ts`), the editing session, toasts and theme.
   - `studio/`: `Studio` puts the library grid on the page and the open maze on a canvas above it, with the flights
     between them (`use-studio-flight.ts`), the open board, the editor's islands and the quick list. Its state lives in
-    one store per studio (`studio-store.ts`), which its hooks read by context (`useStudio`), and each render derives
-    one `StudioScreen` from it: the library, a flight, a preview or the maze being edited.
+    one store per studio (`studio-store.ts`), which its hooks read by selector, and each render derives one
+    `StudioScreen` from it: the library, a flight, a preview or the maze being edited.
   - `editor/`: the pure session (`edit-session.ts`), its hook (`use-maze-editor.ts`), the writer that copies and
     autosaves (`mine-writer.ts`), the wall and cell gestures, the keys, the tools, Checks, sharing and Rename.
   - `changes/`: the session's Changes (`session-changes.ts`, pure over one store per tab), Discard (`discard.ts`)

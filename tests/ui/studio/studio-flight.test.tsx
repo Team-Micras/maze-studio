@@ -4,9 +4,7 @@ import { renderHook } from 'vitest-browser-react';
 import { createMaze } from '@/maze';
 import type { CanvasCamera, Flight } from '@/ui/board/use-canvas-camera';
 import type { OpenMaze } from '@/ui/open-maze';
-import type { ReactNode } from 'react';
-
-import { createStudioStore, StudioContext } from '@/ui/studio/studio-store';
+import { createStudioStore } from '@/ui/studio/studio-store';
 import { useStudioFlight } from '@/ui/studio/use-studio-flight';
 
 type FlightInput = Parameters<typeof useStudioFlight>[0];
@@ -47,6 +45,7 @@ describe('useStudioFlight', () => {
     const flights: Flight[] = [];
     const camera = recordingCamera(flights);
     const input = (opened: OpenMaze | undefined): FlightInput => ({
+      store,
       camera,
       shown: [],
       editorInsetsFor: () => ({ top: 0, right: 0, bottom: 0, left: 0 }),
@@ -57,12 +56,7 @@ describe('useStudioFlight', () => {
     });
     const hook = await renderHook(
       (props?: FlightInput) => useStudioFlight(props ?? input(undefined)),
-      {
-        initialProps: input(undefined),
-        wrapper: ({ children }: { readonly children: ReactNode }) => (
-          <StudioContext value={store}>{children}</StudioContext>
-        ),
-      }
+      { initialProps: input(undefined) }
     );
     await hook.rerender(input(OPENED));
     const flightIn = flights.at(-1);

@@ -2,7 +2,7 @@ import { useEffect } from 'react';
 import { afterEach, describe, expect, test, vi } from 'vitest';
 import { render } from 'vitest-browser-react';
 
-import { keyOf, MineLibrary, type MineDraft, type MineMaze } from '@/library';
+import { mineKey, MineLibrary, type MineDraft, type MineMaze } from '@/library';
 import { createMaze, toggleWall } from '@/maze';
 import { writesSettled } from '@/ui/editor/pending-writes';
 import { useMazeEditor, type MazeEditor } from '@/ui/editor/use-maze-editor';
@@ -21,7 +21,7 @@ const OPENED: OpenMaze = {
 
 /** A maze of My mazes that is not in it, so its first save is refused. */
 const GONE: OpenMaze = {
-  key: keyOf({ kind: 'mine', id: 'gone' }),
+  key: mineKey('gone'),
   maze: createMaze({ width: 4, height: 4 }),
   name: 'Gone',
   detail: 'Saved in My mazes',

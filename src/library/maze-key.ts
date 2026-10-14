@@ -27,14 +27,22 @@ export function keyOf(ref: MazeRef): string {
   }
 }
 
+/** The key of the item `id` of My mazes. */
+export function mineKey(id: string): string {
+  return keyOf({ kind: 'mine', id });
+}
+
 /** The key of the `id`th `.txt` file opened, or of the `id`th new maze. */
 export function looseKey(kind: 'file' | 'new', id: number): string {
   return `${kind}:${id}`;
 }
 
-/** What `key` names before its first `:`, `file` and `new` included. */
-export function kindOf(key: string | undefined): string | undefined {
-  return key?.split(':', 1)[0];
+const KINDS = ['repo', 'mine', 'folder', 'link', 'file', 'new'] as const;
+
+/** The kind of maze `key` names, `file` and `new` included. */
+export function kindOf(key: string | undefined): MazeRef['kind'] | 'file' | 'new' | undefined {
+  const kind = key?.split(':', 1)[0];
+  return KINDS.find((known) => known === kind);
 }
 
 /** The maze `key` names, as {@link keyOf} makes them; none for a file or a new maze. */

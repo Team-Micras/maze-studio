@@ -48,14 +48,7 @@ import { useMazeActions } from './use-maze-actions';
 import { useStudioChanges } from './use-studio-changes';
 import { useStudioEditing } from './use-studio-editing';
 import { useStudioFlight } from './use-studio-flight';
-import {
-  boardOf,
-  createStudioStore,
-  StudioContext,
-  useStudio,
-  useStudioStore,
-  type StudioScreen,
-} from './studio-store';
+import { boardOf, createStudioStore, type StudioScreen } from './studio-store';
 
 /** The props of {@link Studio}. */
 export interface StudioProps {
@@ -120,17 +113,7 @@ function stillLimits(viewport: ViewportSize): CameraLimits {
  * open maze is edited in place (PLAN.md 3.4): the wall tool draws, the arrows move a cell cursor,
  * and a phone, or a maze opened by touch, opens to look at until Edit.
  */
-export function Studio(props: StudioProps) {
-  const [store] = useState(createStudioStore);
-
-  return (
-    <StudioContext value={store}>
-      <StudioView {...props} />
-    </StudioContext>
-  );
-}
-
-function StudioView({
+export function Studio({
   library,
   opened,
   editor,
@@ -147,8 +130,8 @@ function StudioView({
   onLibrary,
   onPin,
 }: StudioProps) {
-  const store = useStudioStore();
-  const state = useStudio((current) => current);
+  const [store] = useState(createStudioStore);
+  const state = useStore(store);
   const phone = usePhoneLayout();
   const editorInsets = editorInsetsFor(phone, state.viewing);
   const shown = library === undefined ? [] : filterCatalog(library.entries, filter, library.index);
@@ -205,8 +188,9 @@ function StudioView({
   const sessionChangesNow = useStore(sessionChanges);
   const theme = useTheme((current) => current.theme);
   const toggleTheme = useTheme((current) => current.toggle);
-  const changes = useStudioChanges({ screen, library, phone, onDiscard });
+  const changes = useStudioChanges({ store, screen, library, phone, onDiscard });
   const actions = useMazeActions({
+    store,
     screen,
     editor,
     phone,
@@ -245,6 +229,7 @@ function StudioView({
     [mode, library, onPin, openList]
   );
   const editing = useStudioEditing({
+    store,
     screen,
     editor,
     camera,
@@ -268,6 +253,7 @@ function StudioView({
       : undefined;
 
   const notePointer = useStudioFlight({
+    store,
     camera,
     shown,
     editorInsetsFor: (viewing: boolean) => editorInsetsFor(phone, viewing),
