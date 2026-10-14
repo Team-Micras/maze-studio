@@ -4,6 +4,7 @@
  * @module
  */
 
+import type { CatalogEntry } from '@/library';
 import type { Profile } from '@/maze';
 
 const CATEGORY_LABELS: Readonly<Record<string, string>> = {
@@ -30,3 +31,16 @@ export const PROFILE_NAMES: readonly (readonly [Profile, string])[] = [
   ['training', 'Training'],
   ['free', 'Free'],
 ];
+
+/**
+ * What a screen reader says for a maze in a list or a picture: `japan2011hef, Japan, 32 by 32`
+ * (DESIGN.md 13), the competition only when the name tells it.
+ */
+export function artboardLabel(
+  maze: Pick<CatalogEntry, 'name' | 'competition' | 'width' | 'height'>
+): string {
+  const size = `${maze.width} by ${maze.height}`;
+  return maze.competition === undefined
+    ? `${maze.name}, ${size}`
+    : `${maze.name}, ${maze.competition}, ${size}`;
+}

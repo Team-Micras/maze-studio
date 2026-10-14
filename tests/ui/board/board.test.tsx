@@ -100,6 +100,24 @@ describe('The board', () => {
     expect(svg?.getAttribute('aria-hidden')).toBe('true');
   });
 
+  test('is decorative without a label, and an image of that name with one', async () => {
+    const maze = await repoMaze(REPO_MAZES.classic);
+    const screen = await render(<Board maze={maze} />);
+
+    expect(document.querySelector('svg[data-board]')?.getAttribute('role')).toBeNull();
+    expect(document.querySelector('svg[data-board]')?.getAttribute('aria-label')).toBeNull();
+
+    await screen.rerender(<Board label="AAMC15Maze, AAMC, 16 by 16" maze={maze} />);
+    const svg = document.querySelector('svg[data-board]');
+
+    expect(svg?.getAttribute('role')).toBe('img');
+    expect(svg?.getAttribute('aria-label')).toBe('AAMC15Maze, AAMC, 16 by 16');
+    expect(svg?.hasAttribute('aria-hidden')).toBe(false);
+    await expect
+      .element(page.getByRole('img', { name: 'AAMC15Maze, AAMC, 16 by 16' }))
+      .toBeVisible();
+  });
+
   test('draws one path per layer, in the order of DESIGN.md 2.2 and 2.3', async () => {
     const maze = await repoMaze(REPO_MAZES.classic);
     const { after, overlays } = edited(maze);

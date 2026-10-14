@@ -22,6 +22,8 @@ export interface BoardProps {
   readonly overlays?: BoardOverlays;
   /** The longest side of the board, in world units; {@link ARTBOARD_SIZE} by default. */
   readonly size?: number;
+  /** What a screen reader calls it; without one it is decorative, hidden from screen readers. */
+  readonly label?: string;
   readonly className?: string;
   readonly style?: CSSProperties;
 }
@@ -166,12 +168,14 @@ function Overlays({
 /**
  * A maze drawn like the real track, as one SVG with a path per layer (PLAN.md 3.3, DESIGN.md 2.2
  * and 2.3), and the editor's overlays on top. It is as large as its geometry in CSS pixels, world
- * units for a camera to scale; it is decorative, since the canvas around it carries the label.
+ * units for a camera to scale. It is decorative, since the canvas around it carries the label,
+ * unless it is given a label of its own, as the embed gives it.
  */
 export function Board({
   maze,
   overlays = NO_OVERLAYS,
   size = ARTBOARD_SIZE,
+  label,
   className,
   style,
 }: BoardProps) {
@@ -181,10 +185,12 @@ export function Board({
 
   return (
     <svg
-      aria-hidden
+      aria-hidden={label === undefined ? true : undefined}
+      aria-label={label}
       className={cn('block shadow-slab', className)}
       data-board=""
       height={height}
+      role={label === undefined ? undefined : 'img'}
       style={style}
       viewBox={`0 0 ${width} ${height}`}
       width={width}
