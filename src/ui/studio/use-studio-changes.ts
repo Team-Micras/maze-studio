@@ -67,6 +67,7 @@ export function useStudioChanges({
       count: rows.length,
       open: changesOpen,
       onToggle: () => setOpen(!changesOpen),
+      phone,
     },
     panel: {
       open: changesOpen,

@@ -27,13 +27,15 @@ export interface ChangesChipProps {
   readonly count: number;
   readonly open: boolean;
   readonly onToggle: () => void;
+  /** Whether the layout is a phone's, where the chip shows only the count, as Checks does. */
+  readonly phone: boolean;
 }
 
 /**
- * The Changes chip (DESIGN.md 6 and 13): "N changed", named "Changes in this session: N"; hidden
- * while the session has no changes.
+ * The Changes chip (DESIGN.md 6 and 13): "N changed", only "N" on a phone, named "Changes in this
+ * session: N"; hidden while the session has no changes.
  */
-export function ChangesChip({ count, open, onToggle }: ChangesChipProps) {
+export function ChangesChip({ count, open, onToggle, phone }: ChangesChipProps) {
   if (count === 0) {
     return null;
   }
@@ -47,8 +49,8 @@ export function ChangesChip({ count, open, onToggle }: ChangesChipProps) {
       onClick={onToggle}
     >
       <GitDiff aria-hidden className="text-[var(--diff-ink)]" size={16} />
-      <span aria-hidden className="tabular-nums">
-        {count} changed
+      <span aria-hidden className={phone ? 'font-mono tabular-nums' : 'tabular-nums'}>
+        {phone ? count : `${count} changed`}
       </span>
     </IslandButton>
   );

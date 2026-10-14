@@ -61,14 +61,19 @@ async function mount(rows: readonly ChangeRow[] = ROWS, phone = false): Promise<
   return heard;
 }
 
-describe('The Changes chip', () => {
-  test('counts the changes, and hides with none', async () => {
-    const screen = await render(<ChangesChip count={2} onToggle={() => undefined} open={false} />);
+function chip(count: number, phone = false) {
+  return <ChangesChip count={count} onToggle={() => undefined} open={false} phone={phone} />;
+}
 
-    await expect
-      .element(page.getByRole('button', { name: 'Changes in this session: 2' }))
-      .toHaveTextContent('2 changed');
-    await screen.rerender(<ChangesChip count={0} onToggle={() => undefined} open={false} />);
+describe('The Changes chip', () => {
+  test('counts the changes, only the number on a phone, and hides with none', async () => {
+    const screen = await render(chip(2));
+    const button = page.getByRole('button', { name: 'Changes in this session: 2' });
+
+    await expect.element(button).toHaveTextContent('2 changed');
+    await screen.rerender(chip(2, true));
+    await expect.element(button).toHaveTextContent(/^2$/);
+    await screen.rerender(chip(0));
     expect(document.querySelector('[data-changes-chip]')).toBeNull();
   });
 });

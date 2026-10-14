@@ -729,6 +729,88 @@ describe('The title of a .txt on a phone', () => {
   );
 });
 
+/** The top islands of the editor and the title's shown width, once they have settled. */
+async function topIslands(
+  page: Page
+): Promise<{ title: DOMRect; actions: DOMRect; name: number; width: number }> {
+  await page.getByRole('button', { name: 'More actions' }).waitFor();
+  await page.waitForTimeout(400);
+  return page.evaluate(() => {
+    const [title, actions] = [
+      ...document.querySelectorAll('[data-chrome="editor"] header > *'),
+    ].map((island) => island.getBoundingClientRect());
+    return {
+      title: title ?? new DOMRect(),
+      actions: actions ?? new DOMRect(),
+      name: document.querySelector('h1')?.clientWidth ?? 0,
+      width: window.innerWidth,
+    };
+  });
+}
+
+/** Expects the two top islands apart, inside the screen, and the name at least `minimum` px wide. */
+async function expectIslandsApart(page: Page, state: string, minimum = 80): Promise<void> {
+  const { title, actions, name, width } = await topIslands(page);
+  console.info(
+    `${width} px ${state}: title ${title.left}-${title.right}, actions ${actions.left}-${actions.right}, name ${name}`
+  );
+  expect(title.right).toBeLessThanOrEqual(actions.left);
+  expect(actions.right).toBeLessThanOrEqual(width);
+  expect(name).toBeGreaterThanOrEqual(minimum);
+}
+
+describe('The top islands on a phone', () => {
+  test.each([360, 412])(
+    'at %i px never overlap, with a long name, Changes and Checks, looking and editing',
+    async (width) => {
+      const { maze } = await repoContent(CLASSIC);
+      const page = await openPage(browser, contexts, app, `#/repo/${CLASSIC}`, {
+        width,
+        height: 800,
+        touch: true,
+      });
+      await waitForMode(page, 'editor');
+      await page.getByRole('button', { name: 'Edit', exact: true }).tap();
+      await page.getByRole('toolbar', { name: 'Tools' }).waitFor();
+      const point = await pagePoint(page, maze, edgeMiddle({ direction: 'vertical', x: 8, y: 8 }));
+      await page.touchscreen.tap(point.x, point.y);
+      await page.locator('[data-changes-chip]').first().waitFor();
+      await expectIslandsApart(page, 'repo copy, editing');
+
+      const name = 'br2024-robochallenge-final-maze';
+      await page.evaluate(
+        (hash) => {
+          window.location.hash = hash;
+        },
+        `#/m/${encodeMazeCode(maze, { name })}`
+      );
+      await expect.poll(() => page.locator('h1').textContent()).toBe(name);
+      await expectIslandsApart(page, 'link, editing');
+      await page.getByRole('button', { name: 'Done editing, back to viewing' }).tap();
+      await page.getByRole('button', { name: 'Edit', exact: true }).waitFor();
+      await expectIslandsApart(page, 'link, looking');
+
+      await page.getByRole('button', { name: 'Back to the library' }).tap();
+      await waitForMode(page, 'library');
+      await page.getByRole('button', { name: 'New maze and more' }).tap();
+      const [chooser] = await Promise.all([
+        page.waitForEvent('filechooser'),
+        page.getByRole('menuitem', { name: 'Open a .txt file…' }).tap(),
+      ]);
+      await chooser.setFiles({
+        name: `${name}.txt`,
+        mimeType: 'text/plain',
+        buffer: Buffer.from(repoText(CLASSIC)),
+      });
+      await waitForMode(page, 'editor');
+      await expectIslandsApart(page, '.txt, looking');
+      await page.getByRole('button', { name: 'Edit', exact: true }).tap();
+      await page.getByRole('toolbar', { name: 'Tools' }).waitFor();
+      await expectIslandsApart(page, '.txt, editing');
+    }
+  );
+});
+
 describe('Editing on a phone', () => {
   test('Edit brings the tools, a tap edits at the fit, and the eye goes back to viewing', async () => {
     const { maze } = await repoContent(CLASSIC);

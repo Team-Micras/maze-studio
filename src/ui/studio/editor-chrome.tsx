@@ -85,8 +85,8 @@ export function EditorChrome({
       data-hidden={visible ? undefined : ''}
       inert={!visible}
     >
-      <header>
-        <Island className="fixed top-safe-4 left-safe-4 h-11 max-w-[calc(50vw-40px)] max-[720px]:top-safe-2 max-[720px]:left-safe-2 max-[720px]:max-w-[calc(100vw-120px)]">
+      <header className="max-[720px]:pointer-events-none max-[720px]:fixed max-[720px]:top-safe-2 max-[720px]:right-safe-2 max-[720px]:left-safe-2 max-[720px]:z-10 max-[720px]:flex max-[720px]:gap-2">
+        <Island className="fixed top-safe-4 left-safe-4 h-11 max-w-[calc(50vw-40px)] max-[720px]:pointer-events-auto max-[720px]:static max-[720px]:min-w-0 max-[720px]:max-w-none">
           <Hint label="Library" side="bottom">
             <IslandButton aria-label="Back to the library" onClick={onLibrary}>
               <SquaresFour aria-hidden size={18} />
@@ -111,7 +111,7 @@ export function EditorChrome({
           {settled ? titleActions : null}
         </Island>
         {!settled || actions === undefined || actions === null ? null : (
-          <Island className="fixed top-safe-4 right-safe-4 h-11 transition-opacity duration-200 ease-(--ease) starting:opacity-0 max-[720px]:top-safe-2 max-[720px]:right-safe-2">
+          <Island className="fixed top-safe-4 right-safe-4 h-11 transition-opacity duration-200 ease-(--ease) starting:opacity-0 max-[720px]:pointer-events-auto max-[720px]:static max-[720px]:ml-auto max-[720px]:shrink-0">
             {actions}
           </Island>
         )}
