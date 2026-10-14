@@ -3,15 +3,12 @@ import { useEffect, useRef } from 'react';
 import type { Maze } from '@/maze';
 import {
   boardGeometry,
-  cellOnScreen,
-  MIN_TOUCH_CELL,
   mazePointAt,
   toWorld,
   type MazePoint,
   type ScreenPoint,
   type WorldRect,
 } from '@/render';
-import type { DrawInput } from '@/ui/board/camera-stage';
 import type { CanvasCamera } from '@/ui/board/use-canvas-camera';
 
 import type { MazeEditor } from './use-maze-editor';
@@ -26,8 +23,6 @@ export interface BoardGestureInput {
   readonly board: WorldRect | undefined;
   /** Whether the tool draws now. */
   readonly enabled: boolean;
-  /** Called when a touch lands on cells too small to edit by touch. */
-  readonly onTooSmall: () => void;
   /** Called when a gesture starts, which hides the keyboard cursor. */
   readonly onPress: () => void;
 }
@@ -41,21 +36,17 @@ export interface BoardGesture<G> {
   readonly mazePoint: (point: ScreenPoint) => MazePoint | undefined;
   /**
    * Starts a gesture at `point`, made by `make` from the maze point and the maze before it, unless
-   * the camera is not measured, nothing is open or a touch lands on cells under 28 px.
+   * the camera is not measured or nothing is open.
    */
-  readonly begin: (
-    point: ScreenPoint,
-    input: DrawInput,
-    make: (at: MazePoint, base: Maze) => G
-  ) => G | undefined;
+  readonly begin: (point: ScreenPoint, make: (at: MazePoint, base: Maze) => G) => G | undefined;
   /** Ends the gesture under way and returns it. */
   readonly finish: () => G | undefined;
 }
 
 /**
  * What the wall and cell tools share: the gesture under way, ended when the tool stops drawing,
- * the stage's points in the maze, and the start of a gesture, refused on cells too small to edit by
- * touch. Undefined while the tool does not draw.
+ * the stage's points in the maze, and the start of a gesture. Undefined while the tool does not
+ * draw.
  */
 export function useBoardGesture<G>({
   editor,
@@ -63,7 +54,6 @@ export function useBoardGesture<G>({
   maze,
   board,
   enabled,
-  onTooSmall,
   onPress,
 }: BoardGestureInput): BoardGesture<G> | undefined {
   const gesture = useRef<G | undefined>(undefined);
@@ -91,19 +81,11 @@ export function useBoardGesture<G>({
     maze,
     current: () => gesture.current,
     mazePoint,
-    begin: (point, input, make) => {
+    begin: (point, make) => {
       const at = mazePoint(point);
       const base = editor.current();
 
       if (at === undefined || base === undefined) {
-        return undefined;
-      }
-
-      if (
-        input.pointerType === 'touch' &&
-        cellOnScreen(geometry, board, camera.camera?.k ?? 0) < MIN_TOUCH_CELL
-      ) {
-        onTooSmall();
         return undefined;
       }
 

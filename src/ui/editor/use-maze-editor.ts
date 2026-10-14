@@ -7,6 +7,7 @@ import {
   canUndo,
   endGesture,
   inGesture,
+  mazesEqual,
   record,
   redo,
   undo,
@@ -135,21 +136,23 @@ export function useMazeEditor(input: MazeEditorInput): MazeEditor {
 
   useEffect(() => {
     writer.current = new MineWriter(async () => (await appStorage())?.mine, {
-      copied: (opened, copy, item) => {
+      copied: (opened, copy, written) => {
         setStored((before) => (before?.opened === opened ? withMine(before, copy) : before));
         const created = opened.document.created === true;
         sessionChanges.setState((changes) =>
-          addCreated(changes, {
-            id: item.id,
-            kind: created ? 'new' : 'copy',
-            name: item.name,
-            baseline: created ? undefined : opened.maze,
-            source: refOf(opened.key),
-          })
+          !created && mazesEqual(written.maze, opened.maze)
+            ? noteSeen(changes, copy.id, written)
+            : addCreated(changes, {
+                id: copy.id,
+                kind: created ? 'new' : 'copy',
+                name: copy.name,
+                baseline: created ? undefined : opened.maze,
+                source: refOf(opened.key),
+              })
         );
 
         if (openedNow.current === opened) {
-          const route: Route = { kind: 'mine', id: item.id };
+          const route: Route = { kind: 'mine', id: copy.id };
 
           if (refOf(opened.key) === undefined) {
             pushRoute(route);

@@ -48,14 +48,7 @@ export {
   type ZoomKey,
 } from './camera-input';
 export { cubicBezier, EASE_FLIGHT, EASE_OUT, type Easing } from './easing';
-export {
-  areaInWorld,
-  cellInWorld,
-  cellOnScreen,
-  focusArea,
-  MIN_TOUCH_CELL,
-  mazePointAt,
-} from './board-placement';
+export { areaInWorld, cellInWorld, focusArea, mazePointAt } from './board-placement';
 export {
   ARTBOARD_SIZE,
   boardGeometry,

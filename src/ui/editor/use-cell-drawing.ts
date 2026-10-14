@@ -78,8 +78,7 @@ interface Gesture {
 /**
  * The cell tools (PLAN.md 3.4, DESIGN.md 10): a press picks a cell and a drag spans a rectangle of
  * cells, shown as the selection, which the release applies as one step of undo. Shift with a goal
- * click adds or removes the cell; Shift with a drag is a plain drag. A touch on cells under 28 px
- * does not edit.
+ * click adds or removes the cell; Shift with a drag is a plain drag.
  */
 export function useCellDrawing({ tool, ...setup }: CellDrawingInput): CellDrawing {
   const { editor } = setup;
@@ -98,7 +97,7 @@ export function useCellDrawing({ tool, ...setup }: CellDrawingInput): CellDrawin
   };
 
   const begin = (point: ScreenPoint, input: DrawInput): boolean => {
-    const current = gesture.begin(point, input, (at, base) => {
+    const current = gesture.begin(point, (at, base) => {
       const cell = nearestCell(maze, at);
       return { base, tool, anchor: cell, cell, shiftKey: input.shiftKey };
     });

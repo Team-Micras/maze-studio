@@ -12,12 +12,6 @@ import type { WorldPoint, WorldRect } from './camera';
 import { toBoardPoint, toMazePoint, type BoardGeometry, type MazePoint } from './geometry';
 import type { FindingFocus } from './overlay-layers';
 
-/**
- * The smallest side of a cell on screen, in CSS pixels, at which a touch edits (DESIGN.md 10):
- * below it the finger covers more than one wall slot.
- */
-export const MIN_TOUCH_CELL = 28;
-
 /** Where the drawing lies in the world: its top-left corner and world units per board unit. */
 interface Placement {
   readonly x: number;
@@ -57,11 +51,6 @@ export function cellInWorld(geometry: BoardGeometry, rect: WorldRect, cell: Cell
     width: geometry.pitch * place.scale,
     height: geometry.pitch * place.scale,
   };
-}
-
-/** The side of a cell on screen, in CSS pixels, at the camera's zoom `k`. */
-export function cellOnScreen(geometry: BoardGeometry, rect: WorldRect, k: number): number {
-  return geometry.pitch * placement(geometry, rect).scale * k;
 }
 
 /** The world rectangle the cells of `area` cover. */

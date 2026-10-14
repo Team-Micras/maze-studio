@@ -48,7 +48,7 @@ export interface EditorChromeProps {
   readonly children?: ReactNode;
   /** The checks and the menu, in the island at the top right. */
   readonly actions?: ReactNode;
-  /** Save to My mazes or Save to folder, after the title. */
+  /** Save to folder, after the title. */
   readonly titleActions?: ReactNode;
   /** Renaming from the title, for a maze of My mazes. */
   readonly rename?: TitleRename | undefined;

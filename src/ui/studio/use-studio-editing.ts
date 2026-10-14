@@ -18,8 +18,6 @@ import type { StudioScreen, StudioState } from './studio-store';
 
 const EDIT_HINT = 'Tap a slot to toggle. Drag to draw. Two fingers pan';
 
-const TOO_SMALL_HINT = 'Zoom in to edit';
-
 /**
  * Editing the maze on screen in the studio (PLAN.md 3.4): the tool that draws with the pointer, the
  * keyboard cursor, the shortcuts, the checks with the finding shown on the board, and the editor's
@@ -68,8 +66,7 @@ export function useStudioEditing({
   const drawable = editing && screen.drawable;
   const maze = editing || screen.kind === 'previewing' ? screen.maze.maze : undefined;
   const showHint = useCallback(
-    (text: string, spoken = false) =>
-      store.setState({ hint: { text, at: performance.now(), spoken } }),
+    (text: string) => store.setState({ hint: { text, at: performance.now() } }),
     [store]
   );
   const boardKeys = useBoardKeys({
@@ -87,7 +84,6 @@ export function useStudioEditing({
     maze,
     board,
     enabled: drawable && tool === 'wall',
-    onTooSmall: () => showHint(TOO_SMALL_HINT, true),
     onPress: boardKeys.hide,
   });
   const cells = useCellDrawing({
@@ -96,7 +92,6 @@ export function useStudioEditing({
     maze,
     board,
     tool: drawable && isCellTool(tool) ? tool : undefined,
-    onTooSmall: () => showHint(TOO_SMALL_HINT, true),
     onPress: boardKeys.hide,
   });
   const pickTool = useCallback(

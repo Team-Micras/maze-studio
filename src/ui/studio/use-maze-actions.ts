@@ -51,6 +51,7 @@ export function useMazeActions({
   readonly mineNames: readonly string[];
 }) {
   const renameOpen = useStore(store, (state) => state.renameOpen);
+  const viewing = useStore(store, (state) => state.viewing);
   const open = screen.kind === 'editing' ? screen.maze : undefined;
   const mineId = open?.document.mine?.id;
 
@@ -110,6 +111,7 @@ export function useMazeActions({
 
   return {
     menu: {
+      onSaveToMine: editor.canSaveToMine && (viewing || !phone) ? editor.saveToMine : undefined,
       onDownload: () => {
         if (open !== undefined) {
           downloadText(downloadName(open), mazeFileText(open));
@@ -132,12 +134,10 @@ export function useMazeActions({
             onDelete: () => onDelete(mineId),
           }),
     },
-    title: {
-      onSaveToMine: editor.canSaveToMine ? editor.saveToMine : undefined,
-      ...(folderFile === undefined || open === undefined
+    title:
+      folderFile === undefined || open === undefined
         ? {}
-        : { folderFile, onSaveToFolder: () => onSaveToFolder(folderFile, mazeFileText(open)) }),
-    },
+        : { folderFile, onSaveToFolder: () => onSaveToFolder(folderFile, mazeFileText(open)) },
     copyLink: phone ? undefined : { onCopy: copyLink },
     rename,
   };

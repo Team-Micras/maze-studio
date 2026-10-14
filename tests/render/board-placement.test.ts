@@ -7,7 +7,6 @@ import {
   boardGeometry,
   cellInWorld,
   focusArea,
-  cellOnScreen,
   mazePointAt,
   toBoardPoint,
 } from '@/render';
@@ -45,16 +44,6 @@ describe('A board placed in the world', () => {
       9
     );
     expect(mazePointAt(geometry, rect, { x: last.x + last.width, y: last.y }).v).toBeCloseTo(7, 9);
-  });
-
-  test('gives a cell its side on screen at the zoom', () => {
-    const maze = createMaze({ width: 16, height: 16 });
-    const geometry = boardGeometry(maze);
-    const rect = artboardIn(CELL, maze);
-    const side = cellInWorld(geometry, rect, { x: 0, y: 0 }).width;
-
-    expect(cellOnScreen(geometry, rect, 1)).toBeCloseTo(side, 9);
-    expect(cellOnScreen(geometry, rect, 0.5)).toBeCloseTo(side / 2, 9);
   });
 });
 

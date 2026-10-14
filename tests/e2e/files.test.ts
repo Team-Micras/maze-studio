@@ -16,6 +16,7 @@ import {
 } from '@/maze';
 import { DATABASE_NAME } from '@/library/database';
 import {
+  contentOf,
   edgeMiddle,
   expectSaved,
   mineCount,
@@ -269,12 +270,39 @@ describe('Save to My mazes', () => {
     const { maze } = await repoContent(CLASSIC);
     const code = encodeMazeCode(maze, { name: 'Shared one' });
     const page = await openMaze(`#/m/${code}`);
-    await page.getByRole('button', { name: 'Save to My mazes' }).click();
+    await menu(page, 'Save to My mazes');
     await page.waitForFunction(() => window.location.hash.startsWith('#/mine/'));
 
     await expect.poll(() => page.locator('h1').textContent()).toBe('Shared one');
     expect(await mineCount(page)).toBe(1);
-    expect(await page.getByRole('button', { name: 'Save to My mazes' }).count()).toBe(0);
+    await page.getByRole('button', { name: 'More actions' }).click();
+    await page.getByRole('menuitem', { name: 'Download .txt' }).waitFor();
+    expect(await page.getByRole('menuitem', { name: 'Save to My mazes' }).count()).toBe(0);
+  });
+
+  test('is no change until an edit, and Discard then puts back the state saved', async () => {
+    const { maze } = await repoContent(CLASSIC);
+    const page = await openMaze(`#/m/${encodeMazeCode(maze, { name: 'Shared one' })}`);
+    await menu(page, 'Save to My mazes');
+    await page.waitForFunction(() => window.location.hash.startsWith('#/mine/'));
+    const id = mineId(page) ?? '';
+    await expect.poll(() => storedMine(page, id).then((item) => item?.name)).toBe('Shared one');
+    await page.waitForTimeout(300);
+
+    expect(await page.locator('[data-changes-chip]').count()).toBe(0);
+    await clickEdge(page, maze, EDGE);
+    await expectSaved(page, sameMaze(toggleWall(maze, EDGE)));
+    await page.getByRole('button', { name: 'Changes in this session: 1' }).click();
+    await page.getByRole('button', { name: 'Discard Shared one' }).click();
+    await page.getByRole('button', { name: 'Confirm discard of Shared one' }).click();
+
+    await expect
+      .poll(async () => {
+        const item = await storedMine(page, id);
+        return item !== undefined && mazesEqual(contentOf(item).maze, maze);
+      })
+      .toBe(true);
+    expect(await page.locator('[data-changes-chip]').count()).toBe(0);
   });
 
   test('keeps a .txt in My mazes with its notes', async () => {
@@ -283,7 +311,7 @@ describe('Save to My mazes', () => {
     writeFileSync(file, `${repoText(CLASSIC)}Notes\n`);
     await page.locator('input[data-open-file]').setInputFiles(file);
     await waitForMode(page, 'editor');
-    await page.getByRole('button', { name: 'Save to My mazes' }).click();
+    await menu(page, 'Save to My mazes');
     await page.waitForFunction(() => window.location.hash.startsWith('#/mine/'));
     const item = await storedMine(page, mineId(page) ?? '');
     const decoded = item === undefined ? undefined : decodeMazeCode(item.code);

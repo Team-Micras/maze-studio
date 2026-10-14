@@ -4,6 +4,7 @@ import {
   CornersOut,
   DotsThree,
   DownloadSimple,
+  FloppyDisk,
   GitDiff,
   Keyboard,
   LinkSimple,
@@ -32,6 +33,8 @@ export interface MoreActionsProps {
   readonly onCloseBorder: () => void;
   /** Opens the Changes panel, also with nothing in it. */
   readonly onChanges: () => void;
+  /** Copies a link or a file to My mazes as it is; absent once it is there, or while editing on a phone. */
+  readonly onSaveToMine?: () => void;
   /** Downloads the maze as a `.txt`. */
   readonly onDownload: () => void;
   /** Copies the link, here on a phone, where the island has no link button. */
@@ -54,7 +57,7 @@ export interface MoreActionsProps {
 const ITEM = 'rounded-[9px]';
 
 /**
- * The editor's ⋯ menu (DESIGN.md 6, 6.1 and 9.2): Download .txt, Copy link and Share… on a phone,
+ * The editor's ⋯ menu (DESIGN.md 6, 6.1 and 9.2): Save to My mazes for a link or a `.txt`, Download .txt, Copy link and Share… on a phone,
  * Close outer walls, Changes, Rename and Delete for a maze of My mazes, Fit, the theme and the
  * shortcut help. Delete
  * takes two selects: the first keeps the menu open and turns it into "Confirm delete". A download
@@ -64,6 +67,7 @@ export function MoreActions({
   editable,
   onCloseBorder,
   onChanges,
+  onSaveToMine,
   onDownload,
   onCopyLink,
   onShare,
@@ -103,6 +107,12 @@ export function MoreActions({
           action?.();
         }}
       >
+        {onSaveToMine === undefined ? null : (
+          <DropdownMenuItem className={ITEM} onSelect={onSaveToMine}>
+            <FloppyDisk aria-hidden size={16} />
+            Save to My mazes
+          </DropdownMenuItem>
+        )}
         <DropdownMenuItem className={ITEM} onSelect={later(onDownload)}>
           <DownloadSimple aria-hidden size={16} />
           Download .txt

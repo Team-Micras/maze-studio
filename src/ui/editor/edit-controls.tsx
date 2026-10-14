@@ -3,7 +3,7 @@ import { PencilSimple } from '@/ui/icons';
 import { Island } from '@/ui/islands/island';
 import { Button } from '@/ui/primitives/button';
 
-import { SpokenHint, ToolHint, type HintMessage } from './tool-hint';
+import { ToolHint, type HintMessage } from './tool-hint';
 import { NEWER_ELSEWHERE } from './use-maze-editor';
 import { ToolsIsland, type ToolsIslandProps } from './tools-island';
 
@@ -59,7 +59,6 @@ export function EditControls({
       <p aria-live="polite" className="sr-only">
         {tools.editable ? '' : NEWER_ELSEWHERE}
       </p>
-      <SpokenHint message={hint} />
       <ToolHint
         className="max-[720px]:bottom-[calc(max(10px,env(safe-area-inset-bottom))+66px)]"
         message={hint}

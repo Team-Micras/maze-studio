@@ -6,7 +6,7 @@
  * @module
  */
 
-import { uniqueName, type MineLibrary, type MineMaze } from '@/library';
+import { uniqueName, type MineLibrary } from '@/library';
 import { mazesEqual, type Maze, type Profile } from '@/maze';
 import type { MineCopy, OpenMaze } from '@/ui/open-maze';
 
@@ -17,8 +17,8 @@ export type NamedCopy = MineCopy & { readonly name: string };
 
 /** What the writer tells the editor, naming each session by the maze it opened on. */
 export interface MineWriterEvents {
-  /** The maze `opened` now has its copy in My mazes. */
-  readonly copied: (opened: OpenMaze, copy: NamedCopy, item: MineMaze) => void;
+  /** The maze `opened` now has its copy in My mazes, holding `written`. */
+  readonly copied: (opened: OpenMaze, copy: NamedCopy, written: Written) => void;
   /** The item of `opened`'s session was saved. */
   readonly saved: (opened: OpenMaze, copy: NamedCopy) => void;
   /** Another tab saved the item, or removed it, since this one read it: nothing more is written. */
@@ -28,7 +28,7 @@ export interface MineWriterEvents {
 }
 
 /** What a session last wrote. */
-interface Written {
+export interface Written {
   readonly maze: Maze;
   readonly profile: Profile;
 }
@@ -247,7 +247,8 @@ export class MineWriter {
     const copy = { id: item.id, version: item.version, name: item.name };
     this.#copies.set(opened, copy);
     this.#versions.set(copy.id, copy.version);
-    this.#written.set(opened, { maze: history.present, profile });
-    this.#events.copied(opened, copy, item);
+    const written = { maze: history.present, profile };
+    this.#written.set(opened, written);
+    this.#events.copied(opened, copy, written);
   }
 }

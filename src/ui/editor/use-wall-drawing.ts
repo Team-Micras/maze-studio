@@ -40,8 +40,7 @@ function sameEdge(left: Edge | undefined, right: Edge | undefined): boolean {
  * drag paints or erases along the grid of posts, turning at any post, as one step of undo. Shift,
  * read at every move, keeps the stroke on its axis. A mouse previews the slot under it; a finger
  * previews the slot it pressed and changes it only on release or once the stroke steps on, so a
- * second finger that starts a pinch leaves nothing behind. A touch on cells under 28 px does not
- * edit.
+ * second finger that starts a pinch leaves nothing behind.
  */
 export function useWallDrawing(setup: BoardGestureInput): WallDrawing {
   const { editor } = setup;
@@ -79,7 +78,7 @@ export function useWallDrawing(setup: BoardGestureInput): WallDrawing {
 
   const begin = (point: ScreenPoint, input: DrawInput): boolean => {
     const touch = input.pointerType === 'touch';
-    const current = gesture.begin(point, input, (at, base) => {
+    const current = gesture.begin(point, (at, base) => {
       const made: Gesture = { base, touch, stroke: undefined, applied: false };
       reach(made, at, input.shiftKey);
       return made;

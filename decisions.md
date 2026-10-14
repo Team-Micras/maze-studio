@@ -138,15 +138,19 @@ reached, and the measurements of the day, are in the git history of this file.
   version waits for the writes on their way (`pending-writes.ts`).
 - **The stage arbitrates the pointer.** The primary button or one finger draws unless it pans (Hand, view mode, Space,
   the middle button); a second finger takes the drawing back and pinches. A finger previews the slot it pressed and
-  changes it only on release or once the stroke steps on. A touch on cells under 28 px does not edit and says "Zoom in
-  to edit".
+  changes it only on release or once the stroke steps on. A touch edits at any zoom (owner, 14/10): a tap that does
+  nothing reads as broken, and who wants precision zooms in.
 - **The cell tools apply on release**, as one step; with the keyboard, a first Enter marks a corner and a second
   applies. Arrows move the cell cursor, Shift and an arrow toggle that side's wall.
 - **Checks** validate the maze on screen with the session's profile, which is part of the session but not of undo, and
   with the file's source until the first edit.
 - **Changes** live in one in-memory store per tab, fed by the writer: a copy or new maze from its first write, a maze
   of My mazes from its first save, against the state the session first opened. Discard, armed for 3 s, deletes a copy
-  or saves back the first state; Keep takes the item out.
+  or saves back the first state; Keep takes the item out. Save to My mazes of a link or `.txt` not edited is no change
+  (owner, 14/10): the copy is noted as a maze of My mazes from before the session, its saved state the baseline, so it
+  enters Changes only at a later save and Discard saves that state back.
+- **Save to My mazes is in the ⋯ menu** (owner, 14/10), so the title keeps the island's width on a phone; it is not
+  offered while editing on a phone, since the first edit saves anyway. A mouse has no view mode, so a notebook keeps it.
 
 ## Sharing and files
 
@@ -163,7 +167,7 @@ reached, and the measurements of the day, are in the git history of this file.
 
 - **The canvas is `role="application"`**, focusable, with its keys and pointers; `camera-stage.tsx` has the lint
   overrides that role needs. Quiet zoom: the percentage is plain text. Live regions that must speak stay mounted (empty
-  library, read-only, "Zoom in to edit", Checks).
+  library, read-only, Checks).
 - **axe fails on every impact**, minor ones included, and runs after `settled()`, two quiet frames.
 - **Safe areas.** Fixed islands and toasts sit off the notch through the `*-safe-*` utilities;
   `tests/config/safe-areas.test.ts` fails a fixed element by an edge without one. The grid's insets do not add them.

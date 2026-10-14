@@ -9,7 +9,6 @@ import {
   edgeOfCell,
   encodeMazeCode,
   hasWall,
-  mazesEqual,
   paintWalls,
   serializeMazeText,
   toggleWall,
@@ -17,7 +16,7 @@ import {
   type Maze,
 } from '@/maze';
 import { DATABASE_NAME } from '@/library/database';
-import { boardGeometry, MIN_TOUCH_CELL } from '@/render';
+import { boardGeometry } from '@/render';
 import {
   contentOf,
   edgeMiddle,
@@ -27,7 +26,6 @@ import {
   repoText,
   sameMaze,
   expectSaved,
-  storedMine,
 } from '@tests/support/e2e/board-page';
 import {
   openPage,
@@ -679,8 +677,60 @@ describe('The keyboard cursor', () => {
   });
 });
 
+/** A phone `width` px wide with a `.txt` named `name` open, and how much of the title shows and needs. */
+async function openTxt(
+  width: number,
+  name: string
+): Promise<{ page: Page; shown: number; needed: number }> {
+  const page = await openPage(browser, contexts, app, '#/', { width, height: 800, touch: true });
+  await page.getByRole('button', { name: 'New maze and more' }).tap();
+  const [chooser] = await Promise.all([
+    page.waitForEvent('filechooser'),
+    page.getByRole('menuitem', { name: 'Open a .txt file…' }).tap(),
+  ]);
+  await chooser.setFiles({
+    name: `${name}.txt`,
+    mimeType: 'text/plain',
+    buffer: Buffer.from(repoText(CLASSIC)),
+  });
+  await waitForMode(page, 'editor');
+  await page.getByRole('button', { name: 'More actions' }).waitFor();
+  const widths = await page.evaluate(() => {
+    const title = document.querySelector('h1');
+    return { shown: title?.clientWidth ?? 0, needed: title?.scrollWidth ?? 0 };
+  });
+  return { page, ...widths };
+}
+
+describe('The title of a .txt on a phone', () => {
+  test.each([360, 412])(
+    'at %i px wide shows the whole name, and Save to My mazes is in ⋯ only while looking',
+    async (width) => {
+      const whole = await openTxt(width, 'Training corridor');
+      const long = await openTxt(width, 'Open maze from the Japan 2026 contest final');
+      console.info(
+        `${width} px: whole ${whole.shown}/${whole.needed}, long ${long.shown}/${long.needed}`
+      );
+
+      expect(whole.needed).toBeLessThanOrEqual(whole.shown);
+      expect(long.shown).toBeGreaterThanOrEqual(whole.needed);
+      const { page } = whole;
+      expect(await page.getByRole('button', { name: 'Save to My mazes' }).count()).toBe(0);
+      await page.getByRole('button', { name: 'More actions' }).tap();
+      await page.getByRole('menuitem', { name: 'Download .txt' }).waitFor();
+      expect(await page.getByRole('menuitem', { name: 'Save to My mazes' }).count()).toBe(1);
+      await page.keyboard.press('Escape');
+      await page.getByRole('button', { name: 'Edit', exact: true }).tap();
+      await page.getByRole('toolbar', { name: 'Tools' }).waitFor();
+      await page.getByRole('button', { name: 'More actions' }).tap();
+      await page.getByRole('menuitem', { name: 'Download .txt' }).waitFor();
+      expect(await page.getByRole('menuitem', { name: 'Save to My mazes' }).count()).toBe(0);
+    }
+  );
+});
+
 describe('Editing on a phone', () => {
-  test('Edit brings the tools, a tap edits once zoomed in, and the eye goes back to viewing', async () => {
+  test('Edit brings the tools, a tap edits at the fit, and the eye goes back to viewing', async () => {
     const { maze } = await repoContent(CLASSIC);
     const page = await openMaze(CLASSIC, PHONE);
     const edge: Edge = { direction: 'vertical', x: 8, y: 8 };
@@ -695,17 +745,6 @@ describe('Editing on a phone', () => {
     await page.getByRole('toolbar', { name: 'Tools' }).waitFor();
 
     await tapEdge();
-    await expect.poll(() => page.locator('[data-hint]').textContent()).toBe('Zoom in to edit');
-    await expect
-      .poll(() => page.locator('p[aria-live="polite"]', { hasText: 'Zoom in to edit' }).count())
-      .toBe(1);
-    expect(new URL(page.url()).hash).toBe(`#/repo/${CLASSIC}`);
-
-    for (let zoom = 0; zoom < 3; zoom++) {
-      await page.getByRole('button', { name: 'Zoom in' }).tap();
-    }
-
-    await tapEdge();
     await expectSaved(page, sameMaze(toggleWall(maze, edge)));
 
     await page.getByRole('button', { name: 'Done editing, back to viewing' }).tap();
@@ -714,7 +753,7 @@ describe('Editing on a phone', () => {
   });
 
   test.each([CLASSIC, HALFSIZE])(
-    'on %s at 390 × 844, a tap does not edit until a cell passes 28 px',
+    'on %s at 390 × 844, a tap edits at the fit, however small the cells',
     async (path) => {
       const { maze } = await repoContent(path);
       const page = await openMaze(path, PHONE);
@@ -725,30 +764,11 @@ describe('Editing on a phone', () => {
         x: Math.floor(maze.width / 2),
         y: Math.floor(maze.height / 2),
       };
-      const sizes: number[] = [];
+      const point = await pagePoint(page, maze, edgeMiddle(edge));
 
-      for (let zoom = 0; zoom < 12 && mineId(page) === undefined; zoom++) {
-        const cell = await cellOnPage(page, maze);
-        sizes.push(cell);
-        const point = await pagePoint(page, maze, edgeMiddle(edge));
-        await page.touchscreen.tap(point.x, point.y);
-        await page.waitForTimeout(150);
-
-        expect(mineId(page) !== undefined).toBe(cell >= MIN_TOUCH_CELL);
-        await page.getByRole('button', { name: 'Zoom in' }).tap();
-        await page.waitForTimeout(50);
-      }
-
-      console.info(`${path}: cells of ${sizes.map((size) => size.toFixed(1)).join(', ')} px`);
-      expect(sizes[0] ?? 0).toBeLessThan(MIN_TOUCH_CELL);
-      expect(mineId(page)).toBeDefined();
-      const id = mineId(page) ?? '';
-      await expect
-        .poll(async () => {
-          const item = await storedMine(page, id);
-          return item !== undefined && mazesEqual(contentOf(item).maze, toggleWall(maze, edge));
-        })
-        .toBe(true);
+      expect(await cellOnPage(page, maze)).toBeLessThan(28);
+      await page.touchscreen.tap(point.x, point.y);
+      await expectSaved(page, sameMaze(toggleWall(maze, edge)));
     }
   );
 
