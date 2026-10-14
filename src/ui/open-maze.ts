@@ -4,7 +4,7 @@
  * @module
  */
 
-import type { CatalogEntry, MineOrigin } from '@/library';
+import { folderKey, mineKey, repoKey, type CatalogEntry, type MineOrigin } from '@/library';
 import { decodeMazeCode, type Maze, type MazeTextSource, type Profile } from '@/maze';
 
 import { categoryLabel, sizeLabel } from './labels';
@@ -112,7 +112,7 @@ export function openingOf(
     return WAITING;
   }
 
-  const key = mazeKeyOf(route);
+  const key = keyOfRoute(route);
   const entry = library.entries.find((candidate) => candidate.key === key);
   const open = entry === undefined ? undefined : openEntry(entry, library);
 
@@ -167,22 +167,22 @@ export function openEntry(entry: CatalogEntry, library: Library): OpenMaze | und
 }
 
 /** The key of the maze `route` opens, as {@link OpenMaze.key} has it; none for the library. */
-export function mazeKeyOf(route: Route): string | undefined {
+export function keyOfRoute(route: Route): string | undefined {
   switch (route.kind) {
     case 'library':
       return undefined;
     case 'repo':
-      return `repo:${route.path}`;
+      return repoKey(route.path);
     case 'mine':
-      return `mine:${route.id}`;
+      return mineKey(route.id);
     case 'folder':
-      return `folder:${route.file}`;
+      return folderKey(route.file);
     default:
       return `link:${route.code}`;
   }
 }
 
-/** The route of the maze a key names, as {@link mazeKeyOf} makes them; none for a file or a new maze. */
+/** The route of the maze a key names, as {@link keyOfRoute} makes them; none for a file or a new maze. */
 export function routeOfKey(key: string): Route | undefined {
   const [kind = '', ...rest] = key.split(':');
   const value = rest.join(':');

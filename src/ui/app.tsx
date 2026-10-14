@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useStore } from 'zustand';
 
-import { DEFAULT_FILTER, type LibraryFilter } from '@/library';
+import { DEFAULT_FILTER, mineIdOf, type LibraryFilter } from '@/library';
 import { parseMazeText } from '@/maze';
 
 import { CANVAS_ID } from './canvas-id';
@@ -21,7 +21,7 @@ import { libraryBelow, pushRoute, replaceRoute } from './navigation';
 import {
   looseDocument,
   MAX_FILE_BYTES,
-  mazeKeyOf,
+  keyOfRoute,
   NO_FOLDER_ACCESS,
   openingOf,
   type OpenMaze,
@@ -95,7 +95,7 @@ export function App() {
   }
 
   const opened = shownLoose ?? (opening.status === 'open' ? opening.open : undefined);
-  const routeKey = mazeKeyOf(route);
+  const routeKey = keyOfRoute(route);
   const editor = useMazeEditor({ opened, wanted: shownLoose?.key ?? routeKey });
   const changes = useStore(sessionChanges);
   const screenKey = editor.shown?.key;
@@ -107,11 +107,12 @@ export function App() {
     setTrail({ ...trail, key: screenKey });
   }
 
+  const leftId = mineIdOf(trail.left);
   const landing =
     route.kind === 'library' &&
     route.filter.source !== 'mine' &&
-    trail.left?.startsWith('mine:') === true &&
-    changeOf(changes, trail.left.slice('mine:'.length)) !== undefined
+    leftId !== undefined &&
+    changeOf(changes, leftId) !== undefined
       ? MINE_FILTER
       : undefined;
   const missingOpening =

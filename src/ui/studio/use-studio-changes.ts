@@ -1,4 +1,5 @@
 import { useCallback } from 'react';
+import { mineIdOf, mineKey } from '@/library';
 import { useStore, type StoreApi } from 'zustand';
 
 import type { MazeDiff } from '@/maze';
@@ -40,10 +41,6 @@ export interface StudioChanges {
   readonly openPanel: () => void;
 }
 
-function mineId(key: string | undefined): string | undefined {
-  return key?.startsWith('mine:') === true ? key.slice('mine:'.length) : undefined;
-}
-
 /**
  * The Changes of the session in the studio (PLAN.md 3.4, DESIGN.md 6.2): the rows with each maze
  * as it is now, the one on screen as edited; the diff of the maze on screen against its baseline,
@@ -60,10 +57,9 @@ export function useStudioChanges({
   const changes = useStore(sessionChanges);
   const rows: ChangeRow[] = changes.items.map((item) => ({
     item,
-    current:
-      onScreen?.key === `mine:${item.id}` ? onScreen.maze : library?.mazeOf(`mine:${item.id}`),
+    current: onScreen?.key === mineKey(item.id) ? onScreen.maze : library?.mazeOf(mineKey(item.id)),
   }));
-  const screenId = mineId(onScreen?.key);
+  const screenId = mineIdOf(onScreen?.key);
   const screenItem = screenId === undefined ? undefined : changeOf(changes, screenId);
   const screenDiff =
     screenItem === undefined || onScreen === undefined
@@ -92,12 +88,12 @@ export function useStudioChanges({
       onOpenItem: (item) => {
         setOpen(false);
 
-        if (onScreen?.key !== `mine:${item.id}`) {
+        if (onScreen?.key !== mineKey(item.id)) {
           pushRoute({ kind: 'mine', id: item.id });
         }
       },
       onKeep: (item) => {
-        const key = `mine:${item.id}`;
+        const key = mineKey(item.id);
         const shown = onScreen?.key === key ? onScreen : undefined;
         const maze = shown?.maze ?? library?.mazeOf(key);
         const profile = shown?.document.profile ?? library?.documentOf(key)?.profile ?? 'free';

@@ -7,6 +7,7 @@
 
 import { decodeMazeCode, type Profile } from '@/maze';
 
+import { folderKey, mineKey, repoKey } from './maze-key';
 import { mazeOrigin } from './maze-names';
 import type { FolderFile } from './folder';
 import type { MineMaze } from './mine';
@@ -50,7 +51,7 @@ export function repoCatalog(files: readonly RepoFile[]): CatalogEntry[] {
     const name = stemOf(file.path);
     return [
       {
-        key: `repo:${file.path}`,
+        key: repoKey(file.path),
         origin: 'repo',
         name,
         category: file.path.split('/')[0] ?? '',
@@ -72,7 +73,7 @@ export function mineCatalog(items: readonly MineMaze[]): CatalogEntry[] {
     return decoded.ok
       ? [
           {
-            key: `mine:${item.id}`,
+            key: mineKey(item.id),
             origin: 'mine',
             name: item.name,
             category,
@@ -89,7 +90,7 @@ export function mineCatalog(items: readonly MineMaze[]): CatalogEntry[] {
 /** The entries of an opened folder's mazes, in the order given, under the file's stem. */
 export function folderCatalog(files: readonly FolderFile[]): CatalogEntry[] {
   return files.map((file) => ({
-    key: `folder:${file.fileName}`,
+    key: folderKey(file.fileName),
     origin: 'folder',
     name: file.fileName.replace(/\.txt$/i, ''),
     category: 'free',

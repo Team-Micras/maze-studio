@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 
+import { folderFileOf } from '@/library';
 import type { Maze, Profile } from '@/maze';
 import { reloadLibrary } from '@/ui/library/use-library';
 import { pushRoute, replaceRoute } from '@/ui/navigation';
@@ -246,10 +247,7 @@ export function useMazeEditor(input: MazeEditorInput): MazeEditor {
       session?.mine === undefined &&
       (session?.opened.key.startsWith('link:') === true ||
         session?.opened.key.startsWith('file:') === true),
-    folderFile:
-      session?.mine !== undefined && session.opened.key.startsWith('folder:')
-        ? session.opened.key.slice('folder:'.length)
-        : undefined,
+    folderFile: session?.mine === undefined ? undefined : folderFileOf(session.opened.key),
     saveToMine: () => {
       const now = latest.current;
 

@@ -5,6 +5,7 @@
  * @module
  */
 
+import { mineKey } from '@/library';
 import {
   beginGesture,
   canRedo,
@@ -56,7 +57,7 @@ export function openSession(opened: OpenMaze): EditSession {
 
 /** The route key of the maze the session shows: its item of My mazes once it has one. */
 export function sessionKey(session: EditSession): string {
-  return session.mine === undefined ? session.opened.key : `mine:${session.mine.id}`;
+  return session.mine === undefined ? session.opened.key : mineKey(session.mine.id);
 }
 
 /**

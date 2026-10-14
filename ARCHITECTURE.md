@@ -28,7 +28,8 @@ Each of `src/maze`, `src/library` and `src/render` has an `index.ts` as its publ
   two mazes of one size.
 - **`src/library`** reads the snapshot, the cache of a newer commit (`repo-cache.ts`, `github-updater.ts`), My mazes
   (`mine.ts`, a version per item, writes announced to other tabs), the local folder and the backup zip. `catalog.ts`
-  makes one entry per maze; `search.ts` and `library-filter.ts` filter them. `database.ts` is the small IndexedDB
+  makes one entry per maze, under the key `maze-key.ts` gives it (`repo:<path>`, `mine:<id>`, `folder:<file>`), which
+  the app uses everywhere; `search.ts` and `library-filter.ts` filter them. `database.ts` is the small IndexedDB
   wrapper under all of it.
 - **`src/render`** draws without React: `geometry.ts` and `board-placement.ts` place a board in the world,
   `track-layers.ts` and `overlay-layers.ts` give one SVG path per layer, `stroke.ts` turns a pointer path into walls,
