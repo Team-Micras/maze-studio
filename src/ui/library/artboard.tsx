@@ -5,17 +5,10 @@ import type { Maze } from '@/maze';
 import type { ThumbnailBand } from '@/render';
 import { ThumbnailCanvas } from '@/ui/board/thumbnail-canvas';
 import { Check } from '@/ui/icons';
+import { artboardLabel } from '@/ui/labels';
 import { cn } from '@/ui/primitives/utils';
 import { pushRoute } from '@/ui/navigation';
 import { routeHash, routeOfEntry } from '@/ui/routes';
-
-/** What a screen reader says for an artboard: `japan2011hef, Japan, 32 by 32` (DESIGN.md 13). */
-function artboardLabel(entry: CatalogEntry): string {
-  const size = `${entry.width} by ${entry.height}`;
-  return entry.competition === undefined
-    ? `${entry.name}, ${size}`
-    : `${entry.name}, ${entry.competition}, ${size}`;
-}
 
 /** The props of {@link Artboard}. */
 export interface ArtboardProps {

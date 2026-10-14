@@ -4,7 +4,8 @@
  * @module
  */
 
-import { keyOf, type CatalogEntry, type MineOrigin } from '@/library';
+import type { CatalogEntry, MineOrigin } from '@/library';
+import { keyOf } from '@/library/maze-key';
 import { decodeMazeCode, type Maze, type MazeTextSource, type Profile } from '@/maze';
 
 import { categoryLabel, sizeLabel } from './labels';
