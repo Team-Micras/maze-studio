@@ -53,6 +53,7 @@ describe('The library grid', () => {
     await mountApp();
 
     expect(scroller()?.scrollHeight).toBeGreaterThan(window.innerHeight * 10);
+    expect(getComputedStyle(scroller() ?? document.body).overscrollBehaviorY).toBe('contain');
     expect(artboards().length).toBeLessThanOrEqual((rowsOnScreen() + 1) * COLUMNS_AT_1440);
 
     await scrollTo(4000);

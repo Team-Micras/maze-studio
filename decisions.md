@@ -756,3 +756,15 @@ The machine's rule is no builds in `/tmp`, so `tests/e2e/pwa.test.ts` builds the
 - **Left as they are.** The grid's insets do not add the safe-area insets: a phone held sideways uses the notebook
   layout, whose 56 px sides clear a notch, and the phone layout's 14 px is portrait only; to revisit with the owner's
   test on a real phone.
+
+## 13/10/2026 — Owner feedback round 1, review
+
+- **A loose maze is dropped once the route leaves it.** A `.txt` or a new maze is shown while the URL stays where it
+  was opened; its first edit pushes `#/mine/<uuid>`. Leaving with Library or Back went back to that URL, where the
+  loose maze, still in `App`, showed again: with the library on `#/?src=mine` the editor stayed on it. `App` now
+  forgets the loose maze as soon as the hash is another one. The e2e covers `.txt` and new mazes, from `#/` and from
+  `#/?src=mine`, by the button and by Back.
+- **A new maze takes a name from its title before its first edit**: the draft is renamed in memory, and the copy of
+  the first edit keeps the name.
+- **The library's scroller has `overscroll-behavior-y: contain`**, so Android's pull-to-refresh no longer reloads the
+  app (the owner found it a nuisance).

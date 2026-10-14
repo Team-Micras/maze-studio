@@ -395,41 +395,83 @@ describe('The first edit of a maze that is not in My mazes', () => {
   });
 });
 
-describe('The Library button while editing', () => {
-  test.each([
-    ['a new maze', 'new'],
-    ['a .txt file', 'file'],
-  ] as const)('leaves %s once its first edit put it in My mazes', async (_name, kind) => {
+describe('A new maze before its first edit', () => {
+  test('takes a name from its title, which its copy in My mazes keeps', async () => {
     const page = await openPage(browser, contexts, app);
-    const { maze: classic } = await repoContent(CLASSIC);
-    const maze = kind === 'new' ? borderedMaze(16, 16) : classic;
-
-    if (kind === 'new') {
-      await page.getByRole('button', { name: 'New maze' }).click();
-      await page.getByRole('menuitem', { name: 'Training, 16 × 16' }).click();
-    } else {
-      const file = join(mkdtempSync(join(ROOT, 'node_modules', '.tmp', 'library-')), 'a.txt');
-      writeFileSync(file, repoText(CLASSIC));
-      await page.locator('input[data-open-file]').setInputFiles(file);
-    }
-
+    await page.getByRole('button', { name: 'New maze' }).first().click();
+    await page.getByRole('menuitem', { name: 'Training, 16 × 16' }).click();
     await waitForMode(page, 'editor');
+    await page.getByRole('button', { name: 'Untitled maze' }).click();
+    await page.getByRole('textbox', { name: 'Maze name' }).fill('Practice run');
+    await page.keyboard.press('Enter');
+
+    await expect.poll(() => page.locator('h1').textContent()).toBe('Practice run');
+    expect(new URL(page.url()).hash).toBe('#/');
+    const maze = borderedMaze(16, 16);
     const edge: Edge = { direction: 'horizontal', x: 4, y: 5 };
     const point = await pagePoint(page, maze, edgeMiddle(edge));
     await page.mouse.click(point.x, point.y);
-    await expectSaved(page, sameMaze(toggleWall(maze, edge)));
-    await page.getByRole('button', { name: 'Back to the library' }).click();
+    const saved = await expectSaved(page, sameMaze(toggleWall(maze, edge)));
 
-    await waitForMode(page, 'library');
-    await page.waitForTimeout(800);
-    expect(await page.locator('[data-studio-mode]').getAttribute('data-studio-mode')).toBe(
-      'library'
-    );
-    expect(new URL(page.url()).hash).toMatch(/^#\/(\?.*)?$/);
-    await page.goForward();
-    await page.waitForFunction(() => window.location.hash.startsWith('#/mine/'));
-    await waitForMode(page, 'editor');
+    expect(saved.name).toBe('Practice run');
+    expect(await page.locator('h1').textContent()).toBe('Practice run');
   });
+});
+
+describe('The Library button while editing', () => {
+  test.each(
+    (['new', 'file'] as const).flatMap((kind) =>
+      (['#/', '#/?src=mine'] as const).flatMap((start) =>
+        (['button', 'back'] as const).map((way) => ({ kind, start, way }))
+      )
+    )
+  )(
+    'leaves a $kind maze opened at $start by the $way once its first edit put it in My mazes',
+    async ({ kind, start, way }) => {
+      const page = await openPage(browser, contexts, app);
+
+      if (start !== '#/') {
+        await page.evaluate((hash) => {
+          window.location.hash = hash;
+        }, start);
+        await page.getByRole('heading', { name: 'Nothing in My mazes yet' }).waitFor();
+      }
+
+      const { maze: classic } = await repoContent(CLASSIC);
+      const maze = kind === 'new' ? borderedMaze(16, 16) : classic;
+
+      if (kind === 'new') {
+        await page.getByRole('button', { name: 'New maze' }).first().click();
+        await page.getByRole('menuitem', { name: 'Training, 16 × 16' }).click();
+      } else {
+        const file = join(mkdtempSync(join(ROOT, 'node_modules', '.tmp', 'library-')), 'a.txt');
+        writeFileSync(file, repoText(CLASSIC));
+        await page.locator('input[data-open-file]').setInputFiles(file);
+      }
+
+      await waitForMode(page, 'editor');
+      const edge: Edge = { direction: 'horizontal', x: 4, y: 5 };
+      const point = await pagePoint(page, maze, edgeMiddle(edge));
+      await page.mouse.click(point.x, point.y);
+      await expectSaved(page, sameMaze(toggleWall(maze, edge)));
+
+      if (way === 'button') {
+        await page.getByRole('button', { name: 'Back to the library' }).click();
+      } else {
+        await page.goBack();
+      }
+
+      await waitForMode(page, 'library');
+      await page.waitForTimeout(800);
+      expect(await page.locator('[data-studio-mode]').getAttribute('data-studio-mode')).toBe(
+        'library'
+      );
+      expect(new URL(page.url()).hash).toMatch(/^#\/(\?.*)?$/);
+      await page.goForward();
+      await page.waitForFunction(() => window.location.hash.startsWith('#/mine/'));
+      await waitForMode(page, 'editor');
+    }
+  );
 
   test('leaves a repository maze opened from the library after its first edit', async () => {
     const { maze } = await repoContent(CLASSIC);

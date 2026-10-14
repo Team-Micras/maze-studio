@@ -91,6 +91,10 @@ export function App() {
   const previous = useRef<Route>(route);
   const opening = openingOf(route, library, folder.restoring);
   const shownLoose = loose?.at === hash ? loose.open : undefined;
+
+  if (loose !== undefined && loose.at !== hash) {
+    setLoose(undefined);
+  }
   const [lastFilter, setLastFilter] = useState({ hash: '#/', filter: DEFAULT_FILTER });
 
   if (route.kind === 'library' && lastFilter.hash !== hash) {

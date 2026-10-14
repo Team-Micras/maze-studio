@@ -195,7 +195,7 @@ export function LibraryGrid({
   return (
     <div
       className={cn(
-        'fixed inset-0 overflow-x-hidden overflow-y-auto transition-opacity duration-200 ease-(--ease)',
+        'fixed inset-0 overflow-x-hidden overflow-y-auto overscroll-y-contain transition-opacity duration-200 ease-(--ease)',
         hidden && 'pointer-events-none opacity-0'
       )}
       data-hidden={hidden ? '' : undefined}
