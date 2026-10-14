@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useState } from 'react';
 
 import {
   clearArea,
@@ -12,21 +12,11 @@ import {
   type CellArea,
   type Maze,
 } from '@/maze';
-import {
-  boardGeometry,
-  cellOnScreen,
-  MIN_TOUCH_CELL,
-  mazePointAt,
-  nearestCell,
-  toWorld,
-  type ScreenPoint,
-  type WorldRect,
-} from '@/render';
+import { nearestCell, type ScreenPoint } from '@/render';
 import type { DrawInput, StageDrawing } from '@/ui/board/camera-stage';
-import type { CanvasCamera } from '@/ui/board/use-canvas-camera';
 
 import type { Tool } from './tools';
-import type { MazeEditor } from './use-maze-editor';
+import { useBoardGesture, type BoardGestureInput } from './use-board-gesture';
 
 /** The tools that work on cells rather than wall slots. */
 export type CellTool = Extract<Tool, 'rectangle' | 'clear' | 'start' | 'goal'>;
@@ -66,16 +56,9 @@ export function cellEdit(
   }
 }
 
-/** What a cell tool draws on. */
-export interface CellDrawingInput {
-  readonly editor: MazeEditor;
-  readonly camera: CanvasCamera;
-  readonly maze: Maze | undefined;
-  readonly board: WorldRect | undefined;
-  /** The cell tool picked, or none when another tool, or none at all, draws. */
+/** What a cell tool draws on: the cell tool picked, or none when another tool, or none, draws. */
+export interface CellDrawingInput extends Omit<BoardGestureInput, 'enabled'> {
   readonly tool: CellTool | undefined;
-  readonly onTooSmall: () => void;
-  readonly onPress: () => void;
 }
 
 /** A cell tool's gestures for the stage, and the cells it selects meanwhile. */
@@ -98,64 +81,38 @@ interface Gesture {
  * click adds or removes the cell; Shift with a drag is a plain drag. A touch on cells under 28 px
  * does not edit.
  */
-export function useCellDrawing({
-  editor,
-  camera,
-  maze,
-  board,
-  tool,
-  onTooSmall,
-  onPress,
-}: CellDrawingInput): CellDrawing {
+export function useCellDrawing({ tool, ...setup }: CellDrawingInput): CellDrawing {
+  const { editor } = setup;
   const [selection, setSelection] = useState<CellArea | undefined>(undefined);
-  const gesture = useRef<Gesture | undefined>(undefined);
-  const active = tool !== undefined && maze !== undefined && board !== undefined;
+  const gesture = useBoardGesture<Gesture>({ ...setup, enabled: tool !== undefined });
 
-  useEffect(() => {
-    if (!active && gesture.current !== undefined) {
-      gesture.current = undefined;
-      editor.end();
-    }
-  });
-
-  if (!active) {
+  if (gesture === undefined || tool === undefined) {
     return { drawing: undefined, selection: undefined };
   }
 
-  const geometry = boardGeometry(maze);
+  const { maze } = gesture;
 
   const cellAt = (point: ScreenPoint): Cell | undefined => {
-    const view = camera.camera;
-    return view === undefined
-      ? undefined
-      : nearestCell(maze, mazePointAt(geometry, board, toWorld(view, point)));
+    const at = gesture.mazePoint(point);
+    return at === undefined ? undefined : nearestCell(maze, at);
   };
 
   const begin = (point: ScreenPoint, input: DrawInput): boolean => {
-    const cell = cellAt(point);
-    const base = editor.current();
+    const current = gesture.begin(point, input, (at, base) => {
+      const cell = nearestCell(maze, at);
+      return { base, tool, anchor: cell, cell, shiftKey: input.shiftKey };
+    });
 
-    if (cell === undefined || base === undefined) {
+    if (current === undefined) {
       return false;
     }
 
-    if (
-      input.pointerType === 'touch' &&
-      cellOnScreen(geometry, board, camera.camera?.k ?? 0) < MIN_TOUCH_CELL
-    ) {
-      onTooSmall();
-      return false;
-    }
-
-    onPress();
-    editor.begin();
-    gesture.current = { base, tool, anchor: cell, cell, shiftKey: input.shiftKey };
-    setSelection(tool === 'start' ? undefined : { from: cell, to: cell });
+    setSelection(tool === 'start' ? undefined : { from: current.cell, to: current.cell });
     return true;
   };
 
   const move = (points: readonly ScreenPoint[]): void => {
-    const current = gesture.current;
+    const current = gesture.current();
     const last = points.at(-1);
     const cell = last === undefined ? undefined : cellAt(last);
 
@@ -168,8 +125,7 @@ export function useCellDrawing({
   };
 
   const end = (): void => {
-    const current = gesture.current;
-    gesture.current = undefined;
+    const current = gesture.finish();
     setSelection(undefined);
 
     if (current !== undefined) {
@@ -182,7 +138,7 @@ export function useCellDrawing({
   };
 
   const cancel = (): void => {
-    gesture.current = undefined;
+    gesture.finish();
     setSelection(undefined);
     editor.cancel();
   };

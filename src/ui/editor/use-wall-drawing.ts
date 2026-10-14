@@ -1,42 +1,19 @@
-import { useEffect, useRef, useState } from 'react';
+import { useState } from 'react';
 
 import { hasWall, type Edge, type Maze } from '@/maze';
 import {
   applyStroke,
   beginStroke,
-  boardGeometry,
-  cellOnScreen,
   extendStroke,
-  MIN_TOUCH_CELL,
-  mazePointAt,
   nearestEdge,
-  toWorld,
   type EdgePreview,
   type MazePoint,
   type ScreenPoint,
   type Stroke,
-  type WorldRect,
 } from '@/render';
 import type { DrawInput, StageDrawing } from '@/ui/board/camera-stage';
-import type { CanvasCamera } from '@/ui/board/use-canvas-camera';
 
-import type { MazeEditor } from './use-maze-editor';
-
-/** What the wall tool draws on. */
-export interface WallDrawingInput {
-  readonly editor: MazeEditor;
-  readonly camera: CanvasCamera;
-  /** The maze on screen, if any. */
-  readonly maze: Maze | undefined;
-  /** Where its board lies in the world. */
-  readonly board: WorldRect | undefined;
-  /** Whether the wall tool draws now. */
-  readonly enabled: boolean;
-  /** Called when a touch lands on cells too small to edit by touch. */
-  readonly onTooSmall: () => void;
-  /** Called when a gesture starts, which hides the keyboard cursor. */
-  readonly onPress: () => void;
-}
+import { useBoardGesture, type BoardGestureInput } from './use-board-gesture';
 
 /** The wall tool's gestures for the stage, and the edge it previews. */
 export interface WallDrawing {
@@ -66,36 +43,16 @@ function sameEdge(left: Edge | undefined, right: Edge | undefined): boolean {
  * second finger that starts a pinch leaves nothing behind. A touch on cells under 28 px does not
  * edit.
  */
-export function useWallDrawing({
-  editor,
-  camera,
-  maze,
-  board,
-  enabled,
-  onTooSmall,
-  onPress,
-}: WallDrawingInput): WallDrawing {
+export function useWallDrawing(setup: BoardGestureInput): WallDrawing {
+  const { editor } = setup;
   const [preview, setPreview] = useState<EdgePreview | undefined>(undefined);
-  const gesture = useRef<Gesture | undefined>(undefined);
-  const active = enabled && maze !== undefined && board !== undefined;
+  const gesture = useBoardGesture<Gesture>(setup);
 
-  useEffect(() => {
-    if (!active && gesture.current !== undefined) {
-      gesture.current = undefined;
-      editor.end();
-    }
-  });
-
-  if (!active) {
+  if (gesture === undefined) {
     return { drawing: undefined, preview: undefined };
   }
 
-  const geometry = boardGeometry(maze);
-
-  const mazePoint = (point: ScreenPoint): MazePoint | undefined => {
-    const view = camera.camera;
-    return view === undefined ? undefined : mazePointAt(geometry, board, toWorld(view, point));
-  };
+  const { maze } = gesture;
 
   const showPreview = (next: EdgePreview | undefined): void => {
     setPreview((before) =>
@@ -121,28 +78,20 @@ export function useWallDrawing({
   };
 
   const begin = (point: ScreenPoint, input: DrawInput): boolean => {
-    const at = mazePoint(point);
-    const base = editor.current();
     const touch = input.pointerType === 'touch';
+    const current = gesture.begin(point, input, (at, base) => {
+      const made: Gesture = { base, touch, stroke: undefined, applied: false };
+      reach(made, at, input.shiftKey);
+      return made;
+    });
 
-    if (at === undefined || base === undefined) {
+    if (current === undefined) {
       return false;
     }
-
-    if (touch && cellOnScreen(geometry, board, camera.camera?.k ?? 0) < MIN_TOUCH_CELL) {
-      onTooSmall();
-      return false;
-    }
-
-    onPress();
-    editor.begin();
-    const current: Gesture = { base, touch, stroke: undefined, applied: false };
-    gesture.current = current;
-    reach(current, at, input.shiftKey);
 
     if (touch) {
       const edge = current.stroke?.edges[0];
-      showPreview(edge === undefined ? undefined : { edge, removes: hasWall(base, edge) });
+      showPreview(edge === undefined ? undefined : { edge, removes: hasWall(current.base, edge) });
     } else {
       showPreview(undefined);
       apply(current);
@@ -152,7 +101,7 @@ export function useWallDrawing({
   };
 
   const move = (points: readonly ScreenPoint[], input: DrawInput): void => {
-    const current = gesture.current;
+    const current = gesture.current();
 
     if (current === undefined) {
       return;
@@ -161,7 +110,7 @@ export function useWallDrawing({
     const before = current.stroke;
 
     for (const point of points) {
-      const at = mazePoint(point);
+      const at = gesture.mazePoint(point);
 
       if (at !== undefined) {
         reach(current, at, input.shiftKey);
@@ -175,8 +124,7 @@ export function useWallDrawing({
   };
 
   const end = (): void => {
-    const current = gesture.current;
-    gesture.current = undefined;
+    const current = gesture.finish();
 
     if (current !== undefined && !current.applied) {
       apply(current);
@@ -187,13 +135,13 @@ export function useWallDrawing({
   };
 
   const cancel = (): void => {
-    gesture.current = undefined;
+    gesture.finish();
     showPreview(undefined);
     editor.cancel();
   };
 
   const hover = (point: ScreenPoint | undefined): void => {
-    const at = point === undefined ? undefined : mazePoint(point);
+    const at = point === undefined ? undefined : gesture.mazePoint(point);
     const edge = at === undefined ? undefined : nearestEdge(maze, at);
     showPreview(edge === undefined ? undefined : { edge, removes: hasWall(maze, edge) });
   };
