@@ -308,7 +308,7 @@ export async function updateFromGitHub(
         status: 'failed',
         reason: error.reason,
         message: error.message,
-        ...(error.retryAt === undefined ? {} : { retryAt: error.retryAt }),
+        retryAt: error.retryAt,
       };
     }
 

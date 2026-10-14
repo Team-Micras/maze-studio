@@ -45,7 +45,7 @@ export function EditControls({
         <ToolsIsland
           {...tools}
           className="max-[720px]:bottom-[max(10px,env(safe-area-inset-bottom))]"
-          {...(tools.phone || touchMode ? { onView } : {})}
+          onView={tools.phone || touchMode ? onView : undefined}
         />
       )}
       {tools.editable ? null : (

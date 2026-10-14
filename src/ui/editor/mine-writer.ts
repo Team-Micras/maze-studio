@@ -242,7 +242,7 @@ export class MineWriter {
       maze: history.present,
       trailer: opened.document.trailer,
       profile,
-      ...(opened.document.origin === undefined ? {} : { origin: opened.document.origin }),
+      origin: opened.document.origin,
     });
     const copy = { id: item.id, version: item.version, name: item.name };
     this.#copies.set(opened, copy);

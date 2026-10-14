@@ -1,9 +1,14 @@
 import { isLibrarySource, type LibraryCategory, type LibrarySource } from '@/library';
 import { Hint } from '@/ui/islands/island';
-
-import { folderHint } from './folder-hint';
 import { ToggleGroup, ToggleGroupItem } from '@/ui/primitives/toggle-group';
 import { cn } from '@/ui/primitives/utils';
+
+/** What the Folder source's tooltip says: the folder's name, and the files it skipped. */
+function folderHint(folder: { readonly name: string; readonly skipped: number }): string {
+  return folder.skipped === 0
+    ? folder.name
+    : `${folder.name}, ${folder.skipped} file${folder.skipped === 1 ? '' : 's'} skipped`;
+}
 
 const SEGMENT =
   'h-9 flex-none rounded-[10px] px-2.5 text-[13px] font-medium text-muted-foreground hover:bg-accent hover:text-foreground data-[state=on]:bg-accent data-[state=on]:text-foreground data-[state=on]:shadow-[inset_0_0_0_1px_var(--border)] aria-checked:bg-accent aria-checked:text-foreground aria-checked:shadow-[inset_0_0_0_1px_var(--border)] max-[720px]:h-10';

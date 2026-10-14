@@ -30,7 +30,7 @@ async function mount(phone = false): Promise<Mounted> {
           onUndo={() => undefined}
           phone={phone}
           tool="wall"
-          {...(phone ? { onView: () => undefined } : {})}
+          onView={phone ? () => undefined : undefined}
         />
       </footer>
     </TooltipProvider>

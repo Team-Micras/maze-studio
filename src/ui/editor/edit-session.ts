@@ -50,7 +50,7 @@ export function openSession(opened: OpenMaze): EditSession {
     opened,
     history: createHistory(opened.maze, { equals: mazesEqual }),
     profile: opened.document.profile,
-    ...(mine === undefined ? {} : { mine: { ...mine, name: opened.name } }),
+    mine: mine && { ...mine, name: opened.name },
   };
 }
 
@@ -90,8 +90,8 @@ export function sessionView(session: EditSession): OpenMaze {
     document: {
       ...document,
       profile: session.profile,
-      ...(mine === undefined ? {} : { mine: { id: mine.id, version: mine.version } }),
-      ...(source !== undefined && mazesEqual(history.present, opened.maze) ? { source } : {}),
+      mine: mine && { id: mine.id, version: mine.version },
+      source: source !== undefined && mazesEqual(history.present, opened.maze) ? source : undefined,
     },
   };
 }

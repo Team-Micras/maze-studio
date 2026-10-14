@@ -13,7 +13,7 @@ import {
   type Insets,
   type WorldRect,
 } from '@/render';
-import type { CanvasCamera } from '@/ui/board/use-canvas-camera';
+import { prefersReducedMotion, type CanvasCamera } from '@/ui/board/use-canvas-camera';
 import { focusArtboard, libraryScroller } from '@/ui/library/library-scroller';
 import type { OpenMaze } from '@/ui/open-maze';
 
@@ -47,10 +47,6 @@ export interface StudioFlightInput {
 export interface StudioFlight {
   /** Notes the kind of pointer that pressed an artboard, which decides view mode. */
   readonly notePointer: (pointerType: string) => void;
-}
-
-function prefersReducedMotion(): boolean {
-  return window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 }
 
 /** Where the thumbnail of the artboard `key` is on screen, if it is mounted. */

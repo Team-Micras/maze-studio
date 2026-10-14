@@ -81,7 +81,7 @@ function library({ commit, files, mine }: Loaded, folder: FolderContents | undef
         document: {
           profile: item.profile,
           mine: { id: item.id, version: item.version },
-          ...(item.origin === undefined ? {} : { origin: item.origin }),
+          origin: item.origin,
         },
       },
     ]),
@@ -94,7 +94,7 @@ function library({ commit, files, mine }: Loaded, folder: FolderContents | undef
         document: {
           trailer: file.text.trailer,
           profile: 'free',
-          ...(file.text.source === undefined ? {} : { source: file.text.source }),
+          source: file.text.source,
         },
       },
     ])
@@ -127,7 +127,7 @@ function library({ commit, files, mine }: Loaded, folder: FolderContents | undef
     commit,
     repoCount: repoEntries.length,
     mineCount: mineEntries.length,
-    ...(folder === undefined ? {} : { folder: { name: folder.name, skipped: folder.skipped } }),
+    folder: folder && { name: folder.name, skipped: folder.skipped },
     mazeOf: (key) => decode(key)?.maze,
     documentOf: (key) => decode(key)?.document,
   };

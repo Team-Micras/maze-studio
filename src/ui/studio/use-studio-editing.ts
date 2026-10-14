@@ -147,7 +147,7 @@ export function useStudioEditing({
       : validateMaze({
           maze,
           profile: onScreen.document.profile,
-          ...(onScreen.document.source === undefined ? {} : { source: onScreen.document.source }),
+          source: onScreen.document.source,
         });
   const selected =
     onScreen !== undefined && state.finding?.maze === onScreen.key ? state.finding.key : undefined;
@@ -161,7 +161,7 @@ export function useStudioEditing({
     onTool: pickTool,
     onCloseBorder: editable ? closeBorder : () => undefined,
     onToggleDiff,
-    ...(coarse ? {} : { onHelp: openHelp }),
+    onHelp: coarse ? undefined : openHelp,
   });
 
   const reveal = (finding: Finding): void => {
@@ -204,12 +204,10 @@ export function useStudioEditing({
     drawing: wall.drawing ?? cells.drawing,
     overlays: {
       cursor: boardKeys.cursor,
-      ...(wall.preview === undefined ? {} : { preview: wall.preview }),
-      ...((cells.selection ?? boardKeys.selection) === undefined
-        ? {}
-        : { selection: cells.selection ?? boardKeys.selection }),
-      ...(focused === undefined ? {} : { focus: focused }),
-      ...(diff === undefined ? {} : { diff }),
+      preview: wall.preview,
+      selection: cells.selection ?? boardKeys.selection,
+      focus: focused,
+      diff,
     },
     cursor: boardKeys.cursor,
     drawingTool: wall.drawing !== undefined || cells.drawing !== undefined,
@@ -256,7 +254,7 @@ export function useStudioEditing({
       editable,
       onCloseBorder: closeBorder,
       onChanges,
-      ...(coarse ? {} : { onHelp: openHelp }),
+      onHelp: coarse ? undefined : openHelp,
     },
     help: {
       open: state.helpOpen,

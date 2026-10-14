@@ -1,7 +1,13 @@
-import type { Cell, Maze } from '@/maze';
+import { edgeOfCell, hasWall, type Cell, type CellSide, type Maze } from '@/maze';
 import { cn } from '@/ui/primitives/utils';
 
-import { cursorStatusText } from './cursor-status-text';
+const SIDES: readonly CellSide[] = ['north', 'east', 'south', 'west'];
+
+/** What the cursor status says about a cell: `Cell (4, 13)  walls north, west`. */
+function cursorStatusText(maze: Maze, cell: Cell): string {
+  const walls = SIDES.filter((side) => hasWall(maze, edgeOfCell(cell, side)));
+  return `Cell (${cell.x}, ${cell.y})  ${walls.length === 0 ? 'no walls' : `walls ${walls.join(', ')}`}`;
+}
 
 /** The props of {@link CursorStatus}. */
 export interface CursorStatusProps {

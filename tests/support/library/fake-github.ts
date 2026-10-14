@@ -50,7 +50,7 @@ export async function state(files: Record<string, string>, etag?: string): Promi
   const entries = await Promise.all(
     Object.entries(files).map(([path, text]) => repoFile(path, text))
   );
-  return { commit: OLD_COMMIT, files: entries, ...(etag === undefined ? {} : { etag }) };
+  return { commit: OLD_COMMIT, files: entries, etag };
 }
 
 /**

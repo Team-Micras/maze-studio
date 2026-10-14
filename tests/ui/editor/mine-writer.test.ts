@@ -29,7 +29,7 @@ function opened(name: string, mine?: { id: string; version: number }): OpenMaze 
     maze: EMPTY,
     name,
     detail: '',
-    document: { trailer: '', profile: 'classic', ...(mine === undefined ? {} : { mine }) },
+    document: { trailer: '', profile: 'classic', mine },
   };
 }
 

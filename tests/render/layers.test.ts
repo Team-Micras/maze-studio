@@ -104,7 +104,7 @@ describe('overlayLayers', () => {
       { x: 1, y: 0 }
     );
     const diff = diffMazes(maze, after);
-    const layers = draw(diff === undefined ? {} : { diff });
+    const layers = draw({ diff });
 
     expect(shapes(layers.diff.added)).toBe(1);
     expect(shapes(layers.diff.marked)).toBe(2 + 1);
@@ -114,7 +114,7 @@ describe('overlayLayers', () => {
   test('rings no start when the start stayed', () => {
     const after = setWall(maze, { direction: 'vertical', x: 2, y: 0 }, true);
     const diff = diffMazes(maze, after);
-    const layers = draw(diff === undefined ? {} : { diff });
+    const layers = draw({ diff });
 
     expect(layers.diff.marked).toBe('');
     expect(layers.diff.dashed).toBe('');

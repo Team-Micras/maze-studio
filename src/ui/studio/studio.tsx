@@ -22,6 +22,7 @@ import { changeOf, sessionChanges, type ChangeItem } from '@/ui/changes/session-
 import { Checks } from '@/ui/editor/checks';
 import { EditControls } from '@/ui/editor/edit-controls';
 import { MoreActions } from '@/ui/editor/more-actions';
+import { typingIn } from '@/ui/editor/use-editor-shortcuts';
 import { RenameDialog } from '@/ui/editor/rename-dialog';
 import { ShortcutHelp } from '@/ui/editor/shortcut-help';
 import { CopyLinkButton, TitleActions } from '@/ui/editor/title-actions';
@@ -30,7 +31,6 @@ import { useWriting } from '@/ui/editor/use-writing';
 import { useCoarsePointer, usePhoneLayout } from '@/ui/hooks/use-media-query';
 import { EmptyLibrary } from '@/ui/library/empty-library';
 import type { MineAndFilesActions } from '@/ui/library/mine-and-files';
-import { emptyTitle } from '@/ui/library/empty-title';
 import { LibraryGrid } from '@/ui/library/library-grid';
 import { libraryScroller } from '@/ui/library/library-scroller';
 import { LibraryChrome } from '@/ui/library/library-chrome';
@@ -40,7 +40,6 @@ import { cn } from '@/ui/primitives/utils';
 import { useTheme } from '@/ui/theme';
 import type { NewMazeRequest } from '@/ui/new-maze';
 import { routeOfEntry, type Route } from '@/ui/routes';
-import { typingIn } from '@/ui/typing-in';
 
 import { EditorChrome } from './editor-chrome';
 import { listOrder, steppedKey } from './list-order';
@@ -138,6 +137,13 @@ export function Studio({
   const editorInsets = editorInsetsFor(phone, state.viewing);
   const shown = library === undefined ? [] : filterCatalog(library.entries, filter, library.index);
   const { mode } = state;
+  const mineIsEmpty = filter.source === 'mine' && library?.mineCount === 0;
+  const emptyTitle =
+    library !== undefined && mode === 'library' && shown.length === 0
+      ? mineIsEmpty
+        ? 'Nothing in My mazes yet'
+        : 'No mazes match'
+      : undefined;
 
   const previewEntry =
     state.preview !== undefined && state.preview !== opened?.key
@@ -332,17 +338,16 @@ export function Studio({
             <OpenBoard maze={preparedMaze} rect={boardOf(preparedMaze)} shown={false} />
           )}
         </CameraStage>
-        {library !== undefined && mode === 'library' && shown.length === 0 ? (
+        {emptyTitle === undefined ? null : (
           <EmptyLibrary
-            mineIsEmpty={filter.source === 'mine' && library.mineCount === 0}
+            mineIsEmpty={mineIsEmpty}
             newName={newName}
             onNew={onNew}
+            title={emptyTitle}
           />
-        ) : null}
+        )}
         <p aria-live="polite" className="sr-only">
-          {library !== undefined && mode === 'library' && shown.length === 0
-            ? emptyTitle(filter.source === 'mine' && library.mineCount === 0)
-            : ''}
+          {emptyTitle ?? ''}
         </p>
       </main>
       <LibraryChrome

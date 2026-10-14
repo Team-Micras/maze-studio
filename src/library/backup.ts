@@ -139,7 +139,7 @@ export function exportMine(items: readonly MineMaze[], now: Date = new Date()): 
     name: item.name,
     profile: item.profile,
     createdAt: item.createdAt,
-    ...(item.origin === undefined ? {} : { origin: item.origin }),
+    origin: item.origin,
   }));
   const zip = writeZip(
     [
@@ -171,8 +171,8 @@ function draftOf(file: ImportFile, indexed: IndexEntry | undefined): MineDraft |
     maze: parsed.value.maze,
     trailer: parsed.value.trailer,
     profile: indexed?.profile ?? 'free',
-    ...(indexed?.origin === undefined ? {} : { origin: indexed.origin }),
-    ...(indexed === undefined ? {} : { createdAt: indexed.createdAt }),
+    origin: indexed?.origin,
+    createdAt: indexed?.createdAt,
   };
 }
 

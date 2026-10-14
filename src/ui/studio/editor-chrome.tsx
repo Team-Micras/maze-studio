@@ -2,15 +2,21 @@ import { SidebarSimple, SquaresFour } from '@/ui/icons';
 import { useDeferredValue, type ReactNode } from 'react';
 
 import type { Cell } from '@/maze';
-import { MINIMAP_SIZE, type WorldRect } from '@/render';
+import { MINIMAP_SIZE, zoomOf, type WorldRect } from '@/render';
 import { CursorStatus } from '@/ui/board/cursor-status';
 import { Minimap } from '@/ui/board/minimap';
 import type { CanvasCamera } from '@/ui/board/use-canvas-camera';
 import { Hint, Island, IslandButton } from '@/ui/islands/island';
 import { ZoomIsland } from '@/ui/islands/zoom-island';
-import { zoomPercent } from '@/ui/islands/zoom-percent';
 import { TitleName, type TitleRename } from '@/ui/editor/title-name';
 import type { OpenMaze } from '@/ui/open-maze';
+
+/** The camera's zoom as a whole percentage of the fit; 100 before the camera is measured. */
+function zoomPercent({ camera, limits }: Pick<CanvasCamera, 'camera' | 'limits'>): number {
+  return camera === undefined || limits === undefined
+    ? 100
+    : Math.round(zoomOf(camera, limits) * 100);
+}
 
 /** The minimap's longest side on a phone. */
 const PHONE_MINIMAP_SIZE = 108;

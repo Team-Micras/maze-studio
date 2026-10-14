@@ -178,7 +178,7 @@ export class MineLibrary {
       createdAt: draft.createdAt ?? now,
       updatedAt: now,
       version: 1,
-      ...(draft.origin === undefined ? {} : { origin: draft.origin }),
+      origin: draft.origin,
     };
     await this.#database.put('mine', item);
     this.#announce();

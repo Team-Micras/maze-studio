@@ -99,7 +99,7 @@ export function useMazeActions({
           downloadText(downloadName(open), mazeFileText(open));
         }
       },
-      ...(phone ? { onCopyLink: copyLink } : {}),
+      onCopyLink: phone ? copyLink : undefined,
       ...(phone && canShare() && open !== undefined
         ? {
             onShare: () => {
@@ -117,7 +117,7 @@ export function useMazeActions({
           }),
     },
     title: {
-      ...(editor.canSaveToMine ? { onSaveToMine: editor.saveToMine } : {}),
+      onSaveToMine: editor.canSaveToMine ? editor.saveToMine : undefined,
       ...(folderFile === undefined || open === undefined
         ? {}
         : { folderFile, onSaveToFolder: () => onSaveToFolder(folderFile, mazeFileText(open)) }),

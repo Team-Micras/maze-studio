@@ -107,7 +107,8 @@ export interface CanvasCamera {
   readonly wheel: (input: WheelInput, at: ScreenPoint) => void;
 }
 
-function prefersReducedMotion(): boolean {
+/** Whether the user asks for reduced motion, which skips the camera's animations. */
+export function prefersReducedMotion(): boolean {
   return window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 }
 

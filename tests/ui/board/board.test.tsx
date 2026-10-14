@@ -76,7 +76,7 @@ function edited(maze: Maze): { after: Maze; overlays: BoardOverlays } {
   return {
     after,
     overlays: {
-      ...(diff === undefined ? {} : { diff }),
+      diff,
       focus: {
         cells: [],
         edges: [{ direction: 'horizontal', x: 4, y: 7 }],

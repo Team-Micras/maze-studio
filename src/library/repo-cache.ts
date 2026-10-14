@@ -83,7 +83,7 @@ export class RepoCache {
         source: 'github',
         commit: meta.commit,
         files,
-        ...(meta.etag === undefined ? {} : { etag: meta.etag }),
+        etag: meta.etag,
       };
     }
 
@@ -108,8 +108,8 @@ export class RepoCache {
     const result = await updateFromGitHub(copy, this.#fetch);
     const checked: RepoMeta = {
       ...(copy.source === 'github' ? { commit: copy.commit, snapshotCommit: snapshot.commit } : {}),
-      ...(meta.skipped === undefined ? {} : { skipped: meta.skipped }),
-      ...(copy.etag === undefined ? {} : { etag: copy.etag }),
+      skipped: meta.skipped,
+      etag: copy.etag,
       checkedAt: now,
     };
 
@@ -117,7 +117,7 @@ export class RepoCache {
       const updated: RepoMeta = {
         commit: result.state.commit,
         snapshotCommit: snapshot.commit,
-        ...(result.state.etag === undefined ? {} : { etag: result.state.etag }),
+        etag: result.state.etag,
         checkedAt: now,
         skipped: result.skipped,
       };
@@ -127,14 +127,14 @@ export class RepoCache {
         writer.put('settings', updated, META);
       });
     } else if (result.status === 'unchanged') {
-      await this.#save({ ...checked, ...(result.etag === undefined ? {} : { etag: result.etag }) });
+      await this.#save({ ...checked, etag: result.etag ?? checked.etag });
     } else {
       await this.#save({
         ...checked,
         error: {
           reason: result.reason,
           message: result.message,
-          ...(result.retryAt === undefined ? {} : { retryAt: result.retryAt }),
+          retryAt: result.retryAt,
         },
       });
     }

@@ -118,9 +118,11 @@ function Row({ row, onOpen, onKeep, onDiscard }: RowProps) {
             height={ROW_THUMBNAIL}
             maze={current}
             width={ROW_THUMBNAIL}
-            {...(diff === undefined || item.baseline === undefined
-              ? {}
-              : { diff: { diff, key: encodeMazeCode(item.baseline) } })}
+            diff={
+              diff === undefined || item.baseline === undefined
+                ? undefined
+                : { diff, key: encodeMazeCode(item.baseline) }
+            }
           />
         )}
       </span>

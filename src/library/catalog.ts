@@ -79,7 +79,7 @@ export function mineCatalog(items: readonly MineMaze[]): CatalogEntry[] {
             width: decoded.value.maze.width,
             height: decoded.value.maze.height,
             id: item.id,
-            ...(item.origin === undefined ? {} : { path: item.origin.path }),
+            path: item.origin?.path,
           },
         ]
       : [];

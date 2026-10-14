@@ -142,7 +142,7 @@ export function App() {
 
   useEffect(() => {
     if (missing !== undefined) {
-      showToast(missing, missingName === undefined ? {} : { verbatim: missingName });
+      showToast(missing, { verbatim: missingName });
       replaceRoute(lastLibrary.current);
     }
   }, [missing, missingName]);
@@ -183,7 +183,7 @@ export function App() {
             item.id,
             {
               maze: item.baseline,
-              ...(item.baselineProfile === undefined ? {} : { profile: item.baselineProfile }),
+              profile: item.baselineProfile,
             },
             editor.savedVersion(item.id) ?? stored.version
           );
@@ -274,7 +274,7 @@ export function App() {
         detail: 'Opened from a file',
         document: {
           ...looseDocument(parsed.value.trailer),
-          ...(parsed.value.source === undefined ? {} : { source: parsed.value.source }),
+          source: parsed.value.source,
         },
       }));
     } else {
@@ -311,7 +311,7 @@ export function App() {
           onExportAll: () => void backup.exportAll(),
           onImport: (files) => void importFiles(files),
           onCheckUpdates: updates.checkNow,
-          ...(folder.supported ? { onOpenFolder: () => void openFolder() } : {}),
+          onOpenFolder: folder.supported ? () => void openFolder() : undefined,
         }}
         updateNote={library === undefined ? undefined : updateNote(updates.status, library.commit)}
         onPin={replaceRoute}
