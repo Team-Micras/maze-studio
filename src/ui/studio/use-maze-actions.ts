@@ -45,8 +45,8 @@ export function useMazeActions({
   readonly phone: boolean;
   /** Writes `text` over the folder's `fileName`. */
   readonly onSaveToFolder: (fileName: string, text: string) => void;
-  /** Deletes the maze of My mazes `id` and opens the library on My mazes. */
-  readonly onDelete: (id: string) => void;
+  /** Deletes the mazes of My mazes `ids` and opens the library on My mazes. */
+  readonly onDelete: (ids: readonly string[]) => void;
   /** Every name in My mazes, with this maze's own. */
   readonly mineNames: readonly string[];
 }) {
@@ -124,7 +124,7 @@ export function useMazeActions({
         ? {}
         : {
             onRename: () => store.setState({ renameOpen: true }),
-            onDelete: () => onDelete(mineId),
+            onDelete: () => onDelete([mineId]),
           }),
     },
     title:

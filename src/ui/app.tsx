@@ -171,10 +171,15 @@ export function App() {
     }
   };
 
-  const deleteMine = async (id: string): Promise<void> => {
-    sessionChanges.setState((before) => withoutChange(before, id));
+  const deleteMine = async (ids: readonly string[]): Promise<void> => {
+    sessionChanges.setState((before) => ids.reduce(withoutChange, before));
     replaceRoute({ kind: 'library', filter: MINE_FILTER });
-    await (await appStorage())?.mine.remove(id);
+    const mine = (await appStorage())?.mine;
+
+    if (mine !== undefined) {
+      await Promise.all(ids.map((id) => mine.remove(id)));
+    }
+
     reloadLibrary();
   };
 
@@ -260,7 +265,7 @@ export function App() {
             replaceRoute(source ?? lastLibrary);
           })
         }
-        onDelete={(id) => void deleteMine(id)}
+        onDelete={(ids) => void deleteMine(ids)}
         onSaveToFolder={(fileName, text) => void saveToFolder(fileName, text)}
         files={{
           onExportAll: () => void backup.exportAll(),

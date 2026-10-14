@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState, type FocusEvent } from 'react';
 
-import type { CatalogEntry } from '@/library';
+import { mineIdOf, type CatalogEntry } from '@/library';
 import {
   libraryLayout,
   libraryRect,
@@ -12,6 +12,7 @@ import {
   type RowRange,
 } from '@/render';
 import { useDevicePixelRatio } from '@/ui/board/use-device-pixel-ratio';
+import { Island, IslandButton } from '@/ui/islands/island';
 import { cn } from '@/ui/primitives/utils';
 
 import { Artboard } from './artboard';
@@ -27,6 +28,8 @@ export interface LibraryGridProps {
   readonly hidden: boolean;
   /** The artboard the board flies from or onto, hidden until the board gives way to it. */
   readonly inFlight?: string | undefined;
+  /** Deletes mazes of My mazes by id; given only where the grid shows My mazes, which a held press then selects. */
+  readonly onDelete?: ((ids: readonly string[]) => void) | undefined;
   /** Hands on the kind of pointer that pressed the grid, and the key of the artboard pressed. */
   readonly onArtboardPointer?: (pointerType: string, key: string | undefined) => void;
 }
@@ -89,11 +92,55 @@ export function LibraryGrid({
   phone,
   hidden,
   inFlight,
+  onDelete,
   onArtboardPointer,
 }: LibraryGridProps) {
   const [scroller, setScroller] = useState<HTMLElement | null>(null);
   const [view, setView] = useState<View>({ width: 0, rows: { first: 0, last: -1 } });
   const [focused, setFocused] = useState<string | undefined>(undefined);
+  const [selected, setSelected] = useState<ReadonlySet<string> | undefined>(undefined);
+  const [armed, setArmed] = useState(false);
+  const selecting = selected !== undefined;
+
+  if (selecting && (onDelete === undefined || hidden)) {
+    setSelected(undefined);
+  }
+
+  const hold = useCallback((key: string) => {
+    setSelected(new Set([key]));
+    setArmed(false);
+  }, []);
+  const toggle = useCallback((key: string) => {
+    setArmed(false);
+    setSelected((before) => {
+      const next = new Set(before);
+
+      if (!next.delete(key)) {
+        next.add(key);
+      }
+
+      return next;
+    });
+  }, []);
+  const stopSelecting = (): void => {
+    setSelected(undefined);
+    setArmed(false);
+  };
+
+  useEffect(() => {
+    if (!selecting) {
+      return undefined;
+    }
+
+    const onKey = (event: KeyboardEvent): void => {
+      if (event.key === 'Escape') {
+        setSelected(undefined);
+        setArmed(false);
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [selecting]);
   const ratio = useDevicePixelRatio();
   const count = entries.length;
   const layout = libraryLayout(view.width, phone ? 'phone' : 'notebook', count);
@@ -196,55 +243,91 @@ export function LibraryGrid({
         });
 
   return (
-    <div
-      className={cn(
-        'fixed inset-0 overflow-x-hidden overflow-y-auto overscroll-y-contain transition-opacity duration-200 ease-(--ease)',
-        hidden && 'pointer-events-none opacity-0'
-      )}
-      data-hidden={hidden ? '' : undefined}
-      data-library-scroller=""
-      inert={hidden}
-      ref={setScroller}
-    >
-      <section
-        aria-label="Maze library"
-        className="relative"
-        data-library-grid=""
-        style={{ height: layout.height }}
+    <>
+      <div
+        className={cn(
+          'fixed inset-0 overflow-x-hidden overflow-y-auto overscroll-y-contain transition-opacity duration-200 ease-(--ease)',
+          hidden && 'pointer-events-none opacity-0'
+        )}
+        data-hidden={hidden ? '' : undefined}
+        data-library-scroller=""
+        inert={hidden}
+        ref={setScroller}
       >
-        <div
-          onBlur={(event) => {
-            if (!event.currentTarget.contains(event.relatedTarget)) {
-              setFocused(undefined);
-            }
-          }}
-          onPointerDownCapture={(event) =>
-            onArtboardPointer?.(
-              event.pointerType,
-              event.target instanceof Element
-                ? (event.target.closest('a[data-artboard]')?.getAttribute('data-artboard') ??
-                    undefined)
-                : undefined
-            )
-          }
+        <section
+          aria-label="Maze library"
+          className="relative"
+          data-library-grid=""
+          style={{ height: layout.height }}
         >
-          {mounted.map(({ entry, maze, rect }) => (
-            <Artboard
-              band={band}
-              concealed={entry.key === inFlight}
-              entry={entry}
-              height={rect.height}
-              key={entry.key}
-              maze={maze}
-              onFocus={reveal}
-              slot={layout.side}
-              width={rect.width}
-              x={rect.x}
-              y={rect.y}
-            />
-          ))}
-        </div>
-      </section>
-    </div>
+          <div
+            onBlur={(event) => {
+              if (!event.currentTarget.contains(event.relatedTarget)) {
+                setFocused(undefined);
+              }
+            }}
+            onPointerDownCapture={(event) =>
+              onArtboardPointer?.(
+                event.pointerType,
+                event.target instanceof Element
+                  ? (event.target.closest('a[data-artboard]')?.getAttribute('data-artboard') ??
+                      undefined)
+                  : undefined
+              )
+            }
+          >
+            {mounted.map(({ entry, maze, rect }) => (
+              <Artboard
+                band={band}
+                concealed={entry.key === inFlight}
+                entry={entry}
+                height={rect.height}
+                key={entry.key}
+                maze={maze}
+                onFocus={reveal}
+                onHold={onDelete === undefined ? undefined : hold}
+                onToggle={toggle}
+                selected={selected?.has(entry.key) === true}
+                selecting={selecting}
+                slot={layout.side}
+                width={rect.width}
+                x={rect.x}
+                y={rect.y}
+              />
+            ))}
+          </div>
+        </section>
+      </div>
+      {selected === undefined || onDelete === undefined ? null : (
+        <Island
+          aria-label="Selection"
+          className="fixed bottom-safe-6 left-1/2 z-20 h-11 -translate-x-1/2 gap-1 pl-3 text-[13px]"
+          role="toolbar"
+        >
+          <span aria-live="polite" className="pr-2 tabular-nums">
+            {selected.size} selected
+          </span>
+          <IslandButton
+            className={cn(
+              armed &&
+                'bg-destructive text-destructive-foreground hover:bg-destructive hover:text-destructive-foreground'
+            )}
+            disabled={selected.size === 0}
+            onClick={() => {
+              if (!armed) {
+                setArmed(true);
+                return;
+              }
+
+              onDelete([...selected].flatMap((key) => mineIdOf(key) ?? []));
+              stopSelecting();
+            }}
+          >
+            {armed ? 'Confirm delete' : 'Delete'}
+          </IslandButton>
+          <IslandButton onClick={stopSelecting}>Cancel</IslandButton>
+        </Island>
+      )}
+    </>
   );
 }

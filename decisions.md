@@ -163,6 +163,8 @@ reached, and the measurements of the day, are in the git history of this file.
   toast says when the text after the grid is left out. Share… uses Web Share where the browser has it.
 - **Save to folder** rereads the file first and asks before writing over a change on disk. Reading the folder skips a
   file that cannot be read or is over 1 MiB, and counts it. Opened `.txt` files are refused over 1 MiB.
+- **Several mazes of My mazes are deleted by selecting** (owner, 14/10): a press held 500 ms starts it, only on My
+  mazes; the bar's Delete goes through the same delete as the ⋯ menu's, for a list of ids.
 - **Rename** refuses a name already in My mazes, without case. Menus close without an exit animation, and downloads
   and Share… start once the menu has closed, so nothing eats the next click.
 - **Toasts** last 2.4 s, and 8 s when they carry an action, so its button can be reached; Radix pauses them on hover

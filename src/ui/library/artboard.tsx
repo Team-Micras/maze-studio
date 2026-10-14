@@ -4,6 +4,8 @@ import type { CatalogEntry } from '@/library';
 import type { Maze } from '@/maze';
 import type { ThumbnailBand } from '@/render';
 import { ThumbnailCanvas } from '@/ui/board/thumbnail-canvas';
+import { Check } from '@/ui/icons';
+import { cn } from '@/ui/primitives/utils';
 import { pushRoute } from '@/ui/navigation';
 import { routeHash, routeOfEntry } from '@/ui/routes';
 
@@ -30,6 +32,12 @@ export interface ArtboardProps {
   readonly band: ThumbnailBand;
   /** Whether it is hidden, while the board flies from or onto it. */
   readonly concealed?: boolean;
+  /** Starts selecting with this artboard, after a press held; absent where nothing can be selected. */
+  readonly onHold?: (key: string) => void;
+  /** Whether the library is selecting, where a click or a tap toggles instead of opening. */
+  readonly selecting?: boolean;
+  readonly selected?: boolean;
+  readonly onToggle?: (key: string) => void;
   readonly onFocus: (key: string, event: FocusEvent<HTMLAnchorElement>) => void;
 }
 
@@ -38,6 +46,9 @@ const CLICK_AFTER_TOUCH_MS = 400;
 
 /** How far a finger may move, in CSS pixels, and still open the artboard it lifts from. */
 const TOUCH_SLOP = 10;
+
+/** How long a press is held, in milliseconds, before it starts selecting. */
+const HOLD_MS = 500;
 
 function artboardStyle(
   x: number,
@@ -72,24 +83,51 @@ export const Artboard = memo(function Artboard({
   slot,
   band,
   concealed = false,
+  onHold,
+  selecting = false,
+  selected = false,
+  onToggle,
   onFocus,
 }: ArtboardProps) {
   const press = useRef<{ readonly id: number; readonly x: number; readonly y: number } | undefined>(
     undefined
   );
   const openedByTouch = useRef(false);
+  const hold = useRef<{ readonly timer: number; readonly x: number; readonly y: number }>(
+    undefined
+  );
+  const held = useRef(false);
+  const letGo = (): void => {
+    window.clearTimeout(hold.current?.timer);
+    hold.current = undefined;
+  };
+  const activate = (): void => {
+    if (selecting) {
+      onToggle?.(entry.key);
+    } else {
+      pushRoute(routeOfEntry(entry));
+    }
+  };
 
   return (
     <a
+      aria-checked={selecting ? selected : undefined}
       aria-label={artboardLabel(entry)}
       className="group absolute top-0 left-0 block text-inherit no-underline outline-none transition-transform duration-[360ms] ease-(--ease-out) select-none [-webkit-touch-callout:none]"
       data-artboard={entry.key}
       draggable={false}
       href={routeHash(routeOfEntry(entry))}
       onClick={(event) => {
-        if (openedByTouch.current) {
+        if (openedByTouch.current || held.current) {
           openedByTouch.current = false;
+          held.current = false;
           event.preventDefault();
+          return;
+        }
+
+        if (selecting) {
+          event.preventDefault();
+          onToggle?.(entry.key);
           return;
         }
 
@@ -104,11 +142,33 @@ export const Artboard = memo(function Artboard({
           pushRoute(routeOfEntry(entry));
         }
       }}
+      onKeyDown={(event) => {
+        if (selecting && event.key === ' ') {
+          event.preventDefault();
+          onToggle?.(entry.key);
+        }
+      }}
       onPointerCancel={() => {
         press.current = undefined;
+        letGo();
       }}
       onPointerDown={(event) => {
         openedByTouch.current = false;
+        held.current = false;
+        letGo();
+
+        if (onHold !== undefined && !selecting && event.button === 0) {
+          hold.current = {
+            x: event.clientX,
+            y: event.clientY,
+            timer: window.setTimeout(() => {
+              held.current = true;
+              hold.current = undefined;
+              onHold(entry.key);
+            }, HOLD_MS),
+          };
+        }
+
         press.current =
           event.pointerType === 'touch'
             ? { id: event.pointerId, x: event.clientX, y: event.clientY }
@@ -116,6 +176,14 @@ export const Artboard = memo(function Artboard({
       }}
       onPointerMove={(event) => {
         const start = press.current;
+        const holding = hold.current;
+
+        if (
+          holding !== undefined &&
+          Math.hypot(event.clientX - holding.x, event.clientY - holding.y) > TOUCH_SLOP
+        ) {
+          letGo();
+        }
 
         if (
           start !== undefined &&
@@ -125,13 +193,20 @@ export const Artboard = memo(function Artboard({
         }
       }}
       onPointerUp={(event) => {
+        letGo();
+
         if (press.current?.id === event.pointerId) {
           press.current = undefined;
           openedByTouch.current = true;
           window.setTimeout(() => {
             openedByTouch.current = false;
           }, CLICK_AFTER_TOUCH_MS);
-          pushRoute(routeOfEntry(entry));
+
+          if (held.current) {
+            held.current = false;
+          } else {
+            activate();
+          }
         }
       }}
       onContextMenu={(event) => {
@@ -143,6 +218,7 @@ export const Artboard = memo(function Artboard({
         }
       }}
       onFocus={(event) => onFocus(entry.key, event)}
+      role={selecting ? 'checkbox' : undefined}
       style={artboardStyle(x, y, width, height, concealed)}
     >
       <span
@@ -158,12 +234,20 @@ export const Artboard = memo(function Artboard({
         </span>
       </span>
       <ThumbnailCanvas
-        className="rounded-[4px] bg-[oklch(0.17_0_0)] shadow-artboard outline-ring group-hover:outline-2 group-hover:outline-offset-[3px] group-hover:outline-solid group-focus-visible:outline-2 group-focus-visible:outline-offset-[3px] group-focus-visible:outline-solid"
+        className={cn(
+          'rounded-[4px] bg-[oklch(0.17_0_0)] shadow-artboard outline-ring group-hover:outline-2 group-hover:outline-offset-[3px] group-hover:outline-solid group-focus-visible:outline-2 group-focus-visible:outline-offset-[3px] group-focus-visible:outline-solid',
+          selected && 'outline-2 outline-offset-[3px] outline-solid'
+        )}
         height={height}
         maze={maze}
         resolution={band}
         width={width}
       />
+      {selected ? (
+        <span className="absolute top-1.5 right-1.5 grid size-6 place-items-center rounded-full bg-primary text-primary-foreground shadow-island">
+          <Check aria-hidden size={14} />
+        </span>
+      ) : null}
     </a>
   );
 });

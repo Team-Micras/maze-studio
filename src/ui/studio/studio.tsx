@@ -70,8 +70,8 @@ export interface StudioProps {
   readonly onDiscard: (item: ChangeItem) => void;
   /** Writes `text` over the opened folder's `fileName`. */
   readonly onSaveToFolder: (fileName: string, text: string) => void;
-  /** Deletes the maze of My mazes `id` and opens the library on My mazes. */
-  readonly onDelete: (id: string) => void;
+  /** Deletes the mazes of My mazes `ids` and opens the library on My mazes. */
+  readonly onDelete: (ids: readonly string[]) => void;
   /** What the library's "My mazes and files" menu does. */
   readonly files: MineAndFilesActions;
   /** What the credit adds of the updates from GitHub, if anything. */
@@ -296,6 +296,7 @@ export function Studio({
             entries={shown}
             hidden={!libraryVisible}
             inFlight={flying ? onScreen?.key : undefined}
+            onDelete={filter.source === 'mine' ? onDelete : undefined}
             library={library}
             onArtboardPointer={(pointerType, key) => {
               notePointer(pointerType);

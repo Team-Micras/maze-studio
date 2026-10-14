@@ -171,3 +171,39 @@ export async function repoContent(path: string): Promise<MazeContent> {
 export function repoText(path: string): string {
   return readFileSync(join(MAZEFILES, path), 'utf8');
 }
+
+/** Puts `items` in My mazes as stored, beside whatever is there, and reloads the page to show them. */
+export async function storeMine(
+  page: Page,
+  items: readonly { id: string; name: string; code: string }[]
+): Promise<void> {
+  await page.evaluate(
+    ([database, stored]) =>
+      new Promise<void>((resolve, reject) => {
+        const request = indexedDB.open(database);
+        request.addEventListener('error', () => reject(request.error ?? new Error('no database')));
+        request.addEventListener('success', () => {
+          const db = request.result;
+          const transaction = db.transaction('mine', 'readwrite');
+
+          for (const item of stored) {
+            transaction.objectStore('mine').put({
+              ...item,
+              profile: 'classic',
+              createdAt: 1,
+              updatedAt: 1,
+              version: 1,
+            });
+          }
+
+          transaction.addEventListener('complete', () => {
+            db.close();
+            resolve();
+          });
+        });
+      }),
+    [DATABASE_NAME, items] as const
+  );
+  await page.reload();
+  await page.locator('a[data-artboard]').first().waitFor();
+}

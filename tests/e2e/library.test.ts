@@ -4,7 +4,8 @@ import { join } from 'node:path';
 import { chromium, type Browser, type BrowserContext, type Page } from 'playwright';
 import { afterAll, beforeAll, describe, expect, inject, test } from 'vitest';
 
-import { decodeMazeCode } from '@/maze';
+import { decodeMazeCode, encodeMazeCode, parseMazeText } from '@/maze';
+import { storeMine } from '@tests/support/e2e/board-page';
 
 const ROOT = join(import.meta.dirname, '..', '..');
 const app = inject('appUrl');
@@ -155,5 +156,153 @@ describe('The library of the built app', () => {
     } finally {
       rmSync(folder, { recursive: true, force: true });
     }
+  });
+});
+
+/** A library with three mazes of My mazes, filtered to them, on a phone or a notebook. */
+async function mineLibrary(touch: boolean): Promise<Page> {
+  const context = await browser.newContext({
+    viewport: touch ? { width: 390, height: 844 } : { width: 1440, height: 900 },
+    hasTouch: touch,
+  });
+  contexts.push(context);
+  const page = await context.newPage();
+  await page.goto(`${app}#/`);
+  await page.locator('a[data-artboard]').first().waitFor();
+  const parsed = parseMazeText(FILE, 'mine.txt');
+  const code = parsed.ok ? encodeMazeCode(parsed.value.maze) : '';
+  await storeMine(
+    page,
+    ['one', 'two', 'three'].map((id) => ({ id, name: `Maze ${id}`, code }))
+  );
+  await page.evaluate(() => {
+    window.location.hash = '#/?src=mine';
+  });
+  await expect.poll(() => page.locator('a[data-artboard^="mine:"]').count()).toBe(3);
+  return page;
+}
+
+function artboard(page: Page, id: string) {
+  return page.locator(`a[data-artboard="mine:${id}"]`);
+}
+
+/** Holds a finger on `target` for `ms`, moving it `drift` px down on the way. */
+async function holdFinger(page: Page, target: string, ms: number, drift = 0): Promise<void> {
+  const box = await page.locator(target).boundingBox();
+  const x = (box?.x ?? 0) + (box?.width ?? 0) / 2;
+  const y = (box?.y ?? 0) + (box?.height ?? 0) / 2;
+  const session = await page.context().newCDPSession(page);
+  await session.send('Input.dispatchTouchEvent', {
+    type: 'touchStart',
+    touchPoints: [{ x, y, id: 1 }],
+  });
+
+  if (drift > 0) {
+    await session.send('Input.dispatchTouchEvent', {
+      type: 'touchMove',
+      touchPoints: [{ x, y: y + drift, id: 1 }],
+    });
+  }
+
+  await page.waitForTimeout(ms);
+  await session.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+}
+
+function selection(page: Page) {
+  return page.getByRole('toolbar', { name: 'Selection' });
+}
+
+describe('Selecting in My mazes', () => {
+  test('on a phone: a held finger selects, a tap toggles, Delete takes two taps, Cancel and Esc leave', async () => {
+    const page = await mineLibrary(true);
+    await holdFinger(page, 'a[data-artboard="mine:one"]', 700);
+
+    await expect.poll(() => selection(page).textContent()).toContain('1 selected');
+    expect(await artboard(page, 'one').getAttribute('aria-checked')).toBe('true');
+    await artboard(page, 'two').tap();
+    await expect.poll(() => selection(page).textContent()).toContain('2 selected');
+    await artboard(page, 'one').tap();
+    await expect.poll(() => selection(page).textContent()).toContain('1 selected');
+    expect(new URL(page.url()).hash).toBe('#/?src=mine');
+    await selection(page).getByRole('button', { name: 'Cancel' }).tap();
+    await expect.poll(() => selection(page).count()).toBe(0);
+    expect(await artboard(page, 'two').getAttribute('aria-checked')).toBeNull();
+
+    await holdFinger(page, 'a[data-artboard="mine:one"]', 700);
+    await selection(page).waitFor();
+    await page.keyboard.press('Escape');
+    await expect.poll(() => selection(page).count()).toBe(0);
+
+    await holdFinger(page, 'a[data-artboard="mine:one"]', 700, 40);
+    await page.waitForTimeout(200);
+    expect(await selection(page).count()).toBe(0);
+    expect(new URL(page.url()).hash).toBe('#/?src=mine');
+
+    await holdFinger(page, 'a[data-artboard="mine:one"]', 700);
+    await artboard(page, 'two').tap();
+    await selection(page).getByRole('button', { name: 'Delete' }).tap();
+    expect(await page.locator('a[data-artboard^="mine:"]').count()).toBe(3);
+    await selection(page).getByRole('button', { name: 'Confirm delete' }).tap();
+    await expect.poll(() => page.locator('a[data-artboard^="mine:"]').count()).toBe(1);
+    expect(await artboard(page, 'three').count()).toBe(1);
+    expect(await selection(page).count()).toBe(0);
+  });
+
+  test('on a phone, a held finger in the repo selects nothing', async () => {
+    const page = await mineLibrary(true);
+    await page.evaluate(() => {
+      window.location.hash = '#/';
+    });
+    await expect.poll(() => page.locator('a[data-artboard^="repo:"]').count()).toBeGreaterThan(0);
+    const first = await page
+      .locator('a[data-artboard^="repo:"]')
+      .first()
+      .getAttribute('data-artboard');
+    const session = await page.context().newCDPSession(page);
+    const box = await page.locator(`a[data-artboard="${first}"]`).boundingBox();
+    const point = { x: (box?.x ?? 0) + 20, y: (box?.y ?? 0) + 20, id: 1 };
+    await session.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [point] });
+    await page.waitForTimeout(700);
+
+    expect(await selection(page).count()).toBe(0);
+    expect(await page.locator('[role="checkbox"]').count()).toBe(0);
+    await session.send('Input.dispatchTouchEvent', { type: 'touchCancel', touchPoints: [] });
+  });
+
+  test('on a notebook: a held mouse selects, Space toggles the focused one, and Delete takes the copy out of Changes', async () => {
+    const page = await mineLibrary(false);
+    await artboard(page, 'three').click();
+    await page.waitForFunction(
+      () =>
+        document.querySelector('[data-studio-mode]')?.getAttribute('data-studio-mode') === 'editor'
+    );
+    const board = await page.locator('[data-open-board] svg[data-board]').boundingBox();
+    await page.mouse.click(
+      (board?.x ?? 0) + (board?.width ?? 0) / 2 + 1,
+      (board?.y ?? 0) + (board?.height ?? 0) / 2
+    );
+    await page.locator('[data-changes-chip]').first().waitFor();
+    await page.getByRole('button', { name: 'Back to the library' }).click();
+    await page.waitForFunction(
+      () =>
+        document.querySelector('[data-studio-mode]')?.getAttribute('data-studio-mode') === 'library'
+    );
+
+    const box = await artboard(page, 'three').boundingBox();
+    await page.mouse.move((box?.x ?? 0) + 30, (box?.y ?? 0) + 30);
+    await page.mouse.down();
+    await page.waitForTimeout(700);
+    await page.mouse.up();
+
+    await expect.poll(() => selection(page).textContent()).toContain('1 selected');
+    expect(new URL(page.url()).hash).toBe('#/?src=mine');
+    await artboard(page, 'one').focus();
+    await page.keyboard.press(' ');
+    await expect.poll(() => selection(page).textContent()).toContain('2 selected');
+    await selection(page).getByRole('button', { name: 'Delete' }).click();
+    await selection(page).getByRole('button', { name: 'Confirm delete' }).click();
+
+    await expect.poll(() => page.locator('a[data-artboard^="mine:"]').count()).toBe(1);
+    await expect.poll(() => page.locator('[data-changes-chip]').count()).toBe(0);
   });
 });
