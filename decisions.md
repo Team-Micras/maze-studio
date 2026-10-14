@@ -58,12 +58,18 @@ reached, and the measurements of the day, are in the git history of this file.
   build turns it off (`VITE_AUTO_UPDATES=off`).
 - **My mazes** (`mine` in code) keeps a version per item; a save names the version it was made from and is refused
   over a newer one or a removed item. Every write is announced on a `BroadcastChannel` to the other tabs, and the
-  first asks for `navigator.storage.persist()`. Its category in the catalog is its profile.
+  first asks for `navigator.storage.persist()`. Its category in the catalog is its profile. The channel does not reach
+  the tab that writes, so that tab reloads its library through `reloadLibrary` after each copy and save.
+- **Search** finds an entry by tokens that each start a word of its name, competition, year or size. The name splits
+  at punctuation and between letters and digits (`japan2011hef` gives `japan`, `2011`, `hef`). A square size has three
+  spellings (`16`, `16x16`, `16×16`); any other only both sides (`10x5`, `10×5`), so `5` does not find every 10×5.
 - **Zip limits.** An entry over 1 MiB, an archive over 32 MiB, overlapping entries and an entry that inflates past or
   short of its size are refused. Each entry inflates 1 KiB of input at a time into a buffer of the declared size, so a
   bomb is refused in milliseconds instead of inflating whole. Import refuses an oversized file before reading it.
 - **The backup keeps an index** (`maze-studio-backup.json`) with what a `.txt` cannot hold: the name as typed, the
-  profile, the creation time, the origin. Export says which items it left out and why.
+  profile, the creation time, the origin. Export says which items it left out and why. Import names each maze
+  uniquely in My mazes (a clash becomes "<name> 2"), reports what it added, renamed and skipped, and turns the library
+  to My mazes when it added anything. Imported mazes are not session Changes: nothing was edited.
 - **The folder's handle is kept only where storage is persistent.** A private window never reads a handle back.
   Playwright's off-the-record contexts crash on reload over the origin's private file system the tests use, so the
   folder's e2e tests run in a persistent context.
@@ -150,6 +156,8 @@ reached, and the measurements of the day, are in the git history of this file.
   file that cannot be read or is over 1 MiB, and counts it. Opened `.txt` files are refused over 1 MiB.
 - **Rename** refuses a name already in My mazes, without case. Menus close without an exit animation, and downloads
   and Share… start once the menu has closed, so nothing eats the next click.
+- **Toasts** last 2.4 s, and 8 s when they carry an action, so its button can be reached; Radix pauses them on hover
+  and focus. The new version's toast stays until Reload or its close button.
 
 ## Accessibility and layout
 
@@ -170,7 +178,7 @@ reached, and the measurements of the day, are in the git history of this file.
 - **The frame budget of DESIGN.md 8**: p95 at most 20 ms and at most 1 % of frames over 25 ms, the median of three runs
   by share of slow frames, then worst frame, then p95. The production gate in `e2e` holds it on the built app. The
   library's gate in `performance`, on React's development build in the tester's iframe, allows 2 %: it spreads from 0
-  to 1.5 % between runs on the reference notebook.
+  to 1.5 % between runs on the reference notebook. The flights also allow no frame over 33 ms.
 - **Throttling is calibrated to the machine**: a fixed workload is timed unthrottled and the throttle is
   `clamp(4 × 27 ms / measured, 1, 4)`, 27 ms being the reference notebook (i5-12500H).
 - **Reference screenshots are committed** next to their test, made in `mcr.microsoft.com/playwright:v1.63.0`; the
@@ -179,5 +187,7 @@ reached, and the measurements of the day, are in the git history of this file.
   protocol (`tests/support/ui/touch.ts`).
 - **Diff fixtures come from known edits**, their counts written by hand, never from `diffMazes`.
 - **The 250 KB budget is reported only**: `bun run size` prints the first screen's size and never fails.
-- **Lint overrides are per file**: `mine.ts` (`BroadcastChannel.postMessage` takes no origin), `thumbnails.ts`
-  (`fill(path)` is not an array fill), `camera-stage.tsx` (the application role).
+- **Lint rules are relaxed only where a file needs it**, each override naming its files: `mine.ts`
+  (`BroadcastChannel.postMessage` takes no origin), `thumbnails.ts` (`fill(path)` is not an array fill),
+  `camera-stage.tsx` (the application role), and `no-await-in-loop` for `scripts/`, the e2e tests and the frame and
+  touch helpers, which wait step by step on purpose.

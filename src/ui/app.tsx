@@ -27,7 +27,7 @@ import {
   type OpenMaze,
 } from './open-maze';
 import { TooltipProvider } from './primitives/tooltip';
-import { routeHash, type Route } from './routes';
+import { LIBRARY_ROUTE, routeHash, type LibraryRoute } from './routes';
 import { Studio } from './studio/studio';
 import { Toaster } from './toaster';
 import { focusArtboard } from './library/library-scroller';
@@ -43,9 +43,6 @@ interface RouteTrail {
   readonly key: string | undefined;
   readonly left: string | undefined;
 }
-
-/** A route to the library. */
-type LibraryRoute = Extract<Route, { readonly kind: 'library' }>;
 
 /** The library's filter after leaving a maze of My mazes changed in the session (PLAN.md 3.4). */
 const MINE_FILTER: LibraryFilter = { ...DEFAULT_FILTER, source: 'mine' };
@@ -91,13 +88,10 @@ export function App() {
   if (loose !== undefined && loose.at !== hash) {
     setLoose(undefined);
   }
-  const [lastLibrary, setLastLibrary] = useState<{ hash: string; route: LibraryRoute }>({
-    hash: '#/',
-    route: { kind: 'library', filter: DEFAULT_FILTER },
-  });
+  const [lastLibrary, setLastLibrary] = useState<LibraryRoute>(LIBRARY_ROUTE);
 
-  if (route.kind === 'library' && lastLibrary.hash !== hash) {
-    setLastLibrary({ hash, route });
+  if (route.kind === 'library' && routeHash(lastLibrary) !== hash) {
+    setLastLibrary(route);
   }
 
   const opened = shownLoose ?? (opening.status === 'open' ? opening.open : undefined);
@@ -136,9 +130,9 @@ export function App() {
   useEffect(() => {
     if (missing !== undefined) {
       showToast(missing, { verbatim: missingName });
-      replaceRoute(lastLibrary.route);
+      replaceRoute(lastLibrary);
     }
-  }, [missing, missingName, lastLibrary.route]);
+  }, [missing, missingName, lastLibrary]);
 
   const toLibrary = (): void => {
     if (shownLoose !== undefined) {
@@ -146,7 +140,7 @@ export function App() {
     } else if (libraryBelow()) {
       window.history.back();
     } else {
-      pushRoute(lastLibrary.route);
+      pushRoute(lastLibrary);
     }
   };
 
@@ -238,7 +232,7 @@ export function App() {
         Skip to the content
       </a>
       <Studio
-        filter={route.kind === 'library' ? (landing ?? route.filter) : lastLibrary.route.filter}
+        filter={route.kind === 'library' ? (landing ?? route.filter) : lastLibrary.filter}
         library={library}
         onFilter={(filter: LibraryFilter) => replaceRoute({ kind: 'library', filter })}
         onLibrary={toLibrary}
@@ -248,7 +242,7 @@ export function App() {
         onDiscard={(item) =>
           void discardChange(item, editor, (source) => {
             setLoose(undefined);
-            replaceRoute(source ?? lastLibrary.route);
+            replaceRoute(source ?? lastLibrary);
           })
         }
         onDelete={(id) => void deleteMine(id)}

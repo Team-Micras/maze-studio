@@ -19,48 +19,103 @@ type Fence = readonly [
   form?: 'dynamic' | 'named',
 ];
 
-const FENCES: readonly Fence[] = [
-  ['src/maze/probe.ts', './walls', false],
+const LAYERS = ['maze', 'library', 'render', 'ui', 'main'] as const;
+
+type Layer = (typeof LAYERS)[number];
+
+/**
+ * What each folder may import by any path, and what only by relative path, as ARCHITECTURE.md's
+ * table has it; every other layer is refused.
+ */
+const MAY_IMPORT: Record<Layer | 'scripts', { any: readonly Layer[]; relative: readonly Layer[] }> =
+  {
+    maze: { any: [], relative: ['maze'] },
+    library: { any: ['maze'], relative: ['library'] },
+    render: { any: ['maze'], relative: ['render'] },
+    ui: { any: ['maze', 'library', 'render', 'ui'], relative: [] },
+    main: { any: ['maze', 'library', 'render', 'ui'], relative: [] },
+    scripts: { any: ['maze', 'library'], relative: [] },
+  };
+
+/** Where each folder's probes sit and the prefixes that reach `src/` from them, alias first. */
+const PROBES: Record<Layer | 'scripts', readonly (readonly [file: string, prefix: string])[]> = {
+  maze: [
+    ['src/maze/probe.ts', '@/'],
+    ['src/maze/probe.ts', '../'],
+    ['src/maze/deep/probe.ts', '../../'],
+  ],
+  library: [
+    ['src/library/probe.ts', '@/'],
+    ['src/library/probe.ts', '../'],
+    ['src/library/deep/probe.ts', '../../'],
+  ],
+  render: [
+    ['src/render/probe.ts', '@/'],
+    ['src/render/probe.ts', '../'],
+    ['src/render/deep/probe.ts', '../../'],
+  ],
+  ui: [
+    ['src/ui/probe.ts', '@/'],
+    ['src/ui/probe.ts', '../'],
+    ['src/ui/deep/probe.ts', '../../'],
+  ],
+  main: [
+    ['src/main.tsx', '@/'],
+    ['src/main.tsx', './'],
+  ],
+  scripts: [
+    ['scripts/probe.ts', '@/'],
+    ['scripts/probe.ts', '../src/'],
+  ],
+};
+
+/** Every folder importing every layer in every form, refused unless {@link MAY_IMPORT} allows it. */
+const LAYER_FENCES: readonly Fence[] = [...LAYERS, 'scripts' as const].flatMap((from) =>
+  PROBES[from].flatMap(([file, prefix]) =>
+    LAYERS.filter((target) => target !== 'main' || from !== 'main').map((target): Fence => {
+      const allowed = MAY_IMPORT[from];
+      const ok =
+        allowed.any.includes(target) || (prefix !== '@/' && allowed.relative.includes(target));
+      return [file, `${prefix}${target === 'main' ? 'main' : `${target}/target`}`, !ok];
+    })
+  )
+);
+
+/** The fences that are not about layers: React, Node, tests and scripts, icons, other forms. */
+const OTHER_FENCES: readonly Fence[] = [
   ['src/maze/probe.ts', '../../vendor/mazefiles/README.md', true],
   ['src/maze/probe.ts', 'react', true],
-  ['src/maze/probe.ts', '@/maze/walls', true],
-  ['src/maze/probe.ts', '../ui/app', true],
   ['src/maze/probe.ts', 'node:fs', true],
   ['src/maze/named-probe.ts', '@phosphor-icons/react', true, 'named'],
   ['src/maze/lazy-probe.ts', '../library/mazefiles', true, 'dynamic'],
+  ['src/maze/lazy-probe.ts', './walls', false, 'dynamic'],
 
-  ['src/library/probe.ts', '../maze/walls', false],
   ['src/library/probe.ts', '@scripts/bundle-size', true],
   ['src/library/probe.ts', 'react-dom/client', true],
-  ['src/library/probe.ts', '@/render/svg', true],
   ['src/library/named-probe.ts', '@phosphor-icons/react', true, 'named'],
   ['src/library/lazy-probe.ts', '../ui/app', true, 'dynamic'],
 
-  ['src/render/probe.ts', '@/maze/walls', false],
   ['src/render/probe.ts', '@tests/support/axe-check', true],
   ['src/render/probe.ts', 'react', true],
-  ['src/render/probe.ts', '../library/mazefiles', true],
   ['src/render/named-probe.ts', '@phosphor-icons/react', true, 'named'],
 
-  ['src/ui/probe.ts', '@/library/mazefiles', false],
   ['src/ui/probe.ts', 'react', false],
   ['src/ui/probe.ts', '../../tests/support/axe-check', true],
-  ['src/ui/probe.ts', '@/main', true],
   ['src/ui/probe.ts', '@phosphor-icons/react', true],
   ['src/ui/named-probe.ts', '@phosphor-icons/core', true, 'named'],
   ['src/ui/named-probe.ts', '@/ui/icons', false, 'named'],
   ['src/ui/lazy-probe.ts', '@/render/svg', false, 'dynamic'],
 
-  ['src/main.tsx', '@/ui/app', false],
+  ['src/main.tsx', 'react', false],
   ['src/main.tsx', '@tests/support/axe-check', true],
   ['src/main.tsx', '@phosphor-icons/react', true],
 
-  ['scripts/probe.ts', '@/library/mazefiles', false],
   ['scripts/probe.ts', 'node:fs', false],
   ['scripts/probe.ts', '../tests/support/axe-check', true],
-  ['scripts/probe.ts', '@/render/svg', true],
   ['scripts/probe.ts', 'react', true],
 ];
+
+const FENCES: readonly Fence[] = [...LAYER_FENCES, ...OTHER_FENCES];
 
 const refused = new Map<string, Set<string>>();
 

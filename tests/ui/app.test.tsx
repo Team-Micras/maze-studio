@@ -95,6 +95,25 @@ describe('Opening a maze', () => {
   });
 });
 
+describe('The last filter of the library', () => {
+  test('a maze the library lacks goes back to the last filter', async () => {
+    await mountApp('#/?cat=classic');
+    window.location.hash = '#/repo/classic/nowhere.txt';
+    await expect
+      .element(page.getByText('No maze at classic/nowhere.txt. Pick one from the library'))
+      .toBeVisible();
+    await expect.poll(() => window.location.hash).toBe('#/?cat=classic');
+  });
+
+  test('Library pushes the last filter when the library is not below', async () => {
+    await mountApp('#/?q=japan2011hef');
+    window.location.hash = '#/repo/classic/AAMC15Maze.txt';
+    await expect.element(page.getByRole('heading', { level: 1, name: 'AAMC15Maze' })).toBeVisible();
+    await userEvent.click(page.getByRole('button', { name: 'Back to the library' }));
+    await expect.poll(() => window.location.hash).toBe('#/?q=japan2011hef');
+  });
+});
+
 describe('Opening a .txt file', () => {
   test('shows the maze without a route of its own, and Library closes it', async () => {
     await mountApp('#/?cat=classic');

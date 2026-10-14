@@ -2,7 +2,7 @@
   "extends": "./tsconfig.base.json",
   "compilerOptions": {
     "tsBuildInfoFile": "./node_modules/.tmp/tsconfig.tests.tsbuildinfo",
-    "lib": ["ES2024", "DOM", "DOM.Iterable"],
+    "lib": ["ES2023", "ES2024.Promise", "DOM", "DOM.Iterable"],
     "allowImportingTsExtensions": true,
     "types": ["node", "vite/client", "vite-plugin-pwa/client"],
     "jsx": "react-jsx",

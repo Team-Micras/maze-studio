@@ -81,6 +81,24 @@ describe('the repository cache', () => {
     expect((await cache.current()).source).toBe('github');
   });
 
+  test('keeps the etag it has when an unchanged answer carries none', async () => {
+    const db = await freshDatabase();
+    const files = { 'classic/a.txt': MAZE_A };
+    const built = await snapshot();
+    let github = await fakeGitHub(files);
+    const cache = new RepoCache(db, {
+      snapshot: async () => built,
+      fetch: (url, init) => github.fetch(url, init),
+      now: () => 1,
+    });
+    await cache.check();
+
+    github = await fakeGitHub(files, { [`${API}/branches/master`]: { status: 304 } });
+    expect(await cache.check(true)).toEqual({ status: 'unchanged', etag: '"new-etag"' });
+    expect(github.requests[0]?.headers).toMatchObject({ 'If-None-Match': '"new-etag"' });
+    expect(await cache.meta()).toMatchObject({ commit: NEW_COMMIT, etag: '"new-etag"' });
+  });
+
   test('stores the files and the commit they belong to together, or neither', async () => {
     const db = await freshDatabase();
     const github = await fakeGitHub({ 'classic/a.txt': MAZE_A });

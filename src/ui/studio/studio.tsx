@@ -22,7 +22,7 @@ import { changeOf, sessionChanges, type ChangeItem } from '@/ui/changes/session-
 import { Checks } from '@/ui/editor/checks';
 import { EditControls } from '@/ui/editor/edit-controls';
 import { MoreActions } from '@/ui/editor/more-actions';
-import { typingIn } from '@/ui/editor/use-editor-shortcuts';
+import { typingIn } from '@/ui/typing-in';
 import { RenameDialog } from '@/ui/editor/rename-dialog';
 import { ShortcutHelp } from '@/ui/editor/shortcut-help';
 import { CopyLinkButton, TitleActions } from '@/ui/editor/title-actions';

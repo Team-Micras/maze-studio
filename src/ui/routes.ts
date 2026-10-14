@@ -13,16 +13,22 @@ import {
   type LibraryFilter,
 } from '@/library/library-filter';
 
+/** The library, with its filter. */
+export interface LibraryRoute {
+  readonly kind: 'library';
+  readonly filter: LibraryFilter;
+}
+
 /** A place in the app. */
 export type Route =
-  | { readonly kind: 'library'; readonly filter: LibraryFilter }
+  | LibraryRoute
   | { readonly kind: 'repo'; readonly path: string }
   | { readonly kind: 'mine'; readonly id: string }
   | { readonly kind: 'folder'; readonly file: string }
   | { readonly kind: 'link'; readonly code: string };
 
 /** The library with the default filter. */
-export const LIBRARY_ROUTE: Route = { kind: 'library', filter: DEFAULT_FILTER };
+export const LIBRARY_ROUTE: LibraryRoute = { kind: 'library', filter: DEFAULT_FILTER };
 
 const MAZE_PREFIXES = { repo: '/repo/', mine: '/mine/', folder: '/folder/', link: '/m/' } as const;
 
