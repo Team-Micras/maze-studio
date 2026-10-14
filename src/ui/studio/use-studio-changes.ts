@@ -2,6 +2,7 @@ import { useCallback } from 'react';
 import { mineIdOf, mineKey } from '@/library';
 import { useStore, type StoreApi } from 'zustand';
 
+import { mazesEqual } from '@/maze';
 import type { ChangeRow, ChangesPanelProps } from '@/ui/changes/changes';
 import {
   changeDiff,
@@ -17,9 +18,10 @@ import { pushRoute } from '@/ui/navigation';
 import type { StudioScreen, StudioState } from './studio-store';
 
 /**
- * The Changes of the session in the studio (PLAN.md 3.4, DESIGN.md 6.2): the rows with each maze
- * as it is now, the one on screen as edited; the diff of the maze on screen against its baseline,
- * shown on the board while "Show on board" is on; Open, Keep and Discard.
+ * The Changes of the session in the studio (PLAN.md 3.4, DESIGN.md 6.2): the rows of the mazes
+ * that differ from their baseline, each as it is now, the one on screen as edited, which the chip
+ * counts; the diff of the maze on screen against its baseline, shown on the board while "Show on
+ * board" is on; Open, Keep and Discard.
  */
 export function useStudioChanges({
   store,
@@ -39,10 +41,15 @@ export function useStudioChanges({
   const showDiff = useStore(store, (state) => state.showDiff);
   const onScreen = screen.kind === 'library' ? undefined : screen.maze;
   const changes = useStore(sessionChanges);
-  const rows: ChangeRow[] = changes.items.map((item) => {
-    const key = mineKey(item.id);
-    return { item, current: onScreen?.key === key ? onScreen.maze : library?.mazeOf(key) };
-  });
+  const rows: ChangeRow[] = changes.items
+    .map((item) => {
+      const key = mineKey(item.id);
+      return { item, current: onScreen?.key === key ? onScreen.maze : library?.mazeOf(key) };
+    })
+    .filter(
+      ({ item, current }) =>
+        item.baseline === undefined || current === undefined || !mazesEqual(item.baseline, current)
+    );
   const screenId = mineIdOf(onScreen?.key);
   const screenItem = screenId === undefined ? undefined : changeOf(changes, screenId);
   const screenDiff =
@@ -57,7 +64,7 @@ export function useStudioChanges({
 
   return {
     chip: {
-      count: changes.items.length,
+      count: rows.length,
       open: changesOpen,
       onToggle: () => setOpen(!changesOpen),
     },

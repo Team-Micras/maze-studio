@@ -146,7 +146,8 @@ reached, and the measurements of the day, are in the git history of this file.
   with the file's source until the first edit.
 - **Changes** live in one in-memory store per tab, fed by the writer: a copy or new maze from its first write, a maze
   of My mazes from its first save, against the state the session first opened. Discard, armed for 3 s, deletes a copy
-  or saves back the first state; Keep takes the item out. Save to My mazes of a link or `.txt` not edited is no change
+  or saves back the first state; Keep takes the item out. An item back at its baseline is neither listed nor counted
+  (owner, 14/10) and nothing is deleted on its own. Save to My mazes of a link or `.txt` not edited is no change
   (owner, 14/10): the copy is noted as a maze of My mazes from before the session, its saved state the baseline, so it
   enters Changes only at a later save and Discard saves that state back.
 - **Save to My mazes is in the ⋯ menu** (owner, 14/10), so the title keeps the island's width on a phone; it is not

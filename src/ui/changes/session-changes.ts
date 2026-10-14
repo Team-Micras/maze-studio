@@ -8,7 +8,7 @@
 
 import { createStore, type StoreApi } from 'zustand/vanilla';
 
-import { diffMazes, mazesEqual, type Maze, type MazeDiff, type Profile } from '@/maze';
+import { diffMazes, type Maze, type MazeDiff, type Profile } from '@/maze';
 import type { Route } from '@/ui/routes';
 
 /** How an item came into the session: a copy, a new maze, or a maze of My mazes from before. */
@@ -136,8 +136,8 @@ function counted(count: number, noun: string): string {
 }
 
 /**
- * The line under an item (DESIGN.md 6.2): "New maze", "No differences", or what changed, as in
- * "3 walls added, 1 removed, goal changed".
+ * The line under an item (DESIGN.md 6.2): "New maze", or what changed, as in "3 walls added, 1
+ * removed, goal changed"; an item back at its baseline is not shown.
  */
 export function changeSummary(item: ChangeItem, current: Maze): string {
   if (item.baseline === undefined) {
@@ -148,10 +148,6 @@ export function changeSummary(item: ChangeItem, current: Maze): string {
 
   if (diff === undefined) {
     return `Now ${current.width} × ${current.height}`;
-  }
-
-  if (mazesEqual(item.baseline, current)) {
-    return 'No differences';
   }
 
   const parts: string[] = [];

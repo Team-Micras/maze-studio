@@ -88,8 +88,7 @@ describe('The line of a change', () => {
     expect(changeSummary(copy(BASE), setGoals(BASE, [{ x: 2, y: 2 }]))).toBe('Goal changed');
   });
 
-  test('says "No differences" back at the baseline, and "New maze" without one', () => {
-    expect(changeSummary(copy(BASE), BASE)).toBe('No differences');
+  test('says "New maze" without a baseline', () => {
     expect(changeSummary(NEW, walls(BASE, A))).toBe('New maze');
   });
 });

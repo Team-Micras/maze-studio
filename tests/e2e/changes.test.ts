@@ -56,6 +56,12 @@ async function discard(page: Page, name: string): Promise<void> {
   await page.getByRole('button', { name: `Confirm discard of ${name}` }).click();
 }
 
+async function openChangesFromMenu(page: Page): Promise<void> {
+  await page.getByRole('button', { name: 'More actions' }).click();
+  await page.getByRole('menuitem', { name: 'Changes' }).click();
+  await page.getByRole('dialog', { name: 'Changes in this session' }).waitFor();
+}
+
 function summary(page: Page): Promise<string | null> {
   return page.locator('[data-change] [data-summary]').first().textContent();
 }
@@ -177,17 +183,52 @@ describe('Changes of the session', () => {
     await expectSaved(page, sameMaze(toggleWall(before, OTHER)));
   });
 
-  test('a change undone stays as "No differences", and the copy stays in My mazes', async () => {
+  test('a copy undone back to the original leaves Changes but stays in My mazes, and comes back with an edit', async () => {
     const { maze } = await repoContent(CLASSIC);
     const page = await openMaze(`#/repo/${CLASSIC}`);
     await clickEdge(page, maze, EDGE);
     await expectSaved(page, sameMaze(toggleWall(maze, EDGE)));
     await page.keyboard.press('Control+z');
     await expectSaved(page, sameMaze(maze));
-    await openChanges(page);
 
-    await expect.poll(() => summary(page)).toBe('No differences');
+    await expect.poll(() => page.locator('[data-changes-chip]').count()).toBe(0);
+    await openChangesFromMenu(page);
+    expect(await page.locator('[data-change]').count()).toBe(0);
     expect(await mineCount(page)).toBe(1);
+    await page.keyboard.press('Escape');
+    await page.keyboard.press('Control+Shift+z');
+    await expect
+      .poll(() => page.getByRole('button', { name: 'Changes in this session: 1' }).count())
+      .toBe(1);
+  });
+
+  test('a maze of My mazes edited and undone leaves Changes, and comes back with an edit', async () => {
+    const { maze } = await repoContent(CLASSIC);
+    const first = await openMaze(`#/repo/${CLASSIC}`);
+    await clickEdge(first, maze, EDGE);
+    const before = toggleWall(maze, EDGE);
+    await expectSaved(first, sameMaze(before));
+    const id = mineId(first) ?? '';
+    const page = await openMaze(`#/mine/${id}`, first.context());
+    await first.close();
+    await page.reload();
+    await waitForMode(page, 'editor');
+    await clickEdge(page, maze, OTHER);
+    await expectSaved(page, sameMaze(toggleWall(before, OTHER)));
+    await expect
+      .poll(() => page.getByRole('button', { name: 'Changes in this session: 1' }).count())
+      .toBe(1);
+    await page.keyboard.press('Control+z');
+    await expectSaved(page, sameMaze(before));
+
+    await expect.poll(() => page.locator('[data-changes-chip]').count()).toBe(0);
+    await openChangesFromMenu(page);
+    expect(await page.locator('[data-change]').count()).toBe(0);
+    await page.keyboard.press('Escape');
+    await page.keyboard.press('Control+Shift+z');
+    await expect
+      .poll(() => page.getByRole('button', { name: 'Changes in this session: 1' }).count())
+      .toBe(1);
   });
 
   test('Keep takes the item out and keeps the copy, and the chip hides with nothing left', async () => {
