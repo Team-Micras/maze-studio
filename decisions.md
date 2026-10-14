@@ -768,3 +768,9 @@ The machine's rule is no builds in `/tmp`, so `tests/e2e/pwa.test.ts` builds the
   the first edit keeps the name.
 - **The library's scroller has `overscroll-behavior-y: contain`**, so Android's pull-to-refresh no longer reloads the
   app (the owner found it a nuisance).
+- **The flight back is seen again.** Since the grid (`1c2ddad`), the thumbnail stays in the grid and only the board
+  flies, but the board still faded out as the flight back started, as when the thumbnail flew with the camera under
+  it: the camera flew an invisible board. The board now stays opaque on the way back, without fading in again as it
+  mounts for the flight, and gives way to the thumbnail on landing. The e2e that checked the landing measured the
+  board's box, which exists at opacity 0; the new one checks the board's opacity in every frame, for a maze looked
+  at, edited and opened from a scrolled grid, by the button and by Back.

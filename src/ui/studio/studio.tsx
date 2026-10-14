@@ -323,8 +323,9 @@ export function Studio({
             <OpenBoard
               maze={onScreen.maze}
               overlays={mode === 'editor' ? editing.overlays : undefined}
+              fadeIn={mode !== 'flying-out'}
               rect={board}
-              shown={mode !== 'flying-out'}
+              shown
             />
           ) : preparedMaze === undefined ? null : (
             <OpenBoard maze={preparedMaze} rect={boardOf(preparedMaze)} shown={false} />

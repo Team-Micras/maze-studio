@@ -33,6 +33,8 @@ interface Frame {
   readonly labelHeight: number;
   /** The library grid's opacity, which fades out as the flight starts and back in as it ends. */
   readonly gridOpacity: number;
+  /** The open board's opacity: what flies has to be seen. */
+  readonly boardOpacity?: number;
 }
 
 interface WorldSample {
@@ -120,7 +122,13 @@ async function recordFrames(page: Page): Promise<() => Promise<Frame[]>> {
         ),
         ...(box === undefined
           ? {}
-          : { board: { x: box.x, y: box.y, width: box.width, height: box.height } }),
+          : {
+              board: { x: box.x, y: box.y, width: box.width, height: box.height },
+              boardOpacity: Number(
+                getComputedStyle(document.querySelector('[data-open-board]') ?? document.body)
+                  .opacity
+              ),
+            }),
       });
 
       if (window.studioRecording === true) {
@@ -328,6 +336,74 @@ describe('The flight into a maze and back', () => {
 
     expect(next).toBe('editor');
   });
+});
+
+describe('Every way back from a maze that has an artboard', () => {
+  test.each(
+    (['look', 'edit', 'scrolled'] as const).flatMap((path) =>
+      (['button', 'back'] as const).map((way) => ({ path, way }))
+    )
+  )(
+    'flies the board, seen all the way, back onto the thumbnail ($path, by the $way)',
+    async ({ path, way }) => {
+      const page = await open();
+
+      if (path === 'scrolled') {
+        await page.evaluate(() =>
+          document
+            .querySelector('[data-library-scroller]')
+            ?.scrollTo({ top: 3000, behavior: 'instant' })
+        );
+        await page.waitForTimeout(200);
+      }
+
+      const key = await page.waitForFunction(() => {
+        const shown = [...document.querySelectorAll('a[data-artboard]')].find((link) => {
+          const box = link.getBoundingClientRect();
+          return box.top > 150 && box.bottom < window.innerHeight - 100;
+        });
+        return shown?.getAttribute('data-artboard') ?? false;
+      });
+      const link = page.locator(`a[data-artboard="${String(await key.jsonValue())}"]`);
+      await link.click();
+      await page.waitForFunction(
+        () =>
+          document.querySelector('[data-studio-mode]')?.getAttribute('data-studio-mode') ===
+          'editor'
+      );
+
+      if (path === 'edit') {
+        const box = await page.locator('[data-open-board]').boundingBox();
+        await page.mouse.click(
+          (box?.x ?? 0) + (box?.width ?? 0) * 0.31,
+          (box?.y ?? 0) + (box?.height ?? 0) * 0.5
+        );
+        await page.waitForFunction(() => window.location.hash.startsWith('#/mine/'));
+      }
+
+      const stop = await recordFrames(page);
+
+      if (way === 'button') {
+        await page.getByRole('button', { name: 'Back to the library' }).click();
+      } else {
+        await page.goBack();
+      }
+
+      await page.waitForFunction(
+        () =>
+          document.querySelector('[data-studio-mode]')?.getAttribute('data-studio-mode') ===
+          'library'
+      );
+      const flying = (await stop()).filter(
+        (frame) => frame.mode === 'flying-out' && frame.board !== undefined
+      );
+      const widths = flying.map((frame) => frame.board?.width ?? 0);
+
+      expect(flying.length).toBeGreaterThan(10);
+      expect(flying.every((frame) => (frame.boardOpacity ?? 0) > 0.99)).toBe(true);
+      expect(widths[0] ?? 0).toBeGreaterThan(1.5 * (widths.at(-1) ?? 0));
+    }
+  );
 });
 
 describe('The way back to a thumbnail off screen', () => {
