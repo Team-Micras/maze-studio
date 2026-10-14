@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 
-import { folderFileOf } from '@/library';
+import { folderFileOf, kindOf, refOf } from '@/library';
 import {
   beginGesture,
   canRedo,
@@ -24,7 +24,7 @@ import {
   renameChange,
   sessionChanges,
 } from '@/ui/changes/session-changes';
-import { routeOfKey, type OpenMaze } from '@/ui/open-maze';
+import type { OpenMaze } from '@/ui/open-maze';
 import { appStorage } from '@/ui/storage';
 import { showToast } from '@/ui/toasts';
 
@@ -144,14 +144,14 @@ export function useMazeEditor(input: MazeEditorInput): MazeEditor {
             kind: created ? 'new' : 'copy',
             name: item.name,
             baseline: created ? undefined : opened.maze,
-            source: routeOfKey(opened.key),
+            source: refOf(opened.key),
           })
         );
 
         if (openedNow.current === opened) {
           const route: Route = { kind: 'mine', id: item.id };
 
-          if (routeOfKey(opened.key) === undefined) {
+          if (refOf(opened.key) === undefined) {
             pushRoute(route);
           } else {
             replaceRoute(route);
@@ -249,9 +249,7 @@ export function useMazeEditor(input: MazeEditorInput): MazeEditor {
     redo: () => edit(redo),
     setProfile: (profile) => update((before) => withProfile(before, profile)),
     canSaveToMine:
-      session?.mine === undefined &&
-      (session?.opened.key.startsWith('link:') === true ||
-        session?.opened.key.startsWith('file:') === true),
+      session?.mine === undefined && ['link', 'file'].includes(kindOf(session?.opened.key) ?? ''),
     folderFile: session?.mine === undefined ? undefined : folderFileOf(session.opened.key),
     saveToMine: () => {
       const now = latest.current;

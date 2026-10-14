@@ -2,12 +2,10 @@ import { useEffect, useMemo, useState } from 'react';
 
 import {
   folderCatalog,
-  folderKey,
   loadSnapshot,
   mineCatalog,
-  mineKey,
   repoCatalog,
-  repoKey,
+  keyOf,
   SearchIndex,
   type CatalogEntry,
   type FolderContents,
@@ -67,7 +65,7 @@ function library({ commit, files, mine }: Loaded, folder: FolderContents | undef
   const entries = [...repoEntries, ...mineEntries, ...folderEntries];
   const stored = new Map<string, Stored>([
     ...files.map((file): [string, Stored] => [
-      repoKey(file.path),
+      keyOf({ kind: 'repo', path: file.path }),
       {
         code: file.code,
         document: {
@@ -78,7 +76,7 @@ function library({ commit, files, mine }: Loaded, folder: FolderContents | undef
       },
     ]),
     ...mine.map((item): [string, Stored] => [
-      mineKey(item.id),
+      keyOf({ kind: 'mine', id: item.id }),
       {
         code: item.code,
         document: {
@@ -91,7 +89,7 @@ function library({ commit, files, mine }: Loaded, folder: FolderContents | undef
   ]);
   const decoded = new Map<string, Decoded>(
     (folder?.files ?? []).map((file): [string, Decoded] => [
-      folderKey(file.fileName),
+      keyOf({ kind: 'folder', file: file.fileName }),
       {
         maze: file.text.maze,
         document: {

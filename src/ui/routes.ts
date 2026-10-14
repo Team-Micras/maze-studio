@@ -6,6 +6,7 @@
  */
 
 import type { CatalogEntry } from '@/library/catalog';
+import type { MazeRef } from '@/library/maze-key';
 import {
   DEFAULT_FILTER,
   isLibraryCategory,
@@ -20,12 +21,7 @@ export interface LibraryRoute {
 }
 
 /** A place in the app. */
-export type Route =
-  | LibraryRoute
-  | { readonly kind: 'repo'; readonly path: string }
-  | { readonly kind: 'mine'; readonly id: string }
-  | { readonly kind: 'folder'; readonly file: string }
-  | { readonly kind: 'link'; readonly code: string };
+export type Route = LibraryRoute | MazeRef;
 
 /** The library with the default filter. */
 export const LIBRARY_ROUTE: LibraryRoute = { kind: 'library', filter: DEFAULT_FILTER };

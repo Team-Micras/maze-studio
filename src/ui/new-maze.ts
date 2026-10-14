@@ -6,7 +6,7 @@
  * @module
  */
 
-import { uniqueName } from '@/library';
+import { looseKey, uniqueName } from '@/library';
 import {
   borderedMaze,
   isMazeSide,
@@ -52,7 +52,7 @@ export function newMazeName(name: string, taken: Iterable<string>): string {
 }
 
 /**
- * The new maze `request` asks for, open under the key `new:<id>`; its name is made unique among
+ * The new maze `request` asks for, open under the `id`th new maze's key; its name is made unique among
  * the names of My mazes, `taken`.
  */
 export function openNewMaze(
@@ -66,7 +66,7 @@ export function openNewMaze(
       : borderedMaze(request.width, request.height);
   const profile = request.kind === 'preset' ? presetProfile(request.preset) : request.profile;
   return {
-    key: `new:${id}`,
+    key: looseKey('new', id),
     maze,
     name: newMazeName(request.kind === 'preset' ? '' : request.name, taken),
     detail: `New maze, ${sizeLabel(maze.width, maze.height)}`,

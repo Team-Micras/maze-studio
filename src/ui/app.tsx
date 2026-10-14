@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useStore } from 'zustand';
 
-import { DEFAULT_FILTER, mineIdOf, type LibraryFilter } from '@/library';
+import { DEFAULT_FILTER, keyOf, looseKey, mineIdOf, type LibraryFilter } from '@/library';
 import { parseMazeText } from '@/maze';
 
 import { CANVAS_ID } from './canvas-id';
@@ -21,7 +21,6 @@ import { libraryBelow, pushRoute, replaceRoute } from './navigation';
 import {
   looseDocument,
   MAX_FILE_BYTES,
-  keyOfRoute,
   NO_FOLDER_ACCESS,
   openingOf,
   type OpenMaze,
@@ -95,7 +94,7 @@ export function App() {
   }
 
   const opened = shownLoose ?? (opening.status === 'open' ? opening.open : undefined);
-  const routeKey = keyOfRoute(route);
+  const routeKey = route.kind === 'library' ? undefined : keyOf(route);
   const editor = useMazeEditor({ opened, wanted: shownLoose?.key ?? routeKey });
   const changes = useStore(sessionChanges);
   const screenKey = editor.shown?.key;
@@ -204,7 +203,7 @@ export function App() {
 
     if (parsed.ok) {
       openLoose((id) => ({
-        key: `file:${id}`,
+        key: looseKey('file', id),
         maze: parsed.value.maze,
         name: picked.name.replace(/\.txt$/i, ''),
         detail: 'Opened from a file',

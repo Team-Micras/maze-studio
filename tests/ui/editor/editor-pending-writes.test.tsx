@@ -2,7 +2,7 @@ import { useEffect } from 'react';
 import { afterEach, describe, expect, test, vi } from 'vitest';
 import { render } from 'vitest-browser-react';
 
-import { MineLibrary, type MineDraft, type MineMaze } from '@/library';
+import { keyOf, MineLibrary, type MineDraft, type MineMaze } from '@/library';
 import { createMaze, toggleWall } from '@/maze';
 import { writesSettled } from '@/ui/editor/pending-writes';
 import { useMazeEditor, type MazeEditor } from '@/ui/editor/use-maze-editor';
@@ -19,6 +19,15 @@ const OPENED: OpenMaze = {
   document: { trailer: '', profile: 'classic', origin: { path: PATH, sha: 'a' } },
 };
 
+/** A maze of My mazes that is not in it, so its first save is refused. */
+const GONE: OpenMaze = {
+  key: keyOf({ kind: 'mine', id: 'gone' }),
+  maze: createMaze({ width: 4, height: 4 }),
+  name: 'Gone',
+  detail: 'Saved in My mazes',
+  document: { trailer: '', profile: 'free', mine: { id: 'gone', version: 1 } },
+};
+
 let editor: MazeEditor | undefined;
 
 function nothing(): void {}
@@ -27,8 +36,14 @@ function keep(shown: MazeEditor): void {
   editor = shown;
 }
 
-function Harness({ onEditor }: { readonly onEditor: (shown: MazeEditor) => void }) {
-  const shown = useMazeEditor({ opened: OPENED, wanted: OPENED.key });
+function Harness({
+  opened = OPENED,
+  onEditor,
+}: {
+  readonly opened?: OpenMaze;
+  readonly onEditor: (shown: MazeEditor) => void;
+}) {
+  const shown = useMazeEditor({ opened, wanted: opened.key });
   useEffect(() => onEditor(shown));
   return null;
 }
@@ -85,5 +100,24 @@ describe('The editor and the writes on their way', () => {
     release();
     await waiting;
     expect(settled).toBe(true);
+  });
+
+  test('a maze refused by My mazes takes no undo, redo or edit', async () => {
+    await render(<Harness onEditor={keep} opened={GONE} />);
+    await expect.poll(() => editor?.shown?.key).toBe(GONE.key);
+    const edited = toggleWall(GONE.maze, { direction: 'horizontal', x: 1, y: 1 });
+    editor?.begin();
+    editor?.change(edited);
+    editor?.end();
+    await expect.poll(() => editor?.readOnly).toBe(true);
+
+    editor?.undo();
+    editor?.begin();
+    editor?.change(GONE.maze);
+    editor?.end();
+    await new Promise((resolve) => setTimeout(resolve, 50));
+
+    expect(editor?.shown?.maze).toBe(edited);
+    expect(editor?.canUndo).toBe(true);
   });
 });

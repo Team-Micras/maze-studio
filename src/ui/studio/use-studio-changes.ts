@@ -1,5 +1,5 @@
 import { useCallback } from 'react';
-import { mineIdOf, mineKey } from '@/library';
+import { keyOf, mineIdOf } from '@/library';
 import { useStore, type StoreApi } from 'zustand';
 
 import type { MazeDiff } from '@/maze';
@@ -55,10 +55,10 @@ export function useStudioChanges({
   onDiscard,
 }: StudioChangesInput): StudioChanges {
   const changes = useStore(sessionChanges);
-  const rows: ChangeRow[] = changes.items.map((item) => ({
-    item,
-    current: onScreen?.key === mineKey(item.id) ? onScreen.maze : library?.mazeOf(mineKey(item.id)),
-  }));
+  const rows: ChangeRow[] = changes.items.map((item) => {
+    const key = keyOf({ kind: 'mine', id: item.id });
+    return { item, current: onScreen?.key === key ? onScreen.maze : library?.mazeOf(key) };
+  });
   const screenId = mineIdOf(onScreen?.key);
   const screenItem = screenId === undefined ? undefined : changeOf(changes, screenId);
   const screenDiff =
@@ -88,12 +88,12 @@ export function useStudioChanges({
       onOpenItem: (item) => {
         setOpen(false);
 
-        if (onScreen?.key !== mineKey(item.id)) {
+        if (mineIdOf(onScreen?.key) !== item.id) {
           pushRoute({ kind: 'mine', id: item.id });
         }
       },
       onKeep: (item) => {
-        const key = mineKey(item.id);
+        const key = keyOf({ kind: 'mine', id: item.id });
         const shown = onScreen?.key === key ? onScreen : undefined;
         const maze = shown?.maze ?? library?.mazeOf(key);
         const profile = shown?.document.profile ?? library?.documentOf(key)?.profile ?? 'free';

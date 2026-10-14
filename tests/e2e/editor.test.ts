@@ -537,7 +537,7 @@ describe('The maze list after an edit', () => {
         }),
       [DATABASE_NAME, encodeMazeCode(maze)] as const
     );
-    await page.goto(`${app}#/mine/kept`);
+    await page.evaluate(() => window.history.replaceState(null, '', '#/mine/kept'));
     await page.reload();
     await waitForMode(page, 'editor');
     await page.keyboard.press('l');

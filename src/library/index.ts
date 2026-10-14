@@ -18,7 +18,7 @@ export {
 } from './backup';
 export { gitBlobSha } from './blob-sha';
 export { folderCatalog, mineCatalog, repoCatalog, type CatalogEntry } from './catalog';
-export { folderFileOf, folderKey, mineIdOf, mineKey, repoKey } from './maze-key';
+export { folderFileOf, keyOf, kindOf, looseKey, mineIdOf, refOf, type MazeRef } from './maze-key';
 export {
   folderPermission,
   isFolderHandle,

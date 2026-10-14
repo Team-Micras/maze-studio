@@ -127,7 +127,7 @@ export class RepoCache {
         writer.put('settings', updated, META);
       });
     } else if (result.status === 'unchanged') {
-      await this.#save({ ...checked, etag: result.etag ?? checked.etag });
+      await this.#save({ ...checked, etag: result.etag });
     } else {
       await this.#save({
         ...checked,
