@@ -23,6 +23,53 @@ the browser on a laptop or a phone, installs, and works offline at a competition
 
 Service worker, installation and Open folder need a secure context: `https://` or `localhost`.
 
+## Embedding
+
+Another site can show one maze in a frame: the maze alone, fitted to the frame, with a small link
+that opens it in maze-studio. The frame takes no wheel or touch, so the page around it scrolls as
+usual.
+
+```html
+<iframe
+  src="https://team-micras.github.io/maze-studio/?embed#/repo/classic/br2025-robochallenge-day1.txt"
+  title="Maze of RoboChallenge Brasil 2025, day 1"
+  loading="lazy"
+  style="width: 100%; aspect-ratio: 4 / 3; border: 0"
+></iframe>
+```
+
+- `embed` in the query turns the embed on; its value does not matter.
+- `theme=light` or `theme=dark` sets the theme. Without it the frame follows the visitor's system
+  theme, also when it changes.
+- The hash picks the maze: `#/repo/<path>` for a maze of the repository, as maze-studio has it
+  built in, or `#/m/<code>` for a link made by Copy link. My mazes and an opened folder live in the
+  visitor's own browser, so the embed does not show them, and says so.
+
+The page around the frame can set its theme without reloading it, for example when the page has a
+theme switch of its own. The frame posts `{ type: 'maze-studio:ready' }` to the page once it
+listens; send the theme on `maze-studio:ready` and whenever it changes:
+
+```js
+const frame = document.querySelector('iframe');
+const sendTheme = (theme) =>
+  frame.contentWindow.postMessage(
+    { type: 'maze-studio:theme', theme },
+    'https://team-micras.github.io'
+  );
+window.addEventListener('message', (event) => {
+  if (event.source === frame.contentWindow && event.data?.type === 'maze-studio:ready') {
+    sendTheme(document.documentElement.classList.contains('dark') ? 'dark' : 'light');
+  }
+});
+```
+
+The frame takes the theme message only from the page that holds it, with `theme` either `light` or
+`dark`. Once it has one, it no longer follows the system theme.
+
+For a frame with a `sandbox` attribute, use
+`sandbox="allow-scripts allow-same-origin allow-popups allow-popups-to-escape-sandbox"`; the two
+popup flags let "Open in maze-studio" open.
+
 ## Credit
 
 The mazes come from [micromouseonline/mazefiles](https://github.com/micromouseonline/mazefiles),

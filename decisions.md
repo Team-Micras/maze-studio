@@ -170,6 +170,39 @@ reached, and the measurements of the day, are in the git history of this file.
 - **Toasts** last 2.4 s, and 8 s when they carry an action, so its button can be reached; Radix pauses them on hover
   and focus. The new version's toast stays until Reload or its close button.
 
+## The embed
+
+- **A separate entry, loaded on demand.** `src/main.tsx` reads `?embed` and imports either `App` or `Embed`, each in
+  its own chunk, so a page that frames one maze downloads neither the editor, Radix, the library's screens nor
+  IndexedDB: about half the app's first screen (`bun run size` prints both). The snapshot, which the app loads too,
+  comes on top only for a repository route. The cost is one more round trip before the app's chunk, which
+  index.html no longer preloads; the service worker hides it after the first visit. The embed registers no service
+  worker, which would install the whole app in a visitor's browser for one picture, and so offers no new version
+  either. Browsers keep service workers apart by top-level site, so a frame on another site never meets the
+  visitor's installed app and always loads the current build; only a visitor who opens `?embed` directly, or frames
+  it from the same site, gets the index.html of an older installed app, the whole app, until it takes its update.
+  A chunk that fails to load leaves a sentence on the page rather than a blank one.
+- **The embed's imports skip `@/library`'s index.** The bundler puts every module both entries reach into one
+  shared chunk, and the index reaches My mazes, the repository cache, the GitHub updater and the backup, about 7 KB
+  gzip the embed would download and never run. So the embed imports `@/library/catalog` and `@/library/snapshot`,
+  and `open-maze.ts`, which it shares with the app, takes `keyOf` from `@/library/maze-key` and only types from the
+  index.
+- **A still board, with no input.** The embed draws `Board` fitted to the frame, with no camera and no listener, so
+  the wheel and a finger over it scroll the host page. The host sizes the frame, and the link opens the maze in the
+  app for a closer look. The board is `role="img"`, named as its artboard is: name, competition when the name tells
+  it, and size.
+- **Only the repository and links.** My mazes and the folder live in the visitor's own browser, so a page of
+  another site naming one would show whatever that visitor keeps, or nothing; the embed refuses them, and the
+  library, with a sentence. A repository maze comes from the built-in snapshot, never from GitHub.
+- **The theme follows the host.** `?theme=` forces one as in the app; without it the embed follows
+  `prefers-color-scheme` as it changes. A host posts `{ type: 'maze-studio:theme', theme }` to change it without a
+  reload, which wins over both from then on. Only a message whose `source` is `window.parent`, of that `type` and
+  with `theme` `light` or `dark`, counts: any page can post to a frame, and only the one that holds it should steer
+  it. Other keys are ignored, so a later version can add some. The message changes nothing but the theme.
+- **The embed says when it listens.** Its listener comes with its chunk, after the frame's `load`, so a theme
+  posted on `load` could arrive before it. Once listening, the embed posts `{ type: 'maze-studio:ready' }` to its
+  parent with the target `*`: the message carries nothing, and the embed cannot know the host's origin.
+
 ## Accessibility and layout
 
 - **The canvas is `role="application"`**, focusable, with its keys and pointers; `camera-stage.tsx` has the lint
@@ -201,7 +234,8 @@ reached, and the measurements of the day, are in the git history of this file.
 - **Touches are real**: synthetic touches cannot be captured, so pinch and tap tests send them through the DevTools
   protocol (`tests/support/ui/touch.ts`).
 - **Diff fixtures come from known edits**, their counts written by hand, never from `diffMazes`.
-- **The 250 KB budget is reported only**: `bun run size` prints the first screen's size and never fails.
+- **The 250 KB budget is reported only**: `bun run size` prints the first screen's size, the app's and the embed's,
+  and fails only when it cannot find the chunk of one of them, never over the budget.
 - **Lint rules are relaxed only where a file needs it**, each override naming its files: `mine.ts`
   (`BroadcastChannel.postMessage` takes no origin), `thumbnails.ts` (`fill(path)` is not an array fill),
   `camera-stage.tsx` (the application role), and `no-await-in-loop` for `scripts/`, the e2e tests and the frame and
