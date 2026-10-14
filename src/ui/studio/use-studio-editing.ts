@@ -52,13 +52,7 @@ export function useStudioEditing({
   /** The quick list's keys, while a maze is open in the editor. */
   readonly list: EditorShortcuts['list'];
 }) {
-  const tool = useStore(store, (state) => state.tool);
-  const viewing = useStore(store, (state) => state.viewing);
-  const listOpen = useStore(store, (state) => state.listOpen);
-  const hint = useStore(store, (state) => state.hint);
-  const shownFinding = useStore(store, (state) => state.finding);
-  const helpOpen = useStore(store, (state) => state.helpOpen);
-  const touchOpened = useStore(store, (state) => state.touchOpened);
+  const state = useStore(store);
   const onScreen = screen.kind === 'library' ? undefined : screen.maze;
   const board = screen.kind === 'library' ? undefined : screen.board;
   const editing = screen.kind === 'editing';
@@ -75,15 +69,15 @@ export function useStudioEditing({
     maze: editing ? maze : undefined,
     board,
     insets,
-    editable: editable && !viewing,
-    tool,
+    editable: editable && !state.viewing,
+    tool: state.tool,
   });
   const wall = useWallDrawing({
     editor,
     camera,
     maze,
     board,
-    enabled: drawable && tool === 'wall',
+    enabled: drawable && state.tool === 'wall',
     onPress: boardKeys.hide,
   });
   const cells = useCellDrawing({
@@ -91,7 +85,7 @@ export function useStudioEditing({
     camera,
     maze,
     board,
-    tool: drawable && isCellTool(tool) ? tool : undefined,
+    tool: drawable && isCellTool(state.tool) ? state.tool : undefined,
     onPress: boardKeys.hide,
   });
   const pickTool = useCallback(
@@ -120,12 +114,12 @@ export function useStudioEditing({
           source: onScreen.document.source,
         });
   const selected =
-    onScreen !== undefined && shownFinding?.maze === onScreen.key ? shownFinding.key : undefined;
+    onScreen !== undefined && state.finding?.maze === onScreen.key ? state.finding.key : undefined;
   const focused = findings.find((finding, index) => findingKey(finding, index) === selected);
 
   useEditorShortcuts({
     list,
-    active: editing && !viewing && !listOpen,
+    active: editing && !state.viewing && !state.listOpen,
     hand: !phone,
     onUndo: undo,
     onRedo: redo,
@@ -187,7 +181,7 @@ export function useStudioEditing({
       canRedo: editor.canRedo,
       canUndo: editor.canUndo,
       editable,
-      hint,
+      hint: state.hint,
       onBoardKey: boardKey,
       onEdit: () => {
         store.setState({ viewing: false });
@@ -198,9 +192,9 @@ export function useStudioEditing({
       onUndo: undo,
       onView: () => store.setState({ viewing: true }),
       phone,
-      tool,
-      touchMode: touchOpened,
-      viewing: viewing,
+      tool: state.tool,
+      touchMode: state.touchOpened,
+      viewing: state.viewing,
     },
     checks:
       onScreen === undefined
@@ -228,7 +222,7 @@ export function useStudioEditing({
       onHelp: coarse ? undefined : openHelp,
     },
     help: {
-      open: helpOpen,
+      open: state.helpOpen,
       onOpenChange: (open) => store.setState({ helpOpen: open }),
     } satisfies ShortcutHelpProps,
   };

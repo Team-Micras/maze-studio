@@ -52,8 +52,9 @@ interface FlightInput {
 }
 
 /** What the last render showed: the key of the maze the route opened, the board's maze and the camera. */
-interface Shown extends Partial<Pick<FlightInput, 'onScreen'>> {
+interface Shown {
   readonly key?: string;
+  readonly onScreen?: OpenMaze;
   readonly camera?: Camera;
 }
 

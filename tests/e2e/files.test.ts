@@ -319,6 +319,32 @@ describe('Save to My mazes', () => {
     expect(item?.name).toBe('corridor');
     expect(decoded?.ok === true ? decoded.value.trailer : undefined).toBe('Notes\n');
   });
+
+  test('keeps the profile chosen before saving, which Discard puts back', async () => {
+    const { maze } = await repoContent(CLASSIC);
+    const page = await openMaze(`#/m/${encodeMazeCode(maze, { name: 'Shared one' })}`);
+    const profile = async (name: string): Promise<void> => {
+      await page.getByRole('button', { name: /^Checks/ }).click();
+      await page.getByRole('dialog', { name: 'Checks' }).getByRole('radio', { name }).click();
+      await page.keyboard.press('Escape');
+    };
+    await profile('Training');
+    await menu(page, 'Save to My mazes');
+    await page.waitForFunction(() => window.location.hash.startsWith('#/mine/'));
+    const id = mineId(page) ?? '';
+    await expect.poll(async () => (await storedMine(page, id))?.profile).toBe('training');
+
+    await clickEdge(page, maze, EDGE);
+    await expectSaved(page, sameMaze(toggleWall(maze, EDGE)));
+    await profile('Classic');
+    await expect.poll(async () => (await storedMine(page, id))?.profile).toBe('classic');
+    await page.getByRole('button', { name: 'Changes in this session: 1' }).click();
+    await page.getByRole('button', { name: 'Discard Shared one' }).click();
+    await page.getByRole('button', { name: 'Confirm discard of Shared one' }).click();
+
+    await expectSaved(page, sameMaze(maze));
+    expect((await storedMine(page, id))?.profile).toBe('training');
+  });
 });
 
 describe('A .txt file', () => {

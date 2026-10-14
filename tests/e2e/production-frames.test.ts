@@ -132,8 +132,18 @@ async function waitForMode(page: Page, mode: string): Promise<void> {
 }
 
 /**
+ * The report of the runs of one flight: p95 and the share of slow frames over the intervals of all
+ * the runs, since a flight lasts about 45 intervals and one slow frame of one run alone would be
+ * over the 1 % of DESIGN.md 8; the worst interval of the median run, as for every gate.
+ */
+function flightReport(runs: readonly (readonly number[])[]): FrameReport {
+  return { ...frameReport(runs.flat()), worst: medianRun(runs.map(frameReport)).worst };
+}
+
+/**
  * The flights into a maze and back, `RUNS` times each on the built app at the calibrated throttle,
- * after a press on the artboard held as a person holds a click, or Back.
+ * after a press on the artboard held as a person holds a click, or Back, as {@link flightReport}
+ * reports them.
  */
 async function measureFlights(): Promise<{ inward: FrameReport; outward: FrameReport }> {
   const context = await browser.newContext({ viewport: { width: 1440, height: 900 } });
@@ -144,8 +154,8 @@ async function measureFlights(): Promise<{ inward: FrameReport; outward: FrameRe
   await page.waitForTimeout(500);
   const session = await context.newCDPSession(page);
   await session.send('Emulation.setCPUThrottlingRate', { rate: slowdown });
-  const inward: FrameReport[] = [];
-  const outward: FrameReport[] = [];
+  const inward: number[][] = [];
+  const outward: number[][] = [];
 
   try {
     for (let run = 0; run < RUNS; run++) {
@@ -157,20 +167,20 @@ async function measureFlights(): Promise<{ inward: FrameReport; outward: FrameRe
       await page.mouse.up();
       await waitForMode(page, 'editor');
       await page.waitForTimeout(150);
-      inward.push(frameReport(await stopFlight(page, 'editor')));
+      inward.push(await stopFlight(page, 'editor'));
 
       await startRecording(page);
       await page.goBack();
       await waitForMode(page, 'library');
       await page.waitForTimeout(150);
-      outward.push(frameReport(await stopFlight(page, 'library')));
+      outward.push(await stopFlight(page, 'library'));
       await page.waitForTimeout(300);
     }
   } finally {
     await context.close();
   }
 
-  return { inward: medianRun(inward), outward: medianRun(outward) };
+  return { inward: flightReport(inward), outward: flightReport(outward) };
 }
 
 function describeRun(name: string, report: FrameReport): string {
@@ -212,7 +222,7 @@ describe('The built studio as slow as the reference notebook at 4× CPU throttli
     console.info(describeRun('flight back', outward));
 
     for (const report of [inward, outward]) {
-      expect(report.frames).toBeGreaterThan(20);
+      expect(report.frames).toBeGreaterThan(20 * RUNS);
       expect(report.p95).toBeLessThanOrEqual(FRAME_BUDGET.p95);
       expect(report.slowShare).toBeLessThanOrEqual(FRAME_BUDGET.slowShare);
       expect(report.worst).toBeLessThanOrEqual(FLIGHT_WORST_MS);
