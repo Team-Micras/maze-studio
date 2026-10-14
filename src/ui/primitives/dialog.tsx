@@ -44,12 +44,12 @@ function DialogContent({
     <DialogPrimitive.Portal>
       <DialogPrimitive.Overlay
         data-slot="dialog-overlay"
-        className="fixed inset-0 z-20 bg-black/30 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:animate-in data-[state=open]:fade-in-0"
+        className="fixed inset-0 z-20 bg-black/30 data-[state=open]:animate-in data-[state=open]:fade-in-0"
       />
       <DialogPrimitive.Content
         data-slot="dialog-content"
         className={cn(
-          'fixed top-1/2 left-1/2 z-20 flex w-[min(400px,calc(100vw-24px))] -translate-x-1/2 -translate-y-1/2 flex-col gap-4 rounded-[16px] bg-card p-5 text-card-foreground shadow-island outline-none data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-97',
+          'fixed top-1/2 left-1/2 z-20 flex w-[min(400px,calc(100vw-24px))] -translate-x-1/2 -translate-y-1/2 flex-col gap-4 rounded-[16px] bg-card p-5 text-card-foreground shadow-island outline-none data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-97',
           className
         )}
         {...props}

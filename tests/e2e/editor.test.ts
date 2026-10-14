@@ -407,7 +407,6 @@ describe('A new maze before its first edit', () => {
     await page.getByRole('button', { name: 'Save' }).click();
 
     await expect.poll(() => page.locator('h1').textContent()).toBe('Practice run');
-    await expect.poll(() => page.getByRole('dialog', { name: 'Rename' }).count()).toBe(0);
     expect(new URL(page.url()).hash).toBe('#/');
     const maze = borderedMaze(16, 16);
     const edge: Edge = { direction: 'horizontal', x: 4, y: 5 };
@@ -837,6 +836,27 @@ describe('Round 3 on a phone', () => {
     await dialog.getByRole('button', { name: 'Save' }).tap();
 
     await expect.poll(() => page.locator('h1').textContent()).toBe('Practice run');
+  });
+
+  test('the title takes a tap 20 px above and below its middle, and is described as Rename', async () => {
+    const page = await editedOnPhone();
+    const title = page.getByRole('button', { name: 'AAMC15Maze (edited)' });
+    await title.waitFor();
+    const reached = await title.evaluate((button) => {
+      const box = button.getBoundingClientRect();
+      const x = box.left + box.width / 2;
+      const y = box.top + box.height / 2;
+      return [y - 20, y + 20].map(
+        (at) => document.elementFromPoint(x, at)?.closest('button') === button
+      );
+    });
+    const description = await title.evaluate(
+      (button) =>
+        document.getElementById(button.getAttribute('aria-describedby') ?? '')?.textContent
+    );
+
+    expect(reached).toEqual([true, true]);
+    expect(description).toBe('Rename');
   });
 
   test('Show changes names D as its shortcut but shows no key', async () => {

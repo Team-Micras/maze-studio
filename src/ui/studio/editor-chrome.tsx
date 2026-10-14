@@ -23,6 +23,9 @@ const PHONE_MINIMAP_SIZE = 108;
 /** The id of the quick list, which the Maze list button controls. */
 export const MAZE_LIST_ID = 'maze-list';
 
+/** The id of the title button's description. */
+const RENAME_HINT = 'title-rename-hint';
+
 /** The props of {@link EditorChrome}. */
 export interface EditorChromeProps {
   readonly open: OpenMaze;
@@ -107,6 +110,7 @@ export function EditorChrome({
                 <span className="block truncate">{open.name}</span>
               ) : (
                 <button
+                  aria-describedby={RENAME_HINT}
                   aria-haspopup="dialog"
                   className="relative -mx-1 block max-w-full rounded-[6px] px-1 text-left outline-none after:absolute after:inset-x-0 after:-inset-y-[13px] after:content-[''] hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
                   onClick={onRename}
@@ -116,6 +120,11 @@ export function EditorChrome({
                 </button>
               )}
             </h1>
+            {onRename === undefined ? null : (
+              <span hidden id={RENAME_HINT}>
+                Rename
+              </span>
+            )}
             <p className="truncate text-[11px] leading-[14px] text-muted-foreground">
               {open.detail}
             </p>
