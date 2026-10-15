@@ -15,9 +15,8 @@
 - A new dependency needs its reason written in [`decisions.md`](decisions.md), which also
   records the other choices made along the way.
 - Code and docs in English. Doc comments on exported APIs; no comments inside function bodies.
-- `vendor/mazefiles` is pinned, and Dependabot moves it forward every week with a pull request to
-  `main` that merges itself once CI passes; `sync-develop.yml` then brings `main` back into
-  `develop`. `src/library/snapshot.json` is generated from the submodule by the
+- `vendor/mazefiles` is pinned, and Dependabot moves it forward every week with the same pull
+  request to `main` and to `develop`, each merging itself once CI passes. `src/library/snapshot.json` is generated from the submodule by the
   `pre` scripts and never committed. Tests of the corpus check invariants (blob SHA, byte-for-byte
   and compact-code round trips, no `error` under the folder's profile, snapshot equal to the
   submodule), never counts of one commit, so a new maze upstream needs no change here.

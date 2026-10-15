@@ -113,26 +113,25 @@ the test scripts write it from the submodule first, when it is missing or of ano
 
 ## Keeping the mazes up to date
 
-Dependabot (`.github/dependabot.yml`) opens a pull request against `main` every week that moves
-`vendor/mazefiles` to the newest commit of `master`, so new mazes reach the site without a release. The workflow `mazefiles-auto-merge.yml` turns on auto-merge for a
+Dependabot (`.github/dependabot.yml`) opens two pull requests every week that move
+`vendor/mazefiles` to the newest commit of `master`: one against `main`, so new mazes reach the site
+without a release, and the same one against `develop`. The workflow `mazefiles-auto-merge.yml` turns on auto-merge for a
 pull request of Dependabot's that changes nothing but the submodule, so it lands once CI passes,
 with no one involved. For that, the GitHub repository needs:
 
 - **Allow auto-merge**, in Settings, General, Pull Requests;
-- a rule for `main` (branch protection or a ruleset) that requires the `check` job of CI to pass
-  before merging, and the same for `develop`;
-- **Allow GitHub Actions to create and approve pull requests**, in Settings, Actions, General, for
-  `sync-develop.yml`.
+- a rule for `main` and one for `develop` (branch protection or a ruleset) that require the
+  `check` job of CI to pass before merging.
 
-The workflow also waits for those required checks itself and fails, merging nothing, when `main`
-requires none. Without auto-merge, the pull request waits for a person. A merge made with the
-workflow's `GITHUB_TOKEN` starts no other workflow, so once the bump is merged the workflow runs
-CI, `pages.yml` and `sync-develop.yml` on `main` itself, by `workflow_dispatch`.
+The workflow also waits for those required checks itself and fails, merging nothing, when the base
+branch requires none. Without auto-merge, the pull request waits for a person. A merge made with
+the workflow's `GITHUB_TOKEN` starts no other workflow, so once a bump is merged on `main` the
+workflow starts `pages.yml` itself, by `workflow_dispatch`.
 
-`sync-develop.yml` then brings `main` back into `develop`: when `main` changes files `develop` lacks,
-it opens a pull request from `main` to `develop`, or reuses the open one, and turns on its
-auto-merge. Its head is `main`'s own commit, so the `check` CI ran there is the one `develop`
-requires. A release from `develop` changes nothing `develop` lacks, so it opens nothing.
+The two bumps never get in the way of a release: a merge compares content, and the same gitlink on
+both sides is no conflict. The one case is `develop` a bump behind `main`, when one of the two pull
+requests failed; the release then conflicts on `vendor/mazefiles`, and the newer commit is the one
+to keep.
 
 `pages.yml` publishes `main` on every push to it and on demand from the Actions tab.
 
@@ -169,8 +168,7 @@ site, accept New version or open it in a private window.
   4. Release `develop` to `main` right after, so `pages.yml` publishes from then on.
   5. To go back, set `build_type=workflow` the same way.
 - **Rules** for `main` and `develop` that require the `check` job of CI.
-- **Allow auto-merge**, for the weekly mazefiles bump and for bringing `main` back into `develop`.
-- **Allow GitHub Actions to create and approve pull requests**, for `sync-develop.yml`.
+- **Allow auto-merge**, for the weekly mazefiles bumps.
 
 ## License
 
