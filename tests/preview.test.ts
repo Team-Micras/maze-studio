@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'vitest';
 
-import { PREVIEW_PATH, registersServiceWorker } from '@/preview';
+import { databaseFor, PREVIEW_PATH, registersServiceWorker } from '@/preview';
 
 describe('previews of pull requests', () => {
   test('are told apart by their path, which the service worker leaves to the network', () => {
@@ -15,5 +15,10 @@ describe('previews of pull requests', () => {
     expect(registersServiceWorker('/maze-studio/pr-7/')).toBe(false);
     expect(registersServiceWorker('/maze-studio/')).toBe(true);
     expect(registersServiceWorker('/')).toBe(true);
+  });
+
+  test('keep a database of their own, apart from the site', () => {
+    expect(databaseFor('maze-studio', '/maze-studio/pr-7/')).toBe('maze-studio-pr-7');
+    expect(databaseFor('maze-studio', '/maze-studio/')).toBe('maze-studio');
   });
 });

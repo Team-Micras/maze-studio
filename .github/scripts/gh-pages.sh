@@ -5,59 +5,93 @@
 #   gh-pages.sh site <source>        the site at the root, keeping every pr-<n>/ preview
 #   gh-pages.sh put <n> <source>     the preview of pull request <n> at pr-<n>/
 #   gh-pages.sh drop <n>             removes the preview of pull request <n>
+#
+# The branch is only where the site is deployed from, so each update is one commit with no parent,
+# pushed with a lease on the commit it was made from; when another workflow pushed in between, the
+# lease fails and the update starts again from the new branch, up to five times.
 set -euo pipefail
 
 action="$1"
-work="$(mktemp -d)"
+number="${2:-}"
+source="${3:-${2:-}}"
+max_bytes=$((50 * 1024 * 1024))
 
-if git fetch --quiet --depth 1 origin gh-pages 2>/dev/null; then
-  git worktree add --quiet --detach "$work" FETCH_HEAD
-else
-  git worktree add --quiet --orphan -b gh-pages-first "$work"
+if [ "$action" != site ] && [[ ! "$number" =~ ^[1-9][0-9]*$ ]]; then
+  echo "not a pull request number: $number" >&2
+  exit 1
 fi
 
-copy() {
-  if find "$1" -type l | grep -q .; then
-    echo "refusing $1: it holds symbolic links" >&2
+if [ "$action" != drop ]; then
+  if find "$source" -type l -o -name .git | grep -q .; then
+    echo "refusing $source: it holds symbolic links or .git entries" >&2
     exit 1
   fi
-  cp -R "$1"/. "$2"/
-}
-
-case "$action" in
-  site)
-    find "$work" -mindepth 1 -maxdepth 1 ! -name .git ! -name 'pr-*' -exec rm -rf {} +
-    copy "$2" "$work"
-    message="🚀 Publish the site"
-    ;;
-  put)
-    [[ "$2" =~ ^[0-9]+$ ]] || { echo "not a pull request number: $2" >&2; exit 1; }
-    rm -rf "$work/pr-$2"
-    mkdir -p "$work/pr-$2"
-    copy "$3" "$work/pr-$2"
-    message="🚀 Publish the preview of pull request #$2"
-    ;;
-  drop)
-    [[ "$2" =~ ^[0-9]+$ ]] || { echo "not a pull request number: $2" >&2; exit 1; }
-    rm -rf "$work/pr-$2"
-    message="🔥 Remove the preview of pull request #$2"
-    ;;
-  *)
-    echo "unknown action: $action" >&2
+  if [ "$(du -sb "$source" | cut -f1)" -gt "$max_bytes" ]; then
+    echo "refusing $source: it is over 50 MB" >&2
     exit 1
-    ;;
-esac
-
-touch "$work/.nojekyll"
-cd "$work"
-git add -A
-
-if git diff --cached --quiet; then
-  echo "gh-pages already up to date"
-  exit 0
+  fi
 fi
 
-git -c user.name='github-actions[bot]' \
-  -c user.email='41898282+github-actions[bot]@users.noreply.github.com' \
-  commit --quiet -m "$message"
-git push --quiet origin HEAD:refs/heads/gh-pages
+update() {
+  local work="$1"
+
+  case "$action" in
+    site)
+      find "$work" -mindepth 1 -maxdepth 1 ! -name .git ! -name 'pr-*' -exec rm -rf {} +
+      cp -R "$source"/. "$work"/
+      message="🚀 Publish the site"
+      ;;
+    put)
+      rm -rf "$work/pr-$number"
+      mkdir -p "$work/pr-$number"
+      cp -R "$source"/. "$work/pr-$number"/
+      message="🚀 Publish the preview of pull request #$number"
+      ;;
+    drop)
+      rm -rf "$work/pr-$number"
+      message="🔥 Remove the preview of pull request #$number"
+      ;;
+    *)
+      echo "unknown action: $action" >&2
+      exit 1
+      ;;
+  esac
+
+  touch "$work/.nojekyll"
+}
+
+for attempt in 1 2 3 4 5; do
+  work="$(mktemp -d)"
+
+  if git fetch --quiet --depth 1 origin gh-pages 2>/dev/null; then
+    lease="$(git rev-parse FETCH_HEAD)"
+    git worktree add --quiet --detach "$work" FETCH_HEAD
+  else
+    lease=''
+    git worktree add --quiet --orphan -b "gh-pages-new-$$-$attempt" "$work"
+  fi
+
+  update "$work"
+  git -C "$work" add -A
+  tree="$(git -C "$work" write-tree)"
+  git worktree remove --force "$work"
+
+  if [ -n "$lease" ] && [ "$tree" = "$(git rev-parse "$lease^{tree}")" ]; then
+    echo "gh-pages already up to date"
+    exit 0
+  fi
+
+  commit="$(git -c user.name='github-actions[bot]' \
+    -c user.email='41898282+github-actions[bot]@users.noreply.github.com' \
+    commit-tree "$tree" -m "$message")"
+
+  if git push --quiet --force-with-lease="refs/heads/gh-pages:$lease" origin \
+    "$commit:refs/heads/gh-pages"; then
+    exit 0
+  fi
+
+  echo "gh-pages moved while updating it, attempt $attempt; starting again" >&2
+done
+
+echo "could not update gh-pages after five attempts" >&2
+exit 1

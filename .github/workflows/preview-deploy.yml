@@ -2,8 +2,9 @@ name: Preview deploy
 
 # Publishes what Preview build made at pr-<n>/ of gh-pages and comments the link on the pull
 # request. It runs as this file is on the default branch, with write access, so it never checks out
-# nor runs anything of the pull request: it copies the built files, after checking that the number
-# the artifact gives is a pull request whose head is the commit that was built.
+# nor runs anything of the pull request: it copies the built files, after checking that the build
+# came from a branch of this repository and that the number the artifact gives is an open pull
+# request whose head is the commit that was built.
 on:
   workflow_run:
     workflows: [Preview build]
@@ -12,12 +13,15 @@ on:
 permissions: {}
 
 concurrency:
-  group: gh-pages
+  group: preview-deploy
   cancel-in-progress: false
 
 jobs:
   deploy:
-    if: github.event.workflow_run.event == 'pull_request' && github.event.workflow_run.conclusion == 'success'
+    if: >-
+      github.event.workflow_run.event == 'pull_request' &&
+      github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.head_repository.full_name == github.repository
     runs-on: ubuntu-24.04
     permissions:
       contents: write
@@ -40,9 +44,9 @@ jobs:
           PREVIEW: ${{ runner.temp }}/preview
         run: |
           number="$(head -c 16 "$PREVIEW/number" | tr -d '[:space:]')"
-          [[ "$number" =~ ^[0-9]+$ ]] || { echo "not a pull request number: $number" >&2; exit 1; }
-          head="$(gh api "repos/$GITHUB_REPOSITORY/pulls/$number" --jq '.head.sha')"
-          [ "$head" = "$HEAD_SHA" ] || { echo "pull request #$number is not at $HEAD_SHA" >&2; exit 1; }
+          [[ "$number" =~ ^[1-9][0-9]*$ ]] || { echo "not a pull request number: $number" >&2; exit 1; }
+          pull="$(gh api "repos/$GITHUB_REPOSITORY/pulls/$number" --jq '.state + " " + .head.sha')"
+          [ "$pull" = "open $HEAD_SHA" ] || { echo "pull request #$number is not open at $HEAD_SHA" >&2; exit 1; }
           echo "number=$number" >> "$GITHUB_OUTPUT"
 
       - run: .github/scripts/gh-pages.sh put "$NUMBER" "$RUNNER_TEMP/preview/site"

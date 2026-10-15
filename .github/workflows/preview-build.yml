@@ -1,7 +1,8 @@
 name: Preview build
 
-# Builds a pull request for its preview, as any pull request runs, from a fork too: read only, with
-# no secret. Preview deploy, which runs trusted, publishes what this uploads.
+# Builds a pull request of a branch of this repository for its preview, read only and with no
+# secret; Preview deploy, which runs trusted, publishes what this uploads. A fork's pull request
+# gets CI but no preview, since a preview runs its code on the site's origin.
 on:
   pull_request:
     types: [opened, synchronize, reopened]
@@ -15,6 +16,7 @@ concurrency:
 
 jobs:
   build:
+    if: github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v7

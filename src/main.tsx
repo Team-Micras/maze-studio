@@ -15,7 +15,7 @@ if (!root) {
 // Any frame gets the embed: old frames without `?embed` still work, and no site can clickjack the editor.
 const embed = isEmbed(window.location.search) || window.top !== window;
 
-if (import.meta.env.PROD && !embed && registersServiceWorker(import.meta.env.BASE_URL)) {
+if (import.meta.env.PROD && !embed && registersServiceWorker(window.location.pathname)) {
   const update = registerSW({
     onNeedRefresh: () =>
       void import('@/ui/new-version').then(({ offerReload }) =>
