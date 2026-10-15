@@ -172,6 +172,8 @@ reached, and the measurements of the day, are in the git history of this file.
 
 ## The embed
 
+- **Any frame gets the embed** (owner, 15/10): `src/main.tsx` takes `?embed` or `window.top !== window`. A frame
+  made without `?embed` still shows the maze, and no site can frame the editor to clickjack My mazes.
 - **A separate entry, loaded on demand.** `src/main.tsx` reads `?embed` and imports either `App` or `Embed`, each in
   its own chunk, so a page that frames one maze downloads neither the editor, Radix, the library's screens nor
   IndexedDB: about half the app's first screen (`bun run size` prints both). The snapshot, which the app loads too,

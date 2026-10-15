@@ -23,14 +23,14 @@ async function newPage(width = 1280, height = 800): Promise<Page> {
  * A page of another site, taller than its viewport, with the embed in a frame in the middle, which
  * sends the frame the dark theme once it says it is ready, as the README shows.
  */
-function hostPage(): string {
+function hostPage(src = EMBED): string {
   return `<!doctype html>
 <html lang="en">
   <head><title>Results</title></head>
   <body style="margin: 0">
     <div style="height: 300px"></div>
     <iframe
-      src="${EMBED}"
+      src="${src}"
       title="The maze of the final"
       loading="lazy"
       style="display: block; width: 640px; aspect-ratio: 4 / 3; border: 0"
@@ -57,21 +57,21 @@ function hostPage(): string {
  * page Playwright fulfils counts as public, and Chromium refuses a public page framing a local one.
  */
 function serveHost(): Promise<Server> {
-  const server = createServer((_request, response) => {
+  const server = createServer((request, response) => {
     response.writeHead(200, { 'content-type': 'text/html' });
-    response.end(hostPage());
+    response.end(request.url === '/plain' ? hostPage(`${app}#/repo/${CLASSIC}`) : hostPage());
   });
   return new Promise((resolve) => server.listen(0, '127.0.0.1', () => resolve(server)));
 }
 
-function hostUrl(): string {
+function hostUrl(path = '/results'): string {
   const address = host.address();
 
   if (address === null || typeof address === 'string') {
     throw new Error('the host page is not served on a port');
   }
 
-  return `http://127.0.0.1:${address.port}/results`;
+  return `http://127.0.0.1:${address.port}${path}`;
 }
 
 beforeAll(async () => {
@@ -110,6 +110,21 @@ describe('The embed on the built app', () => {
     expect(await page.getByRole('link', { name: 'Open in maze-studio' }).getAttribute('href')).toBe(
       `${app}#/repo/${CLASSIC}`
     );
+  });
+
+  test('in a frame without ?embed is still the embed, and loads none of the app', async () => {
+    const page = await newPage();
+    const requested: string[] = [];
+    page.on('request', (request) => requested.push(new URL(request.url()).pathname));
+    await page.goto(hostUrl('/plain'));
+    await page
+      .frameLocator('iframe')
+      .getByRole('img', { name: 'AAMC15Maze, AAMC, 16 by 16' })
+      .waitFor();
+
+    expect(await page.frameLocator('iframe').locator('[data-studio-mode], button').count()).toBe(0);
+    expect(requested.filter((path) => /\/assets\/(app|radix)-/.test(path))).toEqual([]);
+    expect(requested.some((path) => /\/assets\/embed-/.test(path))).toBe(true);
   });
 
   test('in a frame takes the theme its page posts once it says it is ready', async () => {

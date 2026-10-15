@@ -11,7 +11,8 @@ if (!root) {
   throw new Error('index.html has no #root element to mount maze-studio in');
 }
 
-const embed = isEmbed(window.location.search);
+// Any frame gets the embed: old frames without `?embed` still work, and no site can clickjack the editor.
+const embed = isEmbed(window.location.search) || window.top !== window;
 
 if (import.meta.env.PROD && !embed) {
   const update = registerSW({

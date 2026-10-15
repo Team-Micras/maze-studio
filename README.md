@@ -38,7 +38,9 @@ usual.
 ></iframe>
 ```
 
-- `embed` in the query turns the embed on; its value does not matter.
+- `embed` in the query turns the embed on; its value does not matter. Inside any frame maze-studio
+  is always the embed, with or without it, so a frame made without `?embed` still works and no site
+  can frame the editor itself.
 - `theme=light` or `theme=dark` sets the theme. Without it the frame follows the visitor's system
   theme, also when it changes.
 - The hash picks the maze: `#/repo/<path>` for a maze of the repository, as maze-studio has it
