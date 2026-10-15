@@ -49,8 +49,9 @@ reached, and the measurements of the day, are in the git history of this file.
   scripts and never committed; it is written one file per line and not formatted by oxfmt. Dependabot bumps the
   submodule weekly and `mazefiles-auto-merge.yml` merges a bump that changes only `vendor/mazefiles` once the required
   checks pass. It runs on `pull_request_target`, so a pull request cannot change what runs with write access, and waits
-  for the required checks, so an unprotected `main` never merges a bump untested. `pages.yml` also runs every Monday
-  at 12:00 UTC, since a merge made with `GITHUB_TOKEN` starts no workflow.
+  for the required checks, so an unprotected `main` never merges a bump untested. A merge made with `GITHUB_TOKEN`
+  starts no workflow, so the auto-merge workflow then starts CI, Pages and Sync develop on `main` by
+  `workflow_dispatch`, the one event that token may start.
 - **Corpus tests check invariants**, never the counts of one commit: blob SHA, byte-for-byte and code round trips, no
   irregularity, no `error`, the snapshot equal to the submodule, and a floor of 500 files.
 - **Updates.** The snapshot wins over an older cached copy. A failed check counts as the day's check. An update stops
@@ -250,8 +251,13 @@ reached, and the measurements of the day, are in the git history of this file.
 ## Branches, CI and previews
 
 - **Gitflow** (owner, 15/10): features from `develop` by pull request, releases from `develop` to `main`, hotfixes from
-  `main`. CI runs on pushes to both and on every pull request; Dependabot opens its weekly bump against `develop`, and
-  the auto-merge workflow waits for the checks of the pull request's base branch.
+  `main`. CI runs on pushes to both, on every pull request and on demand.
+- **The weekly mazefiles bump lands on `main`** (owner, 15/10), so new mazes reach the site without a release, and
+  `sync-develop.yml` brings it back into `develop`: a pull request from `main` to `develop` with auto-merge, opened only
+  when `main` changes files `develop` lacks (a release's merge commit changes none). Its head is `main`'s own commit, so
+  the `check` that CI ran there is the one `develop` requires; a pull request opened with `GITHUB_TOKEN` starts no CI of
+  its own. Merging it never deletes `main`: GitHub keeps the default branch whatever `delete_branch_on_merge` says, and
+  `main`'s protection refuses deletion.
 - **The frame gate only reports on CI** (owner, 15/10). Shared runners are too uneven for a frame budget: one runner
   measured 38.7 ms for the 27 ms benchmark, and the gate failed on a frame or two. With `CI` set, `production-frames`
   measures, prints and writes the numbers to the job summary, and fails on nothing but a broken measurement; on a known
