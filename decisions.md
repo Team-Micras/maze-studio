@@ -242,3 +242,25 @@ reached, and the measurements of the day, are in the git history of this file.
   (`BroadcastChannel.postMessage` takes no origin), `thumbnails.ts` (`fill(path)` is not an array fill),
   `camera-stage.tsx` (the application role), and `no-await-in-loop` for `scripts/`, the e2e tests and the frame and
   touch helpers, which wait step by step on purpose.
+
+## Branches, CI and previews
+
+- **Gitflow** (owner, 15/10): features from `develop` by pull request, releases from `develop` to `main`, hotfixes from
+  `main`. CI runs on pushes to both and on every pull request; Dependabot opens its weekly bump against `develop`, and
+  the auto-merge workflow waits for the checks of the pull request's base branch.
+- **The frame gate only reports on CI** (owner, 15/10). Shared runners are too uneven for a frame budget: one runner
+  measured 38.7 ms for the 27 ms benchmark, and the gate failed on a frame or two. With `CI` set, `production-frames`
+  measures, prints and writes the numbers to the job summary, and fails on nothing but a broken measurement; on a known
+  machine, locally and in reviews, it blocks as before.
+- **Previews of pull requests on gh-pages.** Pages serves the `gh-pages` branch, so the site and a `pr-<n>/` per pull
+  request can live side by side. The pull request is built by a `pull_request` workflow with read access only, and a
+  `workflow_run` workflow, trusted, publishes the artifact: it checks that the number the artifact gives is a pull
+  request whose head is the commit built, refuses symbolic links, copies the files and comments the link, never running
+  anything of the pull request. `pull_request_target: closed` removes the preview without checking out the pull request.
+  No ready-made action was used: the ones found either deploy from the pull request's own workflow, which a fork cannot
+  write from, or run with write access on its code. The three writers share one concurrency group, so their pushes to
+  `gh-pages` never race.
+- **A preview shares the site's origin.** Its code runs on `team-micras.github.io` beside the site, so it can read My
+  mazes of whoever opens it. Fork pull requests therefore build only once a maintainer approves their workflows (the
+  repository's Actions setting for outside contributors). A preview registers no service worker
+  (`registersServiceWorker`), and the site's worker leaves `pr-<n>/` navigations to the network (`PREVIEW_PATH`).

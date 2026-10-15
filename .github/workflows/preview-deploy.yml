@@ -1,0 +1,69 @@
+name: Preview deploy
+
+# Publishes what Preview build made at pr-<n>/ of gh-pages and comments the link on the pull
+# request. It runs as this file is on the default branch, with write access, so it never checks out
+# nor runs anything of the pull request: it copies the built files, after checking that the number
+# the artifact gives is a pull request whose head is the commit that was built.
+on:
+  workflow_run:
+    workflows: [Preview build]
+    types: [completed]
+
+permissions: {}
+
+concurrency:
+  group: gh-pages
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    if: github.event.workflow_run.event == 'pull_request' && github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+      pull-requests: write
+      actions: read
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: preview
+          path: ${{ runner.temp }}/preview
+          run-id: ${{ github.event.workflow_run.id }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - id: pull
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
+          PREVIEW: ${{ runner.temp }}/preview
+        run: |
+          number="$(head -c 16 "$PREVIEW/number" | tr -d '[:space:]')"
+          [[ "$number" =~ ^[0-9]+$ ]] || { echo "not a pull request number: $number" >&2; exit 1; }
+          head="$(gh api "repos/$GITHUB_REPOSITORY/pulls/$number" --jq '.head.sha')"
+          [ "$head" = "$HEAD_SHA" ] || { echo "pull request #$number is not at $HEAD_SHA" >&2; exit 1; }
+          echo "number=$number" >> "$GITHUB_OUTPUT"
+
+      - run: .github/scripts/gh-pages.sh put "$NUMBER" "$RUNNER_TEMP/preview/site"
+        env:
+          NUMBER: ${{ steps.pull.outputs.number }}
+
+      - env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NUMBER: ${{ steps.pull.outputs.number }}
+          HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
+          OWNER: ${{ github.repository_owner }}
+          REPO: ${{ github.event.repository.name }}
+        run: |
+          marker='<!-- maze-studio-preview -->'
+          url="https://${OWNER,,}.github.io/$REPO/pr-$NUMBER/"
+          body="$marker
+          Preview of ${HEAD_SHA:0:7}: $url"
+          id="$(gh api "repos/$GITHUB_REPOSITORY/issues/$NUMBER/comments" --paginate \
+            --jq ".[] | select(.body | startswith(\"$marker\")) | .id" | head -n 1)"
+          if [ -n "$id" ]; then
+            gh api --method PATCH "repos/$GITHUB_REPOSITORY/issues/comments/$id" -f body="$body"
+          else
+            gh api --method POST "repos/$GITHUB_REPOSITORY/issues/$NUMBER/comments" -f body="$body"
+          fi

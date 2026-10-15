@@ -113,17 +113,18 @@ the test scripts write it from the submodule first, when it is missing or of ano
 
 ## Keeping the mazes up to date
 
-Dependabot (`.github/dependabot.yml`) opens a pull request every week that moves `vendor/mazefiles`
-to the newest commit of `master`. The workflow `mazefiles-auto-merge.yml` turns on auto-merge for a
+Dependabot (`.github/dependabot.yml`) opens a pull request against `develop` every week that moves
+`vendor/mazefiles` to the newest commit of `master`. The workflow `mazefiles-auto-merge.yml` turns on auto-merge for a
 pull request of Dependabot's that changes nothing but the submodule, so it lands once CI passes,
 with no one involved. For that, the GitHub repository needs:
 
 - **Allow auto-merge**, in Settings, General, Pull Requests;
-- a rule for `main` (branch protection or a ruleset) that requires the `check` job of CI to pass
-  before merging.
+- a rule for `develop` (branch protection or a ruleset) that requires the `check` job of CI to
+  pass before merging, and the same for `main`.
 
-The workflow also waits for those required checks itself and fails, merging nothing, when `main`
-requires none. Without auto-merge, the pull request waits for a person.
+The workflow also waits for those required checks itself and fails, merging nothing, when
+`develop` requires none. Without auto-merge, the pull request waits for a person. The new mazes
+reach the site with the next release from `develop` to `main`.
 
 A merge made with the workflow's `GITHUB_TOKEN` starts no other workflow, so it does not run
 `pages.yml`. The site therefore publishes on a schedule too: every Monday at 12:00 UTC, six hours
@@ -132,6 +133,21 @@ of the merge instead, the merge step would need a token that does start workflow
 installation token or a fine-grained personal access token, kept as a Dependabot secret.
 
 To understand the code, start with [`ARCHITECTURE.md`](ARCHITECTURE.md).
+
+## Contributing
+
+The repository follows gitflow. Start a `feature/<name>` branch from `develop` and open a pull
+request back to `develop`; `bun run check` must pass, and CI runs it on every pull request. A
+release is a pull request from `develop` to `main`, which publishes the site; a `hotfix/<name>`
+starts from `main`.
+
+Every pull request, from a fork too, gets a preview at
+`https://team-micras.github.io/maze-studio/pr-<number>/`, linked in a comment and updated on every
+push, and removed when the pull request closes. GitHub Pages serves the `gh-pages` branch: the site
+at its root, written by `pages.yml`, and the previews at `pr-<number>/`. `preview-build.yml` builds
+the pull request with no write access, and `preview-deploy.yml`, which runs as it is on the default
+branch, copies the built files and never runs them. A preview registers no service worker, and
+the site's leaves its pages to the network.
 
 ## License
 

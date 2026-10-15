@@ -1,6 +1,7 @@
 import { StrictMode, type ReactNode } from 'react';
 import { createRoot } from 'react-dom/client';
 
+import { registersServiceWorker } from '@/preview';
 import { isEmbed } from '@/ui/embed/embed-url';
 import '@/ui/styles.css';
 import { registerSW } from 'virtual:pwa-register';
@@ -14,7 +15,7 @@ if (!root) {
 // Any frame gets the embed: old frames without `?embed` still work, and no site can clickjack the editor.
 const embed = isEmbed(window.location.search) || window.top !== window;
 
-if (import.meta.env.PROD && !embed) {
+if (import.meta.env.PROD && !embed && registersServiceWorker(import.meta.env.BASE_URL)) {
   const update = registerSW({
     onNeedRefresh: () =>
       void import('@/ui/new-version').then(({ offerReload }) =>

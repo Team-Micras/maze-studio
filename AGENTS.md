@@ -4,8 +4,10 @@
   outside this repository, in `docs/maze-editor/PLAN.md` of the Micras workspace.
 - Work in slices, one at a time, as the plan lists them. Each slice is implemented, reviewed
   independently (PASS or FAIL), fixed, and closed with `bun run check` green.
-- Commit locally on `main`: one line, a gitmoji and a short English sentence, no body, no trailer
-  (for example `✨ Parse the mazefiles text format`). Never push without the owner's explicit ok.
+- Gitflow: `feature/*` branches start from `develop` and come back by pull request; a release is a
+  pull request from `develop` to `main`; `hotfix/*` starts from `main`. Commit on the feature
+  branch: one line, a gitmoji and a short English sentence, no body, no trailer (for example
+  `✨ Parse the mazefiles text format`). Push only with the owner's ok.
 - Run one browser suite at a time on the machine, and always under the lock:
   `flock /tmp/maze-studio-tests.lock bun run check` (the same for `test`, `test:e2e` and
   Playwright).
@@ -18,8 +20,8 @@
   `pre` scripts and never committed. Tests of the corpus check invariants (blob SHA, byte-for-byte
   and compact-code round trips, no `error` under the folder's profile, snapshot equal to the
   submodule), never counts of one commit, so a new maze upstream needs no change here.
-- On GitHub, the repository needs "Allow auto-merge" turned on and a rule for `main` that requires
-  CI's `check` job; see the README. Set them up with the first push.
+- On GitHub, the repository needs "Allow auto-merge" turned on, rules for `main` and `develop`
+  that require CI's `check` job, and Pages served from the `gh-pages` branch; see the README.
 - Reference screenshots (`tests/**/screenshots/`) are made in the Playwright image of the pinned
   version, `mcr.microsoft.com/playwright:v1.63.0`, so that they match CI and not one notebook.
   After a deliberate change of the drawing, check the disk with `df -h /` and, from the repository,
