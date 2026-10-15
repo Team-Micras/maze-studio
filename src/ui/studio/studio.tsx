@@ -165,6 +165,7 @@ export function Studio({
   const onScreen = previewed ?? opened ?? state.leaving;
   const board = onScreen === undefined ? undefined : boardOf(onScreen.maze);
   const inEditor = mode === 'editor' && board !== undefined;
+  const pressEdits = inEditor && !state.viewing && !editor.readOnly;
   const screen: StudioScreen =
     onScreen === undefined || board === undefined || mode === 'library'
       ? { kind: 'library' }
@@ -176,7 +177,7 @@ export function Studio({
               kind: 'editing',
               maze: onScreen,
               board,
-              drawable: !state.listOpen && !state.viewing && !editor.readOnly,
+              drawable: pressEdits && !state.listOpen,
             };
 
   const camera = useCanvasCamera({
@@ -349,7 +350,7 @@ export function Studio({
             'fixed inset-0 z-[1]',
             mode === 'library' && 'pointer-events-none invisible',
             mode === 'flying-out' && 'pointer-events-none',
-            editing.drawingTool && 'cursor-crosshair',
+            pressEdits && state.tool !== 'hand' && 'cursor-crosshair',
             mode === 'editor' && !state.viewing && state.tool === 'hand' && 'cursor-grab'
           )}
           controller={camera}

@@ -765,6 +765,27 @@ describe('A press on the board with the quick list open', () => {
     expect(await page.locator('[data-layer="cursor"]').count()).toBe(0);
   });
 
+  test('the board shows the cursor of the tool with the list open as with it closed', async () => {
+    const page = await openMaze(CLASSIC);
+    const cursor = (): Promise<string> =>
+      page.evaluate(
+        () => getComputedStyle(document.getElementById('canvas') ?? document.body).cursor
+      );
+    const seen: string[] = [];
+
+    for (const tool of ['w', 'h']) {
+      await page.keyboard.press(tool);
+      seen.push(await cursor());
+      await page.keyboard.press('l');
+      await page.locator('[cmdk-item]').first().waitFor();
+      seen.push(await cursor());
+      await page.keyboard.press('Escape');
+      await expect.poll(() => page.locator('[cmdk-item]').count()).toBe(0);
+    }
+
+    expect(seen).toEqual(['crosshair', 'crosshair', 'grab', 'grab']);
+  });
+
   test('Tab onto the board shows the cell cursor, and no ring around the board', async () => {
     const page = await openMaze(CLASSIC);
     await page.locator('body').focus();
