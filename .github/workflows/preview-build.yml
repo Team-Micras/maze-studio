@@ -1,0 +1,49 @@
+name: Preview build
+
+# Builds a pull request of a branch of this repository for its preview, read only and with no
+# secret; Preview deploy, which runs trusted, publishes what this uploads. A fork's pull request
+# gets CI but no preview, since a preview runs its code on the site's origin.
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: preview-build-${{ github.event.number }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    if: github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          submodules: true
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.2
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+
+      - run: bun install --frozen-lockfile
+
+      - run: bun run build
+        env:
+          BASE_PATH: /${{ github.event.repository.name }}/pr-${{ github.event.number }}/
+
+      - run: |
+          mkdir preview
+          mv dist preview/site
+          echo '${{ github.event.number }}' > preview/number
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: preview
+          path: preview
+          retention-days: 7

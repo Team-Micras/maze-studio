@@ -3,7 +3,8 @@ name: Auto-merge mazefiles updates
 # Dependabot's weekly bump of vendor/mazefiles merges itself once CI passes. The workflow runs on
 # pull_request_target, so what runs with write access is this file as it is on main, never a copy
 # from the pull request; and it checks out nothing from the pull request: it reads Dependabot's
-# metadata and the changed files through the API, waits for the checks main requires, and merges.
+# metadata and the changed files through the API, waits for the checks its base branch requires
+# (develop, where Dependabot opens it), and merges.
 on: pull_request_target
 
 permissions: {}
@@ -37,7 +38,7 @@ jobs:
             echo "only-submodule=true" >> "$GITHUB_OUTPUT"
           fi
 
-      - name: Wait for the checks main requires, failing when it requires none
+      - name: Wait for the checks the base branch requires, failing when it requires none
         if: steps.scope.outputs.only-submodule == 'true'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

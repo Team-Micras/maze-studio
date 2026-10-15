@@ -1,10 +1,11 @@
 name: Pages
 
+# GitHub Pages serves the gh-pages branch: the site at its root, and the preview of each open pull
+# request at pr-<n>/, which the preview workflows write. This one publishes main at the root and
+# keeps the previews. The build runs read only; publish, which can write, only copies its files.
 on:
   push:
     branches: [main]
-  schedule:
-    - cron: '0 12 * * 1'
   workflow_dispatch:
 
 permissions:
@@ -16,14 +17,13 @@ concurrency:
 
 jobs:
   build:
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-24.04
-    permissions:
-      contents: read
-      pages: read
     steps:
       - uses: actions/checkout@v7
         with:
           submodules: true
+          persist-credentials: false
 
       - uses: oven-sh/setup-bun@v2
         with:
@@ -47,22 +47,34 @@ jobs:
         env:
           BASE_PATH: /${{ github.event.repository.name }}/
 
-      - uses: actions/configure-pages@v5
-
-      - uses: actions/upload-pages-artifact@v3
+      - uses: actions/upload-artifact@v4
         with:
+          name: site
           path: dist
+          retention-days: 1
 
-  deploy:
-    if: github.ref == 'refs/heads/main'
+  publish:
     needs: build
     runs-on: ubuntu-24.04
     permissions:
-      pages: write
-      id-token: write
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
+      contents: write
+      pages: read
     steps:
-      - id: deployment
-        uses: actions/deploy-pages@v4
+      - name: Check that Pages serves the gh-pages branch
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          source="$(gh api "repos/$GITHUB_REPOSITORY/pages" --jq '.build_type + " " + .source.branch')"
+          if [ "$source" != 'legacy gh-pages' ]; then
+            echo "Pages serves '$source'; set it to deploy from the gh-pages branch, see the README" >&2
+            exit 1
+          fi
+
+      - uses: actions/checkout@v7
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: site
+          path: ${{ runner.temp }}/site
+
+      - run: .github/scripts/gh-pages.sh site "$RUNNER_TEMP/site"

@@ -113,25 +113,56 @@ the test scripts write it from the submodule first, when it is missing or of ano
 
 ## Keeping the mazes up to date
 
-Dependabot (`.github/dependabot.yml`) opens a pull request every week that moves `vendor/mazefiles`
-to the newest commit of `master`. The workflow `mazefiles-auto-merge.yml` turns on auto-merge for a
+Dependabot (`.github/dependabot.yml`) opens a pull request against `develop` every week that moves
+`vendor/mazefiles` to the newest commit of `master`. The workflow `mazefiles-auto-merge.yml` turns on auto-merge for a
 pull request of Dependabot's that changes nothing but the submodule, so it lands once CI passes,
 with no one involved. For that, the GitHub repository needs:
 
 - **Allow auto-merge**, in Settings, General, Pull Requests;
-- a rule for `main` (branch protection or a ruleset) that requires the `check` job of CI to pass
-  before merging.
+- a rule for `develop` (branch protection or a ruleset) that requires the `check` job of CI to
+  pass before merging, and the same for `main`.
 
-The workflow also waits for those required checks itself and fails, merging nothing, when `main`
-requires none. Without auto-merge, the pull request waits for a person.
+The workflow also waits for those required checks itself and fails, merging nothing, when
+`develop` requires none. Without auto-merge, the pull request waits for a person. The new mazes
+reach the site with the next release from `develop` to `main`.
 
-A merge made with the workflow's `GITHUB_TOKEN` starts no other workflow, so it does not run
-`pages.yml`. The site therefore publishes on a schedule too: every Monday at 12:00 UTC, six hours
-after Dependabot's run at 06:00 UTC, and on demand from the Actions tab. To publish at the moment
-of the merge instead, the merge step would need a token that does start workflows: a GitHub App's
-installation token or a fine-grained personal access token, kept as a Dependabot secret.
+`pages.yml` publishes `main` on every push to it and on demand from the Actions tab; `main` only
+changes by a release, so the site needs no schedule.
 
 To understand the code, start with [`ARCHITECTURE.md`](ARCHITECTURE.md).
+
+## Contributing
+
+The repository follows gitflow. Start a `feature/<name>` branch from `develop` and open a pull
+request back to `develop`; `bun run check` must pass, and CI runs it on every pull request. A
+release is a pull request from `develop` to `main`, which publishes the site; a `hotfix/<name>`
+starts from `main`.
+
+Every pull request from a branch of this repository gets a preview at
+`https://team-micras.github.io/maze-studio/pr-<number>/`, linked in a comment and updated on every
+push, and removed when the pull request closes. A pull request from a fork gets CI but no preview:
+a preview runs its code on the site's origin. GitHub Pages serves the `gh-pages` branch: the site at
+its root, written by `pages.yml`, and the previews at `pr-<number>/`. `preview-build.yml` builds the
+pull request with no write access, and `preview-deploy.yml`, which runs as it is on the default
+branch, copies the built files and never runs them. A preview registers no service worker and keeps
+its own database, and the site's worker leaves its pages to the network. If a preview shows the
+site, accept New version or open it in a private window.
+
+### Set up on GitHub
+
+- **Pages**, once, to move it to the `gh-pages` branch (Pages only takes a branch that exists, and
+  `pages.yml` runs as it is on `main`):
+  1. Merge the pull request that brings this setup into `develop`.
+  2. Create `gh-pages` from the current `main`: from a checkout of `develop`, make a worktree of
+     `origin/main`, build it there with `BASE_PATH=/<repository>/`, and run
+     `.github/scripts/gh-pages.sh site <worktree>/dist` from `develop`.
+  3. Switch the source and wait until `gh api repos/<owner>/<repository>/pages --jq .status` says
+     `built`:
+     `gh api -X PUT repos/<owner>/<repository>/pages -f build_type=legacy -f 'source[branch]=gh-pages' -f 'source[path]=/'`.
+  4. Release `develop` to `main` right after, so `pages.yml` publishes from then on.
+  5. To go back, set `build_type=workflow` the same way.
+- **Rules** for `main` and `develop` that require the `check` job of CI.
+- **Allow auto-merge**, for the weekly mazefiles bump.
 
 ## License
 

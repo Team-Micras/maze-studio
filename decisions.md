@@ -242,3 +242,32 @@ reached, and the measurements of the day, are in the git history of this file.
   (`BroadcastChannel.postMessage` takes no origin), `thumbnails.ts` (`fill(path)` is not an array fill),
   `camera-stage.tsx` (the application role), and `no-await-in-loop` for `scripts/`, the e2e tests and the frame and
   touch helpers, which wait step by step on purpose.
+
+## Branches, CI and previews
+
+- **Gitflow** (owner, 15/10): features from `develop` by pull request, releases from `develop` to `main`, hotfixes from
+  `main`. CI runs on pushes to both and on every pull request; Dependabot opens its weekly bump against `develop`, and
+  the auto-merge workflow waits for the checks of the pull request's base branch.
+- **The frame gate only reports on CI** (owner, 15/10). Shared runners are too uneven for a frame budget: one runner
+  measured 38.7 ms for the 27 ms benchmark, and the gate failed on a frame or two. With `CI` set, `production-frames`
+  measures, prints and writes the numbers to the job summary, and fails on nothing but a broken measurement; on a known
+  machine, locally and in reviews, it blocks as before.
+- **Previews of pull requests on gh-pages.** Pages serves the `gh-pages` branch, so the site and a `pr-<n>/` per pull
+  request can live side by side. The pull request is built by a `pull_request` workflow with read access only, and a
+  `workflow_run` workflow, trusted, publishes the artifact: it checks that the build came from a branch of this
+  repository and that the number the artifact gives is an open pull request whose head is the commit built, refuses
+  symbolic links, `.git` entries and anything over 50 MB, copies the files and comments the link, never running anything
+  of the pull request. `pull_request_target: closed` removes the preview without checking out the pull request. No
+  ready-made action was used: the ones found either deploy from the pull request's own workflow, which a fork cannot
+  write from, or run with write access on its code. `pages.yml` builds read only and publishes from a job that only
+  copies the artifact.
+- **gh-pages is a deploy target, written with a lease.** Each workflow has its own concurrency group, so two of them
+  can write at once. `.github/scripts/gh-pages.sh` makes each update one commit with no parent, so the branch never
+  grows, and pushes it with `--force-with-lease` on the commit it was made from; when another writer got there first,
+  the lease fails and it starts again from the new branch, up to five times. Five writers at once on a test repository
+  all landed.
+- **Previews only for branches of this repository.** A preview runs the pull request's code on
+  `team-micras.github.io`, beside the site, where it could read the My mazes of whoever opens it; so a fork's pull
+  request gets CI and no preview. A preview keeps its own database (`maze-studio-pr-<n>`, `databaseFor`), registers no
+  service worker (`registersServiceWorker`), and the site's worker leaves `pr-<n>/` navigations to the network
+  (`PREVIEW_PATH`); the three read the page's path, so the e2e build tests them served at `pr-1/`.

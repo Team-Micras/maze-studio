@@ -7,6 +7,7 @@
  */
 
 import {
+  DATABASE_NAME,
   loadSnapshot,
   MineLibrary,
   openDatabase,
@@ -14,6 +15,7 @@ import {
   Settings,
   type FolderHandle,
 } from '@/library';
+import { databaseFor } from '@/preview';
 
 /** The app's stores. */
 export interface AppStorage {
@@ -27,7 +29,7 @@ let opened: Promise<AppStorage | undefined> | undefined;
 
 async function open(): Promise<AppStorage | undefined> {
   try {
-    const database = await openDatabase();
+    const database = await openDatabase(databaseFor(DATABASE_NAME, window.location.pathname));
     return {
       repo: new RepoCache(database, { snapshot: loadSnapshot }),
       mine: new MineLibrary(database),
