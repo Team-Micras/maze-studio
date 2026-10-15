@@ -185,6 +185,7 @@ describe('On a phone, the system Back', () => {
     const stop = await recordBoard(page);
     await page.evaluate(() => window.history.back());
     await waitForMode(page, 'library');
+    await page.waitForTimeout(500);
     const frames = (await stop()).filter((frame) => frame.width > 0);
     const flying = frames.filter((frame) => frame.mode === 'flying-out');
     const last = frames.findLast((frame) => frame.mode === 'editor');

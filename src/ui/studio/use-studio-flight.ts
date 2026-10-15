@@ -95,6 +95,7 @@ function flyIn(
     finding: undefined,
     leaving: undefined,
     preview: undefined,
+    prepared: undefined,
     chromeIn: false,
     mode: flies ? 'flying-in' : 'editor',
   });
