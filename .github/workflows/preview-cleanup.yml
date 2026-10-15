@@ -9,7 +9,7 @@ on:
 permissions: {}
 
 concurrency:
-  group: gh-pages
+  group: preview-cleanup
   cancel-in-progress: false
 
 jobs:

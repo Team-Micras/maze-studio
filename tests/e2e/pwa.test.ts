@@ -170,4 +170,29 @@ describe('the PWA built for GitHub Pages', () => {
     const saved = await expectSaved(page, sameMaze(toggleWall(maze, EDGE)));
     expect(saved.origin?.path).toBe(CLASSIC);
   });
+
+  test("leaves a pull request's preview to the network once the site's worker controls the origin", async () => {
+    const page = await fresh();
+    await page.goto(app);
+    await controlled(page);
+    const response = await page.goto(`${app}pr-1/`);
+
+    expect(response?.fromServiceWorker()).toBe(false);
+  });
+
+  test('in a preview registers no worker and keeps a database of its own', async () => {
+    const page = await fresh();
+    await page.goto(`${app}pr-1/`);
+    await page.locator('a[data-artboard]').first().waitFor();
+    await page.waitForTimeout(1500);
+
+    expect(
+      await page.evaluate(async () => (await navigator.serviceWorker.getRegistrations()).length)
+    ).toBe(0);
+    expect(
+      await page.evaluate(async () =>
+        (await indexedDB.databases()).map((database) => database.name)
+      )
+    ).toEqual(['maze-studio-pr-1']);
+  });
 });

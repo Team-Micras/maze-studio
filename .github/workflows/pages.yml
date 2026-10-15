@@ -2,31 +2,28 @@ name: Pages
 
 # GitHub Pages serves the gh-pages branch: the site at its root, and the preview of each open pull
 # request at pr-<n>/, which the preview workflows write. This one publishes main at the root and
-# keeps the previews.
+# keeps the previews. The build runs read only; publish, which can write, only copies its files.
 on:
   push:
     branches: [main]
-  schedule:
-    - cron: '0 12 * * 1'
   workflow_dispatch:
 
 permissions:
   contents: read
 
 concurrency:
-  group: gh-pages
+  group: pages
   cancel-in-progress: false
 
 jobs:
-  publish:
+  build:
     if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-24.04
-    permissions:
-      contents: write
     steps:
       - uses: actions/checkout@v7
         with:
           submodules: true
+          persist-credentials: false
 
       - uses: oven-sh/setup-bun@v2
         with:
@@ -50,4 +47,34 @@ jobs:
         env:
           BASE_PATH: /${{ github.event.repository.name }}/
 
-      - run: .github/scripts/gh-pages.sh site dist
+      - uses: actions/upload-artifact@v4
+        with:
+          name: site
+          path: dist
+          retention-days: 1
+
+  publish:
+    needs: build
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+      pages: read
+    steps:
+      - name: Check that Pages serves the gh-pages branch
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          source="$(gh api "repos/$GITHUB_REPOSITORY/pages" --jq '.build_type + " " + .source.branch')"
+          if [ "$source" != 'legacy gh-pages' ]; then
+            echo "Pages serves '$source'; set it to deploy from the gh-pages branch, see the README" >&2
+            exit 1
+          fi
+
+      - uses: actions/checkout@v7
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: site
+          path: ${{ runner.temp }}/site
+
+      - run: .github/scripts/gh-pages.sh site "$RUNNER_TEMP/site"

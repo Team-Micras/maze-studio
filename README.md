@@ -126,11 +126,8 @@ The workflow also waits for those required checks itself and fails, merging noth
 `develop` requires none. Without auto-merge, the pull request waits for a person. The new mazes
 reach the site with the next release from `develop` to `main`.
 
-A merge made with the workflow's `GITHUB_TOKEN` starts no other workflow, so it does not run
-`pages.yml`. The site therefore publishes on a schedule too: every Monday at 12:00 UTC, six hours
-after Dependabot's run at 06:00 UTC, and on demand from the Actions tab. To publish at the moment
-of the merge instead, the merge step would need a token that does start workflows: a GitHub App's
-installation token or a fine-grained personal access token, kept as a Dependabot secret.
+`pages.yml` publishes `main` on every push to it and on demand from the Actions tab; `main` only
+changes by a release, so the site needs no schedule.
 
 To understand the code, start with [`ARCHITECTURE.md`](ARCHITECTURE.md).
 
@@ -141,13 +138,23 @@ request back to `develop`; `bun run check` must pass, and CI runs it on every pu
 release is a pull request from `develop` to `main`, which publishes the site; a `hotfix/<name>`
 starts from `main`.
 
-Every pull request, from a fork too, gets a preview at
+Every pull request from a branch of this repository gets a preview at
 `https://team-micras.github.io/maze-studio/pr-<number>/`, linked in a comment and updated on every
-push, and removed when the pull request closes. GitHub Pages serves the `gh-pages` branch: the site
-at its root, written by `pages.yml`, and the previews at `pr-<number>/`. `preview-build.yml` builds
-the pull request with no write access, and `preview-deploy.yml`, which runs as it is on the default
-branch, copies the built files and never runs them. A preview registers no service worker, and
-the site's leaves its pages to the network.
+push, and removed when the pull request closes. A pull request from a fork gets CI but no preview:
+a preview runs its code on the site's origin. GitHub Pages serves the `gh-pages` branch: the site at
+its root, written by `pages.yml`, and the previews at `pr-<number>/`. `preview-build.yml` builds the
+pull request with no write access, and `preview-deploy.yml`, which runs as it is on the default
+branch, copies the built files and never runs them. A preview registers no service worker and keeps
+its own database, and the site's worker leaves its pages to the network. If a preview shows the
+site, accept New version or open it in a private window.
+
+### Set up on GitHub
+
+- **Pages:** before the first release with this setup, set the source to _Deploy from a branch_,
+  `gh-pages`, `/ (root)`; until then the site stays as it is, and `pages.yml` fails, saying so. Run
+  `pages.yml` from the Actions tab once to create the branch.
+- **Rules** for `main` and `develop` that require the `check` job of CI.
+- **Allow auto-merge**, for the weekly mazefiles bump.
 
 ## License
 
