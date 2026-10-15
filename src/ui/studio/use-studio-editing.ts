@@ -181,7 +181,6 @@ export function useStudioEditing({
       diff,
     },
     cursor: boardKeys.cursor,
-    drawingTool: wall.drawing !== undefined || cells.drawing !== undefined,
     onCanvasKey,
     onCanvasFocus,
     controls: {
