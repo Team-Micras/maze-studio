@@ -36,13 +36,12 @@ describe('The maze of the embed', () => {
     });
   });
 
-  test('of a path the snapshot lacks says so, the path left to translators as it is', async () => {
+  test('of a path the snapshot lacks says so, without the path another site chose', async () => {
     const snapshot = await loadSnapshot();
 
-    expect(embedMaze({ kind: 'repo', path: 'classic/x.txt' }, snapshot)).toEqual({
+    expect(embedMaze({ kind: 'repo', path: 'classic/<b>x</b>.txt' }, snapshot)).toEqual({
       status: 'missing',
-      message: 'No maze at classic/x.txt',
-      verbatim: 'classic/x.txt',
+      message: 'No maze at that path',
     });
   });
 

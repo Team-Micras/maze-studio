@@ -31,4 +31,6 @@
     node_modules/.bin/vitest run --project browser <test file> -u
   ```
 
+  With rootless Docker, drop `--user`: the container's root is already your user.
+
   Look at the pictures before committing them.

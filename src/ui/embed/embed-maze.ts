@@ -36,6 +36,9 @@ export type SnapshotLoad = Snapshot | 'loading' | 'failed';
 /** What the embed says when the built-in snapshot does not load. */
 export const SNAPSHOT_FAILED = 'The mazes did not load. Reload to try again';
 
+/** What the embed says for a repository path it lacks; never the path, which another site chose. */
+export const EMBED_MISSING = 'No maze at that path';
+
 /** What the embed says for a route it does not show. */
 export const EMBED_REFUSED = 'This embed shows a maze of the repository or a link';
 
@@ -68,10 +71,11 @@ export function embedMaze(route: Route, snapshot: SnapshotLoad): EmbedMaze {
 
       const file = snapshot.files.find((candidate) => candidate.path === route.path);
       const [entry] = file === undefined ? [] : repoCatalog([file]);
-      const decoded = file === undefined ? undefined : decodeMazeCode(file.code);
+      const decoded =
+        file === undefined || entry === undefined ? undefined : decodeMazeCode(file.code);
 
-      if (entry === undefined || decoded?.ok !== true) {
-        return { status: 'missing', message: `No maze at ${route.path}`, verbatim: route.path };
+      if (decoded?.ok !== true || entry === undefined) {
+        return { status: 'missing', message: EMBED_MISSING };
       }
 
       return {

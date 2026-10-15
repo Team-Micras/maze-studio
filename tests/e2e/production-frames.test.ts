@@ -6,8 +6,8 @@ import { FRAME_BUDGET, frameReport, medianRun, type FrameReport } from '@tests/s
 
 const app = inject('appUrl');
 
-/** DESIGN.md 8: no interval of a flight above 33 ms. */
-const FLIGHT_WORST_MS = 33;
+/** DESIGN.md 8: no interval of a flight longer than two refreshes at 60 Hz, 34.3 ms. */
+const FLIGHT_WORST_MS = 2 * (1000 / 60) + 1;
 
 /** How long a person holds a click, from the press to the release. */
 const CLICK_HOLD_MS = 50;

@@ -35,9 +35,10 @@ function Themed() {
 }
 
 /** Mounts the hook with `query` in the address, as the embed's frame would have it. */
-async function mountTheme(query = '?embed'): Promise<void> {
+async function mountTheme(query = '?embed'): Promise<() => void> {
   window.history.replaceState(null, '', `${window.location.pathname}${query}`);
-  await render(<Themed />);
+  const screen = await render(<Themed />);
+  return () => screen.unmount();
 }
 
 function isDark(): boolean {
@@ -109,6 +110,16 @@ describe('The theme of the embed', () => {
     postTheme({ type: THEME_MESSAGE, theme: 'dark' }, null);
     postTheme({ type: 'theme', theme: 'dark' });
     postTheme('dark');
+    expect(isDark()).toBe(false);
+  });
+
+  test('leaves the theme alone once unmounted', async () => {
+    const system = stubSystemTheme(false);
+    const unmount = await mountTheme();
+
+    unmount();
+    postTheme({ type: THEME_MESSAGE, theme: 'dark' });
+    system.set(true);
     expect(isDark()).toBe(false);
   });
 });

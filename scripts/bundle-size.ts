@@ -106,11 +106,7 @@ for (const screen of screens) {
 
 console.log(`total            ${kb(sum(everything))}  (${everything.length} files)`);
 
-const [app] = screens;
-
-if (app !== undefined) {
-  console.log(`counted          ${kb(app.bytes)} of the ${TARGET_KB} KB target (app)`);
-}
+console.log(`counted          ${kb(screens[0].bytes)} of the ${TARGET_KB} KB target (app)`);
 
 const [largest] = everything
   .filter((file) => file.endsWith('.js'))

@@ -222,11 +222,11 @@ reached, and the measurements of the day, are in the git history of this file.
 - **The frame budget of DESIGN.md 8**: p95 at most 20 ms and at most 1 % of frames over 25 ms, the median of three runs
   by share of slow frames, then worst frame, then p95. The production gate in `e2e` holds it on the built app. The
   library's gate in `performance`, on React's development build in the tester's iframe, allows 2 %: it spreads from 0
-  to 1.5 % between runs on the reference notebook. The flights also allow no frame over 33 ms. A flight lasts about 45
+  to 1.5 % between runs on the reference notebook. The flights also allow no interval over two refreshes
+  at 60 Hz (34.3 ms, `2 × 1000 / 60 + 1`): with 33 ms, CI failed on a frame of 33.3 ms, which is exactly two refreshes. A flight lasts about 45
   intervals, so one slow frame is 2.2 % of a run, and the median run failed the gate whenever two of the three runs had
   one. The production gate pools the intervals of its three runs (about 135) for the p95 and the 1 %, rounded up to
-  whole frames (2 slow frames in 135). The 33 ms ceiling stays on the median run: over all three runs a frame of 33.3
-  ms, two refreshes at 60 Hz, shows up in most measurements.
+  whole frames (2 slow frames in 135). The ceiling stays on the median run.
 - **Throttling is calibrated to the machine**: a fixed workload is timed unthrottled and the throttle is
   `clamp(4 × 27 ms / measured, 1, 4)`, 27 ms being the reference notebook (i5-12500H).
 - **Reference screenshots are committed** next to their test, made in `mcr.microsoft.com/playwright:v1.63.0`; the

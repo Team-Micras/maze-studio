@@ -89,7 +89,13 @@ describe('The embed on the built app', () => {
   test('shows the maze alone, loads none of the editor and registers no service worker', async () => {
     const page = await newPage();
     const requested: string[] = [];
+    const scripts: Promise<string>[] = [];
     page.on('request', (request) => requested.push(new URL(request.url()).pathname));
+    page.on('response', (response) => {
+      if (new URL(response.url()).pathname.endsWith('.js')) {
+        scripts.push(response.text());
+      }
+    });
     await page.goto(EMBED);
     await page.getByRole('img', { name: 'AAMC15Maze, AAMC, 16 by 16' }).waitFor();
     await page.waitForLoadState('load');
@@ -97,6 +103,7 @@ describe('The embed on the built app', () => {
     expect(await page.locator('[data-studio-mode], [role="application"], button').count()).toBe(0);
     expect(requested.filter((path) => /\/assets\/(app|radix)-/.test(path))).toEqual([]);
     expect(requested.some((path) => /\/assets\/embed-/.test(path))).toBe(true);
+    expect((await Promise.all(scripts)).filter((text) => text.includes('indexedDB'))).toEqual([]);
     expect(
       await page.evaluate(async () => (await navigator.serviceWorker.getRegistrations()).length)
     ).toBe(0);
