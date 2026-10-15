@@ -591,12 +591,10 @@ describe('The Library button after ] put another maze in place', () => {
 });
 
 describe('The keyboard cursor', () => {
-  test('on the canvas, the first arrow shows the cursor and the next ones move it', async () => {
+  test('on the canvas, a keyboard focus shows the cursor at the start and the arrows move it', async () => {
     const page = await openMaze(CLASSIC);
     await page.locator('#canvas').focus();
 
-    expect(await page.locator('[data-layer="cursor"]').count()).toBe(0);
-    await page.keyboard.press('ArrowRight');
     await expect.poll(() => page.locator('[data-layer="cursor"]').count()).toBe(1);
     await expect.poll(() => page.getByText(/^Cell \(0, 0\)/).count()).toBe(1);
     await page.keyboard.press('ArrowRight');
@@ -633,7 +631,7 @@ describe('The keyboard cursor', () => {
     const page = await openMaze(CLASSIC);
     const cell = { x: 2, y: 1 };
     await page.locator('#canvas').focus();
-    await page.keyboard.press('ArrowUp');
+    await page.locator('[data-layer="cursor"]').waitFor();
     await page.keyboard.press('ArrowRight');
     await page.keyboard.press('ArrowRight');
     await page.keyboard.press('ArrowUp');
@@ -758,6 +756,39 @@ describe('A press on the board with the quick list open', () => {
       await page.getByRole('button', { name: 'Maze list' }).getAttribute('aria-expanded')
     ).toBe('false');
     expect(await page.locator('[cmdk-item]').count()).toBe(0);
+    expect(
+      await page.evaluate(() => ({
+        focused: document.activeElement?.id,
+        visible: document.activeElement?.matches(':focus-visible'),
+      }))
+    ).toEqual({ focused: 'canvas', visible: false });
+    expect(await page.locator('[data-layer="cursor"]').count()).toBe(0);
+  });
+
+  test('Tab onto the board shows the cell cursor, and no ring around the board', async () => {
+    const page = await openMaze(CLASSIC);
+    await page.locator('body').focus();
+
+    for (let step = 0; step < 40; step++) {
+      await page.keyboard.press('Tab');
+
+      if (await page.evaluate(() => document.activeElement?.id === 'canvas')) {
+        break;
+      }
+    }
+
+    const ring = await page.evaluate(() => {
+      const canvas = document.getElementById('canvas');
+      const style = canvas === null ? undefined : getComputedStyle(canvas);
+      return {
+        focused: document.activeElement === canvas,
+        outline: style?.outlineStyle,
+        shadow: style?.boxShadow,
+      };
+    });
+
+    expect(ring).toEqual({ focused: true, outline: 'none', shadow: 'none' });
+    await expect.poll(() => page.locator('[data-layer="cursor"]').count()).toBe(1);
   });
 });
 

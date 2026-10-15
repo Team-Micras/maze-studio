@@ -258,7 +258,8 @@ export function Studio({
 
   /**
    * A press on the board while the quick list is open keeps the maze on screen, as Enter does, and
-   * closes the list at once, so the same press already edits it.
+   * closes the list at once, so the same press already edits it and focuses the board, as a press
+   * does, without the cursor of a keyboard focus.
    */
   const keepOnPress = (event: PointerEvent<HTMLElement>): void => {
     const stage = camera.element;
@@ -280,7 +281,6 @@ export function Studio({
       }
     });
     listOpener.current = null;
-    stage.focus({ preventScroll: true });
   };
 
   const preparedMaze =
@@ -356,6 +356,7 @@ export function Studio({
           drawing={editing.drawing}
           id={CANVAS_ID}
           label={inEditor && onScreen !== undefined ? `${onScreen.name}, maze board` : 'Maze board'}
+          onFocus={editing.onCanvasFocus}
           onKeyDown={editing.onCanvasKey}
           primaryPan={primaryPan}
           promoted={flying}
