@@ -210,6 +210,10 @@ reached, and the measurements of the day, are in the git history of this file.
 - **The canvas is `role="application"`**, focusable, with its keys and pointers; `camera-stage.tsx` has the lint
   overrides that role needs. Quiet zoom: the percentage is plain text. Live regions that must speak stay mounted (empty
   library, read-only, Checks).
+- **The board's focus shows as the cell cursor, not a ring** (owner, 15/10). A white ring around the whole board read
+  as a bug, above all when a programmatic focus after a key made Chrome treat a click's focus as `:focus-visible`. The
+  canvas has no ring; when the keyboard focuses it, the cursor shows at once. A press on the board with the quick list
+  open lets the press itself focus the board, so it never comes as a keyboard focus.
 - **axe fails on every impact**, minor ones included, and runs after `settled()`, two quiet frames.
 - **Safe areas.** Fixed islands and toasts sit off the notch through the `*-safe-*` utilities;
   `tests/config/safe-areas.test.ts` fails a fixed element by an edge without one. The grid's insets do not add them.
