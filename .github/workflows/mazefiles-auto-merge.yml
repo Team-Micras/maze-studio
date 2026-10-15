@@ -4,8 +4,9 @@ name: Auto-merge mazefiles updates
 # pull_request_target, so what runs with write access is this file as it is on main, never a copy
 # from the pull request; and it checks out nothing from the pull request: it reads Dependabot's
 # metadata and the changed files through the API, waits for the checks main requires, and merges.
-# A merge made with GITHUB_TOKEN starts no workflow, so it then runs CI, Pages and Sync develop on
-# main itself; workflow_dispatch is the one event that token may start.
+# Dependabot opens the same bump against main and against develop. A merge made with GITHUB_TOKEN
+# starts no workflow, so once the bump lands on main this starts Pages itself; workflow_dispatch is
+# the one event that token may start.
 on: pull_request_target
 
 permissions: {}
@@ -65,7 +66,7 @@ jobs:
           PR_URL: ${{ github.event.pull_request.html_url }}
         run: gh pr merge --auto --squash "$PR_URL"
 
-      - name: Run on main what the merge does not start
+      - name: Publish main, which the merge does not start
         if: steps.scope.outputs.only-submodule == 'true' && github.event.pull_request.base.ref == 'main'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -73,9 +74,7 @@ jobs:
         run: |
           for _ in $(seq 1 60); do
             if [ "$(gh pr view "$PR_URL" --json state --jq .state)" = MERGED ]; then
-              for workflow in ci.yml pages.yml sync-develop.yml; do
-                gh workflow run "$workflow" --ref main
-              done
+              gh workflow run pages.yml --ref main
               exit 0
             fi
             sleep 30
