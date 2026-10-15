@@ -150,9 +150,17 @@ site, accept New version or open it in a private window.
 
 ### Set up on GitHub
 
-- **Pages:** before the first release with this setup, set the source to _Deploy from a branch_,
-  `gh-pages`, `/ (root)`; until then the site stays as it is, and `pages.yml` fails, saying so. Run
-  `pages.yml` from the Actions tab once to create the branch.
+- **Pages**, once, to move it to the `gh-pages` branch (Pages only takes a branch that exists, and
+  `pages.yml` runs as it is on `main`):
+  1. Merge the pull request that brings this setup into `develop`.
+  2. Create `gh-pages` from the current `main`: from a checkout of `develop`, make a worktree of
+     `origin/main`, build it there with `BASE_PATH=/<repository>/`, and run
+     `.github/scripts/gh-pages.sh site <worktree>/dist` from `develop`.
+  3. Switch the source and wait until `gh api repos/<owner>/<repository>/pages --jq .status` says
+     `built`:
+     `gh api -X PUT repos/<owner>/<repository>/pages -f build_type=legacy -f 'source[branch]=gh-pages' -f 'source[path]=/'`.
+  4. Release `develop` to `main` right after, so `pages.yml` publishes from then on.
+  5. To go back, set `build_type=workflow` the same way.
 - **Rules** for `main` and `develop` that require the `check` job of CI.
 - **Allow auto-merge**, for the weekly mazefiles bump.
 
