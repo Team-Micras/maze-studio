@@ -21,6 +21,7 @@ import {
   CommandItem,
   CommandList,
 } from '@/ui/primitives/command';
+import { CANVAS_ID } from '@/ui/canvas-id';
 import { Sheet, SheetContent, SheetDescription, SheetTitle } from '@/ui/primitives/sheet';
 import { Verbatim } from '@/ui/verbatim';
 
@@ -215,6 +216,7 @@ export function MazeList({
   if (phone) {
     return (
       <Sheet
+        modal={false}
         onOpenChange={(open) => {
           if (!open) {
             onCancel();
@@ -225,6 +227,11 @@ export function MazeList({
         <SheetContent
           className="h-[62dvh]"
           id={MAZE_LIST_ID}
+          onPointerDownOutside={(event) => {
+            if (event.target instanceof Element && event.target.closest(`#${CANVAS_ID}`) !== null) {
+              event.preventDefault();
+            }
+          }}
           onOpenAutoFocus={(event) => {
             event.preventDefault();
             commandRoot.current?.focus({ preventScroll: true });
