@@ -1,5 +1,8 @@
 name: Pages
 
+# GitHub Pages serves the gh-pages branch: the site at its root, and the preview of each open pull
+# request at pr-<n>/, which the preview workflows write. This one publishes main at the root and
+# keeps the previews.
 on:
   push:
     branches: [main]
@@ -11,15 +14,15 @@ permissions:
   contents: read
 
 concurrency:
-  group: pages
+  group: gh-pages
   cancel-in-progress: false
 
 jobs:
-  build:
+  publish:
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-24.04
     permissions:
-      contents: read
-      pages: read
+      contents: write
     steps:
       - uses: actions/checkout@v7
         with:
@@ -47,22 +50,4 @@ jobs:
         env:
           BASE_PATH: /${{ github.event.repository.name }}/
 
-      - uses: actions/configure-pages@v5
-
-      - uses: actions/upload-pages-artifact@v3
-        with:
-          path: dist
-
-  deploy:
-    if: github.ref == 'refs/heads/main'
-    needs: build
-    runs-on: ubuntu-24.04
-    permissions:
-      pages: write
-      id-token: write
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    steps:
-      - id: deployment
-        uses: actions/deploy-pages@v4
+      - run: .github/scripts/gh-pages.sh site dist

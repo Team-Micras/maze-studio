@@ -12,7 +12,7 @@ server. The reasons behind the choices below are in [`decisions.md`](decisions.m
 | `src/render/`      | Geometry, the camera as pure functions, SVG path data and canvas thumbnails.                           |
 | `src/ui/`          | The React interface; `src/ui/primitives/` holds the shadcn components.                                 |
 | `src/main.tsx`     | The entry point: loads the app, or the embed with `?embed`, and registers the app's service worker.    |
-| `sw/`              | The service worker (Workbox, `injectManifest`), which precaches the whole build.                       |
+| `sw/`              | The service worker (Workbox, `injectManifest`): precaches the build, leaves `pr-<n>/` previews alone.  |
 | `scripts/`         | Bun tools: the snapshot, the icons, the bundle size report.                                            |
 | `tests/`           | Mirrors `src/`: `src/maze/x.ts` is tested by `tests/maze/x.test.ts`.                                   |
 | `vendor/mazefiles` | The mazefiles repository as a submodule; `bun run snapshot` turns it into `src/library/snapshot.json`. |
