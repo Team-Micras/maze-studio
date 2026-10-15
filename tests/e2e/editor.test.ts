@@ -705,6 +705,62 @@ async function openTxt(
   return { page, ...widths };
 }
 
+describe('A press on the board with the quick list open', () => {
+  test.each([
+    ['a notebook', {}],
+    ['a phone', PHONE],
+  ] as const)('on %s keeps the maze shown and edits it at once', async (_where, options) => {
+    const page = await openMaze(CLASSIC, options);
+    const touch = options === PHONE;
+
+    if (touch) {
+      await page.getByRole('button', { name: 'Edit', exact: true }).tap();
+      await page.getByRole('toolbar', { name: 'Tools' }).waitFor();
+      await page.getByRole('button', { name: 'Maze list' }).tap();
+    } else {
+      await page.keyboard.press('l');
+    }
+
+    await page.locator('[cmdk-item]').first().waitFor();
+    await page.keyboard.press('ArrowDown');
+    await page.waitForFunction(() => document.querySelector('h1')?.textContent !== 'AAMC15Maze');
+    const key =
+      (await page.locator('[cmdk-item][aria-selected="true"]').getAttribute('data-value')) ?? '';
+    const path = key.slice('repo:'.length);
+    const { maze } = await repoContent(path);
+    const sheet = touch
+      ? await page.getByRole('dialog', { name: 'Maze list' }).boundingBox()
+      : null;
+    const visible = async (y: number): Promise<boolean> => {
+      const at = await pagePoint(page, maze, edgeMiddle({ direction: 'vertical', x: 8, y }));
+      return at.y > 80 && at.y < (sheet?.y ?? Infinity) - 10;
+    };
+    let row = maze.height - 2;
+
+    while (row > 0 && !(await visible(row))) {
+      row -= 1;
+    }
+
+    const edge: Edge = { direction: 'vertical', x: 8, y: row };
+    const point = await pagePoint(page, maze, edgeMiddle(edge));
+    expect(await visible(row)).toBe(true);
+    expect(new URL(page.url()).hash).toBe(`#/repo/${CLASSIC}`);
+
+    if (touch) {
+      await page.touchscreen.tap(point.x, point.y);
+    } else {
+      await page.mouse.click(point.x, point.y);
+    }
+
+    const saved = await expectSaved(page, sameMaze(toggleWall(maze, edge)));
+    expect(saved.origin?.path).toBe(path);
+    expect(
+      await page.getByRole('button', { name: 'Maze list' }).getAttribute('aria-expanded')
+    ).toBe('false');
+    expect(await page.locator('[cmdk-item]').count()).toBe(0);
+  });
+});
+
 describe('The title of a .txt on a phone', () => {
   test.each([360, 412])(
     'at %i px wide shows the whole name, and Save to My mazes is in ⋯ only while looking',

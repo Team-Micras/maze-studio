@@ -1,4 +1,13 @@
-import { useCallback, useDeferredValue, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import {
+  useCallback,
+  useDeferredValue,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+  type PointerEvent,
+} from 'react';
+import { flushSync } from 'react-dom';
 import { useStore } from 'zustand';
 
 import { filterCatalog, type LibraryFilter } from '@/library';
@@ -247,6 +256,33 @@ export function Studio({
     listOpener.current = null;
   };
 
+  /**
+   * A press on the board while the quick list is open keeps the maze on screen, as Enter does, and
+   * closes the list at once, so the same press already edits it.
+   */
+  const keepOnPress = (event: PointerEvent<HTMLElement>): void => {
+    const stage = camera.element;
+
+    if (
+      !state.listOpen ||
+      stage === null ||
+      !(event.target instanceof Node) ||
+      !stage.contains(event.target)
+    ) {
+      return;
+    }
+
+    flushSync(() => {
+      if (state.preview === undefined) {
+        store.setState({ listOpen: false });
+      } else {
+        pinKey(state.preview);
+      }
+    });
+    listOpener.current = null;
+    stage.focus({ preventScroll: true });
+  };
+
   const preparedMaze =
     mode === 'library' && state.prepared !== undefined
       ? library?.mazeOf(state.prepared)
@@ -290,7 +326,7 @@ export function Studio({
 
   return (
     <div data-studio-mode={mode} data-viewing={mode === 'editor' && state.viewing ? '' : undefined}>
-      <main>
+      <main onPointerDownCapture={keepOnPress}>
         {library === undefined ? null : (
           <LibraryGrid
             entries={shown}
