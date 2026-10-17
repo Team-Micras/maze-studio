@@ -1,5 +1,5 @@
 import { useStore, type StoreApi } from 'zustand';
-import { useCallback, type KeyboardEvent } from 'react';
+import { useCallback, type FocusEvent, type KeyboardEvent } from 'react';
 
 import { fillBorder, validateMaze, type Finding, type MazeDiff } from '@/maze';
 import { areaInWorld, boardGeometry, focusArea, revealCamera, type Insets } from '@/render';
@@ -160,6 +160,12 @@ export function useStudioEditing({
     }
   };
 
+  const onCanvasFocus = (event: FocusEvent<HTMLDivElement>): void => {
+    if (event.target === event.currentTarget && event.currentTarget.matches(':focus-visible')) {
+      boardKeys.show();
+    }
+  };
+
   const boardKey = (key: BoardKey): void => {
     camera.element?.focus({ preventScroll: true });
     boardKeys.press(key);
@@ -175,8 +181,8 @@ export function useStudioEditing({
       diff,
     },
     cursor: boardKeys.cursor,
-    drawingTool: wall.drawing !== undefined || cells.drawing !== undefined,
     onCanvasKey,
+    onCanvasFocus,
     controls: {
       canRedo: editor.canRedo,
       canUndo: editor.canUndo,

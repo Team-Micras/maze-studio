@@ -1,4 +1,13 @@
-import { useCallback, useDeferredValue, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import {
+  useCallback,
+  useDeferredValue,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+  type PointerEvent,
+} from 'react';
+import { flushSync } from 'react-dom';
 import { useStore } from 'zustand';
 
 import { filterCatalog, type LibraryFilter } from '@/library';
@@ -156,6 +165,7 @@ export function Studio({
   const onScreen = previewed ?? opened ?? state.leaving;
   const board = onScreen === undefined ? undefined : boardOf(onScreen.maze);
   const inEditor = mode === 'editor' && board !== undefined;
+  const pressEdits = inEditor && !state.viewing && !editor.readOnly;
   const screen: StudioScreen =
     onScreen === undefined || board === undefined || mode === 'library'
       ? { kind: 'library' }
@@ -167,7 +177,7 @@ export function Studio({
               kind: 'editing',
               maze: onScreen,
               board,
-              drawable: !state.listOpen && !state.viewing && !editor.readOnly,
+              drawable: pressEdits && !state.listOpen,
             };
 
   const camera = useCanvasCamera({
@@ -247,6 +257,33 @@ export function Studio({
     listOpener.current = null;
   };
 
+  /**
+   * A press on the board while the quick list is open keeps the maze on screen, as Enter does, and
+   * closes the list at once, so the same press already edits it and focuses the board, as a press
+   * does, without the cursor of a keyboard focus.
+   */
+  const keepOnPress = (event: PointerEvent<HTMLElement>): void => {
+    const stage = camera.element;
+
+    if (
+      !state.listOpen ||
+      stage === null ||
+      !(event.target instanceof Node) ||
+      !stage.contains(event.target)
+    ) {
+      return;
+    }
+
+    flushSync(() => {
+      if (state.preview === undefined) {
+        store.setState({ listOpen: false });
+      } else {
+        pinKey(state.preview);
+      }
+    });
+    listOpener.current = null;
+  };
+
   const preparedMaze =
     mode === 'library' && state.prepared !== undefined
       ? library?.mazeOf(state.prepared)
@@ -290,7 +327,7 @@ export function Studio({
 
   return (
     <div data-studio-mode={mode} data-viewing={mode === 'editor' && state.viewing ? '' : undefined}>
-      <main>
+      <main onPointerDownCapture={keepOnPress}>
         {library === undefined ? null : (
           <LibraryGrid
             entries={shown}
@@ -313,13 +350,14 @@ export function Studio({
             'fixed inset-0 z-[1]',
             mode === 'library' && 'pointer-events-none invisible',
             mode === 'flying-out' && 'pointer-events-none',
-            editing.drawingTool && 'cursor-crosshair',
+            pressEdits && state.tool !== 'hand' && 'cursor-crosshair',
             mode === 'editor' && !state.viewing && state.tool === 'hand' && 'cursor-grab'
           )}
           controller={camera}
           drawing={editing.drawing}
           id={CANVAS_ID}
           label={inEditor && onScreen !== undefined ? `${onScreen.name}, maze board` : 'Maze board'}
+          onFocus={editing.onCanvasFocus}
           onKeyDown={editing.onCanvasKey}
           primaryPan={primaryPan}
           promoted={flying}

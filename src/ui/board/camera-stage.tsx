@@ -3,6 +3,7 @@ import {
   useRef,
   useState,
   type CSSProperties,
+  type FocusEvent,
   type KeyboardEvent,
   type PointerEvent,
   type ReactNode,
@@ -39,6 +40,8 @@ export interface CameraStageProps {
   readonly drawing?: StageDrawing;
   /** Runs before the stage's own keys; a key it prevents is left alone. */
   readonly onKeyDown?: (event: KeyboardEvent<HTMLDivElement>) => void;
+  /** Called when the stage takes the focus, by the keyboard or not. */
+  readonly onFocus?: (event: FocusEvent<HTMLDivElement>) => void;
   readonly className?: string;
 }
 
@@ -116,6 +119,7 @@ export function CameraStage({
   promoted = false,
   drawing,
   onKeyDown: onContentKey,
+  onFocus,
   className,
 }: CameraStageProps) {
   const pointers = useRef(new Map<number, ScreenPoint>());
@@ -285,7 +289,6 @@ export function CameraStage({
       aria-roledescription="canvas"
       className={cn(
         'relative touch-none overflow-hidden outline-none select-none',
-        'focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset',
         className,
         spaceHeld && 'cursor-grab',
         panning && 'cursor-grabbing'
@@ -293,6 +296,7 @@ export function CameraStage({
       data-panning={panning ? '' : undefined}
       id={id}
       onBlur={() => setSpaceHeld(false)}
+      onFocus={onFocus}
       onKeyDown={onKeyDown}
       onKeyUp={onKeyUp}
       onPointerCancel={onPointerEnd}

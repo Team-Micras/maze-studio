@@ -48,6 +48,8 @@ export interface BoardKeys {
   readonly press: (key: BoardKey) => boolean;
   /** Hides the cursor, as the pointer does when it presses. */
   readonly hide: () => void;
+  /** Shows the cursor where it was, or at the start, as when the keyboard reaches the board. */
+  readonly show: () => void;
 }
 
 const ARROWS: Readonly<Record<string, CellSide>> = {
@@ -178,5 +180,10 @@ export function useBoardKeys({
       corner === undefined || cursor === undefined ? undefined : { from: corner, to: cursor },
     press,
     hide: () => setCursor(undefined),
+    show: () => {
+      if (maze !== undefined) {
+        setCursor((before) => before ?? maze.start ?? { x: 0, y: 0 });
+      }
+    },
   };
 }

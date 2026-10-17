@@ -2,6 +2,17 @@ version: 2
 updates:
   - package-ecosystem: gitsubmodule
     directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: '06:00'
+      timezone: Etc/UTC
+    commit-message:
+      prefix: '⬆️'
+    labels:
+      - mazefiles
+  - package-ecosystem: gitsubmodule
+    directory: /
     target-branch: develop
     schedule:
       interval: weekly

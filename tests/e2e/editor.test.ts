@@ -591,12 +591,10 @@ describe('The Library button after ] put another maze in place', () => {
 });
 
 describe('The keyboard cursor', () => {
-  test('on the canvas, the first arrow shows the cursor and the next ones move it', async () => {
+  test('on the canvas, a keyboard focus shows the cursor at the start and the arrows move it', async () => {
     const page = await openMaze(CLASSIC);
     await page.locator('#canvas').focus();
 
-    expect(await page.locator('[data-layer="cursor"]').count()).toBe(0);
-    await page.keyboard.press('ArrowRight');
     await expect.poll(() => page.locator('[data-layer="cursor"]').count()).toBe(1);
     await expect.poll(() => page.getByText(/^Cell \(0, 0\)/).count()).toBe(1);
     await page.keyboard.press('ArrowRight');
@@ -633,7 +631,7 @@ describe('The keyboard cursor', () => {
     const page = await openMaze(CLASSIC);
     const cell = { x: 2, y: 1 };
     await page.locator('#canvas').focus();
-    await page.keyboard.press('ArrowUp');
+    await page.locator('[data-layer="cursor"]').waitFor();
     await page.keyboard.press('ArrowRight');
     await page.keyboard.press('ArrowRight');
     await page.keyboard.press('ArrowUp');
@@ -704,6 +702,116 @@ async function openTxt(
   });
   return { page, ...widths };
 }
+
+describe('A press on the board with the quick list open', () => {
+  test.each([
+    ['a notebook', {}],
+    ['a phone', PHONE],
+  ] as const)('on %s keeps the maze shown and edits it at once', async (_where, options) => {
+    const page = await openMaze(CLASSIC, options);
+    const touch = options === PHONE;
+
+    if (touch) {
+      await page.getByRole('button', { name: 'Edit', exact: true }).tap();
+      await page.getByRole('toolbar', { name: 'Tools' }).waitFor();
+      await page.getByRole('button', { name: 'Maze list' }).tap();
+    } else {
+      await page.keyboard.press('l');
+    }
+
+    await page.locator('[cmdk-item]').first().waitFor();
+    await page.keyboard.press('ArrowDown');
+    await page.waitForFunction(() => document.querySelector('h1')?.textContent !== 'AAMC15Maze');
+    const key =
+      (await page.locator('[cmdk-item][aria-selected="true"]').getAttribute('data-value')) ?? '';
+    const path = key.slice('repo:'.length);
+    const { maze } = await repoContent(path);
+    const sheet = touch
+      ? await page.getByRole('dialog', { name: 'Maze list' }).boundingBox()
+      : null;
+    const visible = async (y: number): Promise<boolean> => {
+      const at = await pagePoint(page, maze, edgeMiddle({ direction: 'vertical', x: 8, y }));
+      return at.y > 80 && at.y < (sheet?.y ?? Infinity) - 10;
+    };
+    let row = maze.height - 2;
+
+    while (row > 0 && !(await visible(row))) {
+      row -= 1;
+    }
+
+    const edge: Edge = { direction: 'vertical', x: 8, y: row };
+    const point = await pagePoint(page, maze, edgeMiddle(edge));
+    expect(await visible(row)).toBe(true);
+    expect(new URL(page.url()).hash).toBe(`#/repo/${CLASSIC}`);
+
+    if (touch) {
+      await page.touchscreen.tap(point.x, point.y);
+    } else {
+      await page.mouse.click(point.x, point.y);
+    }
+
+    const saved = await expectSaved(page, sameMaze(toggleWall(maze, edge)));
+    expect(saved.origin?.path).toBe(path);
+    expect(
+      await page.getByRole('button', { name: 'Maze list' }).getAttribute('aria-expanded')
+    ).toBe('false');
+    expect(await page.locator('[cmdk-item]').count()).toBe(0);
+    expect(
+      await page.evaluate(() => ({
+        focused: document.activeElement?.id,
+        visible: document.activeElement?.matches(':focus-visible'),
+      }))
+    ).toEqual({ focused: 'canvas', visible: false });
+    expect(await page.locator('[data-layer="cursor"]').count()).toBe(0);
+  });
+
+  test('the board shows the cursor of the tool with the list open as with it closed', async () => {
+    const page = await openMaze(CLASSIC);
+    const cursor = (): Promise<string> =>
+      page.evaluate(
+        () => getComputedStyle(document.getElementById('canvas') ?? document.body).cursor
+      );
+    const seen: string[] = [];
+
+    for (const tool of ['w', 'h']) {
+      await page.keyboard.press(tool);
+      seen.push(await cursor());
+      await page.keyboard.press('l');
+      await page.locator('[cmdk-item]').first().waitFor();
+      seen.push(await cursor());
+      await page.keyboard.press('Escape');
+      await expect.poll(() => page.locator('[cmdk-item]').count()).toBe(0);
+    }
+
+    expect(seen).toEqual(['crosshair', 'crosshair', 'grab', 'grab']);
+  });
+
+  test('Tab onto the board shows the cell cursor, and no ring around the board', async () => {
+    const page = await openMaze(CLASSIC);
+    await page.locator('body').focus();
+
+    for (let step = 0; step < 40; step++) {
+      await page.keyboard.press('Tab');
+
+      if (await page.evaluate(() => document.activeElement?.id === 'canvas')) {
+        break;
+      }
+    }
+
+    const ring = await page.evaluate(() => {
+      const canvas = document.getElementById('canvas');
+      const style = canvas === null ? undefined : getComputedStyle(canvas);
+      return {
+        focused: document.activeElement === canvas,
+        outline: style?.outlineStyle,
+        shadow: style?.boxShadow,
+      };
+    });
+
+    expect(ring).toEqual({ focused: true, outline: 'none', shadow: 'none' });
+    await expect.poll(() => page.locator('[data-layer="cursor"]').count()).toBe(1);
+  });
+});
 
 describe('The title of a .txt on a phone', () => {
   test.each([360, 412])(
