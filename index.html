@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/maze-studio/maze-studio.svg" />
+    <link rel="apple-touch-icon" href="/maze-studio/apple-touch-icon.png" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, viewport-fit=cover, interactive-widget=resizes-content"
+    />
+    <meta
+      name="description"
+      content="Browse, view and edit micromouse mazes in the mazefiles format"
+    />
+    <meta name="color-scheme" content="light dark" />
+    <meta name="theme-color" content="#e3e3e3" />
+    <script>
+      {
+        const forced = new URLSearchParams(location.search).get('theme');
+        const dark =
+          forced === 'dark' ||
+          (forced !== 'light' && matchMedia('(prefers-color-scheme: dark)').matches);
+        document.documentElement.classList.toggle('dark', dark);
+        document
+          .querySelector('meta[name="theme-color"]')
+          .setAttribute('content', dark ? '#191919' : '#e3e3e3');
+      }
+    </script>
+    <title>maze-studio</title>
+    <script type="module" crossorigin src="/maze-studio/assets/index-DDgXyV0H.js"></script>
+    <link rel="modulepreload" crossorigin href="/maze-studio/assets/rolldown-runtime-CbXtAM7H.js">
+    <link rel="modulepreload" crossorigin href="/maze-studio/assets/react-VxQS_oDR.js">
+    <link rel="stylesheet" crossorigin href="/maze-studio/assets/index-Blw_ilA2.css">
+  <link rel="manifest" href="/maze-studio/manifest.webmanifest"></head>
+  <body>
+    <div id="root"></div>
+  </body>
+</html>

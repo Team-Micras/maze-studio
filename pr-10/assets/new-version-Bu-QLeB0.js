@@ -1,0 +1,1 @@
+import{a as e,c as t}from"./pending-writes-DrFUQ3En.js";function n(n,r=e){t(`New version.`,{persistent:!0,action:{label:`Reload`,altText:`Reload to use the new version`,run:()=>void r().then(n,n)}})}export{n as offerReload};
