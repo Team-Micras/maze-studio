@@ -7,7 +7,7 @@ import { useRoute } from '@/ui/hooks/use-route';
 import { ArrowSquareOut } from '@/ui/icons';
 import { Verbatim } from '@/ui/verbatim';
 
-import { embedMaze, type FetchedFile, type SnapshotLoad } from './embed-maze';
+import { embedMaze, type Fetched, missingPath, type SnapshotLoad } from './embed-maze';
 import { appHref } from './embed-url';
 import { type FetchFile, fetchRepoFile } from './fetch-repo-file';
 import { useEmbedTheme } from './use-embed-theme';
@@ -50,16 +50,18 @@ function useSnapshot(wanted: boolean): SnapshotLoad {
   return snapshot;
 }
 
-/** The file at `path`, fetched once `wanted`, and again if the path changes. */
+/** The file at `path`, fetched when there is a path, and again if the path changes. */
 function useFetchedFile(
-  path: string,
-  wanted: boolean,
+  path: string | undefined,
   fetchFile: FetchFile | undefined
-): FetchedFile {
-  const [fetched, setFetched] = useState<{ path: string; file: RepoFile | undefined }>();
+): Fetched | undefined {
+  const [fetched, setFetched] = useState<{
+    path: string;
+    file: RepoFile | undefined;
+  }>();
 
   useEffect(() => {
-    if (!wanted) {
+    if (path === undefined) {
       return undefined;
     }
 
@@ -73,13 +75,13 @@ function useFetchedFile(
     return () => {
       current = false;
     };
-  }, [path, wanted, fetchFile]);
+  }, [path, fetchFile]);
 
-  if (!wanted) {
+  if (path === undefined) {
     return undefined;
   }
 
-  return fetched?.path === path ? fetched.file : 'loading';
+  return fetched?.path === path ? { status: 'done', file: fetched.file } : { status: 'loading' };
 }
 
 /**
@@ -94,12 +96,8 @@ export function Embed({ fetchFile }: { readonly fetchFile?: FetchFile } = {}) {
   useEmbedTheme();
   const route = useRoute();
   const snapshot = useSnapshot(route.kind === 'repo');
-  const path = route.kind === 'repo' ? route.path : '';
-  const missing =
-    route.kind === 'repo' &&
-    typeof snapshot === 'object' &&
-    !snapshot.files.some((file) => file.path === path);
-  const fetched = useFetchedFile(path, missing, fetchFile);
+  const path = missingPath(route, snapshot);
+  const fetched = useFetchedFile(path, fetchFile);
   const shown = embedMaze(route, snapshot, fetched);
 
   if (shown.status === 'waiting') {
