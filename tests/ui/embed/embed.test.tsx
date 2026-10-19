@@ -5,12 +5,16 @@ import { render } from 'vitest-browser-react';
 import { borderedMaze, encodeMazeCode } from '@/maze';
 import { Embed } from '@/ui/embed/embed';
 import { EMBED_REFUSED } from '@/ui/embed/embed-maze';
+import type { FetchFile } from '@/ui/embed/fetch-repo-file';
 import '@/ui/styles.css';
 import { axeViolations } from '@tests/support/axe-check';
 import { settled } from '@tests/support/ui/animations';
+import { MAZE_A } from '@tests/support/library/fake-github';
 import { REPO_MAZES } from '@tests/support/ui/repo-mazes';
 
 const CLASSIC_LABEL = 'AAMC15Maze, AAMC, 16 by 16';
+
+const NOT_FOUND: FetchFile = () => Promise.resolve(new Response('', { status: 404 }));
 
 afterEach(async () => {
   document.documentElement.classList.remove('dark');
@@ -19,9 +23,13 @@ afterEach(async () => {
 });
 
 /** Mounts the embed at `query` and `hash`, as the address of a frame would hold them. */
-async function mountEmbed(hash: string, query = '?embed'): Promise<void> {
+async function mountEmbed(
+  hash: string,
+  query = '?embed',
+  fetchFile: FetchFile = NOT_FOUND
+): Promise<void> {
   window.history.replaceState(null, '', `${window.location.pathname}${query}${hash}`);
-  await render(<Embed />);
+  await render(<Embed fetchFile={fetchFile} />);
 }
 
 function board(): SVGSVGElement | null {
@@ -109,6 +117,29 @@ describe('The embed', () => {
     await expect.element(page.getByText(message)).toBeVisible();
     expect(board()).toBeNull();
     expect(document.querySelectorAll('a')).toHaveLength(0);
+  });
+
+  test('shows a repository maze the snapshot lacks, read from GitHub', async () => {
+    const asked: string[] = [];
+    await mountEmbed('#/repo/classic/br2026-rcx-day1.txt', '?embed', (url) => {
+      asked.push(url);
+      return Promise.resolve(new Response(MAZE_A));
+    });
+
+    await expect.element(page.getByRole('img', { name: /^br2026-rcx-day1, / })).toBeVisible();
+    expect(asked).toHaveLength(1);
+    expect(asked[0]).toContain('/micromouseonline/mazefiles/master/classic/br2026-rcx-day1.txt');
+  });
+
+  test('does not ask GitHub for a maze the snapshot has', async () => {
+    const asked: string[] = [];
+    await mountEmbed(`#/repo/${REPO_MAZES.classic}`, '?embed', (url) => {
+      asked.push(url);
+      return NOT_FOUND(url);
+    });
+    await expect.element(page.getByRole('img', { name: CLASSIC_LABEL })).toBeVisible();
+
+    expect(asked).toEqual([]);
   });
 
   test('passes axe on a maze and on a refusal', async () => {
