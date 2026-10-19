@@ -45,6 +45,29 @@ describe('The maze of the embed', () => {
     });
   });
 
+  test('of a path the snapshot lacks waits for the fetch, then shows the file it found', async () => {
+    const snapshot = await loadSnapshot();
+    const route = { kind: 'repo', path: 'classic/br2026-rcx-day1.txt' } as const;
+    const [found] = snapshot.files;
+
+    expect(embedMaze(route, snapshot, 'loading')).toEqual({ status: 'waiting' });
+    expect(embedMaze(route, snapshot, undefined)).toMatchObject({ status: 'missing' });
+    expect(found).toBeDefined();
+    expect(embedMaze(route, snapshot, found && { ...found, path: route.path })).toMatchObject({
+      status: 'open',
+      name: 'br2026-rcx-day1',
+    });
+  });
+
+  test('of a path the snapshot has ignores the fetch', async () => {
+    const snapshot = await loadSnapshot();
+
+    expect(embedMaze({ kind: 'repo', path: CLASSIC }, snapshot, 'loading')).toMatchObject({
+      status: 'open',
+      name: 'AAMC15Maze',
+    });
+  });
+
   test('of a link decodes it without the snapshot', () => {
     const maze = borderedMaze(5, 3);
     const shown = embedMaze(

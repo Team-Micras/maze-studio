@@ -196,7 +196,10 @@ reached, and the measurements of the day, are in the git history of this file.
   it, and size.
 - **Only the repository and links.** My mazes and the folder live in the visitor's own browser, so a page of
   another site naming one would show whatever that visitor keeps, or nothing; the embed refuses them, and the
-  library, with a sentence. A repository maze comes from the built-in snapshot, never from GitHub.
+  library, with a sentence. A repository maze comes from the built-in snapshot; one the snapshot lacks, such as a maze
+  added to mazefiles after this build, is read from GitHub with one request to `raw.githubusercontent.com` (path
+  checked, 1 MiB at most, no storage, no API call), because the embed has no updater and the weekly bump of the
+  submodule would leave a new maze reading "No maze at that path" for days. A failed request says so as before.
 - **The theme follows the host.** `?theme=` forces one as in the app; without it the embed follows
   `prefers-color-scheme` as it changes. A host posts `{ type: 'maze-studio:theme', theme }` to change it without a
   reload, which wins over both from then on. Only a message whose `source` is `window.parent`, of that `type` and

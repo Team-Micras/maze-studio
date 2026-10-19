@@ -1,14 +1,15 @@
 import { useEffect, useState } from 'react';
 
-import { loadSnapshot } from '@/library/snapshot';
+import { loadSnapshot, type RepoFile } from '@/library/snapshot';
 import { boardGeometry } from '@/render';
 import { Board } from '@/ui/board/board';
 import { useRoute } from '@/ui/hooks/use-route';
 import { ArrowSquareOut } from '@/ui/icons';
 import { Verbatim } from '@/ui/verbatim';
 
-import { embedMaze, type SnapshotLoad } from './embed-maze';
+import { embedMaze, type FetchedFile, type SnapshotLoad } from './embed-maze';
 import { appHref } from './embed-url';
+import { type FetchFile, fetchRepoFile } from './fetch-repo-file';
 import { useEmbedTheme } from './use-embed-theme';
 
 /** The space between the board and the edges of the frame, in CSS pixels. */
@@ -49,17 +50,57 @@ function useSnapshot(wanted: boolean): SnapshotLoad {
   return snapshot;
 }
 
+/** The file at `path`, fetched once `wanted`, and again if the path changes. */
+function useFetchedFile(
+  path: string,
+  wanted: boolean,
+  fetchFile: FetchFile | undefined
+): FetchedFile {
+  const [fetched, setFetched] = useState<{ path: string; file: RepoFile | undefined }>();
+
+  useEffect(() => {
+    if (!wanted) {
+      return undefined;
+    }
+
+    let current = true;
+    void fetchRepoFile(path, fetchFile).then((file) => {
+      if (current) {
+        setFetched({ path, file });
+      }
+    });
+
+    return () => {
+      current = false;
+    };
+  }, [path, wanted, fetchFile]);
+
+  if (!wanted) {
+    return undefined;
+  }
+
+  return fetched?.path === path ? fetched.file : 'loading';
+}
+
 /**
  * The embed (`?embed`): the maze of a repository or link route alone, fitted to the frame on the
  * desk, with a quiet link to it in the whole app in a corner. It is a picture, not a canvas: it
- * takes no wheel, pointer or key, so the page that frames it scrolls past it. Other routes get a
- * short sentence.
+ * takes no wheel, pointer or key, so the page that frames it scrolls past it. A repository maze the
+ * snapshot lacks is read from GitHub; other routes get a short sentence.
+ *
+ * @param props.fetchFile `fetch`, or a stand-in for it.
  */
-export function Embed() {
+export function Embed({ fetchFile }: { readonly fetchFile?: FetchFile } = {}) {
   useEmbedTheme();
   const route = useRoute();
   const snapshot = useSnapshot(route.kind === 'repo');
-  const shown = embedMaze(route, snapshot);
+  const path = route.kind === 'repo' ? route.path : '';
+  const missing =
+    route.kind === 'repo' &&
+    typeof snapshot === 'object' &&
+    !snapshot.files.some((file) => file.path === path);
+  const fetched = useFetchedFile(path, missing, fetchFile);
+  const shown = embedMaze(route, snapshot, fetched);
 
   if (shown.status === 'waiting') {
     return <main className="fixed inset-0" />;
