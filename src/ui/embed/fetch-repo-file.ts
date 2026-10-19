@@ -17,14 +17,36 @@ export type FetchFile = (url: string) => Promise<Response>;
 /** The largest maze file read, as the app's Open does. */
 export const MAX_FILE_BYTES = 1024 * 1024;
 
-/** Folders and a `.txt` name made of plain characters: another site chose the path. */
-const SAFE_PATH = /^(?!.*\.\.)[A-Za-z0-9._-]+(?:\/[A-Za-z0-9._-]+)+\.txt$/;
+/** One folder or file name: plain characters only, since another site chose the path. */
+const NAME = '[A-Za-z0-9._-]+';
+
+/** A path of one or more folders and a `.txt` name, with no `..` anywhere in it. */
+const SAFE_PATH = new RegExp(`^(?!.*\\.\\.)${NAME}(?:/${NAME})+\\.txt$`);
 
 /** Where `path` is on the branch of the repository, or `undefined` for a path that is not plain. */
 export function rawFileUrl(path: string): string | undefined {
   return SAFE_PATH.test(path)
     ? `https://raw.githubusercontent.com/${MAZEFILES.owner}/${MAZEFILES.name}/${MAZEFILES.branch}/${path}`
     : undefined;
+}
+
+/** The maze file `bytes` hold as the snapshot holds its files, or `undefined` if too big or not a maze. */
+async function readMaze(bytes: Uint8Array, path: string): Promise<RepoFile | undefined> {
+  if (bytes.length > MAX_FILE_BYTES) {
+    return undefined;
+  }
+
+  const parsed = parseMazeText(new TextDecoder().decode(bytes), path);
+
+  if (!parsed.ok) {
+    return undefined;
+  }
+
+  return {
+    path,
+    sha: await gitBlobSha(bytes),
+    code: encodeMazeCode(parsed.value.maze, { trailer: parsed.value.trailer }),
+  };
 }
 
 /**
@@ -49,23 +71,7 @@ export async function fetchRepoFile(
       return undefined;
     }
 
-    const bytes = new Uint8Array(await response.arrayBuffer());
-
-    if (bytes.length > MAX_FILE_BYTES) {
-      return undefined;
-    }
-
-    const parsed = parseMazeText(new TextDecoder().decode(bytes), path);
-
-    if (!parsed.ok) {
-      return undefined;
-    }
-
-    return {
-      path,
-      sha: await gitBlobSha(bytes),
-      code: encodeMazeCode(parsed.value.maze, { trailer: parsed.value.trailer }),
-    };
+    return await readMaze(new Uint8Array(await response.arrayBuffer()), path);
   } catch {
     return undefined;
   }
