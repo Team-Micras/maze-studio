@@ -98,7 +98,7 @@ export function isSettings(s: unknown): s is Settings {
       const v = s[k];
       return Array.isArray(v)
         ? isRange(v, 3 * size)
-        : typeof v === 'string' && v in LEVELS[size][k];
+        : typeof v === 'string' && Object.hasOwn(LEVELS[size][k], v);
     }) &&
     TUNING.every(
       (k) => s[k] === undefined || (k === 'trapLoss' ? isInt(s[k], 1, 100) : isRange(s[k], 100))

@@ -54,6 +54,9 @@ describe('a batch', () => {
       'bad recipe'
     );
     expect(() => readRecipe(JSON.stringify({ recipe: 'x', ...good }))).toThrow('bad recipe');
+    expect(() =>
+      readRecipe(JSON.stringify({ ...good, settings: { ...settings, straights: 'toString' } }))
+    ).toThrow('bad recipe');
     expect(
       readRecipe(JSON.stringify({ ...good, settings: { ...settings, fishboneCells: [4, 6] } }))
         .settings.fishboneCells
