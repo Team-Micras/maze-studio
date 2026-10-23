@@ -1,11 +1,22 @@
-import { Plus, Ruler, X } from '@/ui/icons';
-import { useId, useRef, useState, type FormEvent, type ReactNode } from 'react';
+import { Plus, Ruler, Shuffle, X } from '@/ui/icons';
+import {
+  lazy,
+  Suspense,
+  useId,
+  useRef,
+  useState,
+  type ComponentType,
+  type FormEvent,
+  type ReactNode,
+} from 'react';
 
 import type { Profile } from '@/maze';
+import type { GenerateDialogProps } from '@/ui/generator/generate-dialog';
 import { useCoarsePointer } from '@/ui/hooks/use-media-query';
 import { PROFILE_NAMES } from '@/ui/labels';
 import { IslandButton } from '@/ui/islands/island';
 import { PRESETS, sideOf, type NewMazeRequest } from '@/ui/new-maze';
+import { Badge } from '@/ui/primitives/badge';
 import { Button } from '@/ui/primitives/button';
 import { Dialog, DialogClose, DialogContent, DialogTitle } from '@/ui/primitives/dialog';
 import {
@@ -16,24 +27,39 @@ import {
 import { Input } from '@/ui/primitives/input';
 import { Label } from '@/ui/primitives/label';
 import { ToggleGroup, ToggleGroupItem } from '@/ui/primitives/toggle-group';
+import { showToast } from '@/ui/toasts';
 
 /** The default side of a custom maze. */
 const DEFAULT_SIDE = '16';
 
 const RANGE_ERROR = '1 to 64';
 
+function GeneratorUnavailable() {
+  return null;
+}
+
+/** The Generate dialog, with the generator and its worker, loaded the first time it opens. */
+const GenerateDialog = lazy<ComponentType<GenerateDialogProps>>(() =>
+  import('@/ui/generator/generate-dialog').catch(() => {
+    showToast('Could not load the generator. Reload to try again');
+    return { default: GeneratorUnavailable };
+  })
+);
+
 /** The props of {@link NewMazeItems}. */
 export interface NewMazeItemsProps {
   readonly onNew: (request: NewMazeRequest) => void;
   /** Opens the Custom size dialog. */
   readonly onCustom: () => void;
+  /** Opens the Generate dialog. */
+  readonly onGenerate: () => void;
 }
 
 /**
  * The New maze items of a menu (DESIGN.md 9.2): "Classic, 16 × 16", "Half size, 32 × 32",
- * "Training, 16 × 16" and "Custom size…".
+ * "Training, 16 × 16", "Custom size…" and "Generate…", marked Beta.
  */
-export function NewMazeItems({ onNew, onCustom }: NewMazeItemsProps) {
+export function NewMazeItems({ onNew, onCustom, onGenerate }: NewMazeItemsProps) {
   return (
     <>
       <DropdownMenuLabel className="text-xs text-muted-foreground">New maze</DropdownMenuLabel>
@@ -51,6 +77,13 @@ export function NewMazeItems({ onNew, onCustom }: NewMazeItemsProps) {
       <DropdownMenuItem className="rounded-[9px]" onSelect={onCustom}>
         <Ruler aria-hidden size={16} />
         Custom size…
+      </DropdownMenuItem>
+      <DropdownMenuItem className="rounded-[9px]" onSelect={onGenerate}>
+        <Shuffle aria-hidden size={16} />
+        Generate…
+        <Badge className="ml-auto" variant="secondary">
+          Beta
+        </Badge>
       </DropdownMenuItem>
     </>
   );
@@ -234,13 +267,28 @@ export interface NewMazeDialogsProps {
   readonly children: (items: ReactNode) => ReactNode;
 }
 
-/** A menu with the New maze items, and the Custom size dialog they open. */
+/**
+ * A menu with the New maze items, and the Custom size and Generate dialogs they open. The Generate
+ * dialog stays mounted once opened, so its batch is still there the next time.
+ */
 export function NewMazeDialogs({ defaultName, onNew, children }: NewMazeDialogsProps) {
   const [custom, setCustom] = useState(false);
+  const [generate, setGenerate] = useState<boolean | undefined>(undefined);
 
   return (
     <>
-      {children(<NewMazeItems onCustom={() => setCustom(true)} onNew={onNew} />)}
+      {children(
+        <NewMazeItems
+          onCustom={() => setCustom(true)}
+          onGenerate={() => setGenerate(true)}
+          onNew={onNew}
+        />
+      )}
+      {generate === undefined ? null : (
+        <Suspense fallback={null}>
+          <GenerateDialog onOpenChange={setGenerate} onUse={onNew} open={generate} />
+        </Suspense>
+      )}
       <CustomSizeDialog
         defaultName={defaultName}
         onCreate={onNew}

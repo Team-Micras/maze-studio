@@ -293,7 +293,7 @@
       }
     },
     {
-      "files": ["src/library/mine.ts"],
+      "files": ["src/library/mine.ts", "src/ui/generator/batch-run.ts"],
       "rules": {
         "unicorn/require-post-message-target-origin": "off"
       }

@@ -1,0 +1,163 @@
+import { describe, expect, test } from 'vitest';
+
+import { GENERATOR_VERSION, PRESETS, generate, withMaze, type SavedRecipe } from '@/generator';
+import { Batch, workerCount, type Spawn } from '@/ui/generator/batch-run';
+import { isReady, itemWarning, profileOf, requestOf, statusLine } from '@/ui/generator/candidates';
+import { runJob, type Job } from '@/ui/generator/job';
+
+const SETTINGS =
+  PRESETS[0]?.settings ??
+  (() => {
+    throw new Error('no preset');
+  })();
+
+/** Workers that run each job in a later task, as a real worker answers, and count the live ones. */
+function workers(options: { fail?: boolean } = {}) {
+  const live = new Set<object>();
+  const spawn: Spawn = (onResult, onError) => {
+    const runner = {
+      post: (job: Job) => {
+        setTimeout(() => {
+          if (live.has(runner)) {
+            if (options.fail === true) {
+              onError();
+            } else {
+              onResult(runJob(job));
+            }
+          }
+        }, 0);
+      },
+      terminate: () => live.delete(runner),
+    };
+    live.add(runner);
+    return runner;
+  };
+  return { spawn, live };
+}
+
+function settled(batch: Batch): Promise<void> {
+  return new Promise((resolve) => {
+    const stop = batch.subscribe(() => {
+      if (batch.getState().progress === null) {
+        stop();
+        resolve();
+      }
+    });
+  });
+}
+
+describe('a batch of generated mazes', () => {
+  test('builds three seeds per maze shown, reports progress, keeps the most varied and stops its workers', async () => {
+    const { spawn, live } = workers();
+    const batch = new Batch({ spawn, workers: 2, size: 2, firstSeed: 1 });
+    const done: number[] = [];
+    batch.subscribe(() => done.push(batch.getState().progress?.done ?? -1));
+    const items = batch.generate(SETTINGS, true);
+
+    expect(items.map((item) => item.status)).toEqual(['pending', 'pending']);
+    expect(statusLine(batch.getState())).toBe('Generating 0 of 6…');
+    await settled(batch);
+
+    const state = batch.getState();
+    expect(done.filter((n) => n > 0)).toEqual([1, 2, 3, 4, 5, 6]);
+    expect(live.size).toBe(0);
+    expect(state.items.every(isReady)).toBe(true);
+    expect(state.items.map((item) => item.n)).toEqual([1, 2]);
+    expect(state.items.every((item) => (item.seed ?? 0) >= 1 && (item.seed ?? 0) <= 6)).toBe(true);
+    expect(statusLine(state)).toBe('Seeds 1 to 6, the most varied shown');
+
+    const [first] = state.items;
+
+    if (!isReady(first)) {
+      throw new Error('not ready');
+    }
+
+    expect(first.recipe).toMatchObject({ version: GENERATOR_VERSION, seed: first.seed });
+    expect(first.recipe.walls).toHaveLength(256);
+    expect(requestOf(first)).toMatchObject({
+      kind: 'generated',
+      name: `Generated ${first.seed}`,
+      profile: 'classic',
+      recipe: first.recipe,
+    });
+    expect(
+      profileOf({
+        ...first,
+        recipe: { ...first.recipe, settings: { ...SETTINGS, competition: false } },
+      })
+    ).toBe('free');
+  }, 60_000);
+
+  test('drops the mazes still pending when cancelled, and keeps the earlier ones with More', async () => {
+    const { spawn, live } = workers();
+    const batch = new Batch({ spawn, workers: 1, size: 1, firstSeed: 1 });
+    batch.generate(SETTINGS, true);
+    await settled(batch);
+    batch.generate(SETTINGS, false);
+
+    expect(batch.getState().items.map((item) => item.status)).toEqual(['ready', 'pending']);
+    batch.cancel();
+    expect(batch.getState().items.map((item) => item.status)).toEqual(['ready']);
+    expect(batch.getState().progress).toBeNull();
+    expect(live.size).toBe(0);
+    expect(batch.getState().nextSeed).toBe(7);
+  }, 60_000);
+
+  test('says so when a worker fails, and leaves the mazes it did not make failed', async () => {
+    const { spawn } = workers({ fail: true });
+    const batch = new Batch({ spawn, workers: 2, size: 2, firstSeed: 1 });
+    batch.generate(SETTINGS, true);
+    await settled(batch);
+
+    expect(batch.getState().stopped).toBe(true);
+    expect(batch.getState().items.map((item) => item.status)).toEqual(['failed', 'failed']);
+  });
+
+  test('rebuilds a recipe, and warns when the walls are not the ones it saved', async () => {
+    const candidate = generate(SETTINGS, 1);
+    const recipe: SavedRecipe = withMaze(candidate.recipe, candidate.grid);
+    const { spawn } = workers();
+    const batch = new Batch({ spawn, workers: 1 });
+
+    const same = batch.rebuild(recipe, SETTINGS);
+    await settled(batch);
+    const rebuilt = batch.getState().items.find((item) => item.n === same.n);
+    expect(rebuilt).toMatchObject({ status: 'ready', origin: 'loaded', mismatch: false });
+    expect(isReady(rebuilt) ? itemWarning(rebuilt) : 'not ready').toBeUndefined();
+
+    const other = batch.rebuild({ ...recipe, hash: '00000000' }, SETTINGS);
+    await settled(batch);
+    const moved = batch.getState().items.find((item) => item.n === other.n);
+    expect(moved).toMatchObject({ mismatch: true });
+    expect(isReady(moved) ? itemWarning(moved) : '').toBe(
+      `This generator rebuilt other walls than the recipe saved (wall hash ${candidate.recipe.hash ?? ''}, saved 00000000): the seed no longer verifies`
+    );
+  }, 60_000);
+
+  test('opens the walls an older generator saved, as they were', () => {
+    const candidate = generate(SETTINGS, 1);
+    const recipe = {
+      ...withMaze(candidate.recipe, candidate.grid),
+      version: GENERATOR_VERSION - 1,
+    };
+    const batch = new Batch({ spawn: workers().spawn });
+    const item = batch.rebuild(recipe, SETTINGS);
+
+    expect(item).toMatchObject({ status: 'ready', older: GENERATOR_VERSION - 1, saved: true });
+    expect(Array.from(item.grid?.walls ?? [])).toEqual(Array.from(candidate.grid.walls));
+    expect(isReady(item) ? itemWarning(item) : '').toBe(
+      `Made by an older generator (version ${GENERATOR_VERSION - 1}): shown as it was saved`
+    );
+  });
+
+  test('runs one worker fewer than the cores, from one to four', () => {
+    expect([undefined, 1, 2, 4, 16].map(workerCount)).toEqual([1, 1, 1, 3, 4]);
+  });
+
+  test('sends a maze without its flood distances', () => {
+    const result = runJob({ settings: SETTINGS, seed: 1 });
+
+    expect(Object.hasOwn(result.analysis, 'dist')).toBe(false);
+    expect(result.recipe.hash).toBe(generate(SETTINGS, 1).recipe.hash);
+  });
+});

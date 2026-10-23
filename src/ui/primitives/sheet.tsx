@@ -7,6 +7,10 @@ function Sheet({ ...props }: React.ComponentProps<typeof SheetPrimitive.Root>) {
   return <SheetPrimitive.Root data-slot="sheet" {...props} />;
 }
 
+function SheetClose({ ...props }: React.ComponentProps<typeof SheetPrimitive.Close>) {
+  return <SheetPrimitive.Close data-slot="sheet-close" {...props} />;
+}
+
 function SheetTitle({ className, ...props }: React.ComponentProps<typeof SheetPrimitive.Title>) {
   return (
     <SheetPrimitive.Title
@@ -30,12 +34,23 @@ function SheetDescription({
   );
 }
 
-/** The sheet's panel, rising from the bottom edge (DESIGN.md 6 and 8): 20 px top corners. */
+const SIDES = {
+  bottom:
+    'inset-x-0 bottom-0 rounded-t-[20px] pb-[env(safe-area-inset-bottom)] data-[state=closed]:slide-out-to-bottom-10 data-[state=open]:slide-in-from-bottom-10',
+  right:
+    'top-safe-3 right-safe-3 bottom-safe-3 w-[min(440px,calc(100vw-24px))] rounded-[16px] data-[state=closed]:slide-out-to-right-10 data-[state=open]:slide-in-from-right-10',
+} as const;
+
+/**
+ * The sheet's panel (DESIGN.md 6 and 8): rising from the bottom edge with 20 px top corners, or
+ * docked to the right with the panels' 16 px corners.
+ */
 function SheetContent({
   className,
   children,
+  side = 'bottom',
   ...props
-}: React.ComponentProps<typeof SheetPrimitive.Content>) {
+}: React.ComponentProps<typeof SheetPrimitive.Content> & { side?: keyof typeof SIDES }) {
   return (
     <SheetPrimitive.Portal>
       <SheetPrimitive.Overlay
@@ -45,7 +60,8 @@ function SheetContent({
       <SheetPrimitive.Content
         data-slot="sheet-content"
         className={cn(
-          'fixed inset-x-0 bottom-0 z-20 flex flex-col rounded-t-[20px] bg-card pb-[env(safe-area-inset-bottom)] text-card-foreground shadow-island outline-none data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:slide-out-to-bottom-10 data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:slide-in-from-bottom-10 data-[state=open]:duration-240 data-[state=open]:ease-(--ease-drawer)',
+          'fixed z-20 flex flex-col bg-card text-card-foreground shadow-island outline-none data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:duration-240 data-[state=open]:ease-(--ease-drawer)',
+          SIDES[side],
           className
         )}
         {...props}
@@ -56,4 +72,4 @@ function SheetContent({
   );
 }
 
-export { Sheet, SheetContent, SheetDescription, SheetTitle };
+export { Sheet, SheetClose, SheetContent, SheetDescription, SheetTitle };
