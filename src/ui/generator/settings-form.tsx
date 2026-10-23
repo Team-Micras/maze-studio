@@ -1,4 +1,4 @@
-import { useId, useState, type ReactNode } from 'react';
+import { useId, useRef, useState, type ReactNode } from 'react';
 
 import { PRESETS, resize, type Preset, type Settings } from '@/generator';
 import { ArrowCounterClockwise, CaretDown } from '@/ui/icons';
@@ -304,6 +304,7 @@ export function SettingsForm({ value, onChange, onInvalid }: SettingsFormProps) 
   const id = useId();
   const [invalid, setInvalid] = useState<ReadonlySet<FieldKey>>(new Set());
   const [reset, setReset] = useState(0);
+  const presetField = useRef<HTMLSelectElement>(null);
   const { preset, settings } = value;
   const custom = isCustom(settings, preset);
   const change = (next: Settings): void => onChange({ preset, settings: next });
@@ -329,7 +330,7 @@ export function SettingsForm({ value, onChange, onInvalid }: SettingsFormProps) 
     <NumberField
       before={before}
       field={field}
-      key={field}
+      key={`${field}-${reset}`}
       onChange={change}
       onInvalid={markInvalid}
       settings={settings}
@@ -347,7 +348,7 @@ export function SettingsForm({ value, onChange, onInvalid }: SettingsFormProps) 
   const trap = trapNote(settings);
 
   return (
-    <div className="flex flex-col gap-4" key={reset}>
+    <div className="flex flex-col gap-4">
       <div className="flex flex-col gap-1.5">
         <label className="text-[13px] leading-none font-medium" htmlFor={`${id}-preset`}>
           {COPY.preset}
@@ -357,6 +358,7 @@ export function SettingsForm({ value, onChange, onInvalid }: SettingsFormProps) 
             aria-describedby={`${id}-source`}
             className="h-8 min-w-0 flex-1 rounded-md border border-input bg-transparent px-2 text-[13px] shadow-xs outline-none focus-visible:ring-2 focus-visible:ring-ring dark:bg-input/30"
             id={`${id}-preset`}
+            ref={presetField}
             onChange={(event) => {
               const next = PRESETS.find((p) => p.id === event.target.value);
 
@@ -376,7 +378,10 @@ export function SettingsForm({ value, onChange, onInvalid }: SettingsFormProps) 
           {custom ? (
             <Button
               className="h-8 rounded-[10px] text-[13px]"
-              onClick={() => replace({ preset, settings: presetSettings(preset, settings.size) })}
+              onClick={() => {
+                replace({ preset, settings: presetSettings(preset, settings.size) });
+                presetField.current?.focus();
+              }}
               type="button"
               variant="outline"
             >

@@ -135,9 +135,17 @@ export class Batch {
     return () => this.#listeners.delete(listener);
   };
 
-  /** Sets the seed the next batch starts from, a whole number from 0 to {@link MAX_SEED}. */
+  /**
+   * The largest first seed, so that every seed of a batch stays within {@link MAX_SEED}, which a
+   * recipe allows.
+   */
+  get maxSeed(): number {
+    return MAX_SEED - this.#size * POOL_FACTOR + 1;
+  }
+
+  /** Sets the seed the next batch starts from, a whole number from 0 to {@link maxSeed}. */
   setNextSeed(seed: number): void {
-    this.#set({ nextSeed: Math.min(MAX_SEED, Math.max(0, Math.round(seed) || 0)) });
+    this.#set({ nextSeed: Math.min(this.maxSeed, Math.max(0, Math.round(seed) || 0)) });
   }
 
   /** Stops the run on its way, if any, and drops the mazes it had not built. */
@@ -171,7 +179,7 @@ export class Batch {
     this.#set({
       items: [...kept, ...items],
       firstSeed: first,
-      nextSeed: Math.min(MAX_SEED, first + total),
+      nextSeed: Math.min(this.maxSeed, first + total),
     });
     this.#start(
       Array.from({ length: total }, (_, k) => ({ settings, seed: first + k })),
@@ -182,13 +190,13 @@ export class Batch {
 
   /**
    * The maze of a recipe read by `readRecipe`. A recipe of this generator rebuilds from its own
-   * settings alone. A recipe of an older generator opens the walls it saved; one without them is
+   * settings alone; one without a version is of version 1. A recipe of an older generator opens the walls it saved; one without them is
    * rebuilt with `settings` filling the switches it lacks, and marked `older`, as the maze differs.
    */
   rebuild(recipe: SavedRecipe, settings: Settings): Item {
     this.cancel();
-    const version = recipe.version;
-    const older = version === GENERATOR_VERSION ? undefined : version;
+    const version: number | undefined = recipe.version;
+    const older = version === GENERATOR_VERSION ? undefined : (version ?? 1);
     const n = this.#state.items.length + 1;
 
     if (older !== undefined && recipe.walls !== undefined) {

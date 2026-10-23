@@ -15,7 +15,7 @@ import { cn } from '@/ui/primitives/utils';
 import { appStorage } from '@/ui/storage';
 import { showToast } from '@/ui/toasts';
 
-import { Batch, MAX_SEED, type Item } from './batch-run';
+import { Batch, type Item } from './batch-run';
 import {
   cardLabel,
   isReady,
@@ -319,7 +319,7 @@ export default function GenerateDialog({ open, onOpenChange, onUse }: GenerateDi
                     className="h-8 font-mono text-[13px]"
                     id={`${id}-seed`}
                     inputMode="numeric"
-                    max={MAX_SEED}
+                    max={batch.maxSeed}
                     min={0}
                     onChange={(event) => batch.setNextSeed(Number(event.target.value))}
                     type="number"
@@ -390,12 +390,14 @@ export default function GenerateDialog({ open, onOpenChange, onUse }: GenerateDi
           </details>
           <div className="flex items-center gap-2">
             <p
-              aria-live="polite"
               className="min-w-0 flex-1 font-mono text-xs text-muted-foreground outline-none"
               ref={status}
               tabIndex={-1}
             >
               {statusLine(state)}
+            </p>
+            <p aria-live="polite" className="sr-only">
+              {running ? 'Generating…' : statusLine(state)}
             </p>
             {running ? (
               <Button

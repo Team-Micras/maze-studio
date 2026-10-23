@@ -1,6 +1,13 @@
 import { describe, expect, test } from 'vitest';
 
-import { GENERATOR_VERSION, PRESETS, generate, withMaze, type SavedRecipe } from '@/generator';
+import {
+  GENERATOR_VERSION,
+  PRESETS,
+  generate,
+  readRecipe,
+  withMaze,
+  type SavedRecipe,
+} from '@/generator';
 import { Batch, workerCount, type Spawn } from '@/ui/generator/batch-run';
 import { isReady, itemWarning, profileOf, requestOf, statusLine } from '@/ui/generator/candidates';
 import { runJob, type Job } from '@/ui/generator/job';
@@ -11,15 +18,20 @@ const SETTINGS =
     throw new Error('no preset');
   })();
 
-/** Workers that run each job in a later task, as a real worker answers, and count the live ones. */
-function workers(options: { fail?: boolean } = {}) {
+/**
+ * Workers that run each job in a later task, as a real worker answers, and count the live ones;
+ * `fail` says which of them, by the order they were started, fail instead.
+ */
+function workers(options: { fail?: (index: number) => boolean } = {}) {
   const live = new Set<object>();
+  let started = 0;
   const spawn: Spawn = (onResult, onError) => {
+    const index = started++;
     const runner = {
       post: (job: Job) => {
         setTimeout(() => {
           if (live.has(runner)) {
-            if (options.fail === true) {
+            if (options.fail?.(index) === true) {
               onError();
             } else {
               onResult(runJob(job));
@@ -104,13 +116,33 @@ describe('a batch of generated mazes', () => {
   }, 60_000);
 
   test('says so when a worker fails, and leaves the mazes it did not make failed', async () => {
-    const { spawn } = workers({ fail: true });
+    const { spawn } = workers({ fail: () => true });
     const batch = new Batch({ spawn, workers: 2, size: 2, firstSeed: 1 });
     batch.generate(SETTINGS, true);
     await settled(batch);
 
     expect(batch.getState().stopped).toBe(true);
     expect(batch.getState().items.map((item) => item.status)).toEqual(['failed', 'failed']);
+  });
+
+  test('shows what the other workers made when one fails', async () => {
+    const { spawn, live } = workers({ fail: (index) => index === 0 });
+    const batch = new Batch({ spawn, workers: 2, size: 2, firstSeed: 1 });
+    batch.generate(SETTINGS, true);
+    await settled(batch);
+
+    expect(batch.getState().stopped).toBe(true);
+    expect(batch.getState().items.map((item) => item.status)).toEqual(['ready', 'failed']);
+    expect(live.size).toBe(0);
+  }, 60_000);
+
+  test('keeps every seed of a batch within what a recipe allows', () => {
+    const batch = new Batch({ spawn: workers().spawn, size: 8 });
+    batch.setNextSeed(0xffffffff);
+
+    expect(batch.getState().nextSeed).toBe(0xffffffff - 23);
+    batch.setNextSeed(-5);
+    expect(batch.getState().nextSeed).toBe(0);
   });
 
   test('rebuilds a recipe, and warns when the walls are not the ones it saved', async () => {
@@ -131,6 +163,21 @@ describe('a batch of generated mazes', () => {
     expect(moved).toMatchObject({ mismatch: true });
     expect(isReady(moved) ? itemWarning(moved) : '').toBe(
       `This generator rebuilt other walls than the recipe saved (wall hash ${candidate.recipe.hash ?? ''}, saved 00000000): the seed no longer verifies`
+    );
+  }, 60_000);
+
+  test('takes a recipe without a version for one of version 1, rebuilt as an older one', async () => {
+    const batch = new Batch({ spawn: workers().spawn, workers: 1 });
+    const item = batch.rebuild(
+      readRecipe(JSON.stringify({ settings: SETTINGS, seed: 1 })),
+      SETTINGS
+    );
+    await settled(batch);
+
+    expect(item).toMatchObject({ older: 1 });
+    const built = batch.getState().items.find((each) => each.n === item.n);
+    expect(isReady(built) ? itemWarning(built) : '').toBe(
+      'Made by an older generator (version 1): this one builds a different maze from the same seed'
     );
   }, 60_000);
 
