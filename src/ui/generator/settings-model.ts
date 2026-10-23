@@ -458,7 +458,10 @@ export function presetName(s: Settings, preset: Preset): string {
   return isCustom(s, preset) ? COPY.custom(preset.label) : preset.label;
 }
 
-/** The settings and preset the form starts from: those kept, once checked, or Recommended's. */
+/**
+ * The settings and preset the form starts from: those kept, as kept once they check (a field left
+ * out at its default stays out), filled from Recommended's when they lack a field, or Recommended's.
+ */
 export function startingSettings(
   saved: { readonly preset: string; readonly settings: object } | undefined
 ): {
@@ -472,10 +475,16 @@ export function startingSettings(
   }
 
   const preset = PRESETS.find((p) => p.id === saved?.preset) ?? first;
+  const own: unknown = saved?.settings;
   const merged: unknown = { ...first.settings, ...saved?.settings };
   return {
     preset,
-    settings: saved !== undefined && isSettings(merged) ? merged : presetSettings(preset),
+    settings:
+      saved !== undefined && isSettings(own)
+        ? own
+        : saved !== undefined && isSettings(merged)
+          ? merged
+          : presetSettings(preset),
   };
 }
 

@@ -34,6 +34,16 @@ function preset(id: string): Preset {
 }
 
 const RECOMMENDED = preset('recommended');
+
+function readFieldOk(...args: Parameters<typeof readField>) {
+  const read = readField(...args);
+
+  if (!read.ok) {
+    throw new Error(read.error);
+  }
+
+  return read.settings;
+}
 const BASE = presetSettings(RECOMMENDED);
 
 describe('the settings form', () => {
@@ -44,6 +54,24 @@ describe('the settings form', () => {
         preset: preset('uk'),
         settings: { path: [40, 70] },
       }
+    );
+    const sparse = setMode(
+      setMode(readFieldOk(BASE, 'symmetric', ['0']), 'zigzag', 'none', RECOMMENDED),
+      'trap',
+      'none',
+      RECOMMENDED
+    );
+    expect(startingSettings({ preset: 'recommended', settings: sparse }).settings).toEqual(sparse);
+    expect(
+      presetName(
+        startingSettings({ preset: 'recommended', settings: sparse }).settings,
+        RECOMMENDED
+      )
+    ).toBe('Custom (from Recommended)');
+    const withoutPath = { ...BASE };
+    Reflect.deleteProperty(withoutPath, 'path');
+    expect(startingSettings({ preset: 'recommended', settings: withoutPath }).settings).toEqual(
+      BASE
     );
     expect(startingSettings({ preset: 'gone', settings: { size: 17 } })).toEqual({
       preset: RECOMMENDED,
