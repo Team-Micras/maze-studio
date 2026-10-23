@@ -243,6 +243,7 @@ export class MineWriter {
       trailer: opened.document.trailer,
       profile,
       origin: opened.document.origin,
+      recipe: opened.document.recipe,
     });
     const copy = { id: item.id, version: item.version, name: item.name };
     this.#copies.set(opened, copy);

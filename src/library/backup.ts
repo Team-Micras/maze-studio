@@ -1,7 +1,7 @@
 /**
  * The backup of "My mazes": every maze as a `.txt` file in one zip, with an index that keeps what a
- * `.txt` cannot (the name as typed, the profile, the dates and the origin), and the import that
- * reads such a zip back, or any `.txt` files and zips of them.
+ * `.txt` cannot (the name as typed, the profile, the dates, the origin and the generator's recipe),
+ * and the import that reads such a zip back, or any `.txt` files and zips of them.
  *
  * @module
  */
@@ -9,7 +9,14 @@
 import { parseMazeText, serializeMazeText, type Profile } from '@/maze';
 
 import { uniqueStems } from './file-names';
-import { mineContent, type MineDraft, type MineMaze, type MineOrigin } from './mine';
+import {
+  isMineRecipe,
+  mineContent,
+  type MineDraft,
+  type MineMaze,
+  type MineOrigin,
+  type MineRecipe,
+} from './mine';
 import { MAX_ARCHIVE_BYTES, MAX_ENTRY_BYTES, readZip, writeZip, type ZipEntry } from './zip';
 
 /** The name of the index inside a backup zip. */
@@ -24,6 +31,7 @@ interface IndexEntry {
   readonly profile: Profile;
   readonly createdAt: number;
   readonly origin?: MineOrigin;
+  readonly recipe?: MineRecipe;
 }
 
 /** A file given to the import, as picked or dropped. */
@@ -58,7 +66,8 @@ function isIndexEntry(value: unknown): value is IndexEntry {
     (value.origin === undefined ||
       (isRecord(value.origin) &&
         typeof value.origin.path === 'string' &&
-        typeof value.origin.sha === 'string'))
+        typeof value.origin.sha === 'string')) &&
+    (value.recipe === undefined || isMineRecipe(value.recipe))
   );
 }
 
@@ -140,6 +149,7 @@ export function exportMine(items: readonly MineMaze[], now: Date = new Date()): 
     profile: item.profile,
     createdAt: item.createdAt,
     origin: item.origin,
+    recipe: item.recipe,
   }));
   const zip = writeZip(
     [
@@ -172,6 +182,7 @@ function draftOf(file: ImportFile, indexed: IndexEntry | undefined): MineDraft |
     trailer: parsed.value.trailer,
     profile: indexed?.profile ?? 'free',
     origin: indexed?.origin,
+    recipe: indexed?.recipe,
     createdAt: indexed?.createdAt,
   };
 }
