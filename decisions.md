@@ -222,6 +222,19 @@ reached, and the measurements of the day, are in the git history of this file.
 - **English only**: counts stay as written, without `Intl.NumberFormat`. Names, paths and commits shown are
   `translate="no"`.
 
+## The generator
+
+- **A port of the mockup, not a redesign.** `src/generator` is the generator of the mockup in the Micras workspace
+  (`docs/maze-editor/mockups/generator/assets/`, version 7), typed, with its structure and names: it builds the same
+  walls from the same seed, which `tests/generator/mockup-cross-check.ts` checks against the mockup itself. The
+  measuring and calibration scripts stay in the mockup.
+- **Seeds verify on every engine.** A recipe carries `wallHash` of the walls it made under `GENERATOR_VERSION`;
+  decisions use `+ - × /` and `Math.sqrt`, never `Math.pow`, `exp`, `log`, `atan2`, `hypot` or `**`, which engines
+  round differently, and a test reads the sources for them. A change that moves any seed's walls bumps the version and
+  records new golden hashes beside the old ones, never over them.
+- **Only the UI imports it**, so it stays out of the first screen: the fence of `src/main.tsx` refuses it, and the UI
+  will load it on demand. Its presets carry English copy only, as the app does.
+
 ## Tests and performance
 
 - **Four Vitest projects**: `unit` (Node), `browser` (Chromium), `performance` (outside the check, one file at a time)
