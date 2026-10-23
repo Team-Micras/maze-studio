@@ -28,10 +28,10 @@ Each of `src/maze`, `src/library`, `src/render` and `src/generator` has an `inde
   `history.ts` makes one undo step per gesture. `validateMaze` returns findings, never throws. `diffMazes` compares
   two mazes of one size.
 - **`src/library`** reads the snapshot, the cache of a newer commit (`repo-cache.ts`, `github-updater.ts`), My mazes
-  (`mine.ts`, a version per item and the generator's recipe of a generated one, writes announced to other tabs), the local folder and the backup zip. `catalog.ts`
-  makes one entry per maze, under the key `maze-key.ts` gives it (`repo:<path>`, `mine:<id>`, `folder:<file>`), which
-  the app uses everywhere; `search.ts` and `library-filter.ts` filter them. `database.ts` is the small IndexedDB
-  wrapper under all of it.
+  (`mine.ts`, a version per item and the generator's recipe of a generated one, writes announced to other tabs), the
+  local folder and the backup zip. `catalog.ts` makes one entry per maze, under the key `maze-key.ts` gives it
+  (`repo:<path>`, `mine:<id>`, `folder:<file>`), which the app uses everywhere; `search.ts` and `library-filter.ts`
+  filter them. `database.ts` is the small IndexedDB wrapper under all of it.
 - **`src/render`** draws without React: `geometry.ts` and `board-placement.ts` place a board in the world,
   `track-layers.ts` and `overlay-layers.ts` give one SVG path per layer, `stroke.ts` turns a pointer path into walls,
   `camera.ts` and `camera-input.ts` hold the camera `{ x, y, k }` and its flights, `library-layout.ts` the grid,
