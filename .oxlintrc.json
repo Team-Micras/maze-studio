@@ -103,7 +103,7 @@
                 "message": "src/maze imports nothing else in maze-studio; import other maze modules by relative path."
               },
               {
-                "regex": "^(\\.\\./)+(library|render|ui|main)(/|$)",
+                "regex": "^(\\.\\./)+(generator|library|render|ui|main)(/|$)",
                 "message": "src/maze imports nothing else in maze-studio; import other maze modules by relative path."
               },
               {
@@ -135,7 +135,7 @@
                 "message": "Only src/ui draws with React; keep this folder framework free."
               },
               {
-                "regex": "^(@/(library|render|ui|main)|(\\.\\./)+(render|ui|main))(/|$)",
+                "regex": "^(@/(generator|library|render|ui|main)|(\\.\\./)+(generator|render|ui|main))(/|$)",
                 "message": "src/library depends only on src/maze; reach its own files by relative path."
               },
               {
@@ -163,8 +163,40 @@
                 "message": "Only src/ui draws with React; keep this folder framework free."
               },
               {
-                "regex": "^(@/(library|render|ui|main)|(\\.\\./)+(library|ui|main))(/|$)",
+                "regex": "^(@/(generator|library|render|ui|main)|(\\.\\./)+(generator|library|ui|main))(/|$)",
                 "message": "src/render depends only on src/maze; reach its own files by relative path."
+              },
+              {
+                "regex": "^@phosphor-icons/",
+                "message": "Icons come from @/ui/icons, which scripts/icons.ts writes from @phosphor-icons/core in the regular weight only."
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "files": ["src/generator/**"],
+      "rules": {
+        "no-restricted-imports": [
+          "error",
+          {
+            "patterns": [
+              {
+                "regex": "^((@tests|@scripts)|(\\.\\./)+(tests|scripts|vendor))(/|$)",
+                "message": "Shipped code never imports tests, scripts or the vendored repositories."
+              },
+              {
+                "regex": "^react(-dom)?(/.*)?$",
+                "message": "Only src/ui draws with React; keep this folder framework free."
+              },
+              {
+                "regex": "^(@/(generator|library|render|ui|main)|(\\.\\./)+(library|render|ui|main))(/|$)",
+                "message": "src/generator depends only on src/maze; reach its own files by relative path."
+              },
+              {
+                "regex": "^node:",
+                "message": "src/generator runs in the browser and in workers alike; it never imports Node's modules."
               },
               {
                 "regex": "^@phosphor-icons/",
@@ -211,6 +243,10 @@
                 "message": "Shipped code never imports tests, scripts or the vendored repositories."
               },
               {
+                "regex": "^(@/generator|\\./generator)(/|$)",
+                "message": "Only src/ui imports the generator."
+              },
+              {
                 "regex": "^@phosphor-icons/",
                 "message": "Icons come from @/ui/icons, which scripts/icons.ts writes from @phosphor-icons/core in the regular weight only."
               }
@@ -244,7 +280,7 @@
                 "message": "Scripts never import tests."
               },
               {
-                "regex": "^(@/(render|ui|main)|(\\.\\./)+src/(render|ui|main))(/|$)",
+                "regex": "^(@/(generator|render|ui|main)|(\\.\\./)+src/(generator|render|ui|main))(/|$)",
                 "message": "Scripts may only depend on src/maze and src/library."
               },
               {
