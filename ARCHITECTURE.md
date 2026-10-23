@@ -28,7 +28,7 @@ Each of `src/maze`, `src/library`, `src/render` and `src/generator` has an `inde
   `history.ts` makes one undo step per gesture. `validateMaze` returns findings, never throws. `diffMazes` compares
   two mazes of one size.
 - **`src/library`** reads the snapshot, the cache of a newer commit (`repo-cache.ts`, `github-updater.ts`), My mazes
-  (`mine.ts`, a version per item, writes announced to other tabs), the local folder and the backup zip. `catalog.ts`
+  (`mine.ts`, a version per item and the generator's recipe of a generated one, writes announced to other tabs), the local folder and the backup zip. `catalog.ts`
   makes one entry per maze, under the key `maze-key.ts` gives it (`repo:<path>`, `mine:<id>`, `folder:<file>`), which
   the app uses everywhere; `search.ts` and `library-filter.ts` filter them. `database.ts` is the small IndexedDB
   wrapper under all of it.
@@ -57,6 +57,10 @@ Each of `src/maze`, `src/library`, `src/render` and `src/generator` has an `inde
   - `changes/`: the session's Changes (`session-changes.ts`, pure over one store per tab), Discard (`discard.ts`)
     and their chip and panel.
   - `library/`: the library's islands, grid and artboards, New maze, backup and updates.
+  - `generator/`: New maze's Generate dialog (beta), loaded on demand in its own chunk with the generator: the
+    settings form (`settings-model.ts` without React, `settings-form.tsx`), the batch (`batch-run.ts`), which runs one
+    maze per message (`job.ts`) in a pool of workers (`generator-worker.ts`, a chunk of its own), and what the
+    dialog says about each maze (`candidates.ts`).
   - `board/`: `Board` (the SVG), `CameraStage` (the canvas with wheel, pinch, pan and the drawing gesture),
     `useCanvasCamera`, `Minimap`, `ThumbnailCanvas` and `paint-queue.ts`.
   - `embed/`: `Embed`, what `?embed` shows instead of the app, in its own chunk: the board of a repository or

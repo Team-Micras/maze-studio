@@ -16,8 +16,9 @@ reached, and the measurements of the day, are in the git history of this file.
   The import fences refuse any `@phosphor-icons/` import in `src`.
 - **No zip dependency.** `src/library/zip.ts` writes stored entries with CRC-32 and UTF-8 names, and reads deflated
   ones through `DecompressionStream('deflate-raw')`. A zip library would be the only runtime dependency for one button.
-- **Primitives** are the monitor's shadcn copies with Phosphor icons; Toggle, ToggleGroup, Popover, Dialog, Input and
-  Label come from shadcn's `new-york` source over the `radix-ui` package. Toasts are Radix `Toast` with a small zustand
+- **Primitives** are the monitor's shadcn copies with Phosphor icons, Badge and Switch among them; Toggle, ToggleGroup,
+  Popover, Dialog, Input and Label come from shadcn's `new-york` source over the `radix-ui` package, and the Sheet
+  takes shadcn's `side`, bottom or right. Toasts are Radix `Toast` with a small zustand
   store; no `sonner`.
 
 ## The text format and the code
@@ -233,7 +234,31 @@ reached, and the measurements of the day, are in the git history of this file.
   round differently, and a test reads the sources for them. A change that moves any seed's walls bumps the version and
   records new golden hashes beside the old ones, never over them.
 - **Only the UI imports it**, so it stays out of the first screen: the fence of `src/main.tsx` refuses it, and the UI
-  will load it on demand. Its presets carry English copy only, as the app does.
+  loads it on demand. Its presets carry English copy only, as the app does.
+- **Generate is part of New maze, marked Beta** (owner, 18/10 and 21/10): New maze → Generate… → settings and
+  candidates → Use this opens the maze in the editor as a new maze, written to My mazes by its first edit like any
+  other. No screen of its own. The presets are back, Recommended first, with Custom (from …) and a reset once a field
+  moves; every target the generator aims at is a field, the rarer ones under Fine tuning. The form is the mockup's
+  (`docs/maze-editor/mockups/generator/assets/settings-form.js`) in React, its logic without React in
+  `settings-model.ts`, its English copy only.
+- **Loaded when Generate first opens.** The dialog and the generator are one lazy chunk (about 28 KB gzip) and the
+  worker another (about 22 KB); the first screen gains about 2.4 KB gzip: the menu item, its four icons, the classes
+  the dialog adds to the one stylesheet and the recipe in My mazes. Radix's switch is left out of the `radix` chunk
+  group, which the first screen loads, since only the dialog uses it. A chunk that fails to load says so in a toast.
+- **A pool of workers, one maze per message.** Up to four workers, one fewer than the cores, share a queue of seeds,
+  three per maze shown; the batch keeps the most varied with `pickBatch`, sorted by seed, so the same settings and
+  first seed show the same mazes on every computer. Cancel, a new run and closing the dialog terminate the workers.
+  The dialog stays mounted once opened, so its batch is there the next time.
+- **The recipe stays with the maze.** An item of My mazes made from a generated maze keeps the recipe (`recipe`:
+  version, settings, seed, wall hash, and the walls and goal cells it built) as data: `src/library` cannot read the
+  generator, so it checks only the shape, and the generator's `readRecipe` checks it before anything is rebuilt. It
+  stays through later edits, since it says how the maze began; the backup's index carries it, and an index entry with
+  a recipe of another shape is dropped. Copy recipe in the editor's ⋯ menu copies it, and Rebuild from a recipe in
+  the dialog builds it again and says, as the mockup does, when this generator builds other walls than it saved, or
+  when an older generator made it.
+- **The settings are kept per device in the `settings` store** of IndexedDB, as the folder's handle is, instead of the
+  mockup's `localStorage`: the preset and the settings of the last valid change, checked with `isSettings` when read
+  back. Another tab's change is not followed while the dialog is open.
 
 ## Tests and performance
 
@@ -258,7 +283,8 @@ reached, and the measurements of the day, are in the git history of this file.
   and fails only when it cannot find the chunk of one of them, never over the budget.
 - **Lint rules are relaxed only where a file needs it**, each override naming its files: `mine.ts`
   (`BroadcastChannel.postMessage` takes no origin), `thumbnails.ts` (`fill(path)` is not an array fill),
-  `camera-stage.tsx` (the application role), and `no-await-in-loop` for `scripts/`, the e2e tests and the frame and
+  `camera-stage.tsx` (the application role), `batch-run.ts` (`Worker.postMessage` takes no origin either), and
+  `no-await-in-loop` for `scripts/`, the e2e tests and the frame and
   touch helpers, which wait step by step on purpose.
 
 ## Branches, CI and previews
