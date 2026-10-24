@@ -59,8 +59,9 @@ Each of `src/maze`, `src/library`, `src/render` and `src/generator` has an `inde
   - `library/`: the library's islands, grid and artboards, New maze, backup and updates.
   - `generator/`: the Generate dialog (beta) of New maze and of the editor's ⋯ menu, loaded on demand in its own
     chunk with the generator (`generate-dialog-loader.tsx`): the settings form (`settings-model.ts` without React,
-    `settings-form.tsx`), the batch (`batch-run.ts`), which runs one maze per message (`job.ts`) in a pool of workers
-    (`generator-worker.ts`, a chunk of its own), and what the dialog says about each maze (`candidates.ts`).
+    `settings-form.tsx`), the batch of 8 seeds in a row (`batch-run.ts`), which runs one maze per message (`job.ts`,
+    with the targets it missed, `misses.ts`) in a pool of workers (`generator-worker.ts`, a chunk of its own), and
+    what the dialog says about each maze (`candidates.ts`).
   - `board/`: `Board` (the SVG), `CameraStage` (the canvas with wheel, pinch, pan and the drawing gesture),
     `useCanvasCamera`, `Minimap`, `ThumbnailCanvas` and `paint-queue.ts`.
   - `embed/`: `Embed`, what `?embed` shows instead of the app, in its own chunk: the board of a repository or

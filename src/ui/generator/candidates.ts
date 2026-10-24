@@ -81,13 +81,11 @@ export function statusLine(state: BatchState): string {
   const { progress, seeds } = state;
 
   if (progress !== null) {
-    return progress.total > progress.kept
-      ? `Building ${progress.done} of ${progress.total} · the ${progress.kept} most varied will be kept`
-      : `Building ${progress.done} of ${progress.total}…`;
+    return `Building ${progress.done} of ${progress.total}…`;
   }
 
   return seeds !== null && state.items.some((item) => item.origin === 'seed')
-    ? `Seeds ${seeds.first}–${seeds.last} · the ${seeds.kept} most varied of ${seeds.last - seeds.first + 1}`
+    ? `Seeds ${seeds.first}–${seeds.last}`
     : '';
 }
 

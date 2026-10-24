@@ -47,27 +47,6 @@ import {
 import { SettingsForm, type GeneratorChoice } from './settings-form';
 import { startingSettings, summary } from './settings-model';
 
-/** The card picked: its slot, and the seed it showed when picked, which it follows. */
-interface Picked {
-  readonly n: number;
-  readonly seed?: number;
-}
-
-/**
- * The maze picked: the one with its seed, wherever the final pick of the batch moved it, and none
- * once that pick left it out.
- */
-function pickedItem(items: readonly Item[], picked: Picked | undefined): Item | undefined {
-  if (picked === undefined) {
-    return undefined;
-  }
-
-  const slot = items.find((item) => item.n === picked.n);
-  return picked.seed === undefined || slot?.seed === picked.seed
-    ? slot
-    : items.find((item) => item.seed === picked.seed);
-}
-
 /** The settings sized for the board open in the editor, when the generator makes its size. */
 function fitted(choice: GeneratorChoice, board: Maze | undefined): GeneratorChoice {
   return board !== undefined && generatesFor(board) && board.width !== choice.settings.size
@@ -136,8 +115,7 @@ function Card({ item, current, onPick }: { item: Item; current: boolean; onPick:
         type="button"
       >
         <ThumbnailCanvas
-          className="self-center rounded-[4px] animate-in fade-in-0 duration-200"
-          key={item.seed}
+          className="self-center rounded-[4px]"
           height={CARD_SIDE}
           maze={measureItem(item).maze}
           width={CARD_SIDE}
@@ -256,11 +234,11 @@ export default function GenerateDialog({
   });
   const [invalid, setInvalid] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(true);
-  const [selected, setSelected] = useState<Picked | undefined>(undefined);
+  const [selected, setSelected] = useState<number | undefined>(undefined);
   const [recipeText, setRecipeText] = useState('');
   const [recipeError, setRecipeError] = useState<string | undefined>(undefined);
   const items = state.items;
-  const current = pickedItem(items, selected);
+  const current = items.find((item) => item.n === selected);
   const running = state.progress !== null;
   const hint = pickHint(current, board);
 
@@ -306,7 +284,7 @@ export default function GenerateDialog({
   };
 
   const showResults = (n: number | undefined): void => {
-    setSelected(n === undefined ? undefined : { n });
+    setSelected(n);
     setSettingsOpen(false);
     body.current?.scrollTo({ top: 0 });
     status.current?.focus({ preventScroll: true });
@@ -533,7 +511,7 @@ export default function GenerateDialog({
                   current={item === current}
                   item={item}
                   key={item.n}
-                  onPick={() => setSelected({ n: item.n, seed: item.seed })}
+                  onPick={() => setSelected(item.n)}
                 />
               ))}
             </ol>

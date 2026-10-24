@@ -242,16 +242,18 @@ reached, and the measurements of the day, are in the git history of this file.
   (`docs/maze-editor/mockups/generator/assets/settings-form.js`) in React, its logic without React in
   `settings-model.ts`, its English copy only.
 - **Loaded when Generate first opens.** The dialog and the generator are one lazy chunk (about 28 KB gzip) and the
-  worker another (about 22 KB); the first screen gains about 2.4 KB gzip: the menu item, its four icons, the classes
+  worker another (about 23 KB); the first screen gains about 2.9 KB gzip: the menu item, its four icons, the classes
   the dialog adds to the one stylesheet and the recipe in My mazes. Radix's switch is left out of the `radix` chunk
   group, which the first screen loads, since only the dialog uses it. A chunk that fails to load says so in a toast.
-- **A pool of workers, one maze per message.** Up to four workers, one fewer than the cores, share a queue of seeds,
-  three per maze shown; the batch keeps the most varied with `pickBatch`, sorted by seed, so the same settings and
-  first seed show the same mazes on every computer. Until every seed is built, the cards show the first mazes in the
-  order they arrive, and the status says so ("Building 16 of 24 · the 8 most varied will be kept"; owner, 24/10). A
-  maze off its targets carries a warning that names what it missed, worked out in the worker from the generator's
-  `report` and `choiceMisses` against its seed's targets, which only the worker has. Cancel, a new run and closing the dialog terminate the workers.
-  The dialog stays mounted once opened, so its batch is there the next time.
+- **A pool of workers, one maze per message.** Up to four workers, one fewer than the cores, share a queue of the
+  batch's 8 seeds in a row, and each maze shows in its seed's card as soon as it is built, so the cards stay in seed
+  order and the same settings and first seed show the same mazes on every computer; 8 more goes on from the next seed.
+  No hidden pool (owner, 24/10): building three seeds per card and keeping the most varied skewed the calibrated mix
+  toward outliers and style bonuses, tripled the time on a phone and read as "24" built for 8 shown. The varied pick
+  (`pickDiverse`, `pickBatch`) stays in the core for a later "More like this". A maze off its targets carries a
+  warning that names what it missed, worked out in the worker from the generator's `report` and `choiceMisses`
+  against its seed's targets, which only the worker has. Cancel, a new run and closing the dialog terminate the
+  workers. The dialog stays mounted once opened, so its batch is there the next time.
 - **A recipe holds only for the walls it made** (owner, 24/10). An item of My mazes keeps the recipe (`recipe`:
   version, settings, seed, wall hash, and the walls and goal cells it built) as data: `src/library` cannot read the
   generator, so it checks only the shape, and the generator's `readRecipe` checks it before anything is rebuilt. The

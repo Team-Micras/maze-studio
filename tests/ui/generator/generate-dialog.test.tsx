@@ -77,11 +77,9 @@ describe('The Generate dialog', () => {
     const used = await mount();
     await generate();
 
-    await expect.poll(() => progress()?.max).toBe(24);
+    await expect.poll(() => progress()?.max).toBe(8);
     await expect.element(page.getByRole('button', { name: /^#8,/ }), GENERATION).toBeVisible();
-    await expect
-      .element(page.getByText('Seeds 1–24 · the 8 most varied of 24').first())
-      .toBeVisible();
+    await expect.element(page.getByText('Seeds 1–8').first()).toBeVisible();
     await expect.element(page.getByRole('heading', { name: '#1 of 8' })).toBeVisible();
     expect(await axeViolations()).toEqual([]);
 

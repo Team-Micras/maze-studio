@@ -1,8 +1,7 @@
 /**
  * Batches of generated mazes for the Generate dialog (the mockup's `batch.js`): each batch builds
- * {@link POOL_FACTOR} times as many seeds as it shows, in up to four workers sharing a queue,
- * shows the first ones in the order they arrive, and once every seed is built keeps the most
- * varied ({@link pickBatch}) in their place; a pasted recipe rebuilds its maze. One run at a time:
+ * {@link BATCH} seeds in a row, in up to four workers sharing a queue, each maze shown in its seed's
+ * card as soon as it is built; a pasted recipe rebuilds its maze. One run at a time:
  * starting another, or cancelling, terminates the workers and drops the mazes still pending.
  *
  * @module
@@ -12,8 +11,6 @@ import {
   BATCH,
   GENERATOR_VERSION,
   isSettings,
-  pickBatch,
-  POOL_FACTOR,
   savedGrid,
   TUNING,
   withMaze,
@@ -59,14 +56,9 @@ export interface Item {
 export interface BatchState {
   readonly items: readonly Item[];
   /** Mazes built of the run on its way, if one is. */
-  readonly progress: {
-    readonly done: number;
-    readonly total: number;
-    /** How many of them the run keeps. */
-    readonly kept: number;
-  } | null;
-  /** The seeds of the last batch and how many of them it kept, once one ran. */
-  readonly seeds: { readonly first: number; readonly last: number; readonly kept: number } | null;
+  readonly progress: { readonly done: number; readonly total: number } | null;
+  /** The seeds of the last batch, once one ran. */
+  readonly seeds: { readonly first: number; readonly last: number } | null;
   /** The first seed of the last batch, and the seed the next one starts from. */
   readonly firstSeed: number;
   readonly nextSeed: number;
@@ -157,7 +149,7 @@ export class Batch {
    * recipe allows.
    */
   get maxSeed(): number {
-    return MAX_SEED - this.#size * POOL_FACTOR + 1;
+    return MAX_SEED - this.#size + 1;
   }
 
   /** Sets the seed the next batch starts from, a whole number from 0 to {@link maxSeed}. */
@@ -190,7 +182,6 @@ export class Batch {
   generate(settings: Settings, fresh: boolean): readonly Item[] {
     this.cancel();
     const first = this.#state.nextSeed;
-    const total = this.#size * POOL_FACTOR;
     const kept = fresh ? [] : this.#state.items;
     const items = Array.from({ length: this.#size }, (_, k) =>
       pending(kept.length + k + 1, 'seed')
@@ -198,11 +189,11 @@ export class Batch {
     this.#set({
       items: [...kept, ...items],
       firstSeed: first,
-      nextSeed: Math.min(this.maxSeed, first + total),
-      seeds: { first, last: first + total - 1, kept: this.#size },
+      nextSeed: Math.min(this.maxSeed, first + this.#size),
+      seeds: { first, last: first + this.#size - 1 },
     });
     this.#start(
-      Array.from({ length: total }, (_, k) => ({ settings, seed: first + k })),
+      items.map((_, k) => ({ settings, seed: first + k })),
       items
     );
     return items;
@@ -264,14 +255,15 @@ export class Batch {
     }
   }
 
+  /** Runs `jobs` in the workers, each filling the item at its index as soon as it is built. */
   #start(jobs: readonly Job[], items: readonly Item[]): void {
-    const queue = [...jobs];
-    const results: JobResult[] = [];
+    const queue = jobs.map((job, k) => ({ job, item: items[k] }));
+    const holding = new Map<Runner, Item | undefined>();
     const runners: Runner[] = [];
     const run: Run = { runners, items };
     let open = jobs.length;
     this.#run = run;
-    this.#set({ progress: { done: 0, total: jobs.length, kept: items.length }, stopped: false });
+    this.#set({ progress: { done: 0, total: jobs.length }, stopped: false });
 
     const finish = (): void => {
       open -= 1;
@@ -280,25 +272,26 @@ export class Batch {
         return;
       }
 
-      const picked = pickBatch(results, items.length);
-      const filled = new Map(items.map((item, k) => [item.n, filledItem(item, picked[k])]));
-
       for (const runner of runners) {
         runner.terminate();
       }
 
+      const slots = new Set(items.map(({ n }) => n));
       this.#run = undefined;
       this.#set({
-        items: this.#state.items.map((item) => filled.get(item.n) ?? item),
+        items: this.#state.items.map((item) =>
+          slots.has(item.n) && item.status === 'pending' ? filledItem(item, undefined) : item
+        ),
         progress: null,
       });
     };
 
     const post = (runner: Runner): void => {
-      const job = queue.shift();
+      const next = queue.shift();
+      holding.set(runner, next?.item);
 
-      if (job !== undefined) {
-        runner.post(job);
+      if (next !== undefined) {
+        runner.post(next.job);
       }
     };
 
@@ -309,11 +302,8 @@ export class Batch {
             return;
           }
 
-          results.push(result);
+          const slot = holding.get(runner);
           const progress = this.#state.progress;
-          const slot = items.find(({ n }) =>
-            this.#state.items.some((item) => item.n === n && item.status === 'pending')
-          );
           this.#set({
             progress: progress === null ? null : { ...progress, done: progress.done + 1 },
             items:

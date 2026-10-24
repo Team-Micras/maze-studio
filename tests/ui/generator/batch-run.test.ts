@@ -59,7 +59,7 @@ function settled(batch: Batch): Promise<void> {
 }
 
 describe('a batch of generated mazes', () => {
-  test('builds three seeds per maze shown, shows the first as they arrive, keeps the most varied and stops its workers', async () => {
+  test('builds one seed per card, in a row, shows each maze as it arrives and stops its workers', async () => {
     const { spawn, live } = workers();
     const batch = new Batch({ spawn, workers: 2, size: 2, firstSeed: 1 });
     const done: number[] = [];
@@ -75,17 +75,17 @@ describe('a batch of generated mazes', () => {
     const items = batch.generate(SETTINGS, true);
 
     expect(items.map((item) => item.status)).toEqual(['pending', 'pending']);
-    expect(statusLine(batch.getState())).toBe('Building 0 of 6 · the 2 most varied will be kept');
+    expect(statusLine(batch.getState())).toBe('Building 0 of 2…');
     await settled(batch);
 
     const state = batch.getState();
-    expect(done.filter((n) => n > 0)).toEqual([1, 2, 3, 4, 5, 6]);
-    expect(shownEarly.slice(1, 4)).toEqual([1, 2, 2]);
+    expect(done.filter((n) => n > 0)).toEqual([1, 2]);
+    expect(shownEarly).toContain(1);
     expect(live.size).toBe(0);
     expect(state.items.every(isReady)).toBe(true);
     expect(state.items.map((item) => item.n)).toEqual([1, 2]);
-    expect(state.items.every((item) => (item.seed ?? 0) >= 1 && (item.seed ?? 0) <= 6)).toBe(true);
-    expect(statusLine(state)).toBe('Seeds 1–6 · the 2 most varied of 6');
+    expect(state.items.map((item) => item.seed)).toEqual([1, 2]);
+    expect(statusLine(state)).toBe('Seeds 1–2');
 
     const [first] = state.items;
 
@@ -121,7 +121,7 @@ describe('a batch of generated mazes', () => {
     expect(batch.getState().items.map((item) => item.status)).toEqual(['ready']);
     expect(batch.getState().progress).toBeNull();
     expect(live.size).toBe(0);
-    expect(batch.getState().nextSeed).toBe(7);
+    expect(batch.getState().nextSeed).toBe(3);
   }, 60_000);
 
   test('says so when a worker fails, and leaves the mazes it did not make failed', async () => {
@@ -141,7 +141,7 @@ describe('a batch of generated mazes', () => {
     await settled(batch);
 
     expect(batch.getState().stopped).toBe(true);
-    expect(batch.getState().items.map((item) => item.status)).toEqual(['ready', 'failed']);
+    expect(batch.getState().items.map((item) => item.status)).toEqual(['failed', 'ready']);
     expect(live.size).toBe(0);
   }, 60_000);
 
@@ -149,7 +149,7 @@ describe('a batch of generated mazes', () => {
     const batch = new Batch({ spawn: workers().spawn, size: 8 });
     batch.setNextSeed(0xffffffff);
 
-    expect(batch.getState().nextSeed).toBe(0xffffffff - 23);
+    expect(batch.getState().nextSeed).toBe(0xffffffff - 7);
     batch.setNextSeed(-5);
     expect(batch.getState().nextSeed).toBe(0);
   });
