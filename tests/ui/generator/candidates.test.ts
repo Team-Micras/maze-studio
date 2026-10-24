@@ -8,6 +8,7 @@ import {
   isBlank,
   pickHint,
   replacesBoard,
+  stepTo,
   unsupportedBoard,
   type ReadyItem,
 } from '@/ui/generator/candidates';
@@ -70,5 +71,18 @@ describe('Generate from the editor', () => {
     expect(pickHint(pending, undefined)).toBe(
       'Opens as a new maze; the first edit saves it in My mazes.'
     );
+  });
+
+  test('steps through the batch, not past its ends nor, during a run, past the last maze built', () => {
+    const built = ready();
+    const pending: Item = { n: 3, origin: 'seed', status: 'pending' };
+    const items: Item[] = [built, { ...built, n: 2 }, pending];
+
+    expect(stepTo(items, 0, -1, false)).toBeUndefined();
+    expect(stepTo(items, 0, 1, true)).toBe(1);
+    expect(stepTo(items, 1, 1, true)).toBeUndefined();
+    expect(stepTo(items, 1, 1, false)).toBe(2);
+    expect(stepTo(items, 2, 1, false)).toBeUndefined();
+    expect(stepTo(items, 2, -1, true)).toBe(1);
   });
 });

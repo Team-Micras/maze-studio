@@ -6,6 +6,7 @@ import {
   useState,
   useSyncExternalStore,
   type FormEvent,
+  type KeyboardEvent,
 } from 'react';
 
 import { BATCH, readRecipe, resize } from '@/generator';
@@ -14,7 +15,18 @@ import type { Generated } from '@/ui/editor/edit-session';
 import { ThumbnailCanvas } from '@/ui/board/thumbnail-canvas';
 import { copyText } from '@/ui/editor/share';
 import { useCoarsePointer, usePhoneLayout } from '@/ui/hooks/use-media-query';
-import { CaretDown, Check, Copy, DiceFive, Shuffle, Warning, X } from '@/ui/icons';
+import { Board } from '@/ui/board/board';
+import {
+  CaretDown,
+  CaretLeft,
+  CaretRight,
+  Check,
+  Copy,
+  DiceFive,
+  Shuffle,
+  Warning,
+  X,
+} from '@/ui/icons';
 import { IslandButton } from '@/ui/islands/island';
 import type { NewMazeRequest } from '@/ui/new-maze';
 import { Badge } from '@/ui/primitives/badge';
@@ -25,7 +37,7 @@ import { cn } from '@/ui/primitives/utils';
 import { appStorage } from '@/ui/storage';
 import { showToast } from '@/ui/toasts';
 
-import { Batch, type Item } from './batch-run';
+import { Batch, randomSeed, type Item } from './batch-run';
 import {
   cardLabel,
   generatesFor,
@@ -39,13 +51,17 @@ import {
   replacesBoard,
   requestOf,
   statusLine,
+  stepTo,
   STOPPED,
   unsupportedBoard,
   pickHint,
   type ReadyItem,
 } from './candidates';
-import { SettingsForm, type GeneratorChoice } from './settings-form';
+import { Segmented, SettingsForm, type GeneratorChoice } from './settings-form';
 import { startingSettings, summary } from './settings-model';
+
+/** How the batch is shown: a gallery of cards, or one maze at a time. */
+type View = 'gallery' | 'one';
 
 /** The settings sized for the board open in the editor, when the generator makes its size. */
 function fitted(choice: GeneratorChoice, board: Maze | undefined): GeneratorChoice {
@@ -146,7 +162,52 @@ function Card({ item, current, onPick }: { item: Item; current: boolean; onPick:
   );
 }
 
-function Details({ item, total }: { item: ReadyItem; total: number }) {
+function CopyRecipe({ item }: { item: ReadyItem }) {
+  return (
+    <Button
+      aria-label="Copy recipe"
+      className="size-8 rounded-[10px]"
+      onClick={() => {
+        void copyText(JSON.stringify(item.recipe)).then((copied) =>
+          showToast(copied ? 'Recipe copied' : 'Copy failed')
+        );
+      }}
+      size="icon"
+      type="button"
+      variant="outline"
+    >
+      <Copy aria-hidden />
+    </Button>
+  );
+}
+
+function MazeTitle({ item, total }: { item: Item; total: number }) {
+  return (
+    <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+      <h3 className="text-[14px] font-semibold" id={`maze-${item.n}`}>
+        {itemTitle(item, total)}
+      </h3>
+      <p className="font-mono text-xs text-muted-foreground">
+        {isReady(item)
+          ? itemOrigin(item)
+          : item.status === 'pending'
+            ? 'Building…'
+            : 'The generator could not make this maze'}
+      </p>
+    </div>
+  );
+}
+
+/** The tags and sentences of a ready maze, under its title unless `titled` is off. */
+function Details({
+  item,
+  total,
+  titled = true,
+}: {
+  item: ReadyItem;
+  total: number;
+  titled?: boolean;
+}) {
   const warning = itemWarning(item);
   const tags = itemTags(item);
 
@@ -155,28 +216,12 @@ function Details({ item, total }: { item: ReadyItem; total: number }) {
       aria-labelledby={`maze-${item.n}`}
       className="flex flex-col gap-2 rounded-[12px] border p-3"
     >
-      <div className="flex items-start gap-2">
-        <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-          <h3 className="text-[14px] font-semibold" id={`maze-${item.n}`}>
-            {itemTitle(item, total)}
-          </h3>
-          <p className="font-mono text-xs text-muted-foreground">{itemOrigin(item)}</p>
+      {titled ? (
+        <div className="flex items-start gap-2">
+          <MazeTitle item={item} total={total} />
+          <CopyRecipe item={item} />
         </div>
-        <Button
-          aria-label="Copy recipe"
-          className="size-8 rounded-[10px]"
-          onClick={() => {
-            void copyText(JSON.stringify(item.recipe)).then((copied) =>
-              showToast(copied ? 'Recipe copied' : 'Copy failed')
-            );
-          }}
-          size="icon"
-          type="button"
-          variant="outline"
-        >
-          <Copy aria-hidden />
-        </Button>
-      </div>
+      ) : null}
       {tags.length === 0 ? null : (
         <ul aria-label="This maze has" className="flex flex-wrap gap-1">
           {tags.map((tag) => (
@@ -197,6 +242,77 @@ function Details({ item, total }: { item: ReadyItem; total: number }) {
           <li key={line}>{line}</li>
         ))}
       </ul>
+    </section>
+  );
+}
+
+interface OneViewProps {
+  readonly items: readonly Item[];
+  readonly index: number;
+  readonly running: boolean;
+  readonly onStep: (index: number) => void;
+}
+
+/**
+ * One maze of the batch at a time, drawn large as the editor draws it, with ‹ and › (and the
+ * arrow keys) to step through the batch, its title, seed and style, and its tags and sentences.
+ */
+function OneView({ items, index, running, onStep }: OneViewProps) {
+  const item = items[index];
+
+  if (item === undefined) {
+    return null;
+  }
+
+  const previous = stepTo(items, index, -1, running);
+  const next = stepTo(items, index, 1, running);
+
+  return (
+    <section aria-label="One maze" className="flex flex-col gap-3">
+      {isReady(item) ? (
+        <Board
+          className="h-auto w-full rounded-[6px]"
+          label={`Maze #${item.n}, seed ${item.seed}`}
+          maze={measureItem(item).maze}
+        />
+      ) : (
+        <div
+          aria-busy={item.status === 'pending'}
+          className={cn(
+            'aspect-square w-full rounded-[6px] bg-muted',
+            item.status === 'pending' && 'animate-pulse'
+          )}
+        />
+      )}
+      <div className="flex items-center gap-2">
+        <Button
+          aria-keyshortcuts="ArrowLeft"
+          aria-label="Previous maze"
+          className="size-9 rounded-[10px]"
+          disabled={previous === undefined}
+          onClick={() => previous !== undefined && onStep(previous)}
+          size="icon"
+          type="button"
+          variant="outline"
+        >
+          <CaretLeft aria-hidden />
+        </Button>
+        <MazeTitle item={item} total={items.length} />
+        {isReady(item) ? <CopyRecipe item={item} /> : null}
+        <Button
+          aria-keyshortcuts="ArrowRight"
+          aria-label="Next maze"
+          className="size-9 rounded-[10px]"
+          disabled={next === undefined}
+          onClick={() => next !== undefined && onStep(next)}
+          size="icon"
+          type="button"
+          variant="outline"
+        >
+          <CaretRight aria-hidden />
+        </Button>
+      </div>
+      {isReady(item) ? <Details item={item} titled={false} total={items.length} /> : null}
     </section>
   );
 }
@@ -235,10 +351,13 @@ export default function GenerateDialog({
   const [invalid, setInvalid] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(true);
   const [selected, setSelected] = useState<number | undefined>(undefined);
+  const [view, setView] = useState<View>('gallery');
   const [recipeText, setRecipeText] = useState('');
   const [recipeError, setRecipeError] = useState<string | undefined>(undefined);
   const items = state.items;
-  const current = items.find((item) => item.n === selected);
+  const current =
+    items.find((item) => item.n === selected) ?? (view === 'one' ? items[0] : undefined);
+  const index = current === undefined ? 0 : items.indexOf(current);
   const running = state.progress !== null;
   const hint = pickHint(current, board);
 
@@ -250,6 +369,7 @@ export default function GenerateDialog({
         (saved) => {
           if (live && !touched && saved !== undefined) {
             setChoice(fitted(startingSettings(saved), boardNow.current));
+            setView(saved.view === 'one' ? 'one' : 'gallery');
           }
         },
         () => undefined
@@ -273,14 +393,48 @@ export default function GenerateDialog({
     }
   }, [open, batch]);
 
-  const changeSettings = (next: GeneratorChoice): void => {
+  const save = (next: GeneratorChoice, shown: View): void => {
     setTouched(true);
-    setChoice(next);
     void appStorage()
       .then((storage) =>
-        storage?.settings.saveGenerator({ preset: next.preset.id, settings: next.settings })
+        storage?.settings.saveGenerator({
+          preset: next.preset.id,
+          settings: next.settings,
+          view: shown,
+        })
       )
       .catch(() => undefined);
+  };
+
+  const changeSettings = (next: GeneratorChoice): void => {
+    setChoice(next);
+    save(next, view);
+  };
+
+  const changeView = (next: View): void => {
+    setView(next);
+    save(choice, next);
+  };
+
+  const stepKey = (event: KeyboardEvent<HTMLDivElement>): void => {
+    const delta = event.key === 'ArrowLeft' ? -1 : event.key === 'ArrowRight' ? 1 : 0;
+    const { target } = event;
+
+    if (
+      view !== 'one' ||
+      delta === 0 ||
+      (target instanceof HTMLElement &&
+        target.closest('input, textarea, select, [role="radiogroup"]') !== null)
+    ) {
+      return;
+    }
+
+    const next = stepTo(items, index, delta, running);
+    event.preventDefault();
+
+    if (next !== undefined) {
+      setSelected(items[next]?.n);
+    }
   };
 
   const showResults = (n: number | undefined): void => {
@@ -330,6 +484,7 @@ export default function GenerateDialog({
         aria-describedby={undefined}
         className={cn('gap-0', phone && 'h-[92dvh]')}
         data-generate
+        onKeyDown={stepKey}
         onOpenAutoFocus={(event) => {
           event.preventDefault();
           (coarse ? content.current : (generateButton.current ?? content.current))?.focus({
@@ -389,7 +544,7 @@ export default function GenerateDialog({
                   <div className="flex gap-2">
                     <Input
                       autoComplete="off"
-                      className="h-8 font-mono text-[13px]"
+                      className="h-8 min-w-[13ch] font-mono text-[13px]"
                       id={`${id}-seed`}
                       inputMode="numeric"
                       max={batch.maxSeed}
@@ -401,7 +556,7 @@ export default function GenerateDialog({
                     <Button
                       aria-label="Random seed"
                       className="size-8 rounded-[10px]"
-                      onClick={() => batch.setNextSeed(1 + Math.floor(Math.random() * 99_999))}
+                      onClick={() => batch.setNextSeed(randomSeed(batch.maxSeed))}
                       size="icon"
                       type="button"
                       variant="outline"
@@ -479,6 +634,19 @@ export default function GenerateDialog({
             <p aria-live="polite" className="sr-only">
               {running ? 'Building mazes…' : statusLine(state)}
             </p>
+            {items.length === 0 ? null : (
+              <div className="w-36 shrink-0">
+                <Segmented
+                  label="Show"
+                  onChange={changeView}
+                  options={[
+                    ['gallery', 'Gallery'],
+                    ['one', 'One'],
+                  ]}
+                  value={view}
+                />
+              </div>
+            )}
             {running ? (
               <Button
                 className="h-7 rounded-[8px] text-xs"
@@ -504,7 +672,15 @@ export default function GenerateDialog({
               {STOPPED}
             </p>
           ) : null}
-          {items.length === 0 ? null : (
+          {view === 'one' ? (
+            <OneView
+              index={index}
+              items={items}
+              onStep={(next) => setSelected(items[next]?.n)}
+              running={running}
+            />
+          ) : null}
+          {items.length === 0 || view === 'one' ? null : (
             <ol aria-label="Mazes generated" className="grid grid-cols-2 gap-2">
               {items.map((item) => (
                 <Card
@@ -516,7 +692,9 @@ export default function GenerateDialog({
               ))}
             </ol>
           )}
-          {isReady(current) ? <Details item={current} total={items.length} /> : null}
+          {view === 'gallery' && isReady(current) ? (
+            <Details item={current} total={items.length} />
+          ) : null}
           {items.length === 0 || running ? null : (
             <Button
               className="self-start rounded-[10px]"

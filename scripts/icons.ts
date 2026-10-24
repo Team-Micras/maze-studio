@@ -26,6 +26,7 @@ export const ICONS: readonly string[] = [
   'BoundingBox',
   'CaretCircleUp',
   'CaretDown',
+  'CaretLeft',
   'CaretRight',
   'Check',
   'CheckCircle',

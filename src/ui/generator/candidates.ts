@@ -183,3 +183,22 @@ export function pickHint(item: Item | undefined, board: Maze | undefined): strin
 export function unsupportedBoard(board: Maze): string {
   return `The generator makes 16 × 16 and 32 × 32 mazes, not ${board.width} × ${board.height}: the maze picked opens as a new maze.`;
 }
+
+/**
+ * The index ‹ and › step to from `index`, if they can: not past the ends, and while a run is on its
+ * way not past the last maze built.
+ */
+export function stepTo(
+  items: readonly Item[],
+  index: number,
+  delta: -1 | 1,
+  running: boolean
+): number | undefined {
+  const next = index + delta;
+
+  if (next < 0 || next >= items.length) {
+    return undefined;
+  }
+
+  return delta < 0 || !running || items.slice(next).some(isReady) ? next : undefined;
+}

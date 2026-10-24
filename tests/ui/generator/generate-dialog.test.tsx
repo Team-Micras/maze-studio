@@ -32,6 +32,7 @@ const BOARD = toggleWall(
 async function generate(seed = '1'): Promise<void> {
   await userEvent.fill(page.getByRole('spinbutton', { name: 'First seed' }), seed);
   await userEvent.click(page.getByRole('button', { name: 'Generate', exact: true }));
+  await userEvent.click(page.getByRole('radio', { name: 'Gallery' }));
 }
 
 describe('The Generate dialog', () => {
@@ -125,6 +126,33 @@ describe('The Generate dialog', () => {
 
     expect(hits.every((hit) => hit !== null && gallery?.contains(hit) === true)).toBe(true);
     await page.viewport(1440, 900);
+  });
+
+  test('shows one maze at a time, drawn large, stepping with the buttons and the arrow keys', async () => {
+    const used = await mount();
+    await generate();
+    await expect.element(page.getByRole('button', { name: /^#8,/ }), GENERATION).toBeVisible();
+    await expect.poll(progress).toBeNull();
+    await userEvent.click(page.getByRole('radio', { name: 'One' }));
+
+    await expect.element(page.getByRole('img', { name: 'Maze #1, seed 1' })).toBeVisible();
+    await expect.element(page.getByRole('heading', { name: '#1 of 8' })).toBeVisible();
+    await expect.element(page.getByRole('button', { name: 'Previous maze' })).toBeDisabled();
+    expect(await axeViolations()).toEqual([]);
+
+    await userEvent.click(page.getByRole('button', { name: 'Next maze' }));
+    await expect.element(page.getByRole('heading', { name: '#2 of 8' })).toBeVisible();
+    await userEvent.keyboard('{ArrowRight}');
+    await expect.element(page.getByRole('img', { name: 'Maze #3, seed 3' })).toBeVisible();
+    await userEvent.keyboard('{ArrowLeft}');
+    await expect.element(page.getByRole('heading', { name: '#2 of 8' })).toBeVisible();
+
+    await userEvent.keyboard('{ArrowRight}'.repeat(6));
+
+    await expect.element(page.getByRole('heading', { name: '#8 of 8' })).toBeVisible();
+    await expect.element(page.getByRole('button', { name: 'Next maze' })).toBeDisabled();
+    await userEvent.click(page.getByRole('button', { name: 'Use this' }));
+    expect(used[0]?.kind === 'generated' ? used[0].recipe.seed : undefined).toBe(8);
   });
 
   test('cancels a run, leaving no card behind', async () => {

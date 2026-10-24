@@ -254,6 +254,13 @@ reached, and the measurements of the day, are in the git history of this file.
   warning that names what it missed, worked out in the worker from the generator's `report` and `choiceMisses`
   against its seed's targets, which only the worker has. Cancel, a new run and closing the dialog terminate the
   workers. The dialog stays mounted once opened, so its batch is there the next time.
+- **Gallery or One** (owner, 24/10), as the mockup's panel: the batch shows as cards, or one maze at a time drawn
+  large by the editor's own `Board` (an SVG, crisp at any size), with ‹ › and the arrow keys, its title, seed, style,
+  tags and sentences, the Off target line first. Stepping moves the maze Use this takes; while a run goes on, › stops
+  at the last maze built. The choice is kept with the generator's settings. Routes are not drawn on it yet.
+- **Seeds over the whole 32-bit range** (owner, 24/10). The first seed and the dice draw from 0 to the largest first
+  seed with `crypto.getRandomValues`: with a known preset, a range of 100,000 seeds could be built ahead of a
+  contest in hours.
 - **A recipe holds only for the walls it made** (owner, 24/10). An item of My mazes keeps the recipe (`recipe`:
   version, settings, seed, wall hash, and the walls and goal cells it built) as data: `src/library` cannot read the
   generator, so it checks only the shape, and the generator's `readRecipe` checks it before anything is rebuilt. The

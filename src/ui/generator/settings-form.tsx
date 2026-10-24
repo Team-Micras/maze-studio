@@ -61,7 +61,8 @@ const HINT = 'text-xs leading-4 text-muted-foreground';
 
 const NOTE = 'text-xs leading-4 text-amber-700 dark:text-amber-400';
 
-interface SegmentedProps<T extends string> {
+/** The props of {@link Segmented}. */
+export interface SegmentedProps<T extends string> {
   readonly label: string;
   readonly value: T | undefined;
   readonly options: readonly (readonly [T, ReactNode])[];
@@ -69,7 +70,8 @@ interface SegmentedProps<T extends string> {
   readonly describedBy?: string;
 }
 
-function Segmented<T extends string>({
+/** A segmented control of a few options, one of them on, as the form's modes and levels are. */
+export function Segmented<T extends string>({
   label,
   value,
   options,

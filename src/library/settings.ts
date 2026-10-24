@@ -12,17 +12,20 @@ const FOLDER = 'folder-handle';
 const GENERATOR = 'generator';
 
 /**
- * The generator's settings of the last run on this device and the preset they started from, kept
+ * The generator's settings of the last run on this device, the preset they started from and how
+ * the batch is shown, kept
  * as data: the interface checks them with the generator's own checks before using them.
  */
 export interface SavedGenerator {
   readonly preset: string;
   readonly settings: object;
+  /** How the batch is shown: a gallery of cards, or one maze at a time. */
+  readonly view?: 'gallery' | 'one';
 }
 
 /**
- * The user's local folder and the generator's settings. `Folder` is what the folder is kept as: a `FileSystemDirectoryHandle`
- * in the app.
+ * The user's local folder and the generator's settings. `Folder` is what the folder is kept as: a
+ * `FileSystemDirectoryHandle` in the app.
  */
 export class Settings<Folder = FileSystemDirectoryHandle> {
   readonly #database: Database;
