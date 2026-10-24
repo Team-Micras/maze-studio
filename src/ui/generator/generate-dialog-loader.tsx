@@ -1,10 +1,17 @@
-import { lazy, Suspense, useState, type ComponentType } from 'react';
+import { lazy, Suspense, useEffect, useState, type ComponentType } from 'react';
 
 import { showToast } from '@/ui/toasts';
 
 import type { GenerateDialogProps } from './generate-dialog';
 
-function GeneratorUnavailable() {
+/** What opens in place of the dialog when its chunk does not load: nothing, closed at once. */
+function GeneratorUnavailable({ open, onOpenChange }: GenerateDialogProps) {
+  useEffect(() => {
+    if (open) {
+      onOpenChange(false);
+    }
+  }, [open, onOpenChange]);
+
   return null;
 }
 

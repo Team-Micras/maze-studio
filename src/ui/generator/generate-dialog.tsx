@@ -61,6 +61,21 @@ import {
 import { Segmented, SettingsForm, type GeneratorChoice } from './settings-form';
 import { startingSettings, summary } from './settings-model';
 
+/**
+ * The maze the editor's board previews: the one picked once it is built, else the last one built
+ * before it, of the board's size unless the board is a new maze not yet edited.
+ */
+function previewOf(
+  items: readonly Item[],
+  index: number,
+  board: Maze | undefined,
+  fresh: boolean
+): ReadyItem | undefined {
+  const fits = (item: Item): item is ReadyItem =>
+    isReady(item) && (fresh || replacesBoard(item, board));
+  return items.slice(0, index + 1).findLast(fits) ?? items.find(fits);
+}
+
 /** How the batch is shown: a gallery of cards, or one maze at a time. */
 type View = 'gallery' | 'one';
 
@@ -109,7 +124,17 @@ const CARD_SIDE = 156;
 
 const NOT_A_RECIPE = 'This is not a recipe: copy it again with “Copy recipe”';
 
-function Card({ item, current, onPick }: { item: Item; current: boolean; onPick: () => void }) {
+function Card({
+  item,
+  place,
+  current,
+  onPick,
+}: {
+  item: Item;
+  place: number;
+  current: boolean;
+  onPick: () => void;
+}) {
   if (!isReady(item)) {
     return (
       <li>
@@ -124,7 +149,7 @@ function Card({ item, current, onPick }: { item: Item; current: boolean; onPick:
             )}
           />
           <span>
-            #{item.n}
+            #{place}
             {item.status === 'failed' ? ', not made' : ''}
           </span>
         </div>
@@ -138,7 +163,7 @@ function Card({ item, current, onPick }: { item: Item; current: boolean; onPick:
   return (
     <li>
       <button
-        aria-label={cardLabel(item)}
+        aria-label={cardLabel(item, place)}
         aria-pressed={current}
         className={cn(
           'flex w-full flex-col items-start gap-1.5 rounded-[12px] p-1.5 text-left text-xs ring-offset-background outline-none hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring',
@@ -159,7 +184,7 @@ function Card({ item, current, onPick }: { item: Item; current: boolean; onPick:
               <Warning aria-hidden className="text-amber-600 dark:text-amber-400" size={14} />
             </span>
           )}
-          <b className="font-semibold">#{item.n}</b> ·{' '}
+          <b className="font-semibold">#{place}</b> ·{' '}
           <span className="font-mono">{measureItem(item).analysis.shortest}</span> cells
         </span>
         {tags.length === 0 ? null : (
@@ -198,11 +223,11 @@ function CopyRecipe({ item }: { item: ReadyItem }) {
   );
 }
 
-function MazeTitle({ item, total }: { item: Item; total: number }) {
+function MazeTitle({ item, place, total }: { item: Item; place: number; total: number }) {
   return (
     <div className="flex min-w-0 flex-1 flex-col gap-0.5">
       <h3 className="text-[14px] font-semibold" id={`maze-${item.n}`}>
-        {itemTitle(item, total)}
+        {itemTitle(place, total)}
       </h3>
       <p className="font-mono text-xs text-muted-foreground">
         {isReady(item)
@@ -218,10 +243,12 @@ function MazeTitle({ item, total }: { item: Item; total: number }) {
 /** The tags and sentences of a ready maze, under its title unless `titled` is off. */
 function Details({
   item,
+  place,
   total,
   titled = true,
 }: {
   item: ReadyItem;
+  place: number;
   total: number;
   titled?: boolean;
 }) {
@@ -235,7 +262,7 @@ function Details({
     >
       {titled ? (
         <div className="flex items-start gap-2">
-          <MazeTitle item={item} total={total} />
+          <MazeTitle item={item} place={place} total={total} />
           <CopyRecipe item={item} />
         </div>
       ) : null}
@@ -268,13 +295,16 @@ interface OneViewProps {
   readonly index: number;
   readonly running: boolean;
   readonly onStep: (index: number) => void;
+  /** Leaves the board out, as beside the editor, whose own board shows the maze. */
+  readonly boardless: boolean;
 }
 
 /**
- * One maze of the batch at a time, drawn large as the editor draws it, with ‹ and › (and the
- * arrow keys) to step through the batch, its title, seed and style, and its tags and sentences.
+ * One maze of the batch at a time, drawn large as the editor draws it unless the editor's own board
+ * shows it, with ‹ and › (and the arrow keys) to step through the batch, its title, seed and style,
+ * and its tags and sentences.
  */
-function OneView({ items, index, running, onStep }: OneViewProps) {
+function OneView({ items, index, running, onStep, boardless }: OneViewProps) {
   const item = items[index];
 
   if (item === undefined) {
@@ -286,10 +316,10 @@ function OneView({ items, index, running, onStep }: OneViewProps) {
 
   return (
     <section aria-label="One maze" className="flex flex-col gap-3">
-      {isReady(item) ? (
+      {boardless ? null : isReady(item) ? (
         <Board
           className="h-auto w-full rounded-[6px]"
-          label={`Maze #${item.n}, seed ${item.seed}`}
+          label={`Maze #${index + 1}, seed ${item.seed}`}
           maze={measureItem(item).maze}
         />
       ) : (
@@ -314,7 +344,7 @@ function OneView({ items, index, running, onStep }: OneViewProps) {
         >
           <CaretLeft aria-hidden />
         </Button>
-        <MazeTitle item={item} total={items.length} />
+        <MazeTitle item={item} place={index + 1} total={items.length} />
         {isReady(item) ? <CopyRecipe item={item} /> : null}
         <Button
           aria-keyshortcuts="ArrowRight"
@@ -329,7 +359,9 @@ function OneView({ items, index, running, onStep }: OneViewProps) {
           <CaretRight aria-hidden />
         </Button>
       </div>
-      {isReady(item) ? <Details item={item} titled={false} total={items.length} /> : null}
+      {isReady(item) ? (
+        <Details item={item} place={index + 1} titled={false} total={items.length} />
+      ) : null}
     </section>
   );
 }
@@ -371,6 +403,7 @@ export default function GenerateDialog({
   const [settingsOpen, setSettingsOpen] = useState(true);
   const [selected, setSelected] = useState<number | undefined>(undefined);
   const [view, setView] = useState<View>('gallery');
+  const [seedText, setSeedText] = useState<string | undefined>(undefined);
   const [recipeText, setRecipeText] = useState('');
   const [recipeError, setRecipeError] = useState<string | undefined>(undefined);
   const items = state.items;
@@ -380,11 +413,7 @@ export default function GenerateDialog({
   const running = state.progress !== null;
   const hint = pickHint(current, freshMaze ? undefined : board);
   const docked = onPreview !== undefined && board !== undefined;
-  const [previewed, setPreviewed] = useState<ReadyItem | undefined>(undefined);
-
-  if (isReady(current) && current !== previewed) {
-    setPreviewed(current);
-  }
+  const previewed = previewOf(items, index, board, freshMaze);
 
   useEffect(() => {
     onPreview?.(
@@ -596,14 +625,25 @@ export default function GenerateDialog({
                       inputMode="numeric"
                       max={batch.maxSeed}
                       min={0}
-                      onChange={(event) => batch.setNextSeed(Number(event.target.value))}
+                      onBlur={() => setSeedText(undefined)}
+                      onChange={(event) => {
+                        const text = event.target.value;
+                        setSeedText(text);
+
+                        if (text.trim() !== '') {
+                          batch.setNextSeed(Number(text));
+                        }
+                      }}
                       type="number"
-                      value={state.nextSeed}
+                      value={seedText ?? state.nextSeed}
                     />
                     <Button
                       aria-label="Random seed"
                       className="size-8 rounded-[10px]"
-                      onClick={() => batch.setNextSeed(randomSeed(batch.maxSeed))}
+                      onClick={() => {
+                        setSeedText(undefined);
+                        batch.setNextSeed(randomSeed(batch.maxSeed));
+                      }}
                       size="icon"
                       type="button"
                       variant="outline"
@@ -721,6 +761,7 @@ export default function GenerateDialog({
           ) : null}
           {view === 'one' ? (
             <OneView
+              boardless={docked}
               index={index}
               items={items}
               onStep={(next) => setSelected(items[next]?.n)}
@@ -729,18 +770,19 @@ export default function GenerateDialog({
           ) : null}
           {items.length === 0 || view === 'one' ? null : (
             <ol aria-label="Mazes generated" className="grid grid-cols-2 gap-2">
-              {items.map((item) => (
+              {items.map((item, k) => (
                 <Card
                   current={item === current}
                   item={item}
                   key={item.n}
                   onPick={() => setSelected(item.n)}
+                  place={k + 1}
                 />
               ))}
             </ol>
           )}
           {view === 'gallery' && isReady(current) ? (
-            <Details item={current} total={items.length} />
+            <Details item={current} place={index + 1} total={items.length} />
           ) : null}
           {items.length === 0 || running ? null : (
             <Button

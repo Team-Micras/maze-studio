@@ -23,13 +23,16 @@ import {
 
 import type { Job, JobResult } from './job';
 
-/** A maze of the batch, numbered from 1 in the order it was asked for. */
+/**
+ * A maze of the batch: `n` tells it apart, never given twice by one batch; the dialog calls it by
+ * its place in the list.
+ */
 export interface Item {
   readonly n: number;
   /** A seed of a batch, or rebuilt from a recipe. */
   readonly origin: 'seed' | 'loaded';
   readonly status: 'pending' | 'ready' | 'failed';
-  /** Known once its batch is picked. */
+  /** The seed it is built from; known once it is built. */
   readonly seed?: number;
   readonly style?: Style;
   /** What rebuilds it, with the walls and goal cells it made. */
@@ -59,8 +62,7 @@ export interface BatchState {
   readonly progress: { readonly done: number; readonly total: number } | null;
   /** The seeds of the last batch, once one ran. */
   readonly seeds: { readonly first: number; readonly last: number } | null;
-  /** The first seed of the last batch, and the seed the next one starts from. */
-  readonly firstSeed: number;
+  /** The seed the next batch starts from. */
   readonly nextSeed: number;
   /** Whether a worker failed in the last run, leaving some mazes out. */
   readonly stopped: boolean;
@@ -128,6 +130,7 @@ export class Batch {
   readonly #workers: number;
   readonly #size: number;
   readonly #listeners = new Set<() => void>();
+  #numbered = 0;
   #state: BatchState;
   #run: Run | undefined;
 
@@ -140,7 +143,6 @@ export class Batch {
       items: [],
       progress: null,
       seeds: null,
-      firstSeed: seed,
       nextSeed: seed,
       stopped: false,
     };
@@ -198,13 +200,10 @@ export class Batch {
     this.cancel();
     const first = this.#state.nextSeed;
     const kept = fresh ? [] : this.#state.items;
-    const items = Array.from({ length: this.#size }, (_, k) =>
-      pending(kept.length + k + 1, 'seed')
-    );
+    const items = Array.from({ length: this.#size }, () => pending(this.#number(), 'seed'));
     this.#set({
       items: [...kept, ...items],
-      firstSeed: first,
-      nextSeed: Math.min(this.maxSeed, first + this.#size),
+      nextSeed: first + this.#size > this.maxSeed ? 0 : first + this.#size,
       seeds: { first, last: first + this.#size - 1 },
     });
     this.#start(
@@ -224,7 +223,7 @@ export class Batch {
     this.cancel();
     const version: number | undefined = recipe.version;
     const older = version === GENERATOR_VERSION ? undefined : (version ?? 1);
-    const n = this.#state.items.length + 1;
+    const n = this.#number();
 
     if (older !== undefined && recipe.walls !== undefined) {
       const item: Item = {
@@ -260,6 +259,12 @@ export class Batch {
       [item]
     );
     return item;
+  }
+
+  /** The next number to call a maze by, never one the batch gave before. */
+  #number(): number {
+    this.#numbered += 1;
+    return this.#numbered;
   }
 
   #set(changes: Partial<BatchState>): void {

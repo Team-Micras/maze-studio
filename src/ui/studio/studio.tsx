@@ -174,8 +174,7 @@ export function Studio({
     previewEntry === undefined || library === undefined
       ? undefined
       : openEntry(previewEntry, library);
-  const editingKey =
-    mode === 'editor' && previewed === undefined && opened !== undefined ? opened.key : undefined;
+  const editingKey = mode === 'editor' && opened !== undefined ? opened.key : undefined;
   const generating = generateFor !== undefined && generateFor === editingKey;
   const editorInsets =
     generating && !phone
@@ -184,7 +183,9 @@ export function Studio({
   const shownCandidate = generating && !phone ? generatorPreview : undefined;
   const candidateShown =
     generating && !phone && opened !== undefined
-      ? { ...opened, maze: shownCandidate?.maze ?? opened.maze }
+      ? shownCandidate === undefined
+        ? opened
+        : { ...opened, maze: shownCandidate.maze, detail: `Preview · seed ${shownCandidate.seed}` }
       : undefined;
   const onScreen = previewed ?? candidateShown ?? opened ?? state.leaving;
   const board = onScreen === undefined ? undefined : boardOf(onScreen.maze);
@@ -219,7 +220,11 @@ export function Studio({
           .then((storage) => storage?.settings.generator())
           .catch(() => undefined)
           .then((saved) => {
-            const half = saved !== undefined && Reflect.get(saved.settings, 'size') === 32;
+            const settings: unknown = saved?.settings;
+            const half =
+              typeof settings === 'object' &&
+              settings !== null &&
+              Reflect.get(settings, 'size') === 32;
             onNew({ kind: 'preset', preset: half ? 'halfsize' : 'classic' });
             setGenerateNext(true);
           });
@@ -458,6 +463,7 @@ export function Studio({
                 <MoreActions
                   {...editing.actions}
                   {...actions.menu}
+                  editable={editing.actions.editable && candidateShown === undefined}
                   onFit={() => refit({ animate: true })}
                   onGenerate={
                     editingKey === undefined ? undefined : () => setGenerateFor(editingKey)
@@ -496,14 +502,6 @@ export function Studio({
       ) : null}
       {mode === 'editor' && !coarse ? <ShortcutHelp {...editing.help} /> : null}
       {actions.rename === undefined ? null : <RenameDialog {...actions.rename} />}
-      {shownCandidate === undefined ? null : (
-        <p
-          className="fixed top-safe-[72px] left-1/2 z-10 -translate-x-1/2 rounded-full bg-card px-3 py-1.5 text-xs shadow-island"
-          data-candidate-chip
-        >
-          Preview · seed {shownCandidate.seed} · Use this to keep it
-        </p>
-      )}
       <p aria-live="polite" className="sr-only">
         {shownCandidate === undefined ? '' : `Preview of seed ${shownCandidate.seed} on the board`}
       </p>

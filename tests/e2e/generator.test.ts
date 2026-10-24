@@ -118,7 +118,7 @@ describe('Generate in New maze (beta)', () => {
     ).toBe(1);
   });
 
-  test('opens Generate on a new blank maze, which closing leaves unsaved and Use this replaces', async () => {
+  test('opens Generate on a new blank maze, which closing leaves unsaved and Use this opens as the new maze', async () => {
     const page = await openPage(browser, contexts, app);
     await openGenerate(page, 'New maze');
     await waitForMode(page, 'editor');
@@ -132,7 +132,7 @@ describe('Generate in New maze (beta)', () => {
     await openGenerate(page, 'New maze');
     await generateAndPick(page, 3, 'Opens as a new maze; the first edit saves it in My mazes.');
     expect(await page.locator('h1').textContent()).toBe('Generated 3');
-    expect(await page.locator('[data-candidate-chip]').count()).toBe(0);
+    expect(await page.locator('h1 ~ p').first().textContent()).toBe('Generated maze, 16 × 16');
     expect(await mineCount(page)).toBe(0);
   });
 
@@ -176,15 +176,15 @@ describe('Generate in the editor (beta)', () => {
     await dialog.getByRole('button', { name: 'Generate', exact: true }).click();
     await dialog.getByRole('button', { name: /^#8,/ }).waitFor(GENERATION);
     await dialog.getByRole('button', { name: /^#2,/ }).click();
-    await expect
-      .poll(() => page.locator('[data-candidate-chip]').textContent())
-      .toBe('Preview · seed 2 · Use this to keep it');
+    const subtitle = () => page.locator('h1 ~ p').first().textContent();
+    await expect.poll(subtitle).toBe('Preview · seed 2');
     expect(await walls()).not.toBe(before);
+    expect(await page.getByRole('button', { name: 'Undo' }).count()).toBe(0);
     expect(await mineCount(page)).toBe(0);
 
     await dialog.getByRole('button', { name: 'Close' }).click();
     await expect.poll(walls).toBe(before);
-    expect(await page.locator('[data-candidate-chip]').count()).toBe(0);
+    expect(await subtitle()).toBe('Classic, 16 × 16');
     expect(await mineCount(page)).toBe(0);
 
     await openGenerate(page, 'More actions');

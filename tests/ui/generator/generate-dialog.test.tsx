@@ -136,6 +136,7 @@ describe('The Generate dialog', () => {
     await userEvent.click(page.getByRole('radio', { name: 'One' }));
 
     await expect.element(page.getByRole('img', { name: 'Maze #1, seed 1' })).toBeVisible();
+    expect(document.querySelector('section[aria-label="One maze"] svg[data-board]')).not.toBeNull();
     await expect.element(page.getByRole('heading', { name: '#1 of 8' })).toBeVisible();
     await expect.element(page.getByRole('button', { name: 'Previous maze' })).toBeDisabled();
     expect(await axeViolations()).toEqual([]);
@@ -173,6 +174,9 @@ describe('The Generate dialog', () => {
     await expect.poll(() => previews.at(-1)?.seed).toBe(2);
 
     expect(document.querySelector('[data-slot="sheet-overlay"]')).toBeNull();
+    await userEvent.click(page.getByRole('radio', { name: 'One' }));
+    await expect.element(page.getByRole('heading', { name: '#2 of 8' })).toBeVisible();
+    expect(document.querySelector('section[aria-label="One maze"] svg[data-board]')).toBeNull();
     await expect
       .element(page.getByRole('button', { name: 'Back to the board' }))
       .toBeInTheDocument();

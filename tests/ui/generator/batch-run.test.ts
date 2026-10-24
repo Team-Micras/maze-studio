@@ -235,4 +235,31 @@ describe('a batch of generated mazes', () => {
       Array.from({ length: 50 }, () => randomSeed(1000)).every((seed) => seed >= 0 && seed <= 1000)
     ).toBe(true);
   });
+
+  test('never gives two mazes one number, after a run cancelled with gaps', async () => {
+    const { spawn } = workers();
+    const batch = new Batch({ spawn, workers: 1, size: 2, firstSeed: 1 });
+    batch.generate(SETTINGS, true);
+    await settled(batch);
+    batch.generate(SETTINGS, false);
+    batch.cancel();
+    batch.generate(SETTINGS, false);
+    const numbers = batch.getState().items.map((item) => item.n);
+
+    expect(new Set(numbers).size).toBe(numbers.length);
+    batch.rebuild(withMaze(generate(SETTINGS, 1).recipe, generate(SETTINGS, 1).grid), SETTINGS);
+    const after = batch.getState().items.map((item) => item.n);
+    expect(new Set(after).size).toBe(after.length);
+    batch.cancel();
+  }, 60_000);
+
+  test('starts again from seed 0 once a batch reaches the top of the range', () => {
+    const batch = new Batch({ spawn: workers({ fail: () => true }).spawn, size: 8 });
+    batch.setNextSeed(MAX_SEED);
+    batch.generate(SETTINGS, true);
+
+    expect(batch.getState().seeds).toEqual({ first: MAX_SEED - 7, last: MAX_SEED });
+    expect(batch.getState().nextSeed).toBe(0);
+    batch.cancel();
+  });
 });

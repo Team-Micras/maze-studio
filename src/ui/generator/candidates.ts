@@ -93,8 +93,8 @@ export function statusLine(state: BatchState): string {
 export const STOPPED = 'The generator could not make some of these mazes; the others are shown';
 
 /** The title of a maze in the details: "#3 of 8". */
-export function itemTitle(item: Item, total: number): string {
-  return `#${item.n} of ${total}`;
+export function itemTitle(place: number, total: number): string {
+  return `#${place} of ${total}`;
 }
 
 /** Where a ready maze came from and how it was built: "seed 6001 · Routes part near the goal". */
@@ -109,10 +109,10 @@ export function itemOrigin(item: ReadyItem): string {
 }
 
 /** The name a card has for a screen reader: number, cells to the goal, tags and what it missed. */
-export function cardLabel(item: ReadyItem): string {
+export function cardLabel(item: ReadyItem, place: number): string {
   const has = itemTags(item);
   const warning = itemWarning(item);
-  return `#${item.n}, ${measureItem(item).analysis.shortest} cells${has.length > 0 ? `, ${has.join(', ')}` : ''}${warning === undefined ? '' : `. ${warning}`}`;
+  return `#${place}, ${measureItem(item).analysis.shortest} cells${has.length > 0 ? `, ${has.join(', ')}` : ''}${warning === undefined ? '' : `. ${warning}`}`;
 }
 
 /** The rules a generated maze is checked by: the competition's for its size, or free. */

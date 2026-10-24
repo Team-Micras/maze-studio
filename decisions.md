@@ -242,9 +242,10 @@ reached, and the measurements of the day, are in the git history of this file.
   (`docs/maze-editor/mockups/generator/assets/settings-form.js`) in React, its logic without React in
   `settings-model.ts`, its English copy only.
 - **Loaded when Generate first opens.** The dialog and the generator are one lazy chunk (about 28 KB gzip) and the
-  worker another (about 23 KB); the first screen gains about 2.9 KB gzip: the menu item, its four icons, the classes
-  the dialog adds to the one stylesheet and the recipe in My mazes. Radix's switch is left out of the `radix` chunk
-  group, which the first screen loads, since only the dialog uses it. A chunk that fails to load says so in a toast.
+  worker another (about 23 KB); the first screen gains about 4 KB gzip (207.9 to about 211.7 KB): the menu items, five
+  icons, the classes the dialog adds to the one stylesheet, the recipe in My mazes and the editor's preview. Radix's
+  switch is left out of the `radix` chunk group, which the first screen loads, since only the dialog uses it. A chunk
+  that fails to load says so in a toast and closes the dialog.
 - **A pool of workers, one maze per message.** Up to four workers, one fewer than the cores, share a queue of the
   batch's 8 seeds in a row, and each maze shows in its seed's card as soon as it is built, so the cards stay in seed
   order and the same settings and first seed show the same mazes on every computer; 8 more goes on from the next seed.
@@ -256,8 +257,9 @@ reached, and the measurements of the day, are in the git history of this file.
   workers. The dialog stays mounted once opened, so its batch is there the next time.
 - **The board previews the candidate on a notebook** (owner, 24/10), as the mockup's editor did: from the editor
   the panel docks on the right without a modal backdrop, so the board stays in reach to pan and zoom, and the studio
-  shows the candidate picked (or the last one built while the next is on its way) on the board as a preview, with a
-  "Preview · seed N" chip, through its existing previewing state: no edit, no step of history, no tools. Closing
+  shows the candidate picked (or the last one built before it while it is on its way) on the board as a preview,
+  the title island's line reading "Preview · seed N" instead of a chip over the maze, through its existing
+  previewing state: no edit, no step of history, no tools, the ⋯ menu's edits off. Closing
   the panel puts the open maze back as it was; Use this replaces it as before. New maze → Generate… on a notebook
   opens a new blank maze of the saved settings' size with the panel open; its Use this opens the maze picked as the
   new maze, with its name and recipe, and closing leaves the blank maze unsaved, as any new maze. The panel takes
@@ -266,7 +268,8 @@ reached, and the measurements of the day, are in the git history of this file.
 - **Gallery or One** (owner, 24/10), as the mockup's panel: the batch shows as cards, or one maze at a time drawn
   large by the editor's own `Board` (an SVG, crisp at any size), with ‹ › and the arrow keys, its title, seed, style,
   tags and sentences, the Off target line first. Stepping moves the maze Use this takes; while a run goes on, › stops
-  at the last maze built. The choice is kept with the generator's settings. Routes are not drawn on it yet.
+  at the last maze built. The choice is kept with the generator's settings. Routes are not drawn on it yet. Beside
+  the editor on a notebook, One leaves its board out (owner, 24/10): the editor's board shows the maze already.
 - **Seeds over the whole 32-bit range** (owner, 24/10). The first seed and the dice draw from 0 to the largest first
   seed with `crypto.getRandomValues`: with a known preset, a range of 100,000 seeds could be built ahead of a
   contest in hours.
