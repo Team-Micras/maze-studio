@@ -75,7 +75,7 @@ describe('a batch of generated mazes', () => {
     const items = batch.generate(SETTINGS, true);
 
     expect(items.map((item) => item.status)).toEqual(['pending', 'pending']);
-    expect(statusLine(batch.getState())).toBe('Generating 0 of 6…');
+    expect(statusLine(batch.getState())).toBe('Building 0 of 6 · the 2 most varied will be kept');
     await settled(batch);
 
     const state = batch.getState();
@@ -85,7 +85,7 @@ describe('a batch of generated mazes', () => {
     expect(state.items.every(isReady)).toBe(true);
     expect(state.items.map((item) => item.n)).toEqual([1, 2]);
     expect(state.items.every((item) => (item.seed ?? 0) >= 1 && (item.seed ?? 0) <= 6)).toBe(true);
-    expect(statusLine(state)).toBe('Seeds 1 to 6, the most varied shown');
+    expect(statusLine(state)).toBe('Seeds 1–6 · the 2 most varied of 6');
 
     const [first] = state.items;
 

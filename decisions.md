@@ -247,7 +247,10 @@ reached, and the measurements of the day, are in the git history of this file.
   group, which the first screen loads, since only the dialog uses it. A chunk that fails to load says so in a toast.
 - **A pool of workers, one maze per message.** Up to four workers, one fewer than the cores, share a queue of seeds,
   three per maze shown; the batch keeps the most varied with `pickBatch`, sorted by seed, so the same settings and
-  first seed show the same mazes on every computer. Cancel, a new run and closing the dialog terminate the workers.
+  first seed show the same mazes on every computer. Until every seed is built, the cards show the first mazes in the
+  order they arrive, and the status says so ("Building 16 of 24 · the 8 most varied will be kept"; owner, 24/10). A
+  maze off its targets carries a warning that names what it missed, worked out in the worker from the generator's
+  `report` and `choiceMisses` against its seed's targets, which only the worker has. Cancel, a new run and closing the dialog terminate the workers.
   The dialog stays mounted once opened, so its batch is there the next time.
 - **A recipe holds only for the walls it made** (owner, 24/10). An item of My mazes keeps the recipe (`recipe`:
   version, settings, seed, wall hash, and the walls and goal cells it built) as data: `src/library` cannot read the

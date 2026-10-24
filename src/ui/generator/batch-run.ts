@@ -41,6 +41,8 @@ export interface Item {
   readonly energy?: number | null;
   /** The route choice was asked with the shorter detour. */
   readonly relaxed?: boolean;
+  /** The targets it missed, in plain words, when its energy is not 0. */
+  readonly misses?: readonly string[];
   /** The version of the older generator whose recipe it was opened from. */
   readonly older?: number;
   /** Opened from the walls that older recipe saved rather than rebuilt. */
@@ -57,7 +59,14 @@ export interface Item {
 export interface BatchState {
   readonly items: readonly Item[];
   /** Mazes built of the run on its way, if one is. */
-  readonly progress: { readonly done: number; readonly total: number } | null;
+  readonly progress: {
+    readonly done: number;
+    readonly total: number;
+    /** How many of them the run keeps. */
+    readonly kept: number;
+  } | null;
+  /** The seeds of the last batch and how many of them it kept, once one ran. */
+  readonly seeds: { readonly first: number; readonly last: number; readonly kept: number } | null;
   /** The first seed of the last batch, and the seed the next one starts from. */
   readonly firstSeed: number;
   readonly nextSeed: number;
@@ -120,7 +129,14 @@ export class Batch {
     this.#workers = options.workers ?? workerCount(globalThis.navigator?.hardwareConcurrency);
     this.#size = options.size ?? BATCH;
     const seed = options.firstSeed ?? 1 + Math.floor(Math.random() * 9999);
-    this.#state = { items: [], progress: null, firstSeed: seed, nextSeed: seed, stopped: false };
+    this.#state = {
+      items: [],
+      progress: null,
+      seeds: null,
+      firstSeed: seed,
+      nextSeed: seed,
+      stopped: false,
+    };
   }
 
   /** The batch now; a new object after every change. */
@@ -183,6 +199,7 @@ export class Batch {
       items: [...kept, ...items],
       firstSeed: first,
       nextSeed: Math.min(this.maxSeed, first + total),
+      seeds: { first, last: first + total - 1, kept: this.#size },
     });
     this.#start(
       Array.from({ length: total }, (_, k) => ({ settings, seed: first + k })),
@@ -254,7 +271,7 @@ export class Batch {
     const run: Run = { runners, items };
     let open = jobs.length;
     this.#run = run;
-    this.#set({ progress: { done: 0, total: jobs.length }, stopped: false });
+    this.#set({ progress: { done: 0, total: jobs.length, kept: items.length }, stopped: false });
 
     const finish = (): void => {
       open -= 1;
@@ -344,6 +361,7 @@ function filledItem(item: Item, result: JobResult | undefined): Item {
     recipe: withMaze(result.recipe, result.grid),
     energy: result.energy,
     relaxed: result.relaxed,
+    misses: result.misses,
     analysis: result.analysis,
     grid: result.grid,
     mismatch:

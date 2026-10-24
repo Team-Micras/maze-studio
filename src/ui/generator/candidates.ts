@@ -11,6 +11,7 @@ import { horizontalEdgeIndex, verticalEdgeIndex, type Maze, type Profile } from 
 import type { NewMazeRequest } from '@/ui/new-maze';
 
 import type { BatchState, Item } from './batch-run';
+import { offTarget } from './misses';
 
 /** A maze of the batch that is ready, with the walls and recipe it was built with. */
 export type ReadyItem = Item & Required<Pick<Item, 'grid' | 'recipe' | 'seed'>>;
@@ -59,7 +60,7 @@ export function itemWarning(item: ReadyItem): string | undefined {
   }
 
   return item.energy !== undefined && item.energy !== null && item.energy !== 0
-    ? 'Off target'
+    ? offTarget(item.misses)
     : undefined;
 }
 
@@ -77,12 +78,16 @@ export function itemFeatures(item: ReadyItem): string[] {
 
 /** The line under the settings: the run's progress, or the seeds the batch shows. */
 export function statusLine(state: BatchState): string {
-  if (state.progress !== null) {
-    return `Generating ${state.progress.done} of ${state.progress.total}…`;
+  const { progress, seeds } = state;
+
+  if (progress !== null) {
+    return progress.total > progress.kept
+      ? `Building ${progress.done} of ${progress.total} · the ${progress.kept} most varied will be kept`
+      : `Building ${progress.done} of ${progress.total}…`;
   }
 
-  return state.items.some((item) => item.origin === 'seed')
-    ? `Seeds ${state.firstSeed} to ${state.nextSeed - 1}, the most varied shown`
+  return seeds !== null && state.items.some((item) => item.origin === 'seed')
+    ? `Seeds ${seeds.first}–${seeds.last} · the ${seeds.kept} most varied of ${seeds.last - seeds.first + 1}`
     : '';
 }
 
@@ -105,10 +110,11 @@ export function itemOrigin(item: ReadyItem): string {
     .join(' · ');
 }
 
-/** The name a card has for a screen reader: number, cells to the goal and tags. */
+/** The name a card has for a screen reader: number, cells to the goal, tags and what it missed. */
 export function cardLabel(item: ReadyItem): string {
   const has = itemTags(item);
-  return `#${item.n}, ${measureItem(item).analysis.shortest} cells${has.length > 0 ? `, ${has.join(', ')}` : ''}`;
+  const warning = itemWarning(item);
+  return `#${item.n}, ${measureItem(item).analysis.shortest} cells${has.length > 0 ? `, ${has.join(', ')}` : ''}${warning === undefined ? '' : `. ${warning}`}`;
 }
 
 /** The rules a generated maze is checked by: the competition's for its size, or free. */

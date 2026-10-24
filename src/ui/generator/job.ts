@@ -1,7 +1,7 @@
 /**
  * What a generator worker does with one message: builds one maze, from a seed (`generate`) or as a
  * variation of a base maze (`vary`), and answers with what the page needs to pick, show and save
- * it. Kept apart from the worker so that it runs, and is tested, anywhere.
+ * it, with the targets it missed, which only the worker knows. Kept apart from the worker so that it runs, and is tested, anywhere.
  *
  * @module
  */
@@ -16,6 +16,8 @@ import {
   type Settings,
   type Style,
 } from '@/generator';
+
+import { missedTargets } from './misses';
 
 /** One maze to build: from a seed, or a variation of the walls `base` with goal cells `goals`. */
 export type Job =
@@ -39,6 +41,8 @@ export interface JobResult {
   readonly energy: number;
   /** The route choice was asked with the shorter detour. */
   readonly relaxed: boolean;
+  /** The targets it missed, in plain words. */
+  readonly misses: readonly string[];
 }
 
 /** Builds the maze of `job`. */
@@ -57,5 +61,6 @@ export function runJob(job: Job): JobResult {
     analysis,
     energy: candidate.energy,
     relaxed: relaxedChoice(candidate.targets),
+    misses: candidate.energy === 0 ? [] : missedTargets(candidate.analysis, candidate.targets),
   };
 }

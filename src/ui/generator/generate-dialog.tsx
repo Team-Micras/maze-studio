@@ -144,7 +144,9 @@ function Card({ item, current, onPick }: { item: Item; current: boolean; onPick:
         />
         <span className="flex items-center gap-1">
           {warning === undefined ? null : (
-            <Warning aria-hidden className="text-amber-600 dark:text-amber-400" size={14} />
+            <span className="inline-flex" title={warning}>
+              <Warning aria-hidden className="text-amber-600 dark:text-amber-400" size={14} />
+            </span>
           )}
           <b className="font-semibold">#{item.n}</b> ·{' '}
           <span className="font-mono">{measureItem(item).analysis.shortest}</span> cells
@@ -497,7 +499,7 @@ export default function GenerateDialog({
               {statusLine(state)}
             </p>
             <p aria-live="polite" className="sr-only">
-              {running ? 'Generating…' : statusLine(state)}
+              {running ? 'Building mazes…' : statusLine(state)}
             </p>
             {running ? (
               <Button
