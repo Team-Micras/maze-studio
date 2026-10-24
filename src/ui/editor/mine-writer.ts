@@ -10,7 +10,7 @@ import { uniqueName, type MineLibrary } from '@/library';
 import { mazesEqual, type Maze, type Profile } from '@/maze';
 import type { MineCopy, OpenMaze } from '@/ui/open-maze';
 
-import { copyName, needsCopy, type EditSession } from './edit-session';
+import { copyName, needsCopy, sessionRecipe, type EditSession } from './edit-session';
 
 /** The item of My mazes a session writes to, with its name. */
 export type NamedCopy = MineCopy & { readonly name: string };
@@ -185,7 +185,11 @@ export class MineWriter {
 
     const mine = await this.#mine();
     const version = Math.max(copy.version, this.#versions.get(copy.id) ?? 0);
-    const result = await mine?.save(copy.id, { maze, profile }, version);
+    const result = await mine?.save(
+      copy.id,
+      { maze, profile, recipe: sessionRecipe(session) ?? null },
+      version
+    );
 
     if (result === undefined) {
       return;
@@ -243,7 +247,7 @@ export class MineWriter {
       trailer: opened.document.trailer,
       profile,
       origin: opened.document.origin,
-      recipe: opened.document.recipe,
+      recipe: sessionRecipe(session),
     });
     const copy = { id: item.id, version: item.version, name: item.name };
     this.#copies.set(opened, copy);

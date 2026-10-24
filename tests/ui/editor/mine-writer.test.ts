@@ -8,13 +8,20 @@ import {
   failure,
   mazesEqual,
   record,
+  redo,
   success,
   toggleWall,
   type Edge,
   type Maze,
   type Result,
+  undo,
 } from '@/maze';
-import { openSession, withProfile, type EditSession } from '@/ui/editor/edit-session';
+import {
+  openSession,
+  withGenerated,
+  withProfile,
+  type EditSession,
+} from '@/ui/editor/edit-session';
 import { MineWriter, type MineStore } from '@/ui/editor/mine-writer';
 import type { OpenMaze } from '@/ui/open-maze';
 
@@ -84,6 +91,7 @@ class FakeMine implements MineStore {
       createdAt: 0,
       updatedAt: 0,
       version: 1,
+      ...(draft.recipe === undefined ? {} : { recipe: draft.recipe }),
     };
     this.items.set(item.id, item);
     this.log.push(`create ${draft.name}`);
@@ -111,11 +119,12 @@ class FakeMine implements MineStore {
       );
     }
 
-    const saved = {
+    const saved: MineMaze = {
       ...current,
       profile: changes.profile ?? current.profile,
       code: changes.maze === undefined ? current.code : encodeMazeCode(changes.maze),
       version: current.version + 1,
+      recipe: changes.recipe === undefined ? current.recipe : (changes.recipe ?? undefined),
     };
     this.items.set(id, saved);
     this.log.push(`save ${current.name}`);
@@ -222,6 +231,27 @@ describe('The writer of My mazes', () => {
 
     expect(mine.log).toEqual(['create Untitled maze', 'save Untitled maze']);
     expect([...mine.items.values()][0]?.profile).toBe('classic');
+  });
+
+  test('keeps the recipe only with the walls the generator made: copied with them, dropped on undo, back on redo', async () => {
+    const mine = new FakeMine();
+    const { writer } = writerOn(mine);
+    const recipe = { version: 7, seed: 9, settings: { size: 4 }, hash: '0123abcd' };
+    const replaced = withGenerated(openSession(opened('Repo')), { maze: wallsOf(1, 2), recipe });
+    writer.write(replaced);
+    await writer.idle();
+    const [copy] = mine.items.values();
+    expect(copy?.recipe).toEqual(recipe);
+
+    const undone = { ...replaced, history: undo(replaced.history) };
+    writer.write(undone);
+    await writer.idle();
+    expect(mine.items.get(copy?.id ?? '')?.recipe).toBeUndefined();
+
+    writer.write({ ...undone, history: redo(undone.history) });
+    await writer.idle();
+    expect(mine.items.get(copy?.id ?? '')?.recipe).toEqual(recipe);
+    expect(mine.log).toEqual(['create Repo (edited)', 'save Repo (edited)', 'save Repo (edited)']);
   });
 
   test('makes one copy for two Save to My mazes asked at once', async () => {

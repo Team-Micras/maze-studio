@@ -117,13 +117,17 @@ describe('My mazes', () => {
     expect(await mine.list()).toHaveLength(1);
   });
 
-  test('keeps the recipe of a generated maze through later saves', async () => {
+  test('keeps the recipe of a generated maze until a save drops it, and takes one back', async () => {
     const [{ mine }] = await tabs();
     const recipe = { version: 7, seed: 6001, settings: { size: 16 }, hash: '0123abcd' };
     const item = await mine.create({ name: 'Generated', maze: MAZE, profile: 'classic', recipe });
     const walled = setWall(MAZE, { direction: 'vertical', x: 2, y: 1 }, true);
     await mine.save(item.id, { maze: walled }, 1);
 
+    expect((await mine.get(item.id))?.recipe).toEqual(recipe);
+    await mine.save(item.id, { maze: MAZE, recipe: null }, 2);
+    expect(Object.hasOwn((await mine.get(item.id)) ?? {}, 'recipe')).toBe(false);
+    await mine.save(item.id, { maze: walled, recipe }, 3);
     expect((await mine.get(item.id))?.recipe).toEqual(recipe);
     expect(
       Object.hasOwn(await mine.create({ name: 'Drawn', maze: MAZE, profile: 'free' }), 'recipe')

@@ -77,7 +77,7 @@ export interface MineMaze {
   /** 1 when created, raised by each save. */
   readonly version: number;
   readonly origin?: MineOrigin;
-  /** How the generator made it, for a generated maze; kept as it was through later edits. */
+  /** How the generator made its walls, while they are the ones it made. */
   readonly recipe?: MineRecipe;
 }
 
@@ -99,6 +99,8 @@ export interface MineChanges {
   readonly maze?: Maze;
   readonly trailer?: string;
   readonly profile?: Profile;
+  /** The generator's recipe of the walls saved, or `null` when they are no longer the ones it made. */
+  readonly recipe?: MineRecipe | null;
 }
 
 /** Why a save was refused: another tab saved a newer version, or removed the item. */
@@ -276,14 +278,21 @@ export class MineLibrary {
   }
 
   #changed(current: MineMaze, changes: MineChanges): MineMaze {
-    return {
+    const next: MineMaze = {
       ...current,
       name: changes.name ?? current.name,
       profile: changes.profile ?? current.profile,
       code: changedCode(current, changes),
       updatedAt: this.#now(),
       version: current.version + 1,
+      ...(changes.recipe ? { recipe: changes.recipe } : {}),
     };
+
+    if (changes.recipe === null) {
+      Reflect.deleteProperty(next, 'recipe');
+    }
+
+    return next;
   }
 
   #announce(): void {
