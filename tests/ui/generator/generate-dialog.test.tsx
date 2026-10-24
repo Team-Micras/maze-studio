@@ -32,7 +32,11 @@ const BOARD = toggleWall(
 async function generate(seed = '1'): Promise<void> {
   await userEvent.fill(page.getByRole('spinbutton', { name: 'First seed' }), seed);
   await userEvent.click(page.getByRole('button', { name: 'Generate', exact: true }));
-  await userEvent.click(page.getByRole('radio', { name: 'Gallery' }));
+}
+
+/** Opens the card of maze `place` in the detail view. */
+async function open(place: number): Promise<void> {
+  await userEvent.click(page.getByRole('button', { name: new RegExp(`^#${place},`) }));
 }
 
 describe('The Generate dialog', () => {
@@ -79,23 +83,22 @@ describe('The Generate dialog', () => {
     const used = await mount();
     await generate();
 
-    await expect.poll(() => progress()?.max).toBe(8);
+    await expect.poll(building).toBe(true);
     await expect.element(page.getByRole('button', { name: /^#8,/ }), GENERATION).toBeVisible();
+    await expect.poll(building, GENERATION).toBe(false);
     await expect.element(page.getByText('Seeds 1–8').first()).toBeVisible();
-    await expect.element(page.getByRole('heading', { name: /^#1 of 8 ·/ })).toBeVisible();
+    expect(page.getByRole('button', { name: 'Use this' }).query()).toBeNull();
     expect(await axeViolations()).toEqual([]);
 
-    await userEvent.click(page.getByRole('button', { name: /^#3,/ }));
-    await expect
-      .element(page.getByRole('button', { name: /^#3,/ }))
-      .toHaveAttribute('aria-pressed', 'true');
-    await expect.element(page.getByRole('heading', { name: /^#3 of 8 ·/ })).toBeVisible();
+    await open(3);
+    await expect.element(page.getByRole('heading', { name: /^#3 of 8 ·/ })).toHaveFocus();
     await userEvent.click(page.getByRole('button', { name: 'Use this' }));
 
     expect(used).toHaveLength(1);
     expect(used[0]).toMatchObject({ kind: 'generated', profile: 'classic' });
     expect(used[0]?.kind === 'generated' ? used[0].recipe : undefined).toMatchObject({
       version: 7,
+      seed: 3,
       settings: { size: 16 },
     });
   });
@@ -105,75 +108,81 @@ describe('The Generate dialog', () => {
     await generate();
     await expect.element(page.getByRole('button', { name: /^#1,/ }), GENERATION).toBeVisible();
 
-    expect(progress()).not.toBeNull();
+    expect(building()).toBe(true);
     expect(document.querySelectorAll('[aria-busy="true"]').length).toBeGreaterThan(0);
-    await expect.element(page.getByRole('button', { name: 'Use this' })).toBeEnabled();
   });
 
-  test('leaves nothing of the settings over the gallery once they fold', async () => {
+  test('keeps the status row and the gallery still as a run starts and ends', async () => {
+    await mount();
+    await generate();
+    await expect.poll(building, GENERATION).toBe(false);
+    const height = statusHeight();
+    const top = galleryTop();
+
+    await userEvent.click(page.getByRole('button', { name: '8 more' }));
+    await expect.poll(building).toBe(true);
+    expect([statusHeight(), galleryTop()]).toEqual([height, top]);
+    await expect.poll(building, GENERATION).toBe(false);
+    expect([statusHeight(), galleryTop()]).toEqual([height, top]);
+  });
+
+  test('opens a maze drawn large in a view of its own, steps with ‹ › and the arrow keys, and goes back to the gallery where it was', async () => {
+    const used = await mount();
+    await generate();
+    await expect.poll(building, GENERATION).toBe(false);
+    const body = document.querySelector('[data-generate] .overflow-y-auto');
+    body?.scrollTo({ top: 120 });
+    const scrolled = body?.scrollTop;
+    await open(3);
+
+    await expect.element(page.getByRole('img', { name: 'Maze #3, seed 3' })).toBeVisible();
+    await expect.element(page.getByRole('region', { name: /^#3 of 8 ·/ })).toBeVisible();
+    expect(await axeViolations()).toEqual([]);
+    await userEvent.click(page.getByRole('button', { name: 'Next maze' }));
+    await expect.element(page.getByRole('heading', { name: /^#4 of 8 ·/ })).toBeVisible();
+    await userEvent.keyboard('{ArrowRight}');
+    await expect.element(page.getByRole('img', { name: 'Maze #5, seed 5' })).toBeVisible();
+    await userEvent.keyboard('{ArrowLeft}');
+    await expect.element(page.getByRole('heading', { name: /^#4 of 8 ·/ })).toBeVisible();
+
+    await userEvent.click(page.getByRole('button', { name: 'Back to the mazes' }));
+    await expect.element(page.getByRole('button', { name: /^#4,/ })).toHaveFocus();
+    expect(body?.scrollTop).toBe(scrolled);
+
+    await open(1);
+    await expect.element(page.getByRole('button', { name: 'Previous maze' })).toBeDisabled();
+    await userEvent.keyboard('{Escape}');
+    await expect.element(page.getByRole('list', { name: 'Mazes generated' })).toBeVisible();
+    await open(8);
+    await userEvent.click(page.getByRole('button', { name: 'Use this' }));
+    expect(used[0]?.kind === 'generated' ? used[0].recipe.seed : undefined).toBe(8);
+  });
+
+  test('fits the maze and its details above the footer on a phone', async () => {
     await page.viewport(390, 844);
     await mount();
     await generate();
-    await expect.element(page.getByRole('button', { name: /^#8,/ }), GENERATION).toBeVisible();
+    await expect.poll(building, GENERATION).toBe(false);
+    await open(3);
+    const lists = document.querySelectorAll('[data-detail] ul');
+    const bottom = lists[lists.length - 1]?.getBoundingClientRect().bottom ?? Infinity;
+    const footer = page.getByRole('button', { name: 'Use this' }).element().getBoundingClientRect();
 
-    expect(document.querySelector('[data-settings]')).toBeNull();
-    const gallery = document.querySelector('ol[aria-label="Mazes generated"]');
-    const foot = page.getByRole('button', { name: 'Use this' }).element()
-      .parentElement?.parentElement;
-    const top = foot?.getBoundingClientRect().top ?? 0;
-    const box = gallery?.getBoundingClientRect();
-    const hits = [0.25, 0.5, 0.75].map((x) =>
-      document.elementFromPoint((box?.left ?? 0) + x * (box?.width ?? 0), top - 4)
-    );
-
-    expect(hits.every((hit) => hit !== null && gallery?.contains(hit) === true)).toBe(true);
+    expect(bottom).toBeLessThanOrEqual(footer.top);
     await page.viewport(1440, 900);
-  });
-
-  test('shows one maze at a time, drawn large, stepping with the buttons and the arrow keys', async () => {
-    const used = await mount();
-    await generate();
-    await expect.element(page.getByRole('button', { name: /^#8,/ }), GENERATION).toBeVisible();
-    await expect.poll(progress).toBeNull();
-    await userEvent.click(page.getByRole('radio', { name: 'One' }));
-
-    await expect.element(page.getByRole('img', { name: 'Maze #1, seed 1' })).toBeVisible();
-    expect(document.querySelector('section[aria-label="One maze"] svg[data-board]')).not.toBeNull();
-    await expect.element(page.getByRole('heading', { name: /^#1 of 8 ·/ })).toBeVisible();
-    await expect.element(page.getByRole('button', { name: 'Previous maze' })).toBeDisabled();
-    expect(await axeViolations()).toEqual([]);
-
-    await userEvent.click(page.getByRole('button', { name: 'Next maze' }));
-    await expect.element(page.getByRole('heading', { name: /^#2 of 8 ·/ })).toBeVisible();
-    await userEvent.keyboard('{ArrowRight}');
-    await expect.element(page.getByRole('img', { name: 'Maze #3, seed 3' })).toBeVisible();
-    await userEvent.keyboard('{ArrowLeft}');
-    await expect.element(page.getByRole('heading', { name: /^#2 of 8 ·/ })).toBeVisible();
-
-    await userEvent.keyboard('{ArrowRight}'.repeat(6));
-
-    await expect.element(page.getByRole('heading', { name: /^#8 of 8 ·/ })).toBeVisible();
-    await userEvent.click(page.getByRole('button', { name: 'Use this' }));
-    expect(used[0]?.kind === 'generated' ? used[0].recipe.seed : undefined).toBe(8);
   });
 
   test('loads 8 more with › past the last maze, keeping #1 to #8, and lands on #9', async () => {
     await mount();
     await generate();
-    await expect.poll(progress, GENERATION).toBeNull();
-    await userEvent.click(page.getByRole('radio', { name: 'One' }));
-    await userEvent.click(page.getByRole('button', { name: 'Next maze' }));
-    await userEvent.keyboard('{ArrowRight}'.repeat(6));
-    await expect.element(page.getByRole('heading', { name: /^#8 of 8 ·/ })).toBeVisible();
+    await expect.poll(building, GENERATION).toBe(false);
+    await open(8);
     await userEvent.click(page.getByRole('button', { name: 'Next maze, building 8 more' }));
 
     await expect
-      .element(page.getByRole('button', { name: 'Next maze' }))
-      .toHaveAttribute('aria-busy', 'true');
-    await expect
       .element(page.getByRole('heading', { name: /^#9 of 16 · seed 9/ }), GENERATION)
       .toBeVisible();
-    await userEvent.keyboard('{ArrowLeft}');
+    await userEvent.click(page.getByRole('button', { name: 'Previous maze' }));
     await expect.element(page.getByRole('heading', { name: /^#8 of 16 · seed 8/ })).toBeVisible();
     expect(await axeViolations()).toEqual([]);
   });
@@ -181,7 +190,7 @@ describe('The Generate dialog', () => {
   test('opens the settings as a view of their own and comes back to the mazes, focus following', async () => {
     await mount();
     await generate();
-    await expect.poll(progress, GENERATION).toBeNull();
+    await expect.poll(building, GENERATION).toBe(false);
 
     expect(document.querySelector('[data-settings]')).toBeNull();
     await userEvent.click(page.getByRole('button', { name: 'Settings' }));
@@ -195,7 +204,7 @@ describe('The Generate dialog', () => {
     await expect.element(page.getByRole('button', { name: 'Settings' })).toHaveFocus();
   });
 
-  test('docked beside the editor, previews the candidate picked, the last built while one is on its way, and nothing once closed', async () => {
+  test('docked beside the editor, previews the maze opened or hovered, without a board of its own, and nothing once closed', async () => {
     const previews: (GeneratorPreview | undefined)[] = [];
     const board = borderedMaze(16, 16);
     const props = {
@@ -207,15 +216,17 @@ describe('The Generate dialog', () => {
     };
     const screen = await render(<GenerateDialog {...props} open />);
     await generate();
-    await expect.element(page.getByRole('button', { name: /^#8,/ }), GENERATION).toBeVisible();
+    await expect.poll(building, GENERATION).toBe(false);
     await expect.poll(() => previews.at(-1)?.seed).toBe(1);
-    await userEvent.click(page.getByRole('button', { name: /^#2,/ }));
+    await userEvent.hover(page.getByRole('button', { name: /^#5,/ }));
+    await expect.poll(() => previews.at(-1)?.seed).toBe(5);
+    await userEvent.unhover(page.getByRole('button', { name: /^#5,/ }));
+    await expect.poll(() => previews.at(-1)?.seed).toBe(1);
+    await open(2);
     await expect.poll(() => previews.at(-1)?.seed).toBe(2);
 
     expect(document.querySelector('[data-slot="sheet-overlay"]')).toBeNull();
-    await userEvent.click(page.getByRole('radio', { name: 'One' }));
-    await expect.element(page.getByRole('heading', { name: /^#2 of 8 ·/ })).toBeVisible();
-    expect(document.querySelector('section[aria-label="One maze"] svg[data-board]')).toBeNull();
+    expect(document.querySelector('[data-detail] svg[data-board]')).toBeNull();
     await expect
       .element(page.getByRole('button', { name: 'Back to the board' }))
       .toBeInTheDocument();
@@ -225,38 +236,20 @@ describe('The Generate dialog', () => {
     await expect.poll(() => previews.at(-1)).toBeUndefined();
   });
 
-  test.each([
-    ['a phone', 390, 844],
-    ['a notebook', 1440, 900],
-  ])('keeps the gallery in place on %s as a run starts and ends', async (_, width, height) => {
-    await page.viewport(width, height);
+  test('appends 8 more from the gallery and moves to #9, unless another maze was opened meanwhile', async () => {
     await mount();
     await generate();
-    await expect.poll(progress, GENERATION).toBeNull();
-    const before = galleryTop();
-
-    await userEvent.click(page.getByRole('button', { name: '8 more' }));
-    await expect.poll(progress).not.toBeNull();
-    expect(galleryTop()).toBe(before);
-    await expect.poll(progress, GENERATION).toBeNull();
-    expect(galleryTop()).toBe(before);
-    await page.viewport(1440, 900);
-  });
-
-  test('appends 8 more from the gallery and moves to #9, unless another maze was picked meanwhile', async () => {
-    await mount();
-    await generate();
-    await expect.poll(progress, GENERATION).toBeNull();
+    await expect.poll(building, GENERATION).toBe(false);
     await userEvent.click(page.getByRole('button', { name: '8 more' }));
     await expect
-      .element(page.getByRole('heading', { name: /^#9 of 16 · seed 9/ }), GENERATION)
-      .toBeVisible();
-    await expect.poll(progress, GENERATION).toBeNull();
+      .element(page.getByRole('button', { name: /^#9,/ }), GENERATION)
+      .toHaveAttribute('aria-pressed', 'true');
+    await expect.poll(building, GENERATION).toBe(false);
     expect(document.querySelectorAll('ol[aria-label="Mazes generated"] > li')).toHaveLength(16);
 
     await userEvent.click(page.getByRole('button', { name: '8 more' }));
-    await userEvent.click(page.getByRole('button', { name: /^#3,/ }));
-    await expect.poll(progress, GENERATION).toBeNull();
+    await open(3);
+    await expect.poll(building, GENERATION).toBe(false);
     await expect.element(page.getByRole('heading', { name: /^#3 of 24 ·/ })).toBeVisible();
   });
 
@@ -268,14 +261,14 @@ describe('The Generate dialog', () => {
     await expect
       .element(page.getByRole('list', { name: 'Mazes generated' }))
       .not.toBeInTheDocument();
-    expect(progress()).toBeNull();
+    expect(building()).toBe(false);
   });
 
   test('rebuilds a recipe, warns when it rebuilds other walls, and refuses what is not one', async () => {
     await mount();
     await generate();
     await expect.element(page.getByRole('button', { name: /^#1,/ }), GENERATION).toBeVisible();
-
+    await open(1);
     const text = await navigatorRecipe();
     await userEvent.click(page.getByRole('button', { name: 'Settings' }));
     await userEvent.click(page.getByText('Rebuild from a recipe'));
@@ -291,6 +284,8 @@ describe('The Generate dialog', () => {
       JSON.stringify({ ...recipe, hash: '00000000' })
     );
     await userEvent.click(page.getByRole('button', { name: 'Rebuild' }));
+    await expect.poll(building, GENERATION).toBe(false);
+    await userEvent.click(page.getByRole('button', { name: /rebuilt other walls/ }));
 
     await expect
       .element(
@@ -321,6 +316,7 @@ describe('The Generate dialog', () => {
     await expect
       .element(page.getByRole('button', { name: /^#8,/ }), { timeout: 120_000 })
       .toBeVisible();
+    await open(1);
     await expect
       .element(page.getByText('Replaces the maze on the board. Undo brings it back.'))
       .toBeVisible();
@@ -360,9 +356,14 @@ function galleryTop(): number | undefined {
     : gallery.getBoundingClientRect().top - body.getBoundingClientRect().top + body.scrollTop;
 }
 
-/** The progress bar of the run on its way, if any. */
-function progress(): HTMLProgressElement | null {
-  return document.querySelector('progress[aria-label="Generating"]');
+/** Whether a run is on its way, as the status row says. */
+function building(): boolean {
+  return (document.querySelector('[data-status-row] p')?.textContent ?? '').startsWith('Building');
+}
+
+/** The height of the status row above the gallery. */
+function statusHeight(): number | undefined {
+  return document.querySelector('[data-status-row]')?.getBoundingClientRect().height;
 }
 
 /** The recipe Copy recipe puts on the clipboard. */

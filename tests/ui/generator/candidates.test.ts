@@ -9,6 +9,7 @@ import {
   pickHint,
   replacesBoard,
   stepTo,
+  swipeStep,
   unsupportedBoard,
   type ReadyItem,
 } from '@/ui/generator/candidates';
@@ -84,5 +85,13 @@ describe('Generate from the editor', () => {
     expect(stepTo(items, 1, 1, false)).toBe(2);
     expect(stepTo(items, 2, 1, false)).toBeUndefined();
     expect(stepTo(items, 2, -1, true)).toBe(1);
+  });
+
+  test('reads a mostly sideways swipe of 48 px or more as a step, left for the next maze', () => {
+    expect(swipeStep(-60, 10)).toBe(1);
+    expect(swipeStep(60, -10)).toBe(-1);
+    expect(swipeStep(-40, 0)).toBe(0);
+    expect(swipeStep(-60, 40)).toBe(0);
+    expect(swipeStep(0, 0)).toBe(0);
   });
 });

@@ -52,6 +52,7 @@ async function generateAndPick(page: Page, card: number, hint?: string): Promise
   await dialog.getByRole('button', { name: 'Generate', exact: true }).click();
   await dialog.getByRole('button', { name: /^#8,/ }).waitFor(GENERATION);
   await dialog.getByRole('button', { name: new RegExp(`^#${card},`) }).click();
+  await dialog.getByRole('heading', { name: new RegExp(`^#${card} of`) }).waitFor();
 
   if (hint !== undefined) {
     await dialog.getByText(hint).waitFor();
@@ -205,5 +206,32 @@ describe('Generate in the editor (beta)', () => {
     const undone = await expectSaved(page, sameMaze(original));
     expect(undone.recipe).toBeUndefined();
     expect(await page.getByRole('button', { name: 'Undo' }).isDisabled()).toBe(true);
+  });
+
+  test('opens a maze from the gallery, steps on, comes back where it was, and keeps the one used', async () => {
+    const page = await openPage(browser, contexts, app, `#/repo/${CLASSIC}`);
+    await waitForMode(page, 'editor');
+    await openGenerate(page, 'More actions');
+    const dialog = page.getByRole('dialog', { name: 'Generate' });
+    await dialog.getByRole('spinbutton', { name: 'First seed' }).fill('1');
+    await dialog.getByRole('button', { name: 'Generate', exact: true }).click();
+    await dialog.getByRole('button', { name: /^#8,/ }).waitFor(GENERATION);
+    const gallery = dialog.locator('.overflow-y-auto');
+    await gallery.evaluate((element) => element.scrollTo({ top: 150 }));
+    const scrolled = await gallery.evaluate((element) => element.scrollTop);
+
+    await dialog.getByRole('button', { name: /^#3,/ }).click();
+    await dialog.getByRole('heading', { name: /^#3 of 8 · seed 3/ }).waitFor();
+    await dialog.getByRole('button', { name: 'Next maze' }).click();
+    await dialog.getByRole('heading', { name: /^#4 of 8 · seed 4/ }).waitFor();
+    await expect.poll(() => page.locator('h1 ~ p').first().textContent()).toBe('Preview · seed 4');
+    await dialog.getByRole('button', { name: 'Back to the mazes' }).click();
+    await dialog.getByRole('list', { name: 'Mazes generated' }).waitFor();
+    expect(await gallery.evaluate((element) => element.scrollTop)).toBe(scrolled);
+
+    await dialog.getByRole('button', { name: /^#4,/ }).click();
+    await dialog.getByRole('button', { name: 'Use this' }).click();
+    const replaced = await expectSaved(page, (content) => content.maze.width === 16);
+    expect(replaced.recipe).toMatchObject({ seed: 4 });
   });
 });

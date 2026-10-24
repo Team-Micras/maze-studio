@@ -265,21 +265,19 @@ reached, and the measurements of the day, are in the git history of this file.
   new maze, with its name and recipe, and closing leaves the blank maze unsaved, as any new maze. The panel takes
   the focus, Esc closes it, and "Back to the board" focuses the board. A phone keeps the sheet over the library or
   the editor.
-- **The panel's layout** (owner, 25/10): on a phone it takes the whole screen, inside the safe areas. The settings
-  are a view of their own, behind a gear in the header next to the close button, with a Back button; the header
-  keeps no summary line, which the empty panel shows above its Generate button instead. The status, Gallery or One
-  and Cancel share one row; the details take fewer lines. The footer holds ‹ Use this ›, so stepping never needs
-  scrolling, with the arrow keys too: › past the last maze builds 8 more and appends them (#9 of 16), a spinner on
-  › while they build, the selection moving to the first of them once it is built; Cancel keeps those built. A batch
-  stops at 64 mazes, where the footer says so in its line, not in a tooltip a phone cannot show. The status
-  names the seeds while they are one run of them, else counts the mazes. The progress is the 2 px line under that
-  row, always there: it fills while mazes build and goes back to a plain line, and Cancel keeps its place hidden,
-  so nothing moves when a run starts or ends.
-- **Gallery or One** (owner, 24/10), as the mockup's panel: the batch shows as cards, or one maze at a time drawn
-  large by the editor's own `Board` (an SVG, crisp at any size), with ‹ › and the arrow keys, its title, seed, style,
-  tags and sentences, the Off target line first. Stepping moves the maze Use this takes; while a run goes on, › stops
-  at the last maze built. The choice is kept with the generator's settings. Routes are not drawn on it yet. Beside
-  the editor on a notebook, One leaves its board out (owner, 24/10): the editor's board shows the maze already.
+- **A gallery, and a maze opened over it** (owner, 25/10). The gallery is the panel's home: a status row of fixed
+  height ("Seeds 1–8", or "Building 3 of 8…" with Cancel, which keeps its place hidden) above the cards, which pulse
+  until their maze is built and fill in as each one is, so nothing moves while a run goes on; "8 more" ends the
+  grid and appends. A card opens its maze in a view pushed over the gallery, a region named by its heading, which
+  takes the focus: on a phone the maze drawn large and, under it, its title line with Copy recipe, its tags and its
+  sentences, compact enough to fit above the footer; beside the editor on a notebook only the information, as the
+  editor's board previews it, a card under the pointer previewing too. Only this view has the footer, ‹ Use this ›,
+  and steps with a swipe or the arrow keys: › past the last maze builds 8 more and appends them (#9 of 16), a
+  spinner on › while they build, and moves to the first once built unless another maze was opened meanwhile. Back
+  and Esc go back to the gallery where it was, focusing the card; Esc in the gallery closes the panel. On a phone
+  the panel takes the whole screen. The settings are a view of their own behind a gear in the header. A batch
+  stops at 64 mazes, which the footer's line says. A first design with a Gallery or One switch and a progress bar
+  (24/10) made you scroll between a card and its details, and shifted the layout as runs started and ended.
 - **Seeds over the whole 32-bit range** (owner, 24/10). The first seed and the dice draw from 0 to the largest first
   seed with `crypto.getRandomValues`: with a known preset, a range of 100,000 seeds could be built ahead of a
   contest in hours.

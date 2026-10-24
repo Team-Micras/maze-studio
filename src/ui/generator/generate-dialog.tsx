@@ -7,6 +7,7 @@ import {
   useSyncExternalStore,
   type FormEvent,
   type KeyboardEvent,
+  type Ref,
 } from 'react';
 
 import { BATCH, readRecipe, resize } from '@/generator';
@@ -56,11 +57,12 @@ import {
   statusLine,
   stepTo,
   STOPPED,
+  swipeStep,
   unsupportedBoard,
   pickHint,
   type ReadyItem,
 } from './candidates';
-import { Segmented, SettingsForm, type GeneratorChoice } from './settings-form';
+import { SettingsForm, type GeneratorChoice } from './settings-form';
 import { startingSettings, summary } from './settings-model';
 
 /**
@@ -77,9 +79,6 @@ function previewOf(
     isReady(item) && (fresh || replacesBoard(item, board));
   return items.slice(0, index + 1).findLast(fits) ?? items.find(fits);
 }
-
-/** How the batch is shown: a gallery of cards, or one maze at a time. */
-type View = 'gallery' | 'one';
 
 /** The settings sized for the board open in the editor, when the generator makes its size. */
 function fitted(choice: GeneratorChoice, board: Maze | undefined): GeneratorChoice {
@@ -134,11 +133,14 @@ function Card({
   place,
   current,
   onPick,
+  onHover,
 }: {
   item: Item;
   place: number;
   current: boolean;
   onPick: () => void;
+  /** Called with `true` as the pointer comes over the card, and `false` as it leaves. */
+  onHover: (over: boolean) => void;
 }) {
   if (!isReady(item)) {
     return (
@@ -169,6 +171,9 @@ function Card({
     <li>
       <button
         aria-label={cardLabel(item, place)}
+        data-card={item.n}
+        onMouseEnter={() => onHover(true)}
+        onMouseLeave={() => onHover(false)}
         aria-pressed={current}
         className={cn(
           'flex w-full flex-col items-start gap-1.5 rounded-[12px] p-1.5 text-left text-xs ring-offset-background outline-none hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring',
@@ -229,11 +234,23 @@ function CopyRecipe({ item }: { item: ReadyItem }) {
 }
 
 /** The line that names a maze: "#4 of 8 · seed 4004890115 · Diagonal staircases". */
-function MazeTitle({ item, place, total }: { item: Item; place: number; total: number }) {
+function MazeTitle({
+  item,
+  place,
+  total,
+  headingRef,
+}: {
+  item: Item;
+  place: number;
+  total: number;
+  headingRef?: Ref<HTMLHeadingElement>;
+}) {
   return (
     <h3
-      className="min-w-0 flex-1 truncate text-[13px] leading-5 font-semibold"
+      className="min-w-0 flex-1 truncate text-[13px] leading-5 font-semibold outline-none"
       id={`maze-${item.n}`}
+      ref={headingRef}
+      tabIndex={-1}
     >
       {itemTitle(place, total)}
       <span className="font-normal text-muted-foreground">
@@ -249,14 +266,24 @@ function MazeTitle({ item, place, total }: { item: Item; place: number; total: n
 }
 
 /** A ready maze's title line with Copy recipe, its tags and its sentences, the Off target one first. */
-function Details({ item, place, total }: { item: ReadyItem; place: number; total: number }) {
+function Details({
+  item,
+  place,
+  total,
+  headingRef,
+}: {
+  item: ReadyItem;
+  place: number;
+  total: number;
+  headingRef?: Ref<HTMLHeadingElement>;
+}) {
   const warning = itemWarning(item);
   const tags = itemTags(item);
 
   return (
     <section aria-labelledby={`maze-${item.n}`} className="flex flex-col gap-1.5">
       <div className="flex items-center gap-2">
-        <MazeTitle item={item} place={place} total={total} />
+        <MazeTitle headingRef={headingRef} item={item} place={place} total={total} />
         <CopyRecipe item={item} />
       </div>
       {tags.length === 0 ? null : (
@@ -283,18 +310,22 @@ function Details({ item, place, total }: { item: ReadyItem; place: number; total
   );
 }
 
-interface OneViewProps {
+interface DetailViewProps {
   readonly items: readonly Item[];
   readonly index: number;
-  /** Leaves the board out, as beside the editor, whose own board shows the maze. */
-  readonly boardless: boolean;
+  /** Draws the maze large; not beside the editor, whose own board shows it. */
+  readonly withBoard: boolean;
+  readonly headingRef: Ref<HTMLHeadingElement>;
+  /** Steps to the maze before (-1) or after (1), as a swipe asks. */
+  readonly onSwipe: (delta: -1 | 1) => void;
 }
 
 /**
- * One maze of the batch at a time, drawn large as the editor draws it unless the editor's own board
- * shows it, then its title line, tags and sentences; ‹ and › step in the footer.
+ * The maze opened from the gallery, a view pushed over it: drawn large unless the editor's board
+ * shows it, then its title line with Copy recipe, its tags and its sentences. A swipe steps.
  */
-function OneView({ items, index, boardless }: OneViewProps) {
+function DetailView({ items, index, withBoard, headingRef, onSwipe }: DetailViewProps) {
+  const start = useRef<{ x: number; y: number } | undefined>(undefined);
   const item = items[index];
 
   if (item === undefined) {
@@ -302,8 +333,24 @@ function OneView({ items, index, boardless }: OneViewProps) {
   }
 
   return (
-    <section aria-label="One maze" className="flex flex-col gap-2">
-      {boardless ? null : isReady(item) ? (
+    <div
+      className="flex touch-pan-y flex-col gap-2"
+      data-detail
+      onPointerDown={(event) => {
+        start.current = { x: event.clientX, y: event.clientY };
+      }}
+      onPointerUp={(event) => {
+        const from = start.current;
+        start.current = undefined;
+        const delta =
+          from === undefined ? 0 : swipeStep(event.clientX - from.x, event.clientY - from.y);
+
+        if (delta !== 0) {
+          onSwipe(delta);
+        }
+      }}
+    >
+      {!withBoard ? null : isReady(item) ? (
         <Board
           className="h-auto w-full rounded-[6px]"
           label={`Maze #${index + 1}, seed ${item.seed}`}
@@ -319,11 +366,13 @@ function OneView({ items, index, boardless }: OneViewProps) {
         />
       )}
       {isReady(item) ? (
-        <Details item={item} place={index + 1} total={items.length} />
+        <Details headingRef={headingRef} item={item} place={index + 1} total={items.length} />
       ) : (
-        <MazeTitle item={item} place={index + 1} total={items.length} />
+        <section aria-labelledby={`maze-${item.n}`}>
+          <MazeTitle headingRef={headingRef} item={item} place={index + 1} total={items.length} />
+        </section>
       )}
-    </section>
+    </div>
   );
 }
 
@@ -367,7 +416,10 @@ export default function GenerateDialog({
   const gear = useRef<HTMLButtonElement>(null);
   const back = useRef<HTMLButtonElement>(null);
   const [selected, setSelected] = useState<number | undefined>(undefined);
-  const [view, setView] = useState<View>('gallery');
+  const [detail, setDetail] = useState(false);
+  const [hovered, setHovered] = useState<number | undefined>(undefined);
+  const heading = useRef<HTMLHeadingElement>(null);
+  const galleryScroll = useRef(0);
   const [seedText, setSeedText] = useState<string | undefined>(undefined);
   const [recipeText, setRecipeText] = useState('');
   const [recipeError, setRecipeError] = useState<string | undefined>(undefined);
@@ -378,7 +430,11 @@ export default function GenerateDialog({
   const hint = pickHint(current, freshMaze ? undefined : board);
 
   const docked = onPreview !== undefined && board !== undefined;
-  const previewed = previewOf(items, index, board, freshMaze);
+  const hoveredItem = detail ? undefined : items.find((item) => item.n === hovered);
+  const previewed =
+    isReady(hoveredItem) && (freshMaze || replacesBoard(hoveredItem, board))
+      ? hoveredItem
+      : previewOf(items, index, board, freshMaze);
 
   useEffect(() => {
     onPreview?.(
@@ -396,7 +452,6 @@ export default function GenerateDialog({
         (saved) => {
           if (live && !touched && saved !== undefined) {
             setChoice(fitted(startingSettings(saved), boardNow.current));
-            setView(saved.view === 'one' ? 'one' : 'gallery');
           }
         },
         () => undefined
@@ -420,27 +475,14 @@ export default function GenerateDialog({
     }
   }, [open, batch]);
 
-  const save = (next: GeneratorChoice, shown: View): void => {
+  const changeSettings = (next: GeneratorChoice): void => {
     setTouched(true);
+    setChoice(next);
     void appStorage()
       .then((storage) =>
-        storage?.settings.saveGenerator({
-          preset: next.preset.id,
-          settings: next.settings,
-          view: shown,
-        })
+        storage?.settings.saveGenerator({ preset: next.preset.id, settings: next.settings })
       )
       .catch(() => undefined);
-  };
-
-  const changeSettings = (next: GeneratorChoice): void => {
-    setChoice(next);
-    save(next, view);
-  };
-
-  const changeView = (next: View): void => {
-    setView(next);
-    save(choice, next);
   };
 
   const forward = stepTo(items, index, 1, running);
@@ -493,8 +535,8 @@ export default function GenerateDialog({
     const { target } = event;
 
     if (
+      !detail ||
       settingsOpen ||
-      items.length === 0 ||
       delta === 0 ||
       (target instanceof HTMLElement &&
         target.closest('input, textarea, select, [role="radiogroup"]') !== null)
@@ -518,9 +560,33 @@ export default function GenerateDialog({
     }
   };
 
+  const openDetail = (n: number): void => {
+    galleryScroll.current = body.current?.scrollTop ?? 0;
+    pick(n);
+    setHovered(undefined);
+    setDetail(true);
+    requestAnimationFrame(() => {
+      body.current?.scrollTo({ top: 0 });
+      heading.current?.focus({ preventScroll: true });
+    });
+  };
+
+  const closeDetail = (): void => {
+    const opened = current?.n;
+    setHovered(undefined);
+    setDetail(false);
+    requestAnimationFrame(() => {
+      body.current?.scrollTo({ top: galleryScroll.current });
+      content.current
+        ?.querySelector<HTMLElement>(`[data-card="${opened ?? ''}"]`)
+        ?.focus({ preventScroll: true });
+    });
+  };
+
   const showResults = (n: number | undefined): void => {
     setSelected(n);
     setAwaiting(undefined);
+    setDetail(false);
     setSettingsOpen(false);
     setInvalid(false);
     requestAnimationFrame(() => {
@@ -652,7 +718,7 @@ export default function GenerateDialog({
     </form>
   );
 
-  const resultsView = (
+  const galleryView = (
     <>
       {items.length === 0 ? (
         <div className="flex flex-col items-start gap-3 py-2">
@@ -665,7 +731,7 @@ export default function GenerateDialog({
           </Button>
         </div>
       ) : null}
-      <div className="flex min-h-9 items-center gap-2">
+      <div className="flex h-9 shrink-0 items-center gap-2" data-status-row>
         <p
           className="min-w-0 flex-1 truncate font-mono text-xs text-muted-foreground outline-none"
           ref={status}
@@ -680,19 +746,6 @@ export default function GenerateDialog({
             ? 'Building mazes…'
             : `${statusLine(state)}${state.stopped ? `. ${STOPPED}` : ''}`}
         </p>
-        {items.length === 0 ? null : (
-          <div className="w-32 shrink-0">
-            <Segmented
-              label="Show"
-              onChange={changeView}
-              options={[
-                ['gallery', 'Gallery'],
-                ['one', 'One'],
-              ]}
-              value={view}
-            />
-          </div>
-        )}
         <Button
           className={cn('h-7 rounded-[8px] text-xs', !running && 'invisible')}
           onClick={() => batch.cancel()}
@@ -703,37 +756,24 @@ export default function GenerateDialog({
           Cancel
         </Button>
       </div>
-      <div className="relative h-0.5 w-full shrink-0 overflow-hidden rounded-full bg-border">
-        {state.progress === null ? null : (
-          <progress
-            aria-label="Generating"
-            className="absolute inset-0 size-full appearance-none bg-transparent animate-in fade-in-0 [&::-moz-progress-bar]:bg-primary [&::-webkit-progress-bar]:bg-transparent [&::-webkit-progress-value]:bg-primary [&::-webkit-progress-value]:transition-[width] [&::-webkit-progress-value]:duration-200"
-            max={state.progress.total}
-            value={state.progress.done}
-          />
-        )}
-      </div>
-      {view === 'one' ? <OneView boardless={docked} index={index} items={items} /> : null}
-      {items.length === 0 || view === 'one' ? null : (
+      {items.length === 0 ? null : (
         <ol aria-label="Mazes generated" className="grid grid-cols-2 gap-2">
           {items.map((item, k) => (
             <Card
               current={item === current}
               item={item}
               key={item.n}
-              onPick={() => pick(item.n)}
+              onHover={(over) => setHovered(over ? item.n : undefined)}
+              onPick={() => openDetail(item.n)}
               place={k + 1}
             />
           ))}
         </ol>
       )}
-      {view === 'gallery' && isReady(current) ? (
-        <Details item={current} place={index + 1} total={items.length} />
-      ) : null}
-      {items.length === 0 || running || view === 'one' || !batch.roomForMore ? null : (
+      {items.length === 0 || !batch.roomForMore ? null : (
         <Button
           className="self-start rounded-[10px]"
-          disabled={invalid}
+          disabled={invalid || running}
           onClick={more}
           type="button"
           variant="outline"
@@ -745,6 +785,16 @@ export default function GenerateDialog({
     </>
   );
 
+  const detailView = (
+    <DetailView
+      headingRef={heading}
+      index={index}
+      items={items}
+      onSwipe={step}
+      withBoard={!docked}
+    />
+  );
+
   return (
     <Sheet modal={!docked} onOpenChange={onOpenChange} open={open}>
       <SheetContent
@@ -752,6 +802,15 @@ export default function GenerateDialog({
         className={cn('gap-0', phone && 'top-0 h-dvh rounded-none pt-[env(safe-area-inset-top)]')}
         data-generate
         onKeyDown={stepKey}
+        onEscapeKeyDown={(event) => {
+          if (settingsOpen && items.length > 0) {
+            event.preventDefault();
+            openSettings(false);
+          } else if (detail && !settingsOpen) {
+            event.preventDefault();
+            closeDetail();
+          }
+        }}
         onInteractOutside={(event) => {
           if (docked) {
             event.preventDefault();
@@ -768,10 +827,10 @@ export default function GenerateDialog({
         tabIndex={-1}
       >
         <div className="flex items-center gap-2 px-4 pt-3 pb-2">
-          {settingsOpen ? (
+          {settingsOpen || detail ? (
             <IslandButton
               aria-label="Back to the mazes"
-              onClick={() => openSettings(false)}
+              onClick={() => (settingsOpen ? openSettings(false) : closeDetail())}
               ref={back}
             >
               <CaretLeft aria-hidden size={16} />
@@ -814,9 +873,9 @@ export default function GenerateDialog({
           {board === undefined || generatesFor(board) ? null : (
             <p className="text-xs text-amber-700 dark:text-amber-400">{unsupportedBoard(board)}</p>
           )}
-          {settingsOpen ? settingsView : resultsView}
+          {settingsOpen ? settingsView : detail ? detailView : galleryView}
         </div>
-        {settingsOpen || items.length === 0 ? null : (
+        {settingsOpen || !detail || items.length === 0 ? null : (
           <div className="relative z-10 flex flex-col gap-1 border-t bg-card px-4 pt-2 pb-3">
             {full && index === items.length - 1 ? (
               <p className="text-xs text-muted-foreground">{FULL}</p>

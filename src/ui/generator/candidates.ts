@@ -208,3 +208,18 @@ export function stepTo(
 
   return delta < 0 || !running || items.slice(next).some(isReady) ? next : undefined;
 }
+
+/** The least sideways travel, in CSS pixels, that counts as a swipe. */
+export const SWIPE = 48;
+
+/**
+ * What a swipe of `dx` across and `dy` down asks: the next maze (-1 is the one before) for a mostly
+ * sideways move of at least {@link SWIPE}, a swipe left showing the next; 0 for anything else.
+ */
+export function swipeStep(dx: number, dy: number): -1 | 0 | 1 {
+  if (Math.abs(dx) < SWIPE || Math.abs(dx) < 2 * Math.abs(dy)) {
+    return 0;
+  }
+
+  return dx < 0 ? 1 : -1;
+}
