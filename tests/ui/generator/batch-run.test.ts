@@ -59,11 +59,19 @@ function settled(batch: Batch): Promise<void> {
 }
 
 describe('a batch of generated mazes', () => {
-  test('builds three seeds per maze shown, reports progress, keeps the most varied and stops its workers', async () => {
+  test('builds three seeds per maze shown, shows the first as they arrive, keeps the most varied and stops its workers', async () => {
     const { spawn, live } = workers();
     const batch = new Batch({ spawn, workers: 2, size: 2, firstSeed: 1 });
     const done: number[] = [];
-    batch.subscribe(() => done.push(batch.getState().progress?.done ?? -1));
+    const shownEarly: number[] = [];
+    batch.subscribe(() => {
+      const { progress, items } = batch.getState();
+      done.push(progress?.done ?? -1);
+
+      if (progress !== null) {
+        shownEarly.push(items.filter((item) => item.status === 'ready').length);
+      }
+    });
     const items = batch.generate(SETTINGS, true);
 
     expect(items.map((item) => item.status)).toEqual(['pending', 'pending']);
@@ -72,6 +80,7 @@ describe('a batch of generated mazes', () => {
 
     const state = batch.getState();
     expect(done.filter((n) => n > 0)).toEqual([1, 2, 3, 4, 5, 6]);
+    expect(shownEarly.slice(1, 4)).toEqual([1, 2, 2]);
     expect(live.size).toBe(0);
     expect(state.items.every(isReady)).toBe(true);
     expect(state.items.map((item) => item.n)).toEqual([1, 2]);

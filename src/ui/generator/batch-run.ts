@@ -1,7 +1,8 @@
 /**
  * Batches of generated mazes for the Generate dialog (the mockup's `batch.js`): each batch builds
- * {@link POOL_FACTOR} times as many seeds as it shows, in up to four workers sharing a queue, and
- * keeps the most varied ({@link pickBatch}); a pasted recipe rebuilds its maze. One run at a time:
+ * {@link POOL_FACTOR} times as many seeds as it shows, in up to four workers sharing a queue,
+ * shows the first ones in the order they arrive, and once every seed is built keeps the most
+ * varied ({@link pickBatch}) in their place; a pasted recipe rebuilds its maze. One run at a time:
  * starting another, or cancelling, terminates the workers and drops the mazes still pending.
  *
  * @module
@@ -148,7 +149,7 @@ export class Batch {
     this.#set({ nextSeed: Math.min(this.maxSeed, Math.max(0, Math.round(seed) || 0)) });
   }
 
-  /** Stops the run on its way, if any, and drops the mazes it had not built. */
+  /** Stops the run on its way, if any, and drops the mazes it had not built yet. */
   cancel(): void {
     const run = this.#run;
 
@@ -162,7 +163,9 @@ export class Batch {
 
     this.#run = undefined;
     this.#set({
-      items: this.#state.items.filter((item) => !run.items.includes(item)),
+      items: this.#state.items.filter(
+        (item) => item.status !== 'pending' || !run.items.some(({ n }) => n === item.n)
+      ),
       progress: null,
     });
   }
@@ -261,7 +264,7 @@ export class Batch {
       }
 
       const picked = pickBatch(results, items.length);
-      const filled = new Map(items.map((item, k) => [item, filledItem(item, picked[k])]));
+      const filled = new Map(items.map((item, k) => [item.n, filledItem(item, picked[k])]));
 
       for (const runner of runners) {
         runner.terminate();
@@ -269,7 +272,7 @@ export class Batch {
 
       this.#run = undefined;
       this.#set({
-        items: this.#state.items.map((item) => filled.get(item) ?? item),
+        items: this.#state.items.map((item) => filled.get(item.n) ?? item),
         progress: null,
       });
     };
@@ -291,8 +294,17 @@ export class Batch {
 
           results.push(result);
           const progress = this.#state.progress;
+          const slot = items.find(({ n }) =>
+            this.#state.items.some((item) => item.n === n && item.status === 'pending')
+          );
           this.#set({
             progress: progress === null ? null : { ...progress, done: progress.done + 1 },
+            items:
+              slot === undefined
+                ? this.#state.items
+                : this.#state.items.map((item) =>
+                    item.n === slot.n ? filledItem(slot, result) : item
+                  ),
           });
           post(runner);
           finish();
