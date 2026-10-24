@@ -60,8 +60,11 @@ export interface BatchState {
   readonly items: readonly Item[];
   /** Mazes built of the run on its way, if one is. */
   readonly progress: { readonly done: number; readonly total: number } | null;
-  /** The first and last seeds of the batch, More after More, once one ran. */
-  readonly seeds: { readonly first: number; readonly last: number } | null;
+  /**
+   * The first and last seeds of the batch, More after More, once one ran: `undefined` once its
+   * seeds are no longer one run, as after a new first seed or the wrap at the top of the range.
+   */
+  readonly seeds: { readonly first: number; readonly last: number } | null | undefined;
   /** The seed the next batch starts from. */
   readonly nextSeed: number;
   /** Whether a worker failed in the last run, leaving some mazes out. */
@@ -216,12 +219,17 @@ export class Batch {
 
     const first = this.#state.nextSeed;
     const kept = fresh ? [] : this.#state.items;
-    const shown = fresh ? null : this.#state.seeds;
+    const shown = fresh ? null : (this.#state.seeds ?? undefined);
     const items = Array.from({ length: this.#size }, () => pending(this.#number(), 'seed'));
     this.#set({
       items: [...kept, ...items],
       nextSeed: first + this.#size > this.maxSeed ? 0 : first + this.#size,
-      seeds: { first: shown?.first ?? first, last: first + this.#size - 1 },
+      seeds:
+        shown === null
+          ? { first, last: first + this.#size - 1 }
+          : shown !== undefined && shown.last + 1 === first
+            ? { first: shown.first, last: first + this.#size - 1 }
+            : undefined,
     });
     this.#start(
       items.map((_, k) => ({ settings, seed: first + k })),

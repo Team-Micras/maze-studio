@@ -84,9 +84,15 @@ export function statusLine(state: BatchState): string {
     return `Building ${progress.done} of ${progress.total}…`;
   }
 
-  return seeds !== null && state.items.some((item) => item.origin === 'seed')
-    ? `Seeds ${seeds.first}–${seeds.last}`
-    : '';
+  const count = state.items.filter((item) => item.origin === 'seed').length;
+
+  if (count === 0) {
+    return '';
+  }
+
+  return seeds === null || seeds === undefined
+    ? `${count} mazes`
+    : `Seeds ${seeds.first}–${seeds.last}`;
 }
 
 /** What the dialog says when a worker failed. */

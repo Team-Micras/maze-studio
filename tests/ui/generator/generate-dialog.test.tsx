@@ -225,6 +225,41 @@ describe('The Generate dialog', () => {
     await expect.poll(() => previews.at(-1)).toBeUndefined();
   });
 
+  test.each([
+    ['a phone', 390, 844],
+    ['a notebook', 1440, 900],
+  ])('keeps the gallery in place on %s as a run starts and ends', async (_, width, height) => {
+    await page.viewport(width, height);
+    await mount();
+    await generate();
+    await expect.poll(progress, GENERATION).toBeNull();
+    const before = galleryTop();
+
+    await userEvent.click(page.getByRole('button', { name: '8 more' }));
+    await expect.poll(progress).not.toBeNull();
+    expect(galleryTop()).toBe(before);
+    await expect.poll(progress, GENERATION).toBeNull();
+    expect(galleryTop()).toBe(before);
+    await page.viewport(1440, 900);
+  });
+
+  test('appends 8 more from the gallery and moves to #9, unless another maze was picked meanwhile', async () => {
+    await mount();
+    await generate();
+    await expect.poll(progress, GENERATION).toBeNull();
+    await userEvent.click(page.getByRole('button', { name: '8 more' }));
+    await expect
+      .element(page.getByRole('heading', { name: /^#9 of 16 · seed 9/ }), GENERATION)
+      .toBeVisible();
+    await expect.poll(progress, GENERATION).toBeNull();
+    expect(document.querySelectorAll('ol[aria-label="Mazes generated"] > li')).toHaveLength(16);
+
+    await userEvent.click(page.getByRole('button', { name: '8 more' }));
+    await userEvent.click(page.getByRole('button', { name: /^#3,/ }));
+    await expect.poll(progress, GENERATION).toBeNull();
+    await expect.element(page.getByRole('heading', { name: /^#3 of 24 ·/ })).toBeVisible();
+  });
+
   test('cancels a run, leaving no card behind', async () => {
     await mount();
     await generate();
@@ -315,6 +350,15 @@ describe('The Generate dialog', () => {
     expect(await axeViolations()).toEqual([]);
   });
 });
+
+/** Where the gallery starts in the panel's scrolling body, which no run may move. */
+function galleryTop(): number | undefined {
+  const gallery = document.querySelector('ol[aria-label="Mazes generated"]');
+  const body = gallery?.closest('.overflow-y-auto');
+  return gallery === null || gallery === undefined || body === null || body === undefined
+    ? undefined
+    : gallery.getBoundingClientRect().top - body.getBoundingClientRect().top + body.scrollTop;
+}
 
 /** The progress bar of the run on its way, if any. */
 function progress(): HTMLProgressElement | null {

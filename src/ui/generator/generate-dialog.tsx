@@ -40,7 +40,7 @@ import { cn } from '@/ui/primitives/utils';
 import { appStorage } from '@/ui/storage';
 import { showToast } from '@/ui/toasts';
 
-import { Batch, randomSeed, type Item } from './batch-run';
+import { Batch, MAX_ITEMS, randomSeed, type Item } from './batch-run';
 import {
   cardLabel,
   generatesFor,
@@ -123,6 +123,9 @@ export interface GeneratorPreview {
 }
 
 const CARD_SIDE = 156;
+
+/** What the footer says on the last maze of a full batch. */
+const FULL = `A batch holds ${MAX_ITEMS} mazes: start a new batch from the settings`;
 
 const NOT_A_RECIPE = 'This is not a recipe: copy it again with “Copy recipe”';
 
@@ -373,6 +376,7 @@ export default function GenerateDialog({
   const index = current === undefined ? 0 : items.indexOf(current);
   const running = state.progress !== null;
   const hint = pickHint(current, freshMaze ? undefined : board);
+
   const docked = onPreview !== undefined && board !== undefined;
   const previewed = previewOf(items, index, board, freshMaze);
 
@@ -443,7 +447,13 @@ export default function GenerateDialog({
   const backward = stepTo(items, index, -1, running);
   const canMore =
     !running && !invalid && items.length > 0 && index === items.length - 1 && batch.roomForMore;
-  const building = running && awaiting !== undefined;
+  const [appending, setAppending] = useState(false);
+  const building = running && appending;
+  const full = !running && items.length > 0 && !batch.roomForMore;
+
+  if (appending && !running) {
+    setAppending(false);
+  }
 
   if (awaiting !== undefined) {
     const arrived = items.find((item) => item.n === awaiting);
@@ -460,13 +470,19 @@ export default function GenerateDialog({
   const more = (): void => {
     const [first] = batch.generate(structuredClone(choice.settings), false);
     setAwaiting(first?.n);
+    setAppending(first !== undefined);
+  };
+
+  const pick = (n: number | undefined): void => {
+    setAwaiting(undefined);
+    setSelected(n);
   };
 
   const step = (delta: -1 | 1): void => {
     const next = delta < 0 ? backward : forward;
 
     if (next !== undefined) {
-      setSelected(items[next]?.n);
+      pick(items[next]?.n);
     } else if (delta > 0 && canMore) {
       more();
     }
@@ -649,16 +665,20 @@ export default function GenerateDialog({
           </Button>
         </div>
       ) : null}
-      <div className="flex items-center gap-2">
+      <div className="flex min-h-9 items-center gap-2">
         <p
           className="min-w-0 flex-1 truncate font-mono text-xs text-muted-foreground outline-none"
           ref={status}
           tabIndex={-1}
+          title={state.stopped ? STOPPED : undefined}
         >
           {statusLine(state)}
+          {state.stopped && !running ? ' · some not made' : ''}
         </p>
         <p aria-live="polite" className="sr-only">
-          {running ? 'Building mazes…' : statusLine(state)}
+          {running
+            ? 'Building mazes…'
+            : `${statusLine(state)}${state.stopped ? `. ${STOPPED}` : ''}`}
         </p>
         {items.length === 0 ? null : (
           <div className="w-32 shrink-0">
@@ -673,31 +693,26 @@ export default function GenerateDialog({
             />
           </div>
         )}
-        {running ? (
-          <Button
-            className="h-7 rounded-[8px] text-xs"
-            onClick={() => batch.cancel()}
-            size="sm"
-            type="button"
-            variant="outline"
-          >
-            Cancel
-          </Button>
-        ) : null}
+        <Button
+          className={cn('h-7 rounded-[8px] text-xs', !running && 'invisible')}
+          onClick={() => batch.cancel()}
+          size="sm"
+          type="button"
+          variant="outline"
+        >
+          Cancel
+        </Button>
       </div>
-      {state.progress === null ? null : (
-        <progress
-          aria-label="Generating"
-          className="h-1 w-full appearance-none overflow-hidden rounded-full bg-muted [&::-moz-progress-bar]:bg-primary [&::-webkit-progress-bar]:bg-muted [&::-webkit-progress-value]:bg-primary"
-          max={state.progress.total}
-          value={state.progress.done}
-        />
-      )}
-      {state.stopped ? (
-        <p className="text-xs text-destructive" role="alert">
-          {STOPPED}
-        </p>
-      ) : null}
+      <div className="relative h-0.5 w-full shrink-0 overflow-hidden rounded-full bg-border">
+        {state.progress === null ? null : (
+          <progress
+            aria-label="Generating"
+            className="absolute inset-0 size-full appearance-none bg-transparent animate-in fade-in-0 [&::-moz-progress-bar]:bg-primary [&::-webkit-progress-bar]:bg-transparent [&::-webkit-progress-value]:bg-primary [&::-webkit-progress-value]:transition-[width] [&::-webkit-progress-value]:duration-200"
+            max={state.progress.total}
+            value={state.progress.done}
+          />
+        )}
+      </div>
       {view === 'one' ? <OneView boardless={docked} index={index} items={items} /> : null}
       {items.length === 0 || view === 'one' ? null : (
         <ol aria-label="Mazes generated" className="grid grid-cols-2 gap-2">
@@ -706,7 +721,7 @@ export default function GenerateDialog({
               current={item === current}
               item={item}
               key={item.n}
-              onPick={() => setSelected(item.n)}
+              onPick={() => pick(item.n)}
               place={k + 1}
             />
           ))}
@@ -803,7 +818,11 @@ export default function GenerateDialog({
         </div>
         {settingsOpen || items.length === 0 ? null : (
           <div className="relative z-10 flex flex-col gap-1 border-t bg-card px-4 pt-2 pb-3">
-            {hint === undefined ? null : <p className="text-xs text-muted-foreground">{hint}</p>}
+            {full && index === items.length - 1 ? (
+              <p className="text-xs text-muted-foreground">{FULL}</p>
+            ) : hint === undefined ? null : (
+              <p className="text-xs text-muted-foreground">{hint}</p>
+            )}
             <div className="flex items-center gap-2">
               <Button
                 aria-keyshortcuts="ArrowLeft"
@@ -838,11 +857,6 @@ export default function GenerateDialog({
                 disabled={forward === undefined && !canMore}
                 onClick={() => step(1)}
                 size="icon"
-                title={
-                  forward === undefined && !canMore && !running && index === items.length - 1
-                    ? 'Start a new batch'
-                    : undefined
-                }
                 type="button"
                 variant="outline"
               >

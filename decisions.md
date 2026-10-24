@@ -271,7 +271,10 @@ reached, and the measurements of the day, are in the git history of this file.
   and Cancel share one row; the details take fewer lines. The footer holds ‹ Use this ›, so stepping never needs
   scrolling, with the arrow keys too: › past the last maze builds 8 more and appends them (#9 of 16), a spinner on
   › while they build, the selection moving to the first of them once it is built; Cancel keeps those built. A batch
-  stops at 64 mazes, where › says "Start a new batch".
+  stops at 64 mazes, where the footer says so in its line, not in a tooltip a phone cannot show. The status
+  names the seeds while they are one run of them, else counts the mazes. The progress is the 2 px line under that
+  row, always there: it fills while mazes build and goes back to a plain line, and Cancel keeps its place hidden,
+  so nothing moves when a run starts or ends.
 - **Gallery or One** (owner, 24/10), as the mockup's panel: the batch shows as cards, or one maze at a time drawn
   large by the editor's own `Board` (an SVG, crisp at any size), with ‹ › and the arrow keys, its title, seed, style,
   tags and sentences, the Off target line first. Stepping moves the maze Use this takes; while a run goes on, › stops

@@ -301,4 +301,18 @@ describe('a batch of generated mazes', () => {
     expect(batch.getState().items).toHaveLength(MAX_ITEMS);
     batch.cancel();
   });
+
+  test('names the seeds only while the batch is one run of them', async () => {
+    const batch = new Batch({ spawn: workers({ fail: () => true }).spawn, size: 8, firstSeed: 1 });
+    batch.generate(SETTINGS, true);
+    await settled(batch);
+    batch.setNextSeed(5000);
+    batch.generate(SETTINGS, false);
+    await settled(batch);
+
+    expect(batch.getState().seeds).toBeUndefined();
+    expect(statusLine(batch.getState())).toBe('16 mazes');
+    batch.generate(SETTINGS, true);
+    batch.cancel();
+  });
 });
