@@ -70,8 +70,9 @@ describe('The Generate dialog', () => {
     );
     await expect.element(page.getByRole('button', { name: 'Generate', exact: true })).toBeEnabled();
     await expect
-      .element(page.getByText('Custom (from Recommended) · 16 × 16, 70–100 cells'))
-      .toBeVisible();
+      .element(page.getByRole('combobox', { name: 'Preset' }))
+      .toHaveDisplayValue('Custom (from Recommended)');
+    await expect.element(page.getByRole('combobox', { name: 'Preset' })).toBeVisible();
   });
 
   test('builds a batch in workers, shows its cards with their tags, and opens the one picked', async () => {
@@ -81,14 +82,14 @@ describe('The Generate dialog', () => {
     await expect.poll(() => progress()?.max).toBe(8);
     await expect.element(page.getByRole('button', { name: /^#8,/ }), GENERATION).toBeVisible();
     await expect.element(page.getByText('Seeds 1–8').first()).toBeVisible();
-    await expect.element(page.getByRole('heading', { name: '#1 of 8' })).toBeVisible();
+    await expect.element(page.getByRole('heading', { name: /^#1 of 8 ·/ })).toBeVisible();
     expect(await axeViolations()).toEqual([]);
 
     await userEvent.click(page.getByRole('button', { name: /^#3,/ }));
     await expect
       .element(page.getByRole('button', { name: /^#3,/ }))
       .toHaveAttribute('aria-pressed', 'true');
-    await expect.element(page.getByRole('heading', { name: '#3 of 8' })).toBeVisible();
+    await expect.element(page.getByRole('heading', { name: /^#3 of 8 ·/ })).toBeVisible();
     await userEvent.click(page.getByRole('button', { name: 'Use this' }));
 
     expect(used).toHaveLength(1);
@@ -117,7 +118,8 @@ describe('The Generate dialog', () => {
 
     expect(document.querySelector('[data-settings]')).toBeNull();
     const gallery = document.querySelector('ol[aria-label="Mazes generated"]');
-    const foot = page.getByRole('button', { name: 'Use this' }).element().parentElement;
+    const foot = page.getByRole('button', { name: 'Use this' }).element()
+      .parentElement?.parentElement;
     const top = foot?.getBoundingClientRect().top ?? 0;
     const box = gallery?.getBoundingClientRect();
     const hits = [0.25, 0.5, 0.75].map((x) =>
@@ -137,23 +139,60 @@ describe('The Generate dialog', () => {
 
     await expect.element(page.getByRole('img', { name: 'Maze #1, seed 1' })).toBeVisible();
     expect(document.querySelector('section[aria-label="One maze"] svg[data-board]')).not.toBeNull();
-    await expect.element(page.getByRole('heading', { name: '#1 of 8' })).toBeVisible();
+    await expect.element(page.getByRole('heading', { name: /^#1 of 8 ·/ })).toBeVisible();
     await expect.element(page.getByRole('button', { name: 'Previous maze' })).toBeDisabled();
     expect(await axeViolations()).toEqual([]);
 
     await userEvent.click(page.getByRole('button', { name: 'Next maze' }));
-    await expect.element(page.getByRole('heading', { name: '#2 of 8' })).toBeVisible();
+    await expect.element(page.getByRole('heading', { name: /^#2 of 8 ·/ })).toBeVisible();
     await userEvent.keyboard('{ArrowRight}');
     await expect.element(page.getByRole('img', { name: 'Maze #3, seed 3' })).toBeVisible();
     await userEvent.keyboard('{ArrowLeft}');
-    await expect.element(page.getByRole('heading', { name: '#2 of 8' })).toBeVisible();
+    await expect.element(page.getByRole('heading', { name: /^#2 of 8 ·/ })).toBeVisible();
 
     await userEvent.keyboard('{ArrowRight}'.repeat(6));
 
-    await expect.element(page.getByRole('heading', { name: '#8 of 8' })).toBeVisible();
-    await expect.element(page.getByRole('button', { name: 'Next maze' })).toBeDisabled();
+    await expect.element(page.getByRole('heading', { name: /^#8 of 8 ·/ })).toBeVisible();
     await userEvent.click(page.getByRole('button', { name: 'Use this' }));
     expect(used[0]?.kind === 'generated' ? used[0].recipe.seed : undefined).toBe(8);
+  });
+
+  test('loads 8 more with › past the last maze, keeping #1 to #8, and lands on #9', async () => {
+    await mount();
+    await generate();
+    await expect.poll(progress, GENERATION).toBeNull();
+    await userEvent.click(page.getByRole('radio', { name: 'One' }));
+    await userEvent.click(page.getByRole('button', { name: 'Next maze' }));
+    await userEvent.keyboard('{ArrowRight}'.repeat(6));
+    await expect.element(page.getByRole('heading', { name: /^#8 of 8 ·/ })).toBeVisible();
+    await userEvent.click(page.getByRole('button', { name: 'Next maze, building 8 more' }));
+
+    await expect
+      .element(page.getByRole('button', { name: 'Next maze' }))
+      .toHaveAttribute('aria-busy', 'true');
+    await expect
+      .element(page.getByRole('heading', { name: /^#9 of 16 · seed 9/ }), GENERATION)
+      .toBeVisible();
+    await userEvent.keyboard('{ArrowLeft}');
+    await expect.element(page.getByRole('heading', { name: /^#8 of 16 · seed 8/ })).toBeVisible();
+    expect(await axeViolations()).toEqual([]);
+  });
+
+  test('opens the settings as a view of their own and comes back to the mazes, focus following', async () => {
+    await mount();
+    await generate();
+    await expect.poll(progress, GENERATION).toBeNull();
+
+    expect(document.querySelector('[data-settings]')).toBeNull();
+    await userEvent.click(page.getByRole('button', { name: 'Settings' }));
+    await expect.element(page.getByRole('combobox', { name: 'Preset' })).toBeVisible();
+    await expect.element(page.getByRole('button', { name: 'Back to the mazes' })).toHaveFocus();
+    await expect.element(page.getByRole('dialog', { name: 'Generate' })).toBeVisible();
+    expect(await axeViolations()).toEqual([]);
+
+    await userEvent.click(page.getByRole('button', { name: 'Back to the mazes' }));
+    expect(document.querySelector('[data-settings]')).toBeNull();
+    await expect.element(page.getByRole('button', { name: 'Settings' })).toHaveFocus();
   });
 
   test('docked beside the editor, previews the candidate picked, the last built while one is on its way, and nothing once closed', async () => {
@@ -175,7 +214,7 @@ describe('The Generate dialog', () => {
 
     expect(document.querySelector('[data-slot="sheet-overlay"]')).toBeNull();
     await userEvent.click(page.getByRole('radio', { name: 'One' }));
-    await expect.element(page.getByRole('heading', { name: '#2 of 8' })).toBeVisible();
+    await expect.element(page.getByRole('heading', { name: /^#2 of 8 ·/ })).toBeVisible();
     expect(document.querySelector('section[aria-label="One maze"] svg[data-board]')).toBeNull();
     await expect
       .element(page.getByRole('button', { name: 'Back to the board' }))
@@ -203,7 +242,7 @@ describe('The Generate dialog', () => {
     await expect.element(page.getByRole('button', { name: /^#1,/ }), GENERATION).toBeVisible();
 
     const text = await navigatorRecipe();
-    await userEvent.click(page.getByText('Settings', { exact: true }));
+    await userEvent.click(page.getByRole('button', { name: 'Settings' }));
     await userEvent.click(page.getByText('Rebuild from a recipe'));
     await userEvent.fill(page.getByRole('textbox', { name: 'Recipe' }), 'not json');
     await userEvent.click(page.getByRole('button', { name: 'Rebuild' }));
@@ -224,7 +263,9 @@ describe('The Generate dialog', () => {
         GENERATION
       )
       .toBeVisible();
-    await expect.element(page.getByText(/^from a recipe · seed 1/)).toBeVisible();
+    await expect
+      .element(page.getByRole('heading', { name: /· from a recipe · seed 1/ }))
+      .toBeVisible();
   });
 
   test("from the editor, takes the board's size and replaces the board with the maze picked", async () => {
@@ -240,7 +281,7 @@ describe('The Generate dialog', () => {
       />
     );
 
-    await expect.element(page.getByText(/· 32 × 32,/)).toBeVisible();
+    await expect.element(page.getByRole('radio', { name: '32 × 32' })).toBeChecked();
     await generate();
     await expect
       .element(page.getByRole('button', { name: /^#8,/ }), { timeout: 120_000 })

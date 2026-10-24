@@ -45,7 +45,7 @@ async function generateAndPick(page: Page, card: number, hint?: string): Promise
   const dialog = page.getByRole('dialog', { name: 'Generate' });
 
   if ((await dialog.getByRole('spinbutton', { name: 'First seed' }).count()) === 0) {
-    await dialog.getByText('Settings', { exact: true }).click();
+    await dialog.getByRole('button', { name: 'Settings' }).click();
   }
 
   await dialog.getByRole('spinbutton', { name: 'First seed' }).fill('1');
@@ -110,12 +110,17 @@ describe('Generate in New maze (beta)', () => {
     await page.getByRole('button', { name: 'Back to the library' }).click();
     await waitForMode(page, 'library');
     await openGenerate(page, 'New maze');
+    const dialog = page.getByRole('dialog', { name: 'Generate' });
+
+    if ((await dialog.getByRole('combobox', { name: 'Preset' }).count()) === 0) {
+      await dialog.getByRole('button', { name: 'Settings' }).click();
+    }
+
     expect(
-      await page
-        .getByRole('dialog', { name: 'Generate' })
-        .getByText('Custom (from Recommended) · 16 × 16, 60–100 cells')
-        .count()
-    ).toBe(1);
+      await dialog
+        .getByRole('combobox', { name: 'Preset' })
+        .evaluate((select: HTMLSelectElement) => select.selectedOptions[0]?.textContent)
+    ).toBe('Custom (from Recommended)');
   });
 
   test('opens Generate on a new blank maze, which closing leaves unsaved and Use this opens as the new maze', async () => {
@@ -136,16 +141,14 @@ describe('Generate in New maze (beta)', () => {
     expect(await mineCount(page)).toBe(0);
   });
 
-  test('is a sheet on a phone, and opens the maze picked to view', async () => {
-    const page = await openPage(browser, contexts, app, '#/', {
-      width: 390,
-      height: 844,
-      touch: true,
-    });
+  test.each([
+    [390, 844],
+    [360, 780],
+  ])('fills a %i × %i phone, and opens the maze picked to view', async (width, height) => {
+    const page = await openPage(browser, contexts, app, '#/', { width, height, touch: true });
     await openGenerate(page, 'New maze and more');
     const box = await page.getByRole('dialog', { name: 'Generate' }).boundingBox();
-    expect(box).toMatchObject({ x: 0, width: 390 });
-    expect((box?.y ?? 0) + (box?.height ?? 0)).toBeCloseTo(844, 0);
+    expect(box).toEqual({ x: 0, y: 0, width, height });
 
     await generateAndPick(page, 1);
     expect(await page.locator('h1').textContent()).toMatch(/^Generated \d+$/);

@@ -22,8 +22,10 @@ import {
   CaretLeft,
   CaretRight,
   Check,
+  CircleNotch,
   Copy,
   DiceFive,
+  GearSix,
   Shuffle,
   Warning,
   X,
@@ -208,7 +210,7 @@ function CopyRecipe({ item }: { item: ReadyItem }) {
   return (
     <Button
       aria-label="Copy recipe"
-      className="size-8 rounded-[10px]"
+      className="size-7 rounded-[8px]"
       onClick={() => {
         void copyText(JSON.stringify(item.recipe)).then((copied) =>
           showToast(copied ? 'Recipe copied' : 'Copy failed')
@@ -223,62 +225,50 @@ function CopyRecipe({ item }: { item: ReadyItem }) {
   );
 }
 
+/** The line that names a maze: "#4 of 8 · seed 4004890115 · Diagonal staircases". */
 function MazeTitle({ item, place, total }: { item: Item; place: number; total: number }) {
   return (
-    <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-      <h3 className="text-[14px] font-semibold" id={`maze-${item.n}`}>
-        {itemTitle(place, total)}
-      </h3>
-      <p className="font-mono text-xs text-muted-foreground">
+    <h3
+      className="min-w-0 flex-1 truncate text-[13px] leading-5 font-semibold"
+      id={`maze-${item.n}`}
+    >
+      {itemTitle(place, total)}
+      <span className="font-normal text-muted-foreground">
+        {' · '}
         {isReady(item)
           ? itemOrigin(item)
           : item.status === 'pending'
             ? 'Building…'
             : 'The generator could not make this maze'}
-      </p>
-    </div>
+      </span>
+    </h3>
   );
 }
 
-/** The tags and sentences of a ready maze, under its title unless `titled` is off. */
-function Details({
-  item,
-  place,
-  total,
-  titled = true,
-}: {
-  item: ReadyItem;
-  place: number;
-  total: number;
-  titled?: boolean;
-}) {
+/** A ready maze's title line with Copy recipe, its tags and its sentences, the Off target one first. */
+function Details({ item, place, total }: { item: ReadyItem; place: number; total: number }) {
   const warning = itemWarning(item);
   const tags = itemTags(item);
 
   return (
-    <section
-      aria-labelledby={`maze-${item.n}`}
-      className="flex flex-col gap-2 rounded-[12px] border p-3"
-    >
-      {titled ? (
-        <div className="flex items-start gap-2">
-          <MazeTitle item={item} place={place} total={total} />
-          <CopyRecipe item={item} />
-        </div>
-      ) : null}
+    <section aria-labelledby={`maze-${item.n}`} className="flex flex-col gap-1.5">
+      <div className="flex items-center gap-2">
+        <MazeTitle item={item} place={place} total={total} />
+        <CopyRecipe item={item} />
+      </div>
       {tags.length === 0 ? null : (
         <ul aria-label="This maze has" className="flex flex-wrap gap-1">
           {tags.map((tag) => (
-            <li className="rounded-full bg-muted px-2 py-0.5 text-xs" key={tag}>
+            <li className="rounded-full bg-muted px-1.5 py-0.5 text-[11px] leading-none" key={tag}>
               {tag}
             </li>
           ))}
         </ul>
       )}
-      <ul className="flex list-disc flex-col gap-1 pl-4 text-[13px] leading-5">
+      <ul className="flex list-disc flex-col gap-0.5 pl-4 text-xs leading-4">
         {warning === undefined ? null : (
-          <li className="-ml-4 flex list-none items-start gap-1.5 text-amber-700 dark:text-amber-400">
-            <Warning aria-hidden className="mt-0.5 shrink-0" size={16} />
+          <li className="-ml-4 flex list-none items-start gap-1 text-amber-700 dark:text-amber-400">
+            <Warning aria-hidden className="shrink-0" size={14} />
             {warning}
           </li>
         )}
@@ -293,29 +283,23 @@ function Details({
 interface OneViewProps {
   readonly items: readonly Item[];
   readonly index: number;
-  readonly running: boolean;
-  readonly onStep: (index: number) => void;
   /** Leaves the board out, as beside the editor, whose own board shows the maze. */
   readonly boardless: boolean;
 }
 
 /**
  * One maze of the batch at a time, drawn large as the editor draws it unless the editor's own board
- * shows it, with ‹ and › (and the arrow keys) to step through the batch, its title, seed and style,
- * and its tags and sentences.
+ * shows it, then its title line, tags and sentences; ‹ and › step in the footer.
  */
-function OneView({ items, index, running, onStep, boardless }: OneViewProps) {
+function OneView({ items, index, boardless }: OneViewProps) {
   const item = items[index];
 
   if (item === undefined) {
     return null;
   }
 
-  const previous = stepTo(items, index, -1, running);
-  const next = stepTo(items, index, 1, running);
-
   return (
-    <section aria-label="One maze" className="flex flex-col gap-3">
+    <section aria-label="One maze" className="flex flex-col gap-2">
       {boardless ? null : isReady(item) ? (
         <Board
           className="h-auto w-full rounded-[6px]"
@@ -331,47 +315,22 @@ function OneView({ items, index, running, onStep, boardless }: OneViewProps) {
           )}
         />
       )}
-      <div className="flex items-center gap-2">
-        <Button
-          aria-keyshortcuts="ArrowLeft"
-          aria-label="Previous maze"
-          className="size-9 rounded-[10px]"
-          disabled={previous === undefined}
-          onClick={() => previous !== undefined && onStep(previous)}
-          size="icon"
-          type="button"
-          variant="outline"
-        >
-          <CaretLeft aria-hidden />
-        </Button>
-        <MazeTitle item={item} place={index + 1} total={items.length} />
-        {isReady(item) ? <CopyRecipe item={item} /> : null}
-        <Button
-          aria-keyshortcuts="ArrowRight"
-          aria-label="Next maze"
-          className="size-9 rounded-[10px]"
-          disabled={next === undefined}
-          onClick={() => next !== undefined && onStep(next)}
-          size="icon"
-          type="button"
-          variant="outline"
-        >
-          <CaretRight aria-hidden />
-        </Button>
-      </div>
       {isReady(item) ? (
-        <Details item={item} place={index + 1} titled={false} total={items.length} />
-      ) : null}
+        <Details item={item} place={index + 1} total={items.length} />
+      ) : (
+        <MazeTitle item={item} place={index + 1} total={items.length} />
+      )}
     </section>
   );
 }
 
 /**
- * The Generate dialog of New maze (beta), in its own chunk with the generator: the settings
- * (kept on the device), the first seed and Generate, and Rebuild from a recipe; then the batch's
- * progress with Cancel, its mazes as cards with their tags, the details of the one picked, and Use
- * this, which opens it in the editor as a new maze with its recipe. A docked panel on a notebook,
- * a sheet on a phone. Closing keeps the batch for the next time and stops the run on its way.
+ * The Generate dialog (beta) of New maze and of the editor, in its own chunk with the generator:
+ * the settings (kept on the device), the first seed, Generate and Rebuild from a recipe, as a view
+ * of their own behind the gear; then the batch's progress with Cancel, its mazes as a gallery of
+ * cards or one at a time, the details of the one picked, and a footer with ‹ Use this ›, where ›
+ * past the last maze builds 8 more, up to 64. A docked panel on a notebook, the whole screen on a
+ * phone. Closing keeps the batch for the next time and stops the run on its way.
  */
 export default function GenerateDialog({
   open,
@@ -401,14 +360,16 @@ export default function GenerateDialog({
   });
   const [invalid, setInvalid] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(true);
+  const [awaiting, setAwaiting] = useState<number | undefined>(undefined);
+  const gear = useRef<HTMLButtonElement>(null);
+  const back = useRef<HTMLButtonElement>(null);
   const [selected, setSelected] = useState<number | undefined>(undefined);
   const [view, setView] = useState<View>('gallery');
   const [seedText, setSeedText] = useState<string | undefined>(undefined);
   const [recipeText, setRecipeText] = useState('');
   const [recipeError, setRecipeError] = useState<string | undefined>(undefined);
   const items = state.items;
-  const current =
-    items.find((item) => item.n === selected) ?? (view === 'one' ? items[0] : undefined);
+  const current = items.find((item) => item.n === selected) ?? items[0];
   const index = current === undefined ? 0 : items.indexOf(current);
   const running = state.progress !== null;
   const hint = pickHint(current, freshMaze ? undefined : board);
@@ -478,12 +439,46 @@ export default function GenerateDialog({
     save(choice, next);
   };
 
+  const forward = stepTo(items, index, 1, running);
+  const backward = stepTo(items, index, -1, running);
+  const canMore =
+    !running && !invalid && items.length > 0 && index === items.length - 1 && batch.roomForMore;
+  const building = running && awaiting !== undefined;
+
+  if (awaiting !== undefined) {
+    const arrived = items.find((item) => item.n === awaiting);
+
+    if (arrived === undefined || arrived.status !== 'pending') {
+      setAwaiting(undefined);
+
+      if (isReady(arrived)) {
+        setSelected(arrived.n);
+      }
+    }
+  }
+
+  const more = (): void => {
+    const [first] = batch.generate(structuredClone(choice.settings), false);
+    setAwaiting(first?.n);
+  };
+
+  const step = (delta: -1 | 1): void => {
+    const next = delta < 0 ? backward : forward;
+
+    if (next !== undefined) {
+      setSelected(items[next]?.n);
+    } else if (delta > 0 && canMore) {
+      more();
+    }
+  };
+
   const stepKey = (event: KeyboardEvent<HTMLDivElement>): void => {
     const delta = event.key === 'ArrowLeft' ? -1 : event.key === 'ArrowRight' ? 1 : 0;
     const { target } = event;
 
     if (
-      view !== 'one' ||
+      settingsOpen ||
+      items.length === 0 ||
       delta === 0 ||
       (target instanceof HTMLElement &&
         target.closest('input, textarea, select, [role="radiogroup"]') !== null)
@@ -491,24 +486,36 @@ export default function GenerateDialog({
       return;
     }
 
-    const next = stepTo(items, index, delta, running);
     event.preventDefault();
+    step(delta);
+  };
 
-    if (next !== undefined) {
-      setSelected(items[next]?.n);
+  const openSettings = (opened: boolean): void => {
+    setSettingsOpen(opened);
+    body.current?.scrollTo({ top: 0 });
+
+    if (!opened) {
+      setInvalid(false);
+      requestAnimationFrame(() => gear.current?.focus({ preventScroll: true }));
+    } else {
+      requestAnimationFrame(() => back.current?.focus({ preventScroll: true }));
     }
   };
 
   const showResults = (n: number | undefined): void => {
     setSelected(n);
+    setAwaiting(undefined);
     setSettingsOpen(false);
-    body.current?.scrollTo({ top: 0 });
-    status.current?.focus({ preventScroll: true });
+    setInvalid(false);
+    requestAnimationFrame(() => {
+      body.current?.scrollTo({ top: 0 });
+      status.current?.focus({ preventScroll: true });
+    });
   };
 
-  const generate = (fresh: boolean): void => {
+  const generate = (): void => {
     if (!invalid) {
-      showResults(batch.generate(structuredClone(choice.settings), fresh)[0]?.n);
+      showResults(batch.generate(structuredClone(choice.settings), true)[0]?.n);
     }
   };
 
@@ -537,14 +544,197 @@ export default function GenerateDialog({
 
   const submit = (event: FormEvent<HTMLFormElement>): void => {
     event.preventDefault();
-    generate(true);
+    generate();
   };
+
+  const settingsView = (
+    <form className="flex flex-col gap-4" data-settings onSubmit={submit}>
+      <SettingsForm onChange={changeSettings} onInvalid={setInvalid} value={choice} />
+      <div className="flex flex-col gap-1.5">
+        <label className="text-[13px] leading-none font-medium" htmlFor={`${id}-seed`}>
+          First seed
+        </label>
+        <div className="flex gap-2">
+          <Input
+            autoComplete="off"
+            className="h-8 min-w-[13ch] font-mono text-[13px]"
+            id={`${id}-seed`}
+            inputMode="numeric"
+            max={batch.maxSeed}
+            min={0}
+            onBlur={() => setSeedText(undefined)}
+            onChange={(event) => {
+              const text = event.target.value;
+              setSeedText(text);
+
+              if (text.trim() !== '') {
+                batch.setNextSeed(Number(text));
+              }
+            }}
+            type="number"
+            value={seedText ?? state.nextSeed}
+          />
+          <Button
+            aria-label="Random seed"
+            className="size-8 rounded-[10px]"
+            onClick={() => {
+              setSeedText(undefined);
+              batch.setNextSeed(randomSeed(batch.maxSeed));
+            }}
+            size="icon"
+            type="button"
+            variant="outline"
+          >
+            <DiceFive aria-hidden />
+          </Button>
+        </div>
+      </div>
+      <Button className="h-10 rounded-[10px]" disabled={invalid} ref={generateButton} type="submit">
+        <Shuffle aria-hidden />
+        Generate
+      </Button>
+      <details className="group/recipe">
+        <summary className="flex cursor-pointer list-none items-center gap-2 rounded-[8px] text-[13px] outline-none focus-visible:ring-2 focus-visible:ring-ring [&::-webkit-details-marker]:hidden">
+          <b className="font-semibold">Rebuild from a recipe</b>
+          <CaretDown
+            aria-hidden
+            className="transition-transform group-open/recipe:rotate-180"
+            size={14}
+          />
+        </summary>
+        <div className="flex flex-col gap-2 pt-2">
+          <label className="sr-only" htmlFor={`${id}-recipe`}>
+            Recipe
+          </label>
+          <textarea
+            aria-describedby={recipeError === undefined ? undefined : `${id}-recipe-error`}
+            aria-invalid={recipeError !== undefined}
+            autoComplete="off"
+            className="min-h-16 rounded-md border border-input bg-transparent px-2 py-1.5 font-mono text-xs shadow-xs outline-none focus-visible:ring-2 focus-visible:ring-ring dark:bg-input/30"
+            id={`${id}-recipe`}
+            onChange={(event) => setRecipeText(event.target.value)}
+            placeholder='{"settings":{…},"seed":1234}'
+            rows={3}
+            spellCheck={false}
+            value={recipeText}
+          />
+          {recipeError === undefined ? null : (
+            <p className="text-xs text-destructive" id={`${id}-recipe-error`} role="alert">
+              {recipeError}
+            </p>
+          )}
+          <Button
+            className="self-start rounded-[10px]"
+            onClick={rebuild}
+            type="button"
+            variant="outline"
+          >
+            Rebuild
+          </Button>
+        </div>
+      </details>
+    </form>
+  );
+
+  const resultsView = (
+    <>
+      {items.length === 0 ? (
+        <div className="flex flex-col items-start gap-3 py-2">
+          <p className="text-[13px] text-muted-foreground">
+            {summary(choice.settings, choice.preset)}
+          </p>
+          <Button className="rounded-[10px]" disabled={invalid} onClick={generate} type="button">
+            <Shuffle aria-hidden />
+            Generate
+          </Button>
+        </div>
+      ) : null}
+      <div className="flex items-center gap-2">
+        <p
+          className="min-w-0 flex-1 truncate font-mono text-xs text-muted-foreground outline-none"
+          ref={status}
+          tabIndex={-1}
+        >
+          {statusLine(state)}
+        </p>
+        <p aria-live="polite" className="sr-only">
+          {running ? 'Building mazes…' : statusLine(state)}
+        </p>
+        {items.length === 0 ? null : (
+          <div className="w-32 shrink-0">
+            <Segmented
+              label="Show"
+              onChange={changeView}
+              options={[
+                ['gallery', 'Gallery'],
+                ['one', 'One'],
+              ]}
+              value={view}
+            />
+          </div>
+        )}
+        {running ? (
+          <Button
+            className="h-7 rounded-[8px] text-xs"
+            onClick={() => batch.cancel()}
+            size="sm"
+            type="button"
+            variant="outline"
+          >
+            Cancel
+          </Button>
+        ) : null}
+      </div>
+      {state.progress === null ? null : (
+        <progress
+          aria-label="Generating"
+          className="h-1 w-full appearance-none overflow-hidden rounded-full bg-muted [&::-moz-progress-bar]:bg-primary [&::-webkit-progress-bar]:bg-muted [&::-webkit-progress-value]:bg-primary"
+          max={state.progress.total}
+          value={state.progress.done}
+        />
+      )}
+      {state.stopped ? (
+        <p className="text-xs text-destructive" role="alert">
+          {STOPPED}
+        </p>
+      ) : null}
+      {view === 'one' ? <OneView boardless={docked} index={index} items={items} /> : null}
+      {items.length === 0 || view === 'one' ? null : (
+        <ol aria-label="Mazes generated" className="grid grid-cols-2 gap-2">
+          {items.map((item, k) => (
+            <Card
+              current={item === current}
+              item={item}
+              key={item.n}
+              onPick={() => setSelected(item.n)}
+              place={k + 1}
+            />
+          ))}
+        </ol>
+      )}
+      {view === 'gallery' && isReady(current) ? (
+        <Details item={current} place={index + 1} total={items.length} />
+      ) : null}
+      {items.length === 0 || running || view === 'one' || !batch.roomForMore ? null : (
+        <Button
+          className="self-start rounded-[10px]"
+          disabled={invalid}
+          onClick={more}
+          type="button"
+          variant="outline"
+        >
+          <Shuffle aria-hidden />
+          {BATCH} more
+        </Button>
+      )}
+    </>
+  );
 
   return (
     <Sheet modal={!docked} onOpenChange={onOpenChange} open={open}>
       <SheetContent
         aria-describedby={undefined}
-        className={cn('gap-0', phone && 'h-[92dvh]')}
+        className={cn('gap-0', phone && 'top-0 h-dvh rounded-none pt-[env(safe-area-inset-top)]')}
         data-generate
         onKeyDown={stepKey}
         onInteractOutside={(event) => {
@@ -554,7 +744,7 @@ export default function GenerateDialog({
         }}
         onOpenAutoFocus={(event) => {
           event.preventDefault();
-          (coarse ? content.current : (generateButton.current ?? content.current))?.focus({
+          (coarse ? content.current : (generateButton.current ?? gear.current))?.focus({
             preventScroll: true,
           });
         }}
@@ -562,9 +752,21 @@ export default function GenerateDialog({
         side={phone ? 'bottom' : 'right'}
         tabIndex={-1}
       >
-        <div className="flex items-center gap-2 px-4 pt-4 pb-3">
+        <div className="flex items-center gap-2 px-4 pt-3 pb-2">
+          {settingsOpen ? (
+            <IslandButton
+              aria-label="Back to the mazes"
+              onClick={() => openSettings(false)}
+              ref={back}
+            >
+              <CaretLeft aria-hidden size={16} />
+            </IslandButton>
+          ) : null}
           <SheetTitle className="text-[15px]">Generate</SheetTitle>
           <Badge variant="secondary">Beta</Badge>
+          {settingsOpen ? (
+            <span className="text-[13px] text-muted-foreground">Settings</span>
+          ) : null}
           {docked ? (
             <button
               className="sr-only rounded-[8px] px-2 py-1 text-xs focus:not-sr-only focus-visible:ring-2 focus-visible:ring-ring"
@@ -574,241 +776,83 @@ export default function GenerateDialog({
               Back to the board
             </button>
           ) : null}
+          {settingsOpen ? null : (
+            <IslandButton
+              aria-label="Settings"
+              className="ml-auto"
+              onClick={() => openSettings(true)}
+              ref={gear}
+            >
+              <GearSix aria-hidden size={16} />
+            </IslandButton>
+          )}
           <SheetClose asChild>
-            <IslandButton aria-label="Close" className="ml-auto">
+            <IslandButton aria-label="Close" className={settingsOpen ? 'ml-auto' : undefined}>
               <X aria-hidden size={16} />
             </IslandButton>
           </SheetClose>
         </div>
         <div
-          className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto overscroll-contain px-4 pb-4"
+          className="flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto overscroll-contain px-4 pb-3"
           ref={body}
         >
           {board === undefined || generatesFor(board) ? null : (
             <p className="text-xs text-amber-700 dark:text-amber-400">{unsupportedBoard(board)}</p>
           )}
-          <details
-            className="group rounded-[12px] border"
-            onToggle={(event) => {
-              const opened = event.currentTarget.open;
-              setSettingsOpen(opened);
-
-              if (!opened) {
-                setInvalid(false);
-              }
-            }}
-            open={settingsOpen}
-          >
-            <summary className="flex cursor-pointer list-none items-center gap-2 rounded-[12px] px-3 py-2.5 text-[13px] outline-none focus-visible:ring-2 focus-visible:ring-ring [&::-webkit-details-marker]:hidden">
-              <b className="font-semibold">Settings</b>
-              <span className="min-w-0 truncate font-mono text-xs text-muted-foreground">
-                {summary(choice.settings, choice.preset)}
-              </span>
-              <CaretDown
-                aria-hidden
-                className="ml-auto shrink-0 transition-transform group-open:rotate-180"
-                size={14}
-              />
-            </summary>
-            {settingsOpen ? (
-              <form className="flex flex-col gap-4 px-3 pt-1 pb-3" data-settings onSubmit={submit}>
-                <SettingsForm onChange={changeSettings} onInvalid={setInvalid} value={choice} />
-                <div className="flex flex-col gap-1.5">
-                  <label className="text-[13px] leading-none font-medium" htmlFor={`${id}-seed`}>
-                    First seed
-                  </label>
-                  <div className="flex gap-2">
-                    <Input
-                      autoComplete="off"
-                      className="h-8 min-w-[13ch] font-mono text-[13px]"
-                      id={`${id}-seed`}
-                      inputMode="numeric"
-                      max={batch.maxSeed}
-                      min={0}
-                      onBlur={() => setSeedText(undefined)}
-                      onChange={(event) => {
-                        const text = event.target.value;
-                        setSeedText(text);
-
-                        if (text.trim() !== '') {
-                          batch.setNextSeed(Number(text));
-                        }
-                      }}
-                      type="number"
-                      value={seedText ?? state.nextSeed}
-                    />
-                    <Button
-                      aria-label="Random seed"
-                      className="size-8 rounded-[10px]"
-                      onClick={() => {
-                        setSeedText(undefined);
-                        batch.setNextSeed(randomSeed(batch.maxSeed));
-                      }}
-                      size="icon"
-                      type="button"
-                      variant="outline"
-                    >
-                      <DiceFive aria-hidden />
-                    </Button>
-                  </div>
-                </div>
-                <Button
-                  className="h-10 rounded-[10px]"
-                  disabled={invalid}
-                  ref={generateButton}
-                  type="submit"
-                >
-                  <Shuffle aria-hidden />
-                  Generate
-                </Button>
-                <details className="group/recipe">
-                  <summary className="flex cursor-pointer list-none items-center gap-2 rounded-[8px] text-[13px] outline-none focus-visible:ring-2 focus-visible:ring-ring [&::-webkit-details-marker]:hidden">
-                    <b className="font-semibold">Rebuild from a recipe</b>
-                    <CaretDown
-                      aria-hidden
-                      className="transition-transform group-open/recipe:rotate-180"
-                      size={14}
-                    />
-                  </summary>
-                  <div className="flex flex-col gap-2 pt-2">
-                    <label className="sr-only" htmlFor={`${id}-recipe`}>
-                      Recipe
-                    </label>
-                    <textarea
-                      aria-describedby={
-                        recipeError === undefined ? undefined : `${id}-recipe-error`
-                      }
-                      aria-invalid={recipeError !== undefined}
-                      autoComplete="off"
-                      className="min-h-16 rounded-md border border-input bg-transparent px-2 py-1.5 font-mono text-xs shadow-xs outline-none focus-visible:ring-2 focus-visible:ring-ring dark:bg-input/30"
-                      id={`${id}-recipe`}
-                      onChange={(event) => setRecipeText(event.target.value)}
-                      placeholder='{"settings":{…},"seed":1234}'
-                      rows={3}
-                      spellCheck={false}
-                      value={recipeText}
-                    />
-                    {recipeError === undefined ? null : (
-                      <p
-                        className="text-xs text-destructive"
-                        id={`${id}-recipe-error`}
-                        role="alert"
-                      >
-                        {recipeError}
-                      </p>
-                    )}
-                    <Button
-                      className="self-start rounded-[10px]"
-                      onClick={rebuild}
-                      type="button"
-                      variant="outline"
-                    >
-                      Rebuild
-                    </Button>
-                  </div>
-                </details>
-              </form>
-            ) : null}
-          </details>
-          <div className="flex items-center gap-2">
-            <p
-              className="min-w-0 flex-1 font-mono text-xs text-muted-foreground outline-none"
-              ref={status}
-              tabIndex={-1}
-            >
-              {statusLine(state)}
-            </p>
-            <p aria-live="polite" className="sr-only">
-              {running ? 'Building mazes…' : statusLine(state)}
-            </p>
-            {items.length === 0 ? null : (
-              <div className="w-36 shrink-0">
-                <Segmented
-                  label="Show"
-                  onChange={changeView}
-                  options={[
-                    ['gallery', 'Gallery'],
-                    ['one', 'One'],
-                  ]}
-                  value={view}
-                />
-              </div>
-            )}
-            {running ? (
+          {settingsOpen ? settingsView : resultsView}
+        </div>
+        {settingsOpen || items.length === 0 ? null : (
+          <div className="relative z-10 flex flex-col gap-1 border-t bg-card px-4 pt-2 pb-3">
+            {hint === undefined ? null : <p className="text-xs text-muted-foreground">{hint}</p>}
+            <div className="flex items-center gap-2">
               <Button
-                className="h-7 rounded-[8px] text-xs"
-                onClick={() => batch.cancel()}
-                size="sm"
+                aria-keyshortcuts="ArrowLeft"
+                aria-label="Previous maze"
+                className="size-10 rounded-[10px]"
+                disabled={backward === undefined}
+                onClick={() => step(-1)}
+                size="icon"
                 type="button"
                 variant="outline"
               >
-                Cancel
+                <CaretLeft aria-hidden />
               </Button>
-            ) : null}
-          </div>
-          {state.progress === null ? null : (
-            <progress
-              aria-label="Generating"
-              className="h-1 w-full appearance-none overflow-hidden rounded-full bg-muted [&::-moz-progress-bar]:bg-primary [&::-webkit-progress-bar]:bg-muted [&::-webkit-progress-value]:bg-primary"
-              max={state.progress.total}
-              value={state.progress.done}
-            />
-          )}
-          {state.stopped ? (
-            <p className="text-xs text-destructive" role="alert">
-              {STOPPED}
-            </p>
-          ) : null}
-          {view === 'one' ? (
-            <OneView
-              boardless={docked}
-              index={index}
-              items={items}
-              onStep={(next) => setSelected(items[next]?.n)}
-              running={running}
-            />
-          ) : null}
-          {items.length === 0 || view === 'one' ? null : (
-            <ol aria-label="Mazes generated" className="grid grid-cols-2 gap-2">
-              {items.map((item, k) => (
-                <Card
-                  current={item === current}
-                  item={item}
-                  key={item.n}
-                  onPick={() => setSelected(item.n)}
-                  place={k + 1}
-                />
-              ))}
-            </ol>
-          )}
-          {view === 'gallery' && isReady(current) ? (
-            <Details item={current} place={index + 1} total={items.length} />
-          ) : null}
-          {items.length === 0 || running ? null : (
-            <Button
-              className="self-start rounded-[10px]"
-              disabled={invalid}
-              onClick={() => generate(false)}
-              type="button"
-              variant="outline"
-            >
-              <Shuffle aria-hidden />
-              {BATCH} more
-            </Button>
-          )}
-        </div>
-        {items.length === 0 ? null : (
-          <div className="relative z-10 flex flex-col gap-1.5 border-t bg-card px-4 pt-3 pb-4">
-            {hint === undefined ? null : <p className="text-xs text-muted-foreground">{hint}</p>}
-            <Button
-              className="h-10 rounded-[10px]"
-              disabled={!isReady(current)}
-              onClick={use}
-              type="button"
-            >
-              <Check aria-hidden />
-              Use this
-            </Button>
+              <Button
+                className="h-10 flex-1 rounded-[10px]"
+                disabled={!isReady(current)}
+                onClick={use}
+                type="button"
+              >
+                <Check aria-hidden />
+                Use this
+              </Button>
+              <Button
+                aria-busy={building}
+                aria-keyshortcuts="ArrowRight"
+                aria-label={
+                  forward === undefined && canMore
+                    ? `Next maze, building ${BATCH} more`
+                    : 'Next maze'
+                }
+                className="size-10 rounded-[10px]"
+                disabled={forward === undefined && !canMore}
+                onClick={() => step(1)}
+                size="icon"
+                title={
+                  forward === undefined && !canMore && !running && index === items.length - 1
+                    ? 'Start a new batch'
+                    : undefined
+                }
+                type="button"
+                variant="outline"
+              >
+                {building ? (
+                  <CircleNotch aria-hidden className="animate-spin" />
+                ) : (
+                  <CaretRight aria-hidden />
+                )}
+              </Button>
+            </div>
           </div>
         )}
       </SheetContent>

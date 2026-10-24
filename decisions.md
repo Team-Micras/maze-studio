@@ -265,6 +265,13 @@ reached, and the measurements of the day, are in the git history of this file.
   new maze, with its name and recipe, and closing leaves the blank maze unsaved, as any new maze. The panel takes
   the focus, Esc closes it, and "Back to the board" focuses the board. A phone keeps the sheet over the library or
   the editor.
+- **The panel's layout** (owner, 25/10): on a phone it takes the whole screen, inside the safe areas. The settings
+  are a view of their own, behind a gear in the header next to the close button, with a Back button; the header
+  keeps no summary line, which the empty panel shows above its Generate button instead. The status, Gallery or One
+  and Cancel share one row; the details take fewer lines. The footer holds ‹ Use this ›, so stepping never needs
+  scrolling, with the arrow keys too: › past the last maze builds 8 more and appends them (#9 of 16), a spinner on
+  › while they build, the selection moving to the first of them once it is built; Cancel keeps those built. A batch
+  stops at 64 mazes, where › says "Start a new batch".
 - **Gallery or One** (owner, 24/10), as the mockup's panel: the batch shows as cards, or one maze at a time drawn
   large by the editor's own `Board` (an SVG, crisp at any size), with ‹ › and the arrow keys, its title, seed, style,
   tags and sentences, the Off target line first. Stepping moves the maze Use this takes; while a run goes on, › stops
