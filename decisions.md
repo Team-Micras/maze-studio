@@ -276,7 +276,7 @@ reached, and the measurements of the day, are in the git history of this file.
   spinner on › while they build, and moves to the first once built unless another maze was opened meanwhile. Back
   and Esc go back to the gallery where it was, focusing the card; Esc in the gallery closes the panel. On a phone
   the panel takes the whole screen. The settings are a view of their own behind a gear in the header. A batch
-  stops at 64 mazes, which the footer's line says. A first design with a Gallery or One switch and a progress bar
+  stops at 64 mazes, which the gallery says in place of 8 more, and the footer's line on the last maze. A first design with a Gallery or One switch and a progress bar
   (24/10) made you scroll between a card and its details, and shifted the layout as runs started and ended.
 - **Seeds over the whole 32-bit range** (owner, 24/10). The first seed and the dice draw from 0 to the largest first
   seed with `crypto.getRandomValues`: with a known preset, a range of 100,000 seeds could be built ahead of a

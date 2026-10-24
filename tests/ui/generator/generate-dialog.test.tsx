@@ -237,13 +237,21 @@ describe('The Generate dialog', () => {
   });
 
   test('appends 8 more from the gallery and moves to #9, unless another maze was opened meanwhile', async () => {
-    await mount();
+    const previews: (GeneratorPreview | undefined)[] = [];
+    await render(
+      <GenerateDialog
+        board={borderedMaze(16, 16)}
+        onOpenChange={() => undefined}
+        onPreview={(preview) => previews.push(preview)}
+        onReplace={() => undefined}
+        onUse={() => undefined}
+        open
+      />
+    );
     await generate();
     await expect.poll(building, GENERATION).toBe(false);
     await userEvent.click(page.getByRole('button', { name: '8 more' }));
-    await expect
-      .element(page.getByRole('button', { name: /^#9,/ }), GENERATION)
-      .toHaveAttribute('aria-pressed', 'true');
+    await expect.poll(() => previews.at(-1)?.seed, GENERATION).toBe(9);
     await expect.poll(building, GENERATION).toBe(false);
     expect(document.querySelectorAll('ol[aria-label="Mazes generated"] > li')).toHaveLength(16);
 
@@ -251,6 +259,26 @@ describe('The Generate dialog', () => {
     await open(3);
     await expect.poll(building, GENERATION).toBe(false);
     await expect.element(page.getByRole('heading', { name: /^#3 of 24 ·/ })).toBeVisible();
+  });
+
+  test('goes back one view per Esc: settings, then the maze opened, then the gallery, which closes', async () => {
+    const changes: boolean[] = [];
+    await render(
+      <GenerateDialog onOpenChange={(next) => changes.push(next)} onUse={() => undefined} open />
+    );
+    await generate();
+    await expect.poll(building, GENERATION).toBe(false);
+    await open(2);
+    await userEvent.click(page.getByRole('button', { name: 'Settings' }));
+    await expect.element(page.getByRole('combobox', { name: 'Preset' })).toBeVisible();
+
+    await userEvent.keyboard('{Escape}');
+    await expect.element(page.getByRole('heading', { name: /^#2 of 8 ·/ })).toHaveFocus();
+    await userEvent.keyboard('{Escape}');
+    await expect.element(page.getByRole('button', { name: /^#2,/ })).toHaveFocus();
+    expect(changes).toEqual([]);
+    await userEvent.keyboard('{Escape}');
+    expect(changes).toEqual([false]);
   });
 
   test('cancels a run, leaving no card behind', async () => {

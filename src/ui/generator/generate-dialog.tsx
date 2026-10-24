@@ -131,13 +131,14 @@ const NOT_A_RECIPE = 'This is not a recipe: copy it again with “Copy recipe”
 function Card({
   item,
   place,
-  current,
+  marked,
   onPick,
   onHover,
 }: {
   item: Item;
   place: number;
-  current: boolean;
+  /** Whether it is the card last opened, which the gallery marks on the way back. */
+  marked: boolean;
   onPick: () => void;
   /** Called with `true` as the pointer comes over the card, and `false` as it leaves. */
   onHover: (over: boolean) => void;
@@ -174,10 +175,9 @@ function Card({
         data-card={item.n}
         onMouseEnter={() => onHover(true)}
         onMouseLeave={() => onHover(false)}
-        aria-pressed={current}
         className={cn(
           'flex w-full flex-col items-start gap-1.5 rounded-[12px] p-1.5 text-left text-xs ring-offset-background outline-none hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring',
-          current && 'ring-2 ring-foreground'
+          marked && 'bg-accent'
         )}
         onClick={onPick}
         type="button"
@@ -334,10 +334,11 @@ function DetailView({ items, index, withBoard, headingRef, onSwipe }: DetailView
 
   return (
     <div
-      className="flex touch-pan-y flex-col gap-2"
+      className="flex touch-pan-y touch-pinch-zoom flex-col gap-2"
       data-detail
       onPointerDown={(event) => {
-        start.current = { x: event.clientX, y: event.clientY };
+        start.current =
+          event.pointerType === 'mouse' ? undefined : { x: event.clientX, y: event.clientY };
       }}
       onPointerUp={(event) => {
         const from = start.current;
@@ -379,10 +380,11 @@ function DetailView({ items, index, withBoard, headingRef, onSwipe }: DetailView
 /**
  * The Generate dialog (beta) of New maze and of the editor, in its own chunk with the generator:
  * the settings (kept on the device), the first seed, Generate and Rebuild from a recipe, as a view
- * of their own behind the gear; then the batch's progress with Cancel, its mazes as a gallery of
- * cards or one at a time, the details of the one picked, and a footer with ‹ Use this ›, where ›
- * past the last maze builds 8 more, up to 64. A docked panel on a notebook, the whole screen on a
- * phone. Closing keeps the batch for the next time and stops the run on its way.
+ * of their own behind the gear; the gallery of the batch's mazes, which fill in as they are built,
+ * under a status row with Cancel, and 8 more at its end, up to 64; and the maze a card opens, in a
+ * view pushed over the gallery with a footer of ‹ Use this ›, where › past the last maze builds 8
+ * more. A docked panel on a notebook, the whole screen on a phone. Closing keeps the batch for the
+ * next time and stops the run on its way.
  */
 export default function GenerateDialog({
   open,
@@ -418,6 +420,7 @@ export default function GenerateDialog({
   const [selected, setSelected] = useState<number | undefined>(undefined);
   const [detail, setDetail] = useState(false);
   const [hovered, setHovered] = useState<number | undefined>(undefined);
+  const [lastOpened, setLastOpened] = useState<number | undefined>(undefined);
   const heading = useRef<HTMLHeadingElement>(null);
   const galleryScroll = useRef(0);
   const [seedText, setSeedText] = useState<string | undefined>(undefined);
@@ -430,7 +433,7 @@ export default function GenerateDialog({
   const hint = pickHint(current, freshMaze ? undefined : board);
 
   const docked = onPreview !== undefined && board !== undefined;
-  const hoveredItem = detail ? undefined : items.find((item) => item.n === hovered);
+  const hoveredItem = detail || settingsOpen ? undefined : items.find((item) => item.n === hovered);
   const previewed =
     isReady(hoveredItem) && (freshMaze || replacesBoard(hoveredItem, board))
       ? hoveredItem
@@ -463,6 +466,7 @@ export default function GenerateDialog({
 
   if (open !== wasOpen) {
     setWasOpen(open);
+    setHovered(undefined);
 
     if (open) {
       setChoice(fitted(choice, board));
@@ -554,7 +558,9 @@ export default function GenerateDialog({
 
     if (!opened) {
       setInvalid(false);
-      requestAnimationFrame(() => gear.current?.focus({ preventScroll: true }));
+      requestAnimationFrame(() =>
+        (detail ? heading.current : gear.current)?.focus({ preventScroll: true })
+      );
     } else {
       requestAnimationFrame(() => back.current?.focus({ preventScroll: true }));
     }
@@ -574,17 +580,20 @@ export default function GenerateDialog({
   const closeDetail = (): void => {
     const opened = current?.n;
     setHovered(undefined);
+    setAwaiting(undefined);
+    setLastOpened(opened);
     setDetail(false);
     requestAnimationFrame(() => {
       body.current?.scrollTo({ top: galleryScroll.current });
-      content.current
-        ?.querySelector<HTMLElement>(`[data-card="${opened ?? ''}"]`)
-        ?.focus({ preventScroll: true });
+      const card = content.current?.querySelector<HTMLElement>(`[data-card="${opened ?? ''}"]`);
+      card?.scrollIntoView({ block: 'nearest' });
+      card?.focus({ preventScroll: true });
     });
   };
 
   const showResults = (n: number | undefined): void => {
     setSelected(n);
+    setLastOpened(undefined);
     setAwaiting(undefined);
     setDetail(false);
     setSettingsOpen(false);
@@ -760,7 +769,7 @@ export default function GenerateDialog({
         <ol aria-label="Mazes generated" className="grid grid-cols-2 gap-2">
           {items.map((item, k) => (
             <Card
-              current={item === current}
+              marked={item.n === lastOpened}
               item={item}
               key={item.n}
               onHover={(over) => setHovered(over ? item.n : undefined)}
@@ -770,6 +779,9 @@ export default function GenerateDialog({
           ))}
         </ol>
       )}
+      {items.length > 0 && !batch.roomForMore ? (
+        <p className="text-xs text-muted-foreground">{FULL}</p>
+      ) : null}
       {items.length === 0 || !batch.roomForMore ? null : (
         <Button
           className="self-start rounded-[10px]"
