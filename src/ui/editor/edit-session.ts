@@ -36,8 +36,11 @@ export interface EditSession {
    * again, in a session of its own.
    */
   readonly moved?: boolean;
-  /** The generator's recipe and the maze it made, which holds while the board shows that maze. */
-  readonly generated?: Generated;
+  /**
+   * The mazes the generator made in this session, or that opened with a recipe, each with its
+   * recipe, which holds while the board shows that maze.
+   */
+  readonly generated: readonly Generated[];
 }
 
 /** A maze the generator made and its recipe. */
@@ -54,19 +57,17 @@ export function openSession(opened: OpenMaze): EditSession {
     history: createHistory(opened.maze, { equals: mazesEqual }),
     profile: opened.document.profile,
     mine: mine && { ...mine, name: opened.name },
-    generated: recipe && { recipe, maze: opened.maze },
+    generated: recipe === undefined ? [] : [{ recipe, maze: opened.maze }],
   };
 }
 
 /**
- * The recipe of the walls on screen: the generator's while the board shows the maze it made, and
- * none once an edit or an undo moved off it, until the board shows that maze again.
+ * The recipe of the walls on screen: the generator's while the board shows a maze it made, and
+ * none once an edit or an undo moved off every such maze, until the board shows one again.
  */
 export function sessionRecipe(session: EditSession): MineRecipe | undefined {
   const { generated, history } = session;
-  return generated !== undefined && mazesEqual(history.present, generated.maze)
-    ? generated.recipe
-    : undefined;
+  return generated.findLast(({ maze }) => mazesEqual(history.present, maze))?.recipe;
 }
 
 /**
@@ -74,7 +75,11 @@ export function sessionRecipe(session: EditSession): MineRecipe | undefined {
  * undo, and its recipe.
  */
 export function withGenerated(session: EditSession, generated: Generated): EditSession {
-  return { ...session, history: record(session.history, generated.maze), generated };
+  return {
+    ...session,
+    history: record(session.history, generated.maze),
+    generated: [...session.generated, generated],
+  };
 }
 
 /** The route key of the maze the session shows: its item of My mazes once it has one. */

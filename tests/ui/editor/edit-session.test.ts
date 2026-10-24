@@ -177,4 +177,21 @@ describe('An editing session', () => {
     expect(sessionRecipe(session)).toEqual(recipe);
     expect(sessionRecipe(toggled(session, FIRST))).toBeUndefined();
   });
+
+  test('brings the earlier recipe back when an undo goes past a replace', () => {
+    const first = { version: 7, seed: 1, settings: { size: 4 } };
+    const second = { version: 7, seed: 2, settings: { size: 4 } };
+    const session = openSession({
+      ...repoMaze(),
+      document: { ...repoMaze().document, recipe: first },
+    });
+    const replaced = withGenerated(session, {
+      maze: toggleWall(repoMaze().maze, FIRST),
+      recipe: second,
+    });
+
+    expect(sessionRecipe(replaced)).toEqual(second);
+    expect(sessionRecipe(edit(replaced, undo))).toEqual(first);
+    expect(sessionRecipe(edit(edit(replaced, undo), redo))).toEqual(second);
+  });
 });

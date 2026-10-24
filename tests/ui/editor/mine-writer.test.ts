@@ -254,6 +254,37 @@ describe('The writer of My mazes', () => {
     expect(mine.log).toEqual(['create Repo (edited)', 'save Repo (edited)', 'save Repo (edited)']);
   });
 
+  test('writes the earlier recipe back, never none, when an undo goes past a replace', async () => {
+    const mine = new FakeMine();
+    const { writer } = writerOn(mine);
+    const first = { version: 7, seed: 1, settings: { size: 4 } };
+    const second = { version: 7, seed: 2, settings: { size: 4 } };
+    const session = openSession({
+      ...opened('Generated', { id: 'g', version: 1 }),
+      maze: wallsOf(1),
+      document: { trailer: '', profile: 'classic', mine: { id: 'g', version: 1 }, recipe: first },
+    });
+    mine.items.set('g', {
+      id: 'g',
+      name: 'Generated',
+      code: encodeMazeCode(wallsOf(1)),
+      profile: 'classic',
+      createdAt: 0,
+      updatedAt: 0,
+      version: 1,
+      recipe: first,
+    });
+    const replaced = withGenerated(session, { maze: wallsOf(2), recipe: second });
+    writer.write(replaced);
+    await writer.idle();
+    expect(mine.items.get('g')?.recipe).toEqual(second);
+
+    writer.write({ ...replaced, history: undo(replaced.history) });
+    await writer.idle();
+    expect(mine.items.get('g')?.recipe).toEqual(first);
+    expect(mine.log).toEqual(['save Generated', 'save Generated']);
+  });
+
   test('makes one copy for two Save to My mazes asked at once', async () => {
     const mine = new FakeMine();
     const { writer } = writerOn(mine);
