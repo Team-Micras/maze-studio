@@ -249,13 +249,19 @@ reached, and the measurements of the day, are in the git history of this file.
   three per maze shown; the batch keeps the most varied with `pickBatch`, sorted by seed, so the same settings and
   first seed show the same mazes on every computer. Cancel, a new run and closing the dialog terminate the workers.
   The dialog stays mounted once opened, so its batch is there the next time.
-- **The recipe stays with the maze.** An item of My mazes made from a generated maze keeps the recipe (`recipe`:
+- **A recipe holds only for the walls it made** (owner, 24/10). An item of My mazes keeps the recipe (`recipe`:
   version, settings, seed, wall hash, and the walls and goal cells it built) as data: `src/library` cannot read the
-  generator, so it checks only the shape, and the generator's `readRecipe` checks it before anything is rebuilt. It
-  stays through later edits, since it says how the maze began; the backup's index carries it, and an index entry with
-  a recipe of another shape is dropped. Copy recipe in the editor's ⋯ menu copies it, and Rebuild from a recipe in
-  the dialog builds it again and says, as the mockup does, when this generator builds other walls than it saved, or
-  when an older generator made it.
+  generator, so it checks only the shape, and the generator's `readRecipe` checks it before anything is rebuilt. The
+  editing session keeps the recipe with the maze it made and shows and saves it only while the board shows that maze:
+  a manual edit drops it from the item, and Undo back to the generated walls writes it again, with no state of its own
+  in the history. The backup's index carries it, and an index entry with a recipe of another shape is dropped. Copy
+  recipe in the editor's ⋯ menu copies it while it holds, and Rebuild from a recipe in the dialog builds it again and
+  says, as the mockup does, when this generator builds other walls than it saved, or when an older generator made it.
+- **Generate in the editor replaces the board** (owner, 24/10), as the mockup's panel did: Generate… in the ⋯ menu
+  opens the same dialog sized to the open maze when it is 16 × 16 or 32 × 32, and says so otherwise. Use this on a
+  maze of the board's size puts it on the board as one step of undo, under the same name, through the editor's own
+  path, so a repository maze is copied to My mazes as by any edit; a maze of another size opens as a new maze. The
+  hint "Replaces the maze on the board. Undo brings it back." is left out on a blank board.
 - **The settings are kept per device in the `settings` store** of IndexedDB, as the folder's handle is, instead of the
   mockup's `localStorage`: the preset and the settings of the last valid change, checked with `isSettings` when read
   back. Another tab's change is not followed while the dialog is open.
