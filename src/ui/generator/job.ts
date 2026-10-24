@@ -1,7 +1,8 @@
 /**
  * What a generator worker does with one message: builds one maze, from a seed (`generate`) or as a
  * variation of a base maze (`vary`), and answers with what the page needs to pick, show and save
- * it, with the targets it missed, which only the worker knows. Kept apart from the worker so that it runs, and is tested, anywhere.
+ * it, with the targets it missed, which only the worker knows. Kept apart from the worker so
+ * that it runs, and is tested, anywhere.
  *
  * @module
  */

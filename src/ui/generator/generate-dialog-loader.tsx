@@ -4,10 +4,17 @@ import { showToast } from '@/ui/toasts';
 
 import type { GenerateDialogProps } from './generate-dialog';
 
-/** What opens in place of the dialog when its chunk does not load: nothing, closed at once. */
-function GeneratorUnavailable({ open, onOpenChange }: GenerateDialogProps) {
+/** What the app says when the generator's chunk does not load. */
+export const UNAVAILABLE = 'Could not load the generator. Reload to try again';
+
+/**
+ * What opens in place of the dialog when its chunk does not load: a toast saying so, at every
+ * open, and the dialog closed at once.
+ */
+export function GeneratorUnavailable({ open, onOpenChange }: GenerateDialogProps) {
   useEffect(() => {
     if (open) {
+      showToast(UNAVAILABLE);
       onOpenChange(false);
     }
   }, [open, onOpenChange]);
@@ -17,10 +24,7 @@ function GeneratorUnavailable({ open, onOpenChange }: GenerateDialogProps) {
 
 /** The Generate dialog, with the generator and its worker, loaded the first time it opens. */
 const GenerateDialog = lazy<ComponentType<GenerateDialogProps>>(() =>
-  import('./generate-dialog').catch(() => {
-    showToast('Could not load the generator. Reload to try again');
-    return { default: GeneratorUnavailable };
-  })
+  import('./generate-dialog').catch(() => ({ default: GeneratorUnavailable }))
 );
 
 /**
