@@ -1,6 +1,8 @@
 import { useEffect, useId, useRef, useState, useSyncExternalStore, type FormEvent } from 'react';
 
-import { BATCH, readRecipe } from '@/generator';
+import { BATCH, readRecipe, resize } from '@/generator';
+import type { Maze } from '@/maze';
+import type { Generated } from '@/ui/editor/edit-session';
 import { ThumbnailCanvas } from '@/ui/board/thumbnail-canvas';
 import { copyText } from '@/ui/editor/share';
 import { useCoarsePointer, usePhoneLayout } from '@/ui/hooks/use-media-query';
@@ -18,6 +20,7 @@ import { showToast } from '@/ui/toasts';
 import { Batch, type Item } from './batch-run';
 import {
   cardLabel,
+  generatesFor,
   isReady,
   itemFeatures,
   itemOrigin,
@@ -25,13 +28,26 @@ import {
   itemTitle,
   itemWarning,
   measureItem,
+  replacesBoard,
   requestOf,
   statusLine,
   STOPPED,
+  unsupportedBoard,
+  pickHint,
   type ReadyItem,
 } from './candidates';
 import { SettingsForm, type GeneratorChoice } from './settings-form';
 import { startingSettings, summary } from './settings-model';
+
+/** The settings sized for the board open in the editor, when the generator makes its size. */
+function fitted(choice: GeneratorChoice, board: Maze | undefined): GeneratorChoice {
+  return board !== undefined && generatesFor(board) && board.width !== choice.settings.size
+    ? {
+        ...choice,
+        settings: structuredClone(resize(choice.settings, board.width === 32 ? 32 : 16)),
+      }
+    : choice;
+}
 
 /** The props of {@link GenerateDialog}. */
 export interface GenerateDialogProps {
@@ -39,6 +55,13 @@ export interface GenerateDialogProps {
   readonly onOpenChange: (open: boolean) => void;
   /** Opens the maze picked in the editor, as a new maze. */
   readonly onUse: (request: NewMazeRequest) => void;
+  /** The maze open in the editor, when Generate opens from there. */
+  readonly board?: Maze;
+  /**
+   * Puts the maze picked on the board in place of the open one, as one step of undo; only for a
+   * maze of the board's size.
+   */
+  readonly onReplace?: (generated: Generated) => void;
 }
 
 const CARD_SIDE = 156;
@@ -175,7 +198,13 @@ function Details({ item, total }: { item: ReadyItem; total: number }) {
  * this, which opens it in the editor as a new maze with its recipe. A docked panel on a notebook,
  * a sheet on a phone. Closing keeps the batch for the next time and stops the run on its way.
  */
-export default function GenerateDialog({ open, onOpenChange, onUse }: GenerateDialogProps) {
+export default function GenerateDialog({
+  open,
+  onOpenChange,
+  onUse,
+  board,
+  onReplace,
+}: GenerateDialogProps) {
   const id = useId();
   const phone = usePhoneLayout();
   const coarse = useCoarsePointer();
@@ -187,6 +216,7 @@ export default function GenerateDialog({ open, onOpenChange, onUse }: GenerateDi
   const state = useSyncExternalStore(batch.subscribe, batch.getState);
   const [choice, setChoice] = useState<GeneratorChoice>(() => startingSettings(undefined));
   const [touched, setTouched] = useState(false);
+  const [wasOpen, setWasOpen] = useState(false);
   const [invalid, setInvalid] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(true);
   const [selected, setSelected] = useState<number | undefined>(undefined);
@@ -195,6 +225,7 @@ export default function GenerateDialog({ open, onOpenChange, onUse }: GenerateDi
   const items = state.items;
   const current = items.find((item) => item.n === selected);
   const running = state.progress !== null;
+  const hint = pickHint(current, board);
 
   useEffect(() => {
     let live = true;
@@ -203,7 +234,7 @@ export default function GenerateDialog({ open, onOpenChange, onUse }: GenerateDi
       .then(
         (saved) => {
           if (live && !touched && saved !== undefined) {
-            setChoice(startingSettings(saved));
+            setChoice(fitted(startingSettings(saved), board));
           }
         },
         () => undefined
@@ -211,7 +242,15 @@ export default function GenerateDialog({ open, onOpenChange, onUse }: GenerateDi
     return () => {
       live = false;
     };
-  }, [touched]);
+  }, [touched, board]);
+
+  if (open !== wasOpen) {
+    setWasOpen(open);
+
+    if (open) {
+      setChoice(fitted(choice, board));
+    }
+  }
 
   useEffect(() => {
     if (!open) {
@@ -255,6 +294,12 @@ export default function GenerateDialog({ open, onOpenChange, onUse }: GenerateDi
   const use = (): void => {
     if (isReady(current)) {
       onOpenChange(false);
+
+      if (onReplace !== undefined && replacesBoard(current, board)) {
+        onReplace({ maze: measureItem(current).maze, recipe: current.recipe });
+        return;
+      }
+
       onUse(requestOf(current));
     }
   };
@@ -291,6 +336,9 @@ export default function GenerateDialog({ open, onOpenChange, onUse }: GenerateDi
           className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto overscroll-contain px-4 pb-4"
           ref={body}
         >
+          {board === undefined || generatesFor(board) ? null : (
+            <p className="text-xs text-amber-700 dark:text-amber-400">{unsupportedBoard(board)}</p>
+          )}
           <details
             className="group rounded-[12px] border"
             onToggle={(event) => setSettingsOpen(event.currentTarget.open)}
@@ -452,9 +500,7 @@ export default function GenerateDialog({ open, onOpenChange, onUse }: GenerateDi
         </div>
         {items.length === 0 ? null : (
           <div className="flex flex-col gap-1.5 border-t px-4 pt-3 pb-4">
-            <p className="text-xs text-muted-foreground">
-              Opens as a new maze; the first edit saves it in My mazes.
-            </p>
+            {hint === undefined ? null : <p className="text-xs text-muted-foreground">{hint}</p>}
             <Button
               className="h-10 rounded-[10px]"
               disabled={!isReady(current)}

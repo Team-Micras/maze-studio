@@ -37,6 +37,7 @@ import { CopyLinkButton, TitleActions } from '@/ui/editor/title-actions';
 import type { MazeEditor } from '@/ui/editor/use-maze-editor';
 import { useWriting } from '@/ui/editor/use-writing';
 import { useCoarsePointer, usePhoneLayout } from '@/ui/hooks/use-media-query';
+import { GenerateDialogLoader } from '@/ui/generator/generate-dialog-loader';
 import { EmptyLibrary } from '@/ui/library/empty-library';
 import type { MineAndFilesActions } from '@/ui/library/mine-and-files';
 import { LibraryGrid } from '@/ui/library/library-grid';
@@ -46,6 +47,7 @@ import type { Library } from '@/ui/library/use-library';
 import { openEntry, type OpenMaze } from '@/ui/open-maze';
 import { cn } from '@/ui/primitives/utils';
 import { useTheme } from '@/ui/theme';
+import { showToast } from '@/ui/toasts';
 import { newMazeName, type NewMazeRequest } from '@/ui/new-maze';
 import { routeOfEntry, type Route } from '@/ui/routes';
 
@@ -103,6 +105,9 @@ function editorInsetsFor(phone: boolean, viewing: boolean): Insets {
   return viewing ? EDITOR_PHONE_INSETS : EDITOR_PHONE_EDIT_INSETS;
 }
 
+/** What the editor says once a generated maze has taken the place of the one on the board. */
+const REPLACED = 'Maze replaced. Undo brings the old one back';
+
 /** Where the content is while no board is on the stage, as in the library. */
 const NO_BOARD: WorldRect = { x: 0, y: 0, width: 1, height: 1 };
 
@@ -140,6 +145,7 @@ export function Studio({
   onPin,
 }: StudioProps) {
   const [store] = useState(createStudioStore);
+  const [generateOpen, setGenerateOpen] = useState(false);
   const state = useStore(store);
   const phone = usePhoneLayout();
   const editorInsets = editorInsetsFor(phone, state.viewing);
@@ -412,6 +418,7 @@ export function Studio({
                   {...editing.actions}
                   {...actions.menu}
                   onFit={() => refit({ animate: true })}
+                  onGenerate={() => setGenerateOpen(true)}
                   onToggleTheme={toggleTheme}
                   theme={theme}
                 />
@@ -446,6 +453,16 @@ export function Studio({
       ) : null}
       {mode === 'editor' && !coarse ? <ShortcutHelp {...editing.help} /> : null}
       {actions.rename === undefined ? null : <RenameDialog {...actions.rename} />}
+      <GenerateDialogLoader
+        board={screen.kind === 'editing' ? screen.maze.maze : undefined}
+        onOpenChange={setGenerateOpen}
+        onReplace={(generated) => {
+          editor.replace(generated);
+          showToast(REPLACED);
+        }}
+        onUse={onNew}
+        open={generateOpen && screen.kind === 'editing'}
+      />
       {mode === 'library' || mode === 'editor' ? <ChangesPanel {...changes.panel} /> : null}
       {state.listOpen && library !== undefined && mode === 'editor' ? (
         <MazeList

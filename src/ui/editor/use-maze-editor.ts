@@ -35,9 +35,11 @@ import {
   openSession,
   sessionAnswers,
   sessionView,
+  withGenerated,
   withMine,
   withProfile,
   type EditSession,
+  type Generated,
 } from './edit-session';
 import { MineWriter } from './mine-writer';
 import { noteWrites, trackWriter } from './pending-writes';
@@ -69,6 +71,8 @@ export interface MazeEditor {
   readonly begin: () => void;
   /** Puts `maze` on screen, within the gesture in progress or as a step of its own. */
   readonly change: (maze: Maze) => void;
+  /** Puts the maze the generator made on screen as one step of undo, with its recipe. */
+  readonly replace: (generated: Generated) => void;
   readonly end: () => void;
   /** Takes back the gesture in progress. */
   readonly cancel: () => void;
@@ -247,6 +251,11 @@ export function useMazeEditor(input: MazeEditorInput): MazeEditor {
     current,
     begin: () => edit(beginGesture),
     change,
+    replace: (generated) => {
+      if (!readOnly) {
+        update((before) => withGenerated(before, generated));
+      }
+    },
     end: () => edit(endGesture),
     cancel: () => edit(cancelEdit),
     undo: () => edit(undo),

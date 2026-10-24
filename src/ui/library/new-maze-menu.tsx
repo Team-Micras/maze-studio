@@ -1,17 +1,8 @@
 import { Plus, Ruler, Shuffle, X } from '@/ui/icons';
-import {
-  lazy,
-  Suspense,
-  useId,
-  useRef,
-  useState,
-  type ComponentType,
-  type FormEvent,
-  type ReactNode,
-} from 'react';
+import { useId, useRef, useState, type FormEvent, type ReactNode } from 'react';
 
 import type { Profile } from '@/maze';
-import type { GenerateDialogProps } from '@/ui/generator/generate-dialog';
+import { GenerateDialogLoader } from '@/ui/generator/generate-dialog-loader';
 import { useCoarsePointer } from '@/ui/hooks/use-media-query';
 import { PROFILE_NAMES } from '@/ui/labels';
 import { IslandButton } from '@/ui/islands/island';
@@ -27,24 +18,11 @@ import {
 import { Input } from '@/ui/primitives/input';
 import { Label } from '@/ui/primitives/label';
 import { ToggleGroup, ToggleGroupItem } from '@/ui/primitives/toggle-group';
-import { showToast } from '@/ui/toasts';
 
 /** The default side of a custom maze. */
 const DEFAULT_SIDE = '16';
 
 const RANGE_ERROR = '1 to 64';
-
-function GeneratorUnavailable() {
-  return null;
-}
-
-/** The Generate dialog, with the generator and its worker, loaded the first time it opens. */
-const GenerateDialog = lazy<ComponentType<GenerateDialogProps>>(() =>
-  import('@/ui/generator/generate-dialog').catch(() => {
-    showToast('Could not load the generator. Reload to try again');
-    return { default: GeneratorUnavailable };
-  })
-);
 
 /** The props of {@link NewMazeItems}. */
 export interface NewMazeItemsProps {
@@ -273,7 +251,7 @@ export interface NewMazeDialogsProps {
  */
 export function NewMazeDialogs({ defaultName, onNew, children }: NewMazeDialogsProps) {
   const [custom, setCustom] = useState(false);
-  const [generate, setGenerate] = useState<boolean | undefined>(undefined);
+  const [generate, setGenerate] = useState(false);
 
   return (
     <>
@@ -284,11 +262,7 @@ export function NewMazeDialogs({ defaultName, onNew, children }: NewMazeDialogsP
           onNew={onNew}
         />
       )}
-      {generate === undefined ? null : (
-        <Suspense fallback={null}>
-          <GenerateDialog onOpenChange={setGenerate} onUse={onNew} open={generate} />
-        </Suspense>
-      )}
+      <GenerateDialogLoader onOpenChange={setGenerate} onUse={onNew} open={generate} />
       <CustomSizeDialog
         defaultName={defaultName}
         onCreate={onNew}

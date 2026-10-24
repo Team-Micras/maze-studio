@@ -7,7 +7,7 @@
  */
 
 import { CHOICE, CHOICE_SHORT, features, measure, tags, TEXT, type Measured } from '@/generator';
-import type { Profile } from '@/maze';
+import { horizontalEdgeIndex, verticalEdgeIndex, type Maze, type Profile } from '@/maze';
 import type { NewMazeRequest } from '@/ui/new-maze';
 
 import type { BatchState, Item } from './batch-run';
@@ -126,4 +126,56 @@ export function requestOf(item: ReadyItem): NewMazeRequest {
     name: `Generated ${item.seed}`,
     recipe: item.recipe,
   };
+}
+
+/**
+ * Whether a maze has no walls of its own yet: at most one inner wall, as New maze puts east of the
+ * start.
+ */
+export function isBlank(maze: Maze): boolean {
+  const { width: w, height: h, horizontal, vertical } = maze;
+  let inner = 0;
+
+  for (let y = 1; y < h; y++) {
+    for (let x = 0; x < w; x++) {
+      inner += horizontal.get(horizontalEdgeIndex(w, x, y)) ? 1 : 0;
+    }
+  }
+
+  for (let y = 0; y < h; y++) {
+    for (let x = 1; x < w; x++) {
+      inner += vertical.get(verticalEdgeIndex(w, x, y)) ? 1 : 0;
+    }
+  }
+
+  return inner <= 1;
+}
+
+/** Whether the generator makes mazes of a board's size: 16 × 16 or 32 × 32. */
+export function generatesFor(board: Maze): boolean {
+  return board.width === board.height && (board.width === 16 || board.width === 32);
+}
+
+/** Whether a ready maze takes the place of the one on the board, being of its size. */
+export function replacesBoard(item: ReadyItem, board: Maze | undefined): boolean {
+  const { maze } = measureItem(item);
+  return board !== undefined && maze.width === board.width && maze.height === board.height;
+}
+
+/** The line above Use this: what it does with the maze picked, from the library or the editor. */
+export function pickHint(item: Item | undefined, board: Maze | undefined): string | undefined {
+  if (board === undefined || !isReady(item)) {
+    return 'Opens as a new maze; the first edit saves it in My mazes.';
+  }
+
+  if (replacesBoard(item, board)) {
+    return isBlank(board) ? undefined : 'Replaces the maze on the board. Undo brings it back.';
+  }
+
+  return `Not the board’s size (${board.width} × ${board.height}): opens as a new maze.`;
+}
+
+/** What the dialog says of a board whose size the generator does not make. */
+export function unsupportedBoard(board: Maze): string {
+  return `The generator makes 16 × 16 and 32 × 32 mazes, not ${board.width} × ${board.height}: the maze picked opens as a new maze.`;
 }

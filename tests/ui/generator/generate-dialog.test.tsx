@@ -3,6 +3,8 @@ import { page, userEvent } from 'vitest/browser';
 import { render } from 'vitest-browser-react';
 
 import { readRecipe } from '@/generator';
+import { borderedMaze, toggleWall } from '@/maze';
+import type { Generated } from '@/ui/editor/edit-session';
 import GenerateDialog from '@/ui/generator/generate-dialog';
 import type { NewMazeRequest } from '@/ui/new-maze';
 import '@/ui/styles.css';
@@ -17,6 +19,15 @@ async function mount(): Promise<NewMazeRequest[]> {
   );
   return used;
 }
+
+const BOARD = toggleWall(
+  toggleWall(borderedMaze(32, 32), { direction: 'horizontal', x: 3, y: 3 }),
+  {
+    direction: 'vertical',
+    x: 3,
+    y: 3,
+  }
+);
 
 async function generate(seed = '1'): Promise<void> {
   await userEvent.fill(page.getByRole('spinbutton', { name: 'First seed' }), seed);
@@ -128,6 +139,53 @@ describe('The Generate dialog', () => {
       )
       .toBeVisible();
     await expect.element(page.getByText(/^from a recipe · seed 1/)).toBeVisible();
+  });
+
+  test("from the editor, takes the board's size and replaces the board with the maze picked", async () => {
+    const replaced: Generated[] = [];
+    const used: NewMazeRequest[] = [];
+    await render(
+      <GenerateDialog
+        board={BOARD}
+        onOpenChange={() => undefined}
+        onReplace={(generated) => replaced.push(generated)}
+        onUse={(request) => used.push(request)}
+        open
+      />
+    );
+
+    await expect.element(page.getByText(/· 32 × 32,/)).toBeVisible();
+    await generate();
+    await expect
+      .element(page.getByRole('button', { name: /^#8,/ }), { timeout: 120_000 })
+      .toBeVisible();
+    await expect
+      .element(page.getByText('Replaces the maze on the board. Undo brings it back.'))
+      .toBeVisible();
+    expect(await axeViolations()).toEqual([]);
+    await userEvent.click(page.getByRole('button', { name: 'Use this' }));
+
+    expect(used).toEqual([]);
+    expect(replaced).toHaveLength(1);
+    expect(replaced[0]?.maze.width).toBe(32);
+    expect(replaced[0]?.recipe).toMatchObject({ settings: { size: 32 } });
+  }, 150_000);
+
+  test('from the editor of a board it cannot make, says so and opens the maze picked as a new one', async () => {
+    await render(
+      <GenerateDialog
+        board={borderedMaze(8, 8)}
+        onOpenChange={() => undefined}
+        onReplace={() => undefined}
+        onUse={() => undefined}
+        open
+      />
+    );
+
+    await expect
+      .element(page.getByText(/^The generator makes 16 × 16 and 32 × 32 mazes, not 8 × 8/))
+      .toBeVisible();
+    expect(await axeViolations()).toEqual([]);
   });
 });
 

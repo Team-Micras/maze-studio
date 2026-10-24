@@ -4,16 +4,19 @@ import { afterAll, beforeAll, describe, expect, inject, test } from 'vitest';
 import { GENERATOR_VERSION, readRecipe, savedGrid, toMaze, type SavedRecipe } from '@/generator';
 import { toggleWall, type Edge } from '@/maze';
 import {
+  contentOf,
   edgeMiddle,
   expectSaved,
   mineId,
   pagePoint,
+  repoContent,
   sameMaze,
   storedMine,
 } from '@tests/support/e2e/board-page';
 import { expectToast, openPage, waitForMode } from '@tests/support/e2e/studio-page';
 
 const app = inject('appUrl');
+const CLASSIC = 'classic/AAMC15Maze.txt';
 const EDGE: Edge = { direction: 'horizontal', x: 4, y: 5 };
 const GENERATION = { timeout: 60_000 };
 
@@ -37,18 +40,23 @@ async function openGenerate(page: Page, menu: string): Promise<void> {
   await page.getByRole('dialog', { name: 'Generate' }).waitFor();
 }
 
-async function generateAndPick(page: Page, card: number): Promise<void> {
+async function generateAndPick(page: Page, card: number, hint?: string): Promise<void> {
   const dialog = page.getByRole('dialog', { name: 'Generate' });
   await dialog.getByRole('spinbutton', { name: 'First seed' }).fill('1');
   await dialog.getByRole('button', { name: 'Generate', exact: true }).click();
   await dialog.getByRole('button', { name: /^#8,/ }).waitFor(GENERATION);
   await dialog.getByRole('button', { name: new RegExp(`^#${card},`) }).click();
+
+  if (hint !== undefined) {
+    await dialog.getByText(hint).waitFor();
+  }
+
   await dialog.getByRole('button', { name: 'Use this' }).click();
   await waitForMode(page, 'editor');
 }
 
 describe('Generate in New maze (beta)', () => {
-  test('opens the maze picked as a new maze, saves its recipe with its first edit, and keeps it on reopening', async () => {
+  test('opens the maze picked as a new maze, keeps its recipe only with its own walls, and on reopening', async () => {
     const page = await openPage(browser, contexts, app);
     await openGenerate(page, 'New maze');
     await page.getByText('Rules', { exact: true }).click();
@@ -69,10 +77,23 @@ describe('Generate in New maze (beta)', () => {
     const generated = toMaze(savedGrid({ ...recipe, walls: recipe.walls ?? '' }));
     const point = await pagePoint(page, generated, edgeMiddle(EDGE));
     await page.mouse.click(point.x, point.y);
-    const saved = await expectSaved(page, sameMaze(toggleWall(generated, EDGE)));
+    const drawn = await expectSaved(page, sameMaze(toggleWall(generated, EDGE)));
+    expect(drawn.name).toBe(title);
+    expect(drawn.profile).toBe('classic');
+    expect(drawn.recipe).toBeUndefined();
+    await page.getByRole('button', { name: 'More actions' }).click();
+    expect(await page.getByRole('menuitem', { name: 'Copy recipe' }).count()).toBe(0);
+    await page.keyboard.press('Escape');
+
+    await page.getByRole('button', { name: 'Undo' }).click();
+    const saved = await expectSaved(
+      page,
+      (content) => sameMaze(generated)(content) && mineId(page) !== undefined
+    );
+    await expect
+      .poll(async () => (await storedMine(page, mineId(page) ?? ''))?.recipe)
+      .toEqual(recipe);
     expect(saved.name).toBe(title);
-    expect(saved.profile).toBe('classic');
-    expect(saved.recipe).toEqual(recipe);
 
     const id = mineId(page) ?? '';
     await page.reload();
@@ -116,3 +137,26 @@ async function copiedRecipe(page: Page): Promise<SavedRecipe> {
   await expectToast(page, 'Recipe copied');
   return readRecipe(await page.evaluate(() => navigator.clipboard.readText()));
 }
+
+describe('Generate in the editor (beta)', () => {
+  test('replaces the walls of the open maze as one step, which Undo takes back', async () => {
+    const page = await openPage(browser, contexts, app, `#/repo/${CLASSIC}`);
+    await waitForMode(page, 'editor');
+    const original = (await repoContent(CLASSIC)).maze;
+    await openGenerate(page, 'More actions');
+    await generateAndPick(page, 1, 'Replaces the maze on the board. Undo brings it back.');
+
+    const replaced = await expectSaved(page, (content) => !sameMaze(original)(content));
+    expect(replaced.recipe).toMatchObject({ version: GENERATOR_VERSION, settings: { size: 16 } });
+    expect(await page.locator('h1').textContent()).toBe(replaced.name);
+    const recipe = await copiedRecipe(page);
+    expect(recipe).toEqual(replaced.recipe);
+    const generated = toMaze(savedGrid({ ...recipe, walls: recipe.walls ?? '' }));
+    expect(sameMaze(generated)(contentOf(replaced))).toBe(true);
+
+    await page.getByRole('button', { name: 'Undo' }).click();
+    const undone = await expectSaved(page, sameMaze(original));
+    expect(undone.recipe).toBeUndefined();
+    expect(await page.getByRole('button', { name: 'Undo' }).isDisabled()).toBe(true);
+  });
+});
