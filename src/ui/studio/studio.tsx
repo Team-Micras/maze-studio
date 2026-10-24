@@ -145,7 +145,7 @@ export function Studio({
   onPin,
 }: StudioProps) {
   const [store] = useState(createStudioStore);
-  const [generateOpen, setGenerateOpen] = useState(false);
+  const [generateFor, setGenerateFor] = useState<string | undefined>(undefined);
   const state = useStore(store);
   const phone = usePhoneLayout();
   const editorInsets = editorInsetsFor(phone, state.viewing);
@@ -185,6 +185,11 @@ export function Studio({
               board,
               drawable: pressEdits && !state.listOpen,
             };
+  const editingKey = screen.kind === 'editing' ? screen.maze.key : undefined;
+
+  if (generateFor !== undefined && generateFor !== editingKey) {
+    setGenerateFor(undefined);
+  }
 
   const camera = useCanvasCamera({
     content: board ?? NO_BOARD,
@@ -418,7 +423,9 @@ export function Studio({
                   {...editing.actions}
                   {...actions.menu}
                   onFit={() => refit({ animate: true })}
-                  onGenerate={() => setGenerateOpen(true)}
+                  onGenerate={
+                    editingKey === undefined ? undefined : () => setGenerateFor(editingKey)
+                  }
                   onToggleTheme={toggleTheme}
                   theme={theme}
                 />
@@ -455,13 +462,14 @@ export function Studio({
       {actions.rename === undefined ? null : <RenameDialog {...actions.rename} />}
       <GenerateDialogLoader
         board={screen.kind === 'editing' ? screen.maze.maze : undefined}
-        onOpenChange={setGenerateOpen}
+        onOpenChange={(next) => setGenerateFor(next ? editingKey : undefined)}
         onReplace={(generated) => {
-          editor.replace(generated);
-          showToast(REPLACED);
+          if (editor.replace(generated)) {
+            showToast(REPLACED);
+          }
         }}
         onUse={onNew}
-        open={generateOpen && screen.kind === 'editing'}
+        open={generateFor !== undefined}
       />
       {mode === 'library' || mode === 'editor' ? <ChangesPanel {...changes.panel} /> : null}
       {state.listOpen && library !== undefined && mode === 'editor' ? (

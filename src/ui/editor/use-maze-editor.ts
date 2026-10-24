@@ -71,8 +71,12 @@ export interface MazeEditor {
   readonly begin: () => void;
   /** Puts `maze` on screen, within the gesture in progress or as a step of its own. */
   readonly change: (maze: Maze) => void;
-  /** Puts the maze the generator made on screen as one step of undo, with its recipe. */
-  readonly replace: (generated: Generated) => void;
+  /**
+   * Puts the maze the generator made on screen as one step of undo, with its recipe.
+   *
+   * @returns Whether it did: not on a maze another tab holds.
+   */
+  readonly replace: (generated: Generated) => boolean;
   readonly end: () => void;
   /** Takes back the gesture in progress. */
   readonly cancel: () => void;
@@ -252,9 +256,12 @@ export function useMazeEditor(input: MazeEditorInput): MazeEditor {
     begin: () => edit(beginGesture),
     change,
     replace: (generated) => {
-      if (!readOnly) {
-        update((before) => withGenerated(before, generated));
+      if (readOnly || latest.current === undefined) {
+        return false;
       }
+
+      update((before) => withGenerated(before, generated));
+      return true;
     },
     end: () => edit(endGesture),
     cancel: () => edit(cancelEdit),

@@ -1,4 +1,12 @@
-import { useEffect, useId, useRef, useState, useSyncExternalStore, type FormEvent } from 'react';
+import {
+  useEffect,
+  useId,
+  useLayoutEffect,
+  useRef,
+  useState,
+  useSyncExternalStore,
+  type FormEvent,
+} from 'react';
 
 import { BATCH, readRecipe, resize } from '@/generator';
 import type { Maze } from '@/maze';
@@ -217,6 +225,11 @@ export default function GenerateDialog({
   const [choice, setChoice] = useState<GeneratorChoice>(() => startingSettings(undefined));
   const [touched, setTouched] = useState(false);
   const [wasOpen, setWasOpen] = useState(false);
+  const boardNow = useRef(board);
+
+  useLayoutEffect(() => {
+    boardNow.current = board;
+  });
   const [invalid, setInvalid] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(true);
   const [selected, setSelected] = useState<number | undefined>(undefined);
@@ -234,7 +247,7 @@ export default function GenerateDialog({
       .then(
         (saved) => {
           if (live && !touched && saved !== undefined) {
-            setChoice(fitted(startingSettings(saved), board));
+            setChoice(fitted(startingSettings(saved), boardNow.current));
           }
         },
         () => undefined
@@ -242,7 +255,7 @@ export default function GenerateDialog({
     return () => {
       live = false;
     };
-  }, [touched, board]);
+  }, [touched]);
 
   if (open !== wasOpen) {
     setWasOpen(open);
