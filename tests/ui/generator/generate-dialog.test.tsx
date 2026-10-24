@@ -100,6 +100,35 @@ describe('The Generate dialog', () => {
     });
   });
 
+  test('shows each maze in its card as it is built, before the batch is done', async () => {
+    await mount();
+    await generate();
+    await expect.element(page.getByRole('button', { name: /^#1,/ }), GENERATION).toBeVisible();
+
+    expect(progress()).not.toBeNull();
+    expect(document.querySelectorAll('[aria-busy="true"]').length).toBeGreaterThan(0);
+    await expect.element(page.getByRole('button', { name: 'Use this' })).toBeEnabled();
+  });
+
+  test('leaves nothing of the settings over the gallery once they fold', async () => {
+    await page.viewport(390, 844);
+    await mount();
+    await generate();
+    await expect.element(page.getByRole('button', { name: /^#8,/ }), GENERATION).toBeVisible();
+
+    expect(document.querySelector('[data-settings]')).toBeNull();
+    const gallery = document.querySelector('ol[aria-label="Mazes generated"]');
+    const foot = page.getByRole('button', { name: 'Use this' }).element().parentElement;
+    const top = foot?.getBoundingClientRect().top ?? 0;
+    const box = gallery?.getBoundingClientRect();
+    const hits = [0.25, 0.5, 0.75].map((x) =>
+      document.elementFromPoint((box?.left ?? 0) + x * (box?.width ?? 0), top - 4)
+    );
+
+    expect(hits.every((hit) => hit !== null && gallery?.contains(hit) === true)).toBe(true);
+    await page.viewport(1440, 900);
+  });
+
   test('cancels a run, leaving no card behind', async () => {
     await mount();
     await generate();

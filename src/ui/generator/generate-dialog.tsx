@@ -47,6 +47,27 @@ import {
 import { SettingsForm, type GeneratorChoice } from './settings-form';
 import { startingSettings, summary } from './settings-model';
 
+/** The card picked: its slot, and the seed it showed when picked, which it follows. */
+interface Picked {
+  readonly n: number;
+  readonly seed?: number;
+}
+
+/**
+ * The maze picked: the one with its seed, wherever the final pick of the batch moved it, and none
+ * once that pick left it out.
+ */
+function pickedItem(items: readonly Item[], picked: Picked | undefined): Item | undefined {
+  if (picked === undefined) {
+    return undefined;
+  }
+
+  const slot = items.find((item) => item.n === picked.n);
+  return picked.seed === undefined || slot?.seed === picked.seed
+    ? slot
+    : items.find((item) => item.seed === picked.seed);
+}
+
 /** The settings sized for the board open in the editor, when the generator makes its size. */
 function fitted(choice: GeneratorChoice, board: Maze | undefined): GeneratorChoice {
   return board !== undefined && generatesFor(board) && board.width !== choice.settings.size
@@ -115,7 +136,8 @@ function Card({ item, current, onPick }: { item: Item; current: boolean; onPick:
         type="button"
       >
         <ThumbnailCanvas
-          className="self-center rounded-[4px]"
+          className="self-center rounded-[4px] animate-in fade-in-0 duration-200"
+          key={item.seed}
           height={CARD_SIDE}
           maze={measureItem(item).maze}
           width={CARD_SIDE}
@@ -232,11 +254,11 @@ export default function GenerateDialog({
   });
   const [invalid, setInvalid] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(true);
-  const [selected, setSelected] = useState<number | undefined>(undefined);
+  const [selected, setSelected] = useState<Picked | undefined>(undefined);
   const [recipeText, setRecipeText] = useState('');
   const [recipeError, setRecipeError] = useState<string | undefined>(undefined);
   const items = state.items;
-  const current = items.find((item) => item.n === selected);
+  const current = pickedItem(items, selected);
   const running = state.progress !== null;
   const hint = pickHint(current, board);
 
@@ -282,7 +304,7 @@ export default function GenerateDialog({
   };
 
   const showResults = (n: number | undefined): void => {
-    setSelected(n);
+    setSelected(n === undefined ? undefined : { n });
     setSettingsOpen(false);
     body.current?.scrollTo({ top: 0 });
     status.current?.focus({ preventScroll: true });
@@ -330,7 +352,9 @@ export default function GenerateDialog({
         data-generate
         onOpenAutoFocus={(event) => {
           event.preventDefault();
-          (coarse ? content.current : generateButton.current)?.focus({ preventScroll: true });
+          (coarse ? content.current : (generateButton.current ?? content.current))?.focus({
+            preventScroll: true,
+          });
         }}
         ref={content}
         side={phone ? 'bottom' : 'right'}
@@ -354,7 +378,14 @@ export default function GenerateDialog({
           )}
           <details
             className="group rounded-[12px] border"
-            onToggle={(event) => setSettingsOpen(event.currentTarget.open)}
+            onToggle={(event) => {
+              const opened = event.currentTarget.open;
+              setSettingsOpen(opened);
+
+              if (!opened) {
+                setInvalid(false);
+              }
+            }}
             open={settingsOpen}
           >
             <summary className="flex cursor-pointer list-none items-center gap-2 rounded-[12px] px-3 py-2.5 text-[13px] outline-none focus-visible:ring-2 focus-visible:ring-ring [&::-webkit-details-marker]:hidden">
@@ -368,86 +399,94 @@ export default function GenerateDialog({
                 size={14}
               />
             </summary>
-            <form className="flex flex-col gap-4 px-3 pt-1 pb-3" onSubmit={submit}>
-              <SettingsForm onChange={changeSettings} onInvalid={setInvalid} value={choice} />
-              <div className="flex flex-col gap-1.5">
-                <label className="text-[13px] leading-none font-medium" htmlFor={`${id}-seed`}>
-                  First seed
-                </label>
-                <div className="flex gap-2">
-                  <Input
-                    autoComplete="off"
-                    className="h-8 font-mono text-[13px]"
-                    id={`${id}-seed`}
-                    inputMode="numeric"
-                    max={batch.maxSeed}
-                    min={0}
-                    onChange={(event) => batch.setNextSeed(Number(event.target.value))}
-                    type="number"
-                    value={state.nextSeed}
-                  />
-                  <Button
-                    aria-label="Random seed"
-                    className="size-8 rounded-[10px]"
-                    onClick={() => batch.setNextSeed(1 + Math.floor(Math.random() * 99_999))}
-                    size="icon"
-                    type="button"
-                    variant="outline"
-                  >
-                    <DiceFive aria-hidden />
-                  </Button>
-                </div>
-              </div>
-              <Button
-                className="h-10 rounded-[10px]"
-                disabled={invalid}
-                ref={generateButton}
-                type="submit"
-              >
-                <Shuffle aria-hidden />
-                Generate
-              </Button>
-              <details className="group/recipe">
-                <summary className="flex cursor-pointer list-none items-center gap-2 rounded-[8px] text-[13px] outline-none focus-visible:ring-2 focus-visible:ring-ring [&::-webkit-details-marker]:hidden">
-                  <b className="font-semibold">Rebuild from a recipe</b>
-                  <CaretDown
-                    aria-hidden
-                    className="transition-transform group-open/recipe:rotate-180"
-                    size={14}
-                  />
-                </summary>
-                <div className="flex flex-col gap-2 pt-2">
-                  <label className="sr-only" htmlFor={`${id}-recipe`}>
-                    Recipe
+            {settingsOpen ? (
+              <form className="flex flex-col gap-4 px-3 pt-1 pb-3" data-settings onSubmit={submit}>
+                <SettingsForm onChange={changeSettings} onInvalid={setInvalid} value={choice} />
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-[13px] leading-none font-medium" htmlFor={`${id}-seed`}>
+                    First seed
                   </label>
-                  <textarea
-                    aria-describedby={recipeError === undefined ? undefined : `${id}-recipe-error`}
-                    aria-invalid={recipeError !== undefined}
-                    autoComplete="off"
-                    className="min-h-16 rounded-md border border-input bg-transparent px-2 py-1.5 font-mono text-xs shadow-xs outline-none focus-visible:ring-2 focus-visible:ring-ring dark:bg-input/30"
-                    id={`${id}-recipe`}
-                    onChange={(event) => setRecipeText(event.target.value)}
-                    placeholder='{"settings":{…},"seed":1234}'
-                    rows={3}
-                    spellCheck={false}
-                    value={recipeText}
-                  />
-                  {recipeError === undefined ? null : (
-                    <p className="text-xs text-destructive" id={`${id}-recipe-error`} role="alert">
-                      {recipeError}
-                    </p>
-                  )}
-                  <Button
-                    className="self-start rounded-[10px]"
-                    onClick={rebuild}
-                    type="button"
-                    variant="outline"
-                  >
-                    Rebuild
-                  </Button>
+                  <div className="flex gap-2">
+                    <Input
+                      autoComplete="off"
+                      className="h-8 font-mono text-[13px]"
+                      id={`${id}-seed`}
+                      inputMode="numeric"
+                      max={batch.maxSeed}
+                      min={0}
+                      onChange={(event) => batch.setNextSeed(Number(event.target.value))}
+                      type="number"
+                      value={state.nextSeed}
+                    />
+                    <Button
+                      aria-label="Random seed"
+                      className="size-8 rounded-[10px]"
+                      onClick={() => batch.setNextSeed(1 + Math.floor(Math.random() * 99_999))}
+                      size="icon"
+                      type="button"
+                      variant="outline"
+                    >
+                      <DiceFive aria-hidden />
+                    </Button>
+                  </div>
                 </div>
-              </details>
-            </form>
+                <Button
+                  className="h-10 rounded-[10px]"
+                  disabled={invalid}
+                  ref={generateButton}
+                  type="submit"
+                >
+                  <Shuffle aria-hidden />
+                  Generate
+                </Button>
+                <details className="group/recipe">
+                  <summary className="flex cursor-pointer list-none items-center gap-2 rounded-[8px] text-[13px] outline-none focus-visible:ring-2 focus-visible:ring-ring [&::-webkit-details-marker]:hidden">
+                    <b className="font-semibold">Rebuild from a recipe</b>
+                    <CaretDown
+                      aria-hidden
+                      className="transition-transform group-open/recipe:rotate-180"
+                      size={14}
+                    />
+                  </summary>
+                  <div className="flex flex-col gap-2 pt-2">
+                    <label className="sr-only" htmlFor={`${id}-recipe`}>
+                      Recipe
+                    </label>
+                    <textarea
+                      aria-describedby={
+                        recipeError === undefined ? undefined : `${id}-recipe-error`
+                      }
+                      aria-invalid={recipeError !== undefined}
+                      autoComplete="off"
+                      className="min-h-16 rounded-md border border-input bg-transparent px-2 py-1.5 font-mono text-xs shadow-xs outline-none focus-visible:ring-2 focus-visible:ring-ring dark:bg-input/30"
+                      id={`${id}-recipe`}
+                      onChange={(event) => setRecipeText(event.target.value)}
+                      placeholder='{"settings":{…},"seed":1234}'
+                      rows={3}
+                      spellCheck={false}
+                      value={recipeText}
+                    />
+                    {recipeError === undefined ? null : (
+                      <p
+                        className="text-xs text-destructive"
+                        id={`${id}-recipe-error`}
+                        role="alert"
+                      >
+                        {recipeError}
+                      </p>
+                    )}
+                    <Button
+                      className="self-start rounded-[10px]"
+                      onClick={rebuild}
+                      type="button"
+                      variant="outline"
+                    >
+                      Rebuild
+                    </Button>
+                  </div>
+                </details>
+              </form>
+            ) : null}
           </details>
           <div className="flex items-center gap-2">
             <p
@@ -489,10 +528,10 @@ export default function GenerateDialog({
             <ol aria-label="Mazes generated" className="grid grid-cols-2 gap-2">
               {items.map((item) => (
                 <Card
-                  current={item.n === selected}
+                  current={item === current}
                   item={item}
                   key={item.n}
-                  onPick={() => setSelected(item.n)}
+                  onPick={() => setSelected({ n: item.n, seed: item.seed })}
                 />
               ))}
             </ol>
@@ -512,7 +551,7 @@ export default function GenerateDialog({
           )}
         </div>
         {items.length === 0 ? null : (
-          <div className="flex flex-col gap-1.5 border-t px-4 pt-3 pb-4">
+          <div className="relative z-10 flex flex-col gap-1.5 border-t bg-card px-4 pt-3 pb-4">
             {hint === undefined ? null : <p className="text-xs text-muted-foreground">{hint}</p>}
             <Button
               className="h-10 rounded-[10px]"
