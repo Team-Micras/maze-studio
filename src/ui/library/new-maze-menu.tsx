@@ -241,6 +241,11 @@ export function CustomSizeDialog({
 export interface NewMazeDialogsProps {
   readonly defaultName: string;
   readonly onNew: (request: NewMazeRequest) => void;
+  /**
+   * Opens Generate on a new blank maze in the editor, so the board previews the candidates; without
+   * it, as on a phone, Generate opens over the library.
+   */
+  readonly onGenerate?: () => void;
   /** The menu, given the items to put in it. */
   readonly children: (items: ReactNode) => ReactNode;
 }
@@ -249,7 +254,7 @@ export interface NewMazeDialogsProps {
  * A menu with the New maze items, and the Custom size and Generate dialogs they open. The Generate
  * dialog stays mounted once opened, so its batch is still there the next time.
  */
-export function NewMazeDialogs({ defaultName, onNew, children }: NewMazeDialogsProps) {
+export function NewMazeDialogs({ defaultName, onNew, onGenerate, children }: NewMazeDialogsProps) {
   const [custom, setCustom] = useState(false);
   const [generate, setGenerate] = useState(false);
 
@@ -258,7 +263,7 @@ export function NewMazeDialogs({ defaultName, onNew, children }: NewMazeDialogsP
       {children(
         <NewMazeItems
           onCustom={() => setCustom(true)}
-          onGenerate={() => setGenerate(true)}
+          onGenerate={onGenerate ?? (() => setGenerate(true))}
           onNew={onNew}
         />
       )}

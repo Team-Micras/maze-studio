@@ -7,6 +7,7 @@ import {
   contentOf,
   edgeMiddle,
   expectSaved,
+  mineCount,
   mineId,
   pagePoint,
   repoContent,
@@ -42,6 +43,11 @@ async function openGenerate(page: Page, menu: string): Promise<void> {
 
 async function generateAndPick(page: Page, card: number, hint?: string): Promise<void> {
   const dialog = page.getByRole('dialog', { name: 'Generate' });
+
+  if ((await dialog.getByRole('spinbutton', { name: 'First seed' }).count()) === 0) {
+    await dialog.getByText('Settings', { exact: true }).click();
+  }
+
   await dialog.getByRole('spinbutton', { name: 'First seed' }).fill('1');
   await dialog.getByRole('button', { name: 'Generate', exact: true }).click();
   await dialog.getByRole('button', { name: /^#8,/ }).waitFor(GENERATION);
@@ -112,6 +118,24 @@ describe('Generate in New maze (beta)', () => {
     ).toBe(1);
   });
 
+  test('opens Generate on a new blank maze, which closing leaves unsaved and Use this replaces', async () => {
+    const page = await openPage(browser, contexts, app);
+    await openGenerate(page, 'New maze');
+    await waitForMode(page, 'editor');
+    expect(await page.locator('h1').textContent()).toBe('Untitled maze');
+    await page.keyboard.press('Escape');
+    await expect.poll(() => page.getByRole('dialog', { name: 'Generate' }).count()).toBe(0);
+    expect(await mineCount(page)).toBe(0);
+
+    await page.getByRole('button', { name: 'Back to the library' }).click();
+    await waitForMode(page, 'library');
+    await openGenerate(page, 'New maze');
+    await generateAndPick(page, 3, 'Opens as a new maze; the first edit saves it in My mazes.');
+    expect(await page.locator('h1').textContent()).toBe('Generated 3');
+    expect(await page.locator('[data-candidate-chip]').count()).toBe(0);
+    expect(await mineCount(page)).toBe(0);
+  });
+
   test('is a sheet on a phone, and opens the maze picked to view', async () => {
     const page = await openPage(browser, contexts, app, '#/', {
       width: 390,
@@ -143,6 +167,26 @@ describe('Generate in the editor (beta)', () => {
     const page = await openPage(browser, contexts, app, `#/repo/${CLASSIC}`);
     await waitForMode(page, 'editor');
     const original = (await repoContent(CLASSIC)).maze;
+    const walls = () =>
+      page.locator('[data-open-board] [data-layer="red-walls"]').getAttribute('d');
+    const before = await walls();
+    await openGenerate(page, 'More actions');
+    const dialog = page.getByRole('dialog', { name: 'Generate' });
+    await dialog.getByRole('spinbutton', { name: 'First seed' }).fill('1');
+    await dialog.getByRole('button', { name: 'Generate', exact: true }).click();
+    await dialog.getByRole('button', { name: /^#8,/ }).waitFor(GENERATION);
+    await dialog.getByRole('button', { name: /^#2,/ }).click();
+    await expect
+      .poll(() => page.locator('[data-candidate-chip]').textContent())
+      .toBe('Preview · seed 2 · Use this to keep it');
+    expect(await walls()).not.toBe(before);
+    expect(await mineCount(page)).toBe(0);
+
+    await dialog.getByRole('button', { name: 'Close' }).click();
+    await expect.poll(walls).toBe(before);
+    expect(await page.locator('[data-candidate-chip]').count()).toBe(0);
+    expect(await mineCount(page)).toBe(0);
+
     await openGenerate(page, 'More actions');
     await generateAndPick(page, 1, 'Replaces the maze on the board. Undo brings it back.');
 

@@ -254,6 +254,15 @@ reached, and the measurements of the day, are in the git history of this file.
   warning that names what it missed, worked out in the worker from the generator's `report` and `choiceMisses`
   against its seed's targets, which only the worker has. Cancel, a new run and closing the dialog terminate the
   workers. The dialog stays mounted once opened, so its batch is there the next time.
+- **The board previews the candidate on a notebook** (owner, 24/10), as the mockup's editor did: from the editor
+  the panel docks on the right without a modal backdrop, so the board stays in reach to pan and zoom, and the studio
+  shows the candidate picked (or the last one built while the next is on its way) on the board as a preview, with a
+  "Preview · seed N" chip, through its existing previewing state: no edit, no step of history, no tools. Closing
+  the panel puts the open maze back as it was; Use this replaces it as before. New maze → Generate… on a notebook
+  opens a new blank maze of the saved settings' size with the panel open; its Use this opens the maze picked as the
+  new maze, with its name and recipe, and closing leaves the blank maze unsaved, as any new maze. The panel takes
+  the focus, Esc closes it, and "Back to the board" focuses the board. A phone keeps the sheet over the library or
+  the editor.
 - **Gallery or One** (owner, 24/10), as the mockup's panel: the batch shows as cards, or one maze at a time drawn
   large by the editor's own `Board` (an SVG, crisp at any size), with ‹ › and the arrow keys, its title, seed, style,
   tags and sentences, the Off target line first. Stepping moves the maze Use this takes; while a run goes on, › stops

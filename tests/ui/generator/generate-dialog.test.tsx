@@ -5,7 +5,7 @@ import { render } from 'vitest-browser-react';
 import { readRecipe } from '@/generator';
 import { borderedMaze, toggleWall } from '@/maze';
 import type { Generated } from '@/ui/editor/edit-session';
-import GenerateDialog from '@/ui/generator/generate-dialog';
+import GenerateDialog, { type GeneratorPreview } from '@/ui/generator/generate-dialog';
 import type { NewMazeRequest } from '@/ui/new-maze';
 import '@/ui/styles.css';
 import { axeViolations } from '@tests/support/axe-check';
@@ -153,6 +153,33 @@ describe('The Generate dialog', () => {
     await expect.element(page.getByRole('button', { name: 'Next maze' })).toBeDisabled();
     await userEvent.click(page.getByRole('button', { name: 'Use this' }));
     expect(used[0]?.kind === 'generated' ? used[0].recipe.seed : undefined).toBe(8);
+  });
+
+  test('docked beside the editor, previews the candidate picked, the last built while one is on its way, and nothing once closed', async () => {
+    const previews: (GeneratorPreview | undefined)[] = [];
+    const board = borderedMaze(16, 16);
+    const props = {
+      board,
+      onOpenChange: () => undefined,
+      onPreview: (preview: GeneratorPreview | undefined) => previews.push(preview),
+      onReplace: () => undefined,
+      onUse: () => undefined,
+    };
+    const screen = await render(<GenerateDialog {...props} open />);
+    await generate();
+    await expect.element(page.getByRole('button', { name: /^#8,/ }), GENERATION).toBeVisible();
+    await expect.poll(() => previews.at(-1)?.seed).toBe(1);
+    await userEvent.click(page.getByRole('button', { name: /^#2,/ }));
+    await expect.poll(() => previews.at(-1)?.seed).toBe(2);
+
+    expect(document.querySelector('[data-slot="sheet-overlay"]')).toBeNull();
+    await expect
+      .element(page.getByRole('button', { name: 'Back to the board' }))
+      .toBeInTheDocument();
+    expect(await axeViolations()).toEqual([]);
+
+    await screen.rerender(<GenerateDialog {...props} open={false} />);
+    await expect.poll(() => previews.at(-1)).toBeUndefined();
   });
 
   test('cancels a run, leaving no card behind', async () => {

@@ -16,6 +16,7 @@ import { ThumbnailCanvas } from '@/ui/board/thumbnail-canvas';
 import { copyText } from '@/ui/editor/share';
 import { useCoarsePointer, usePhoneLayout } from '@/ui/hooks/use-media-query';
 import { Board } from '@/ui/board/board';
+import { CANVAS_ID } from '@/ui/canvas-id';
 import {
   CaretDown,
   CaretLeft,
@@ -86,6 +87,22 @@ export interface GenerateDialogProps {
    * maze of the board's size.
    */
   readonly onReplace?: (generated: Generated) => void;
+  /**
+   * Whether the open maze is a new maze not yet edited, which the maze picked takes the place of as
+   * a new maze of its own, with its name and recipe.
+   */
+  readonly fresh?: boolean;
+  /**
+   * Shows the candidate picked, or the last one built, on the editor's board while the panel is
+   * open, and nothing once it closes. With it the panel is not modal: the board stays in reach.
+   */
+  readonly onPreview?: (preview: GeneratorPreview | undefined) => void;
+}
+
+/** A candidate the editor's board shows while the panel is open. */
+export interface GeneratorPreview {
+  readonly maze: Maze;
+  readonly seed: number;
 }
 
 const CARD_SIDE = 156;
@@ -330,6 +347,8 @@ export default function GenerateDialog({
   onUse,
   board,
   onReplace,
+  fresh: freshMaze = false,
+  onPreview,
 }: GenerateDialogProps) {
   const id = useId();
   const phone = usePhoneLayout();
@@ -359,7 +378,21 @@ export default function GenerateDialog({
     items.find((item) => item.n === selected) ?? (view === 'one' ? items[0] : undefined);
   const index = current === undefined ? 0 : items.indexOf(current);
   const running = state.progress !== null;
-  const hint = pickHint(current, board);
+  const hint = pickHint(current, freshMaze ? undefined : board);
+  const docked = onPreview !== undefined && board !== undefined;
+  const [previewed, setPreviewed] = useState<ReadyItem | undefined>(undefined);
+
+  if (isReady(current) && current !== previewed) {
+    setPreviewed(current);
+  }
+
+  useEffect(() => {
+    onPreview?.(
+      open && previewed !== undefined
+        ? { maze: measureItem(previewed).maze, seed: previewed.seed }
+        : undefined
+    );
+  }, [open, previewed, onPreview]);
 
   useEffect(() => {
     let live = true;
@@ -464,7 +497,7 @@ export default function GenerateDialog({
     if (isReady(current)) {
       onOpenChange(false);
 
-      if (onReplace !== undefined && replacesBoard(current, board)) {
+      if (onReplace !== undefined && !freshMaze && replacesBoard(current, board)) {
         onReplace({ maze: measureItem(current).maze, recipe: current.recipe });
         return;
       }
@@ -479,12 +512,17 @@ export default function GenerateDialog({
   };
 
   return (
-    <Sheet onOpenChange={onOpenChange} open={open}>
+    <Sheet modal={!docked} onOpenChange={onOpenChange} open={open}>
       <SheetContent
         aria-describedby={undefined}
         className={cn('gap-0', phone && 'h-[92dvh]')}
         data-generate
         onKeyDown={stepKey}
+        onInteractOutside={(event) => {
+          if (docked) {
+            event.preventDefault();
+          }
+        }}
         onOpenAutoFocus={(event) => {
           event.preventDefault();
           (coarse ? content.current : (generateButton.current ?? content.current))?.focus({
@@ -498,6 +536,15 @@ export default function GenerateDialog({
         <div className="flex items-center gap-2 px-4 pt-4 pb-3">
           <SheetTitle className="text-[15px]">Generate</SheetTitle>
           <Badge variant="secondary">Beta</Badge>
+          {docked ? (
+            <button
+              className="sr-only rounded-[8px] px-2 py-1 text-xs focus:not-sr-only focus-visible:ring-2 focus-visible:ring-ring"
+              onClick={() => document.getElementById(CANVAS_ID)?.focus()}
+              type="button"
+            >
+              Back to the board
+            </button>
+          ) : null}
           <SheetClose asChild>
             <IslandButton aria-label="Close" className="ml-auto">
               <X aria-hidden size={16} />

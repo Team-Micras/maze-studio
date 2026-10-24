@@ -33,6 +33,8 @@ export interface LibraryChromeProps {
   readonly onOpenFile: (file: File) => void;
   /** Opens a new maze in the editor. */
   readonly onNew: (request: NewMazeRequest) => void;
+  /** Opens Generate in the editor on a new blank maze, where the board previews the candidates. */
+  readonly onGenerate?: () => void;
   /** The name a new maze gets unless named: "Untitled maze", unique in My mazes. */
   readonly newName: string;
   readonly phone: boolean;
@@ -183,6 +185,7 @@ export function LibraryChrome({
   onFilter,
   onOpenFile,
   onNew,
+  onGenerate,
   newName,
   phone,
   changes,
@@ -257,7 +260,7 @@ export function LibraryChrome({
             {changes}
             <MineAndFiles files={files} />
             <OpenFileButton onFile={onOpenFile} />
-            <NewMazeMenu newName={newName} onNew={onNew} />
+            <NewMazeMenu newName={newName} onGenerate={onGenerate} onNew={onNew} />
             <IslandSeparator />
             <ThemeButton />
           </Island>
