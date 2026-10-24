@@ -190,8 +190,9 @@ export class Batch {
 
   /**
    * The maze of a recipe read by `readRecipe`. A recipe of this generator rebuilds from its own
-   * settings alone; one without a version is of version 1. A recipe of an older generator opens the walls it saved; one without them is
-   * rebuilt with `settings` filling the switches it lacks, and marked `older`, as the maze differs.
+   * settings alone; one without a version is of version 1. A recipe of an older generator opens
+   * the walls it saved; one without them is rebuilt with `settings` filling the switches it lacks,
+   * and marked `older`, as the maze differs.
    */
   rebuild(recipe: SavedRecipe, settings: Settings): Item {
     this.cancel();
