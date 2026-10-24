@@ -281,15 +281,28 @@ describe('The Generate dialog', () => {
     expect(changes).toEqual([false]);
   });
 
-  test('cancels a run, leaving no card behind', async () => {
+  test('stops the run when the panel closes, dropping the mazes not yet built', async () => {
+    const props = { onOpenChange: () => undefined, onUse: () => undefined };
+    const screen = await render(<GenerateDialog {...props} open />);
+    await generate();
+    await expect.poll(building).toBe(true);
+    await screen.rerender(<GenerateDialog {...props} open={false} />);
+    await screen.rerender(<GenerateDialog {...props} open />);
+
+    expect(building()).toBe(false);
+    expect(document.querySelectorAll('[aria-busy="true"]')).toHaveLength(0);
+  });
+
+  test('starts over when Generate is asked again during a run', async () => {
     await mount();
     await generate();
-    await userEvent.click(page.getByRole('button', { name: 'Cancel' }));
+    await expect.poll(building).toBe(true);
+    await userEvent.click(page.getByRole('button', { name: 'Settings' }));
+    await generate('101');
 
-    await expect
-      .element(page.getByRole('list', { name: 'Mazes generated' }))
-      .not.toBeInTheDocument();
-    expect(building()).toBe(false);
+    await expect.poll(building, GENERATION).toBe(false);
+    await expect.element(page.getByText('Seeds 101–108').first()).toBeVisible();
+    expect(document.querySelectorAll('ol[aria-label="Mazes generated"] > li')).toHaveLength(8);
   });
 
   test('rebuilds a recipe, warns when it rebuilds other walls, and refuses what is not one', async () => {

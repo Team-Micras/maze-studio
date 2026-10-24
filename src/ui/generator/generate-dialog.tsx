@@ -381,7 +381,7 @@ function DetailView({ items, index, withBoard, headingRef, onSwipe }: DetailView
  * The Generate dialog (beta) of New maze and of the editor, in its own chunk with the generator:
  * the settings (kept on the device), the first seed, Generate and Rebuild from a recipe, as a view
  * of their own behind the gear; the gallery of the batch's mazes, which fill in as they are built,
- * under a status row with Cancel, and 8 more at its end, up to 64; and the maze a card opens, in a
+ * under a status row, and 8 more at its end, up to 64; and the maze a card opens, in a
  * view pushed over the gallery with a footer of ‹ Use this ›, where › past the last maze builds 8
  * more. A docked panel on a notebook, the whole screen on a phone. Closing keeps the batch for the
  * next time and stops the run on its way.
@@ -755,15 +755,6 @@ export default function GenerateDialog({
             ? 'Building mazes…'
             : `${statusLine(state)}${state.stopped ? `. ${STOPPED}` : ''}`}
         </p>
-        <Button
-          className={cn('h-7 rounded-[8px] text-xs', !running && 'invisible')}
-          onClick={() => batch.cancel()}
-          size="sm"
-          type="button"
-          variant="outline"
-        >
-          Cancel
-        </Button>
       </div>
       {items.length === 0 ? null : (
         <ol aria-label="Mazes generated" className="grid grid-cols-2 gap-2">

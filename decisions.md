@@ -253,8 +253,9 @@ reached, and the measurements of the day, are in the git history of this file.
   toward outliers and style bonuses, tripled the time on a phone and read as "24" built for 8 shown. The varied pick
   (`pickDiverse`, `pickBatch`) stays in the core for a later "More like this". A maze off its targets carries a
   warning that names what it missed, worked out in the worker from the generator's `report` and `choiceMisses`
-  against its seed's targets, which only the worker has. Cancel, a new run and closing the dialog terminate the
-  workers. The dialog stays mounted once opened, so its batch is there the next time.
+  against its seed's targets, which only the worker has. A new run, closing the panel and leaving the editor (which
+  closes it) terminate the workers; there is no Cancel (owner, 25/10): a batch of 8 takes seconds, and Generate
+  asked again during a run starts over, while 8 more and › wait for the run to end. The dialog stays mounted once opened, so its batch is there the next time.
 - **The board previews the candidate on a notebook** (owner, 24/10), as the mockup's editor did: from the editor
   the panel docks on the right without a modal backdrop, so the board stays in reach to pan and zoom, and the studio
   shows the candidate picked (or the last one built before it while it is on its way) on the board as a preview,
@@ -266,7 +267,7 @@ reached, and the measurements of the day, are in the git history of this file.
   the focus, Esc closes it, and "Back to the board" focuses the board. A phone keeps the sheet over the library or
   the editor.
 - **A gallery, and a maze opened over it** (owner, 25/10). The gallery is the panel's home: a status row of fixed
-  height ("Seeds 1–8", or "Building 3 of 8…" with Cancel, which keeps its place hidden) above the cards, which pulse
+  height ("Seeds 1–8", or "Building 3 of 8…") above the cards, which pulse
   until their maze is built and fill in as each one is, so nothing moves while a run goes on; "8 more" ends the
   grid and appends. A card opens its maze in a view pushed over the gallery, a region named by its heading, which
   takes the focus: on a phone the maze drawn large and, under it, its title line with Copy recipe, its tags and its
