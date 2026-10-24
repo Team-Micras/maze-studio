@@ -8,7 +8,14 @@ import {
   withMaze,
   type SavedRecipe,
 } from '@/generator';
-import { Batch, MAX_SEED, randomSeed, workerCount, type Spawn } from '@/ui/generator/batch-run';
+import {
+  Batch,
+  MAX_ITEMS,
+  MAX_SEED,
+  randomSeed,
+  workerCount,
+  type Spawn,
+} from '@/ui/generator/batch-run';
 import { isReady, itemWarning, profileOf, requestOf, statusLine } from '@/ui/generator/candidates';
 import { runJob, type Job } from '@/ui/generator/job';
 
@@ -52,6 +59,15 @@ function drawn(value: number): number {
   return randomSeed(MAX_SEED - 7, (values) => {
     values[0] = value;
   });
+}
+
+/** Asks for More until the batch is full, each run settled before the next. */
+async function fillUp(batch: Batch): Promise<void> {
+  if (batch.roomForMore) {
+    batch.generate(SETTINGS, false);
+    await settled(batch);
+    await fillUp(batch);
+  }
 }
 
 function settled(batch: Batch): Promise<void> {
@@ -260,6 +276,29 @@ describe('a batch of generated mazes', () => {
 
     expect(batch.getState().seeds).toEqual({ first: MAX_SEED - 7, last: MAX_SEED });
     expect(batch.getState().nextSeed).toBe(0);
+    batch.cancel();
+  });
+
+  test('appends More to the mazes so far, up to the cap, keeping the seeds from the first', async () => {
+    const batch = new Batch({ spawn: workers({ fail: () => true }).spawn, size: 8, firstSeed: 1 });
+    batch.generate(SETTINGS, true);
+    await settled(batch);
+    const first = batch.getState().items;
+    batch.generate(SETTINGS, false);
+    await settled(batch);
+
+    expect(batch.getState().items.slice(0, 8)).toEqual(first);
+    expect(batch.getState().items.map((item) => item.n)).toEqual(
+      Array.from({ length: 16 }, (_, k) => k + 1)
+    );
+    expect(batch.getState().seeds).toEqual({ first: 1, last: 16 });
+
+    await fillUp(batch);
+
+    expect(batch.getState().items).toHaveLength(MAX_ITEMS);
+    expect(batch.roomForMore).toBe(false);
+    expect(batch.generate(SETTINGS, false)).toEqual([]);
+    expect(batch.getState().items).toHaveLength(MAX_ITEMS);
     batch.cancel();
   });
 });

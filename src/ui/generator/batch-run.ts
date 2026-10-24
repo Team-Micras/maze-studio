@@ -60,7 +60,7 @@ export interface BatchState {
   readonly items: readonly Item[];
   /** Mazes built of the run on its way, if one is. */
   readonly progress: { readonly done: number; readonly total: number } | null;
-  /** The seeds of the last batch, once one ran. */
+  /** The first and last seeds of the batch, More after More, once one ran. */
   readonly seeds: { readonly first: number; readonly last: number } | null;
   /** The seed the next batch starts from. */
   readonly nextSeed: number;
@@ -91,6 +91,9 @@ export const spawnWorker: Spawn = (onResult, onError) => {
 /** Workers a run starts: one fewer than the cores, from one to four. */
 export const workerCount = (cores: number | undefined): number =>
   Math.max(1, Math.min(4, (cores ?? 2) - 1));
+
+/** The most mazes one batch holds, More after More; a new batch starts again from none. */
+export const MAX_ITEMS = 64;
 
 /** The largest seed a recipe allows. */
 export const MAX_SEED = 0xffffffff;
@@ -195,16 +198,30 @@ export class Batch {
     });
   }
 
-  /** A batch from the next seeds; with `fresh`, it replaces the mazes so far. */
+  /** Whether {@link MAX_ITEMS} leaves room for another {@link generate} that keeps the mazes so far. */
+  get roomForMore(): boolean {
+    return this.#state.items.length + this.#size <= MAX_ITEMS;
+  }
+
+  /**
+   * The next seeds' mazes: with `fresh` in place of the mazes so far, else after them, while
+   * {@link roomForMore} allows.
+   */
   generate(settings: Settings, fresh: boolean): readonly Item[] {
     this.cancel();
+
+    if (!fresh && !this.roomForMore) {
+      return [];
+    }
+
     const first = this.#state.nextSeed;
     const kept = fresh ? [] : this.#state.items;
+    const shown = fresh ? null : this.#state.seeds;
     const items = Array.from({ length: this.#size }, () => pending(this.#number(), 'seed'));
     this.#set({
       items: [...kept, ...items],
       nextSeed: first + this.#size > this.maxSeed ? 0 : first + this.#size,
-      seeds: { first, last: first + this.#size - 1 },
+      seeds: { first: shown?.first ?? first, last: first + this.#size - 1 },
     });
     this.#start(
       items.map((_, k) => ({ settings, seed: first + k })),
