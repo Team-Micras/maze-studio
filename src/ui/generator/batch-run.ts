@@ -90,8 +90,23 @@ export const spawnWorker: Spawn = (onResult, onError) => {
 export const workerCount = (cores: number | undefined): number =>
   Math.max(1, Math.min(4, (cores ?? 2) - 1));
 
-/** The largest first seed. */
+/** The largest seed a recipe allows. */
 export const MAX_SEED = 0xffffffff;
+
+/**
+ * A random seed from 0 to `max`, drawn over the whole 32-bit range so that no small set of seeds
+ * can be built ahead of a contest; `fill` is the browser's `crypto.getRandomValues` by default.
+ */
+export function randomSeed(
+  max: number,
+  fill: (values: Uint32Array<ArrayBuffer>) => void = (values) => {
+    crypto.getRandomValues(values);
+  }
+): number {
+  const values = new Uint32Array(1);
+  fill(values);
+  return Math.min(max, values[0] ?? 0);
+}
 
 /** What a batch runs on; the browser's workers and a random first seed by default. */
 export interface BatchOptions {
@@ -120,7 +135,7 @@ export class Batch {
     this.#spawn = options.spawn ?? spawnWorker;
     this.#workers = options.workers ?? workerCount(globalThis.navigator?.hardwareConcurrency);
     this.#size = options.size ?? BATCH;
-    const seed = options.firstSeed ?? 1 + Math.floor(Math.random() * 9999);
+    const seed = options.firstSeed ?? randomSeed(MAX_SEED - this.#size + 1);
     this.#state = {
       items: [],
       progress: null,

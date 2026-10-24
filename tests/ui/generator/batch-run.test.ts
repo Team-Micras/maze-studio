@@ -8,7 +8,7 @@ import {
   withMaze,
   type SavedRecipe,
 } from '@/generator';
-import { Batch, workerCount, type Spawn } from '@/ui/generator/batch-run';
+import { Batch, MAX_SEED, randomSeed, workerCount, type Spawn } from '@/ui/generator/batch-run';
 import { isReady, itemWarning, profileOf, requestOf, statusLine } from '@/ui/generator/candidates';
 import { runJob, type Job } from '@/ui/generator/job';
 
@@ -45,6 +45,13 @@ function workers(options: { fail?: (index: number) => boolean } = {}) {
     return runner;
   };
   return { spawn, live };
+}
+
+/** The seed drawn when the random source gives `value`, at most the largest first seed of 8. */
+function drawn(value: number): number {
+  return randomSeed(MAX_SEED - 7, (values) => {
+    values[0] = value;
+  });
 }
 
 function settled(batch: Batch): Promise<void> {
@@ -215,5 +222,17 @@ describe('a batch of generated mazes', () => {
 
     expect(Object.hasOwn(result.analysis, 'dist')).toBe(false);
     expect(result.recipe.hash).toBe(generate(SETTINGS, 1).recipe.hash);
+  });
+
+  test('draws a random seed over the whole range a recipe allows, never past the largest first seed', () => {
+    expect(drawn(0)).toBe(0);
+    expect(drawn(123_456_789)).toBe(123_456_789);
+    expect(drawn(MAX_SEED)).toBe(MAX_SEED - 7);
+    expect(new Batch({ spawn: workers().spawn }).getState().nextSeed).toBeLessThanOrEqual(
+      MAX_SEED - 7
+    );
+    expect(
+      Array.from({ length: 50 }, () => randomSeed(1000)).every((seed) => seed >= 0 && seed <= 1000)
+    ).toBe(true);
   });
 });
