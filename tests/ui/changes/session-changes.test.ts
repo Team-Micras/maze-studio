@@ -73,7 +73,16 @@ describe('The changes of the session', () => {
     expect(item?.source).toBeUndefined();
     expect(mazesEqual(item?.baseline ?? BASE, seen)).toBe(true);
     expect(item?.baselineProfile).toBe('training');
+    expect(item?.baselineRecipe).toBeUndefined();
     expect(addExisting(changes, 'm-1', 'Other')).toBe(changes);
+  });
+
+  test('keep the recipe of the state first seen, which Discard puts back', () => {
+    const recipe = { version: 7, seed: 9, settings: { size: 4 } };
+    let changes = noteSeen(NO_CHANGES, 'm-1', { maze: BASE, profile: 'free', recipe });
+    changes = addExisting(changes, 'm-1', 'Generated');
+
+    expect(changeOf(changes, 'm-1')?.baselineRecipe).toEqual(recipe);
   });
 });
 

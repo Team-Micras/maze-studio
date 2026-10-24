@@ -199,7 +199,11 @@ export function useMazeEditor(input: MazeEditorInput): MazeEditor {
 
     if (opened !== undefined && mine !== undefined) {
       sessionChanges.setState((changes) =>
-        noteSeen(changes, mine.id, { maze: opened.maze, profile: opened.document.profile })
+        noteSeen(changes, mine.id, {
+          maze: opened.maze,
+          profile: opened.document.profile,
+          recipe: opened.document.recipe,
+        })
       );
     }
   }, [opened]);
