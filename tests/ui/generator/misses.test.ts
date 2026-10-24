@@ -61,6 +61,13 @@ describe('What an off-target maze missed', () => {
       'Off target: no fishbone corridor, longest straight 9 (asked 10–15)'
     );
     expect(offTarget([])).toBe('Off target');
+    const short: Analysis = {
+      ...analysis,
+      sensor: analysis.sensor && { ...analysis.sensor, fishbone: 1 },
+    };
+    expect(missedTargets(short, { ...targets, motifs: { fishbone: [3, 7] } })).toContain(
+      'fishbone corridor 1 cell (asked 3–7)'
+    );
     expect(offTarget(undefined)).toBe('Off target');
   });
 });

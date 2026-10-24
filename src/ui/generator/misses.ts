@@ -105,7 +105,9 @@ export function missedTargets(a: Analysis, t: Targets): string[] {
       const name = TEXT.tags[motif].toLowerCase();
 
       if (range !== undefined && outside(cells, range)) {
-        out.push(cells === 0 ? `no ${name}` : `${name} ${cells} cells (${asked(range)})`);
+        out.push(
+          cells === 0 ? `no ${name}` : `${name} ${count(cells, 'cell', 'cells')} (${asked(range)})`
+        );
       }
     }
   }
