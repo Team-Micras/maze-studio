@@ -17,8 +17,8 @@ import {
   type Spawn,
 } from '@/ui/generator/batch-run';
 import { isReady, itemWarning, profileOf, requestOf, statusLine } from '@/ui/generator/candidates';
-import { WAITING } from '@/render/loading';
-import { runJob, type Job } from '@/ui/generator/job';
+import { decorativeGoals, decorativeMaze, WAITING } from '@/render/loading';
+import { runJob, type Job, type JobProgress } from '@/ui/generator/job';
 
 const SETTINGS =
   PRESETS[0]?.settings ??
@@ -258,6 +258,36 @@ describe('a batch of generated mazes', () => {
     expect(second?.size).toBe(SETTINGS.size);
     batch.generate(SETTINGS, true);
     expect(batch.track(first?.n ?? 0)).toBe(WAITING);
+  });
+
+  test('ignores the progress of a worker a new run or a cancel has left behind, and sends a cancelled maze back to waiting', () => {
+    const reports: ((progress: JobProgress) => void)[] = [];
+    const spawn: Spawn = (_onResult, _onError, onProgress) => {
+      reports.push(onProgress);
+      return { post: () => undefined, terminate: () => undefined };
+    };
+    const batch = new Batch({ spawn, workers: 1, size: 1, firstSeed: 1 });
+    const size = SETTINGS.size;
+    const snapshot: JobProgress = {
+      walls: decorativeMaze(size, decorativeGoals(size)),
+      tried: [{ route: [0, 1], kind: 'racing' }],
+    };
+    const [first] = batch.generate(SETTINGS, true);
+
+    reports[0]?.(snapshot);
+    expect(batch.track(first?.n ?? 0).started).toBe(true);
+    batch.cancel();
+    expect(batch.track(first?.n ?? 0)).toBe(WAITING);
+
+    reports[0]?.(snapshot);
+    expect(batch.track(first?.n ?? 0)).toBe(WAITING);
+
+    const [second] = batch.generate(SETTINGS, true);
+    reports[0]?.(snapshot);
+    expect(batch.track(first?.n ?? 0)).toBe(WAITING);
+    expect(batch.track(second?.n ?? 0)).toBe(WAITING);
+    reports[1]?.(snapshot);
+    expect(batch.track(second?.n ?? 0).started).toBe(true);
   });
 
   test('sends a maze without its flood distances', () => {
