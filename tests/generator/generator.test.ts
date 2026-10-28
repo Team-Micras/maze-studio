@@ -151,6 +151,24 @@ describe('the generator', () => {
     }
   }, 60_000);
 
+  test('shows each route it draws to the trace and builds the same walls', () => {
+    const [first] = golden.get('recommended') ?? [];
+    const candidates: Readonly<Record<string, unknown>>[] = [];
+    const traced = generate(first.recipe.settings, first.recipe.seed, {
+      trace: (stage, _walls, info) => {
+        if (stage === 'candidate' && info) {
+          candidates.push(info);
+        }
+      },
+    });
+    expect(traced.grid.walls).toEqual(first.grid.walls);
+    expect(candidates.length).toBeGreaterThan(0);
+    for (const { route, kind } of candidates) {
+      expect(Array.isArray(route)).toBe(true);
+      expect(['racing', 'careful']).toContain(kind);
+    }
+  });
+
   test('builds other walls from other seeds', () => {
     const [one, two] = golden.get('recommended') ?? [];
     expect(one.grid.walls).not.toEqual(two.grid.walls);

@@ -242,7 +242,11 @@ export interface Analysis extends BaseAnalysis {
   style?: Style;
 }
 
-/** Records a step of the generator for an animation; never set in normal use. */
+/**
+ * Records a step of the generator for an animation; never set in normal use. The stage names the
+ * step (`candidate` for a route drawn and not yet judged, `routes`, `filler`, `loop`, `tune`,
+ * `board` and so on), the walls are the board at that step, shared and changed by later steps.
+ */
 export type Trace = (
   stage: string,
   walls: Uint8Array,

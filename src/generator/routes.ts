@@ -627,7 +627,8 @@ interface Carving extends Geometry {
  * `shortest` the shorter route must lose for the robots it names; with `classes` the pairs where
  * the weak and strong classes keep or lose the floors, as the seed drew, come first. Of the pairs
  * that pass, one of the three whose racing route has the fewest corners among those that keep a
- * wall follower out of the goal.
+ * wall follower out of the goal. Each route drawn is shown to `trace` as a `candidate`, with its
+ * cells and kind, before it is judged.
  *
  * @param pool Routes per side.
  */
@@ -719,6 +720,7 @@ export function carveRoutes(
       return null;
     }
     const route = [...lay.stem, ...cells, door];
+    trace?.('candidate', g.walls, { route, kind });
     const moves = route.slice(1).map((c, i) => dirTo(g, route[i], c));
     if (kind === 'racing' && winding(g, route) > WINDING) {
       return null;
