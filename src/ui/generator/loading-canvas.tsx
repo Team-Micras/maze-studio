@@ -56,8 +56,9 @@ function skeleton(size: number): readonly LoadingLine[] {
  * A maze still being generated, in grey on a canvas of its own (the mockup's `flow.html`): the
  * wave over a decorative maze, or with `track` the board's view of the progress. Once `builtAt`
  * is set it fades out in {@link SETTLE} ms over the maze drawn under it and unmounts. Without
- * motion the wave stands still, no routes flicker and the built maze shows at once. Decorative:
- * what it shows is named next to it.
+ * motion the wave stands still until a snapshot reads as a maze, the first such stays, and the
+ * built maze shows at once.
+ * Decorative: what it shows is named next to it.
  */
 export function LoadingCanvas({
   scale,
@@ -74,6 +75,39 @@ export function LoadingCanvas({
   const reduced = useMediaQuery('(prefers-reduced-motion: reduce)');
   const [gone, setGone] = useState(false);
 
+  const redraw = useRef<() => void>(() => undefined);
+  const latest = useRef(track);
+
+  useLayoutEffect(() => {
+    latest.current = track;
+  });
+
+  useLayoutEffect(() => {
+    const element = canvas.current;
+
+    if (element === null) {
+      return undefined;
+    }
+
+    const fit = (): void => {
+      const pixels = Math.min(
+        MAX_PIXELS,
+        Math.max(1, Math.round(element.clientWidth * ratio * zoom))
+      );
+
+      if (element.width !== pixels) {
+        element.width = pixels;
+        element.height = pixels;
+        redraw.current();
+      }
+    };
+
+    const observer = new ResizeObserver(fit);
+    observer.observe(element);
+    fit();
+    return () => observer.disconnect();
+  }, [zoom, ratio]);
+
   useLayoutEffect(() => {
     const element = canvas.current;
     const context = element?.getContext('2d');
@@ -85,6 +119,7 @@ export function LoadingCanvas({
     const waiting = skeleton(size);
     let frame = 0;
     let shown: LoadingTrack | undefined;
+    let first: LoadingTrack | undefined;
     let painted = false;
 
     const paint = (): void => {
@@ -101,7 +136,13 @@ export function LoadingCanvas({
         element.style.opacity = String(left);
       }
 
-      const current = track?.();
+      const read = latest.current?.();
+
+      if (reduced && first === undefined && (read?.walls ?? null) !== null) {
+        first = read;
+      }
+
+      const current = reduced ? first : read;
       const still = reduced || (current?.walls ?? null) !== null;
 
       if (!still || current !== shown || !painted) {
@@ -120,32 +161,23 @@ export function LoadingCanvas({
         painted = true;
       }
 
-      if (!reduced || track !== undefined || builtAt !== undefined) {
+      if (!reduced || (latest.current !== undefined && first === undefined)) {
         frame = requestAnimationFrame(paint);
       }
     };
 
-    const fit = (): void => {
+    redraw.current = () => {
       cancelAnimationFrame(frame);
-      const pixels = Math.min(
-        MAX_PIXELS,
-        Math.max(1, Math.round(element.clientWidth * ratio * zoom))
-      );
-      element.width = pixels;
-      element.height = pixels;
       painted = false;
       paint();
     };
-
-    const observer = new ResizeObserver(fit);
-    observer.observe(element);
-    fit();
+    paint();
 
     return () => {
       cancelAnimationFrame(frame);
-      observer.disconnect();
+      redraw.current = () => undefined;
     };
-  }, [scale, size, track, builtAt, offset, zoom, ratio, reduced]);
+  }, [scale, size, builtAt, offset, reduced]);
 
   if (gone) {
     return null;
