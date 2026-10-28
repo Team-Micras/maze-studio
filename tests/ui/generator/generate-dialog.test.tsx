@@ -126,6 +126,16 @@ describe('The Generate dialog', () => {
     await expect.poll(() => document.querySelectorAll('canvas[data-loading]').length).toBe(0);
   });
 
+  test('opens a card still building in the detail view, Use this off until its maze is built', async () => {
+    await mount();
+    await generate();
+    await userEvent.click(page.getByRole('button', { name: '#8, building' }));
+
+    await expect.element(page.getByRole('heading', { name: /^#8 of 8/ })).toBeVisible();
+    await expect.element(page.getByRole('button', { name: 'Use this' })).toBeDisabled();
+    await expect.element(page.getByRole('button', { name: 'Use this' }), GENERATION).toBeEnabled();
+  });
+
   test('stops its workers when it unmounts in the middle of a run', async () => {
     const terminate = vi.spyOn(Worker.prototype, 'terminate');
     const screen = await render(

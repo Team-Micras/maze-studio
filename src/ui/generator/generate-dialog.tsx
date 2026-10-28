@@ -190,28 +190,39 @@ function Card({
   /** Called with `true` as the pointer comes over the card, and `false` as it leaves. */
   onHover: (over: boolean) => void;
 }) {
+  if (item.status === 'pending') {
+    return (
+      <li>
+        <button
+          aria-busy
+          aria-label={`#${place}, building`}
+          className={cn(
+            'flex w-full flex-col items-start gap-1.5 rounded-[12px] p-1.5 text-left text-xs text-muted-foreground ring-offset-background outline-none hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring',
+            marked && 'bg-accent'
+          )}
+          data-card={item.n}
+          onClick={onPick}
+          type="button"
+        >
+          <LoadingCanvas
+            className="self-center rounded-[4px]"
+            offset={place * WAVE_STAGGER}
+            scale="thumbnail"
+            size={item.size}
+            style={{ width: CARD_SIDE, height: CARD_SIDE }}
+          />
+          <span>#{place}</span>
+        </button>
+      </li>
+    );
+  }
+
   if (!isReady(item)) {
     return (
       <li>
-        <div
-          aria-busy={item.status === 'pending'}
-          className="flex flex-col gap-1.5 rounded-[12px] p-1.5 text-xs text-muted-foreground"
-        >
-          {item.status === 'pending' ? (
-            <LoadingCanvas
-              className="self-center rounded-[4px]"
-              offset={place * WAVE_STAGGER}
-              scale="thumbnail"
-              size={item.size}
-              style={{ width: CARD_SIDE, height: CARD_SIDE }}
-            />
-          ) : (
-            <div className="aspect-square w-full rounded-[6px] bg-muted" />
-          )}
-          <span>
-            #{place}
-            {item.status === 'failed' ? ', not made' : ''}
-          </span>
+        <div className="flex flex-col gap-1.5 rounded-[12px] p-1.5 text-xs text-muted-foreground">
+          <div className="aspect-square w-full rounded-[6px] bg-muted" />
+          <span>#{place}, not made</span>
         </div>
       </li>
     );
