@@ -1,4 +1,4 @@
-import { describe, expect, test } from 'vitest';
+import { describe, expect, test, vi } from 'vitest';
 import { page, userEvent } from 'vitest/browser';
 import { render } from 'vitest-browser-react';
 
@@ -124,6 +124,20 @@ describe('The Generate dialog', () => {
     expect(greys(skeleton ?? document.createElement('canvas')).every(isGrey)).toBe(true);
     await expect.poll(building, GENERATION).toBe(false);
     await expect.poll(() => document.querySelectorAll('canvas[data-loading]').length).toBe(0);
+  });
+
+  test('stops its workers when it unmounts in the middle of a run', async () => {
+    const terminate = vi.spyOn(Worker.prototype, 'terminate');
+    const screen = await render(
+      <GenerateDialog onOpenChange={() => undefined} onUse={() => undefined} open />
+    );
+    await generate();
+    await expect.poll(building).toBe(true);
+    expect(terminate).not.toHaveBeenCalled();
+
+    await screen.unmount();
+    expect(terminate).toHaveBeenCalled();
+    terminate.mockRestore();
   });
 
   test('keeps the status row and the gallery still as a run starts and ends', async () => {

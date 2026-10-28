@@ -552,6 +552,8 @@ export default function GenerateDialog({
     }
   }, [open, batch]);
 
+  useEffect(() => () => batch.cancel(), [batch]);
+
   const changeSettings = (next: GeneratorChoice): void => {
     setTouched(true);
     setChoice(next);
