@@ -12,6 +12,7 @@ import {
 
 import { BATCH, readRecipe, resize } from '@/generator';
 import type { Maze } from '@/maze';
+import type { LoadingTrack } from '@/render/loading';
 import type { Generated } from '@/ui/editor/edit-session';
 import { ThumbnailCanvas } from '@/ui/board/thumbnail-canvas';
 import { copyText } from '@/ui/editor/share';
@@ -62,6 +63,9 @@ import {
   pickHint,
   type ReadyItem,
 } from './candidates';
+import { LoadingCanvas } from './loading-canvas';
+
+export { LoadingCanvas };
 import { SettingsForm, type GeneratorChoice } from './settings-form';
 import { startingSettings, summary } from './settings-model';
 
@@ -115,13 +119,24 @@ export interface GenerateDialogProps {
   readonly onPreview?: (preview: GeneratorPreview | undefined) => void;
 }
 
-/** A candidate the editor's board shows while the panel is open. */
+/**
+ * A candidate the editor's board shows while the panel is open: its maze and seed once built, and
+ * until then its progress, which the board animates.
+ */
 export interface GeneratorPreview {
-  readonly maze: Maze;
-  readonly seed: number;
+  readonly n: number;
+  readonly size: 16 | 32;
+  readonly maze?: Maze;
+  readonly seed?: number;
+  readonly track: () => LoadingTrack;
+  /** When it was built, for the skeleton to fade into it. */
+  readonly builtAt?: number;
 }
 
 const CARD_SIDE = 156;
+
+/** How far apart, in milliseconds, the waves of two cards in a row run. */
+const WAVE_STAGGER = 537;
 
 /** What the footer says on the last maze of a full batch. */
 const FULL = `A batch holds ${MAX_ITEMS} mazes: start a new batch from the settings`;
@@ -150,12 +165,17 @@ function Card({
           aria-busy={item.status === 'pending'}
           className="flex flex-col gap-1.5 rounded-[12px] p-1.5 text-xs text-muted-foreground"
         >
-          <div
-            className={cn(
-              'aspect-square w-full rounded-[6px] bg-muted',
-              item.status === 'pending' && 'animate-pulse'
-            )}
-          />
+          {item.status === 'pending' ? (
+            <LoadingCanvas
+              className="self-center rounded-[4px]"
+              offset={place * WAVE_STAGGER}
+              scale="thumbnail"
+              size={item.size}
+              style={{ width: CARD_SIDE, height: CARD_SIDE }}
+            />
+          ) : (
+            <div className="aspect-square w-full rounded-[6px] bg-muted" />
+          )}
           <span>
             #{place}
             {item.status === 'failed' ? ', not made' : ''}
@@ -182,12 +202,24 @@ function Card({
         onClick={onPick}
         type="button"
       >
-        <ThumbnailCanvas
-          className="self-center rounded-[4px]"
-          height={CARD_SIDE}
-          maze={measureItem(item).maze}
-          width={CARD_SIDE}
-        />
+        <span className="relative self-center">
+          <ThumbnailCanvas
+            className="rounded-[4px]"
+            height={CARD_SIDE}
+            maze={measureItem(item).maze}
+            width={CARD_SIDE}
+          />
+          {item.builtAt === undefined ? null : (
+            <LoadingCanvas
+              builtAt={item.builtAt}
+              className="absolute inset-0 rounded-[4px]"
+              offset={place * WAVE_STAGGER}
+              scale="thumbnail"
+              size={item.size}
+              style={{ width: CARD_SIDE, height: CARD_SIDE }}
+            />
+          )}
+        </span>
         <span className="flex items-center gap-1">
           {warning === undefined ? null : (
             <span className="inline-flex" title={warning}>
@@ -316,6 +348,8 @@ interface DetailViewProps {
   /** Draws the maze large; not beside the editor, whose own board shows it. */
   readonly withBoard: boolean;
   readonly headingRef: Ref<HTMLHeadingElement>;
+  /** What the maze numbered `n` has shown of its progress. */
+  readonly track: (n: number) => LoadingTrack;
   /** Steps to the maze before (-1) or after (1), as a swipe asks. */
   readonly onSwipe: (delta: -1 | 1) => void;
 }
@@ -324,7 +358,7 @@ interface DetailViewProps {
  * The maze opened from the gallery, a view pushed over it: drawn large unless the editor's board
  * shows it, then its title line with Copy recipe, its tags and its sentences. A swipe steps.
  */
-function DetailView({ items, index, withBoard, headingRef, onSwipe }: DetailViewProps) {
+function DetailView({ items, index, withBoard, headingRef, track, onSwipe }: DetailViewProps) {
   const start = useRef<{ x: number; y: number } | undefined>(undefined);
   const item = items[index];
 
@@ -352,19 +386,33 @@ function DetailView({ items, index, withBoard, headingRef, onSwipe }: DetailView
       }}
     >
       {!withBoard ? null : isReady(item) ? (
-        <Board
-          className="h-auto w-full rounded-[6px]"
-          label={`Maze #${index + 1}, seed ${item.seed}`}
-          maze={measureItem(item).maze}
-        />
-      ) : (
-        <div
-          aria-busy={item.status === 'pending'}
-          className={cn(
-            'aspect-square w-full rounded-[6px] bg-muted',
-            item.status === 'pending' && 'animate-pulse'
+        <div className="relative" key={item.n}>
+          <Board
+            className="h-auto w-full rounded-[6px]"
+            label={`Maze #${index + 1}, seed ${item.seed}`}
+            maze={measureItem(item).maze}
+          />
+          {item.builtAt === undefined ? null : (
+            <LoadingCanvas
+              builtAt={item.builtAt}
+              className="absolute inset-0 w-full rounded-[6px]"
+              scale="board"
+              size={item.size}
+              track={() => track(item.n)}
+            />
           )}
-        />
+        </div>
+      ) : item.status === 'pending' ? (
+        <div aria-busy key={item.n}>
+          <LoadingCanvas
+            className="w-full rounded-[6px]"
+            scale="board"
+            size={item.size}
+            track={() => track(item.n)}
+          />
+        </div>
+      ) : (
+        <div className="aspect-square w-full rounded-[6px] bg-muted" />
       )}
       {isReady(item) ? (
         <Details headingRef={headingRef} item={item} place={index + 1} total={items.length} />
@@ -437,15 +485,25 @@ export default function GenerateDialog({
   const previewed =
     isReady(hoveredItem) && (freshMaze || replacesBoard(hoveredItem, board))
       ? hoveredItem
-      : previewOf(items, index, board, freshMaze);
+      : current?.status === 'pending' && (freshMaze || current.size === board?.width)
+        ? current
+        : previewOf(items, index, board, freshMaze);
 
   useEffect(() => {
     onPreview?.(
       open && previewed !== undefined
-        ? { maze: measureItem(previewed).maze, seed: previewed.seed }
+        ? {
+            n: previewed.n,
+            size: previewed.size,
+            track: () => batch.track(previewed.n),
+            builtAt: previewed.builtAt,
+            ...(isReady(previewed)
+              ? { maze: measureItem(previewed).maze, seed: previewed.seed }
+              : {}),
+          }
         : undefined
     );
-  }, [open, previewed, onPreview]);
+  }, [open, previewed, onPreview, batch]);
 
   useEffect(() => {
     let live = true;
@@ -794,6 +852,7 @@ export default function GenerateDialog({
       index={index}
       items={items}
       onSwipe={step}
+      track={batch.track}
       withBoard={!docked}
     />
   );

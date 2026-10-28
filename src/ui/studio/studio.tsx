@@ -1,4 +1,6 @@
 import {
+  lazy,
+  Suspense,
   useCallback,
   useDeferredValue,
   useLayoutEffect,
@@ -113,6 +115,11 @@ const GENERATE_PANEL = 452;
 /** What the editor says once a generated maze has taken the place of the one on the board. */
 const REPLACED = 'Maze replaced. Undo brings the old one back';
 
+/** The skeleton of a maze being generated, in the generator's chunk, which is loaded by then. */
+const LoadingCanvas = lazy(() =>
+  import('@/ui/generator/generate-dialog').then((module) => ({ default: module.LoadingCanvas }))
+);
+
 /** Where the content is while no board is on the stage, as in the library. */
 const NO_BOARD: WorldRect = { x: 0, y: 0, width: 1, height: 1 };
 
@@ -185,7 +192,19 @@ export function Studio({
     generating && !phone && opened !== undefined
       ? shownCandidate === undefined
         ? opened
-        : { ...opened, maze: shownCandidate.maze, detail: `Preview · seed ${shownCandidate.seed}` }
+        : {
+            ...opened,
+            maze: shownCandidate.maze ?? opened.maze,
+            detail:
+              shownCandidate.seed === undefined
+                ? 'Preview · building…'
+                : `Preview · seed ${shownCandidate.seed}`,
+          }
+      : undefined;
+  const loading =
+    shownCandidate !== undefined &&
+    (shownCandidate.maze === undefined || shownCandidate.builtAt !== undefined)
+      ? shownCandidate
       : undefined;
   const onScreen = previewed ?? candidateShown ?? opened ?? state.leaving;
   const board = onScreen === undefined ? undefined : boardOf(onScreen.maze);
@@ -423,6 +442,24 @@ export function Studio({
           ) : preparedMaze === undefined ? null : (
             <OpenBoard maze={preparedMaze} rect={boardOf(preparedMaze)} shown={false} />
           )}
+          {loading === undefined || board === undefined ? null : (
+            <Suspense fallback={null}>
+              <LoadingCanvas
+                builtAt={loading.builtAt}
+                className="pointer-events-none absolute top-0 left-0"
+                key={loading.n}
+                scale="board"
+                size={loading.size}
+                style={{
+                  transform: `translate(${board.x}px, ${board.y}px)`,
+                  width: board.width,
+                  height: board.height,
+                }}
+                track={loading.track}
+                zoom={camera.camera?.k}
+              />
+            </Suspense>
+          )}
         </CameraStage>
         {emptyTitle === undefined ? null : (
           <EmptyLibrary
@@ -503,7 +540,11 @@ export function Studio({
       {mode === 'editor' && !coarse ? <ShortcutHelp {...editing.help} /> : null}
       {actions.rename === undefined ? null : <RenameDialog {...actions.rename} />}
       <p aria-live="polite" className="sr-only">
-        {shownCandidate === undefined ? '' : `Preview of seed ${shownCandidate.seed} on the board`}
+        {shownCandidate === undefined
+          ? ''
+          : shownCandidate.seed === undefined
+            ? 'Building the maze picked on the board'
+            : `Preview of seed ${shownCandidate.seed} on the board`}
       </p>
       <GenerateDialogLoader
         board={editingKey === undefined ? undefined : opened?.maze}

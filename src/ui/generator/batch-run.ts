@@ -21,7 +21,7 @@ import {
   type Settings,
   type Style,
 } from '@/generator';
-import { followTrack, WAITING, type LoadingTrack } from '@/render';
+import { followTrack, WAITING, type LoadingTrack } from '@/render/loading';
 
 import type { Job, JobProgress, JobResult, JobMessage } from './job';
 

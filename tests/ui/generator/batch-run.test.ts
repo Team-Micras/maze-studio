@@ -17,7 +17,7 @@ import {
   type Spawn,
 } from '@/ui/generator/batch-run';
 import { isReady, itemWarning, profileOf, requestOf, statusLine } from '@/ui/generator/candidates';
-import { WAITING } from '@/render';
+import { WAITING } from '@/render/loading';
 import { runJob, type Job } from '@/ui/generator/job';
 
 const SETTINGS =

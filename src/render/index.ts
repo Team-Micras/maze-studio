@@ -1,8 +1,9 @@
 /**
  * Drawing mazes: where things are on a board, the track and the editor's overlays as path data,
- * the wall stroke, the camera, the minimap's arithmetic, the canvas thumbnails and the generator's
- * loading animations, which take its snapshots as plain data. It depends only
- * on `src/maze` and never on React; `src/ui` turns these into components.
+ * the wall stroke, the camera, the minimap's arithmetic and the canvas thumbnails. It depends only
+ * on `src/maze` and never on React; `src/ui` turns these into components. The generator's loading
+ * animations are a second entry, `@/render/loading`, left out of this one so that the first screen,
+ * which imports this one, does not load them.
  *
  * @module
  */
@@ -82,31 +83,6 @@ export {
   type MazeSize,
   type RowRange,
 } from './library-layout';
-export {
-  borderLines,
-  boardScene,
-  decorativeGoals,
-  decorativeMaze,
-  followTrack,
-  looksLikeMaze,
-  openPassages,
-  paintLoading,
-  ROUTE_FADE,
-  SETTLE,
-  STILL_SHADE,
-  TRAIL,
-  WAITING,
-  wallLines,
-  WAVE_PERIOD,
-  waveScene,
-  waveShade,
-  type LoadingLine,
-  type LoadingScene,
-  type LoadingTrack,
-  type RouteStroke,
-  type ShadedLine,
-  type TrailRoute,
-} from './loading';
 export { LruCache } from './lru-cache';
 export { formatLength } from './path';
 export {

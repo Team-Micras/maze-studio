@@ -112,6 +112,20 @@ describe('The Generate dialog', () => {
     expect(document.querySelectorAll('[aria-busy="true"]').length).toBeGreaterThan(0);
   });
 
+  test('draws a grey skeleton maze in each card still waiting, gone once every maze is built', async () => {
+    await mount();
+    await generate();
+    const skeleton = document.querySelector<HTMLCanvasElement>(
+      '[aria-busy="true"] canvas[data-loading]'
+    );
+
+    expect(skeleton).not.toBeNull();
+    await expect.poll(() => (skeleton === null ? [] : greys(skeleton))).not.toEqual([]);
+    expect(greys(skeleton ?? document.createElement('canvas')).every(isGrey)).toBe(true);
+    await expect.poll(building, GENERATION).toBe(false);
+    await expect.poll(() => document.querySelectorAll('canvas[data-loading]').length).toBe(0);
+  });
+
   test('keeps the status row and the gallery still as a run starts and ends', async () => {
     await mount();
     await generate();
@@ -234,6 +248,29 @@ describe('The Generate dialog', () => {
 
     await screen.rerender(<GenerateDialog {...props} open={false} />);
     await expect.poll(() => previews.at(-1)).toBeUndefined();
+  });
+
+  test('docked, has the board show the maze picked as it is built, then the maze', async () => {
+    const previews: (GeneratorPreview | undefined)[] = [];
+    await render(
+      <GenerateDialog
+        board={borderedMaze(16, 16)}
+        onOpenChange={() => undefined}
+        onPreview={(preview) => previews.push(preview)}
+        onReplace={() => undefined}
+        onUse={() => undefined}
+        open
+      />
+    );
+    await generate();
+    await expect.poll(() => previews.at(-1)?.size).toBe(16);
+    const first = previews.at(-1);
+
+    expect(first?.maze).toBeUndefined();
+    await expect.poll(() => first?.track().started, GENERATION).toBe(true);
+    await expect.poll(() => previews.at(-1)?.seed, GENERATION).toBe(1);
+    expect(previews.at(-1)).toMatchObject({ n: first?.n, builtAt: expect.any(Number) });
+    expect(first?.track().walls).toBeInstanceOf(Uint8Array);
   });
 
   test('appends 8 more from the gallery and moves to #9, unless another maze was opened meanwhile', async () => {
@@ -398,6 +435,25 @@ function galleryTop(): number | undefined {
 }
 
 /** Whether a run is on its way, as the status row says. */
+/** The colours a canvas shows besides its floor, as `r,g,b`. */
+function greys(canvas: HTMLCanvasElement): string[] {
+  const data = canvas.getContext('2d')?.getImageData(0, 0, canvas.width, canvas.height).data ?? [];
+  const seen = new Set<string>();
+
+  for (let k = 0; k < data.length; k += 4) {
+    if ((data[k] ?? 0) > 30) {
+      seen.add(`${data[k]},${data[k + 1]},${data[k + 2]}`);
+    }
+  }
+
+  return [...seen];
+}
+
+function isGrey(rgb: string): boolean {
+  const [r, g, b] = rgb.split(',').map(Number);
+  return r === g && g === b;
+}
+
 function building(): boolean {
   return (document.querySelector('[data-status-row] p')?.textContent ?? '').startsWith('Building');
 }

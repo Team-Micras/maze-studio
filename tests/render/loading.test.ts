@@ -13,7 +13,7 @@ import {
   wallLines,
   waveScene,
   waveShade,
-} from '@/render';
+} from '@/render/loading';
 
 const STEPS = [
   [0, 1, 1],
