@@ -162,6 +162,9 @@ describe('the generator', () => {
       },
     });
     expect(traced.grid.walls).toEqual(first.grid.walls);
+    expect(traced.recipe).toEqual(first.recipe);
+    expect(traced.energy).toBe(first.energy);
+    expect(traced.analysis).toEqual(first.analysis);
     expect(candidates.length).toBeGreaterThan(0);
     for (const { route, kind } of candidates) {
       expect(Array.isArray(route)).toBe(true);
