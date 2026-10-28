@@ -255,7 +255,8 @@ reached, and the measurements of the day, are in the git history of this file.
   warning that names what it missed, worked out in the worker from the generator's `report` and `choiceMisses`
   against its seed's targets, which only the worker has. A new run, closing the panel and leaving the editor (which
   closes it) terminate the workers; there is no Cancel (owner, 25/10): a batch of 8 takes seconds, and Generate
-  asked again during a run starts over, while 8 more and › wait for the run to end. The dialog stays mounted once opened, so its batch is there the next time.
+  asked again during a run starts over, while 8 more and › wait for the run to end. The dialog stays mounted once
+  opened, so its batch is there the next time.
 - **The board previews the candidate on a notebook** (owner, 24/10), as the mockup's editor did: from the editor
   the panel docks on the right without a modal backdrop, so the board stays in reach to pan and zoom, and the studio
   shows the candidate picked (or the last one built before it while it is on its way) on the board as a preview,
@@ -267,18 +268,18 @@ reached, and the measurements of the day, are in the git history of this file.
   the focus, Esc closes it, and "Back to the board" focuses the board. A phone keeps the sheet over the library or
   the editor.
 - **A gallery, and a maze opened over it** (owner, 25/10). The gallery is the panel's home: a status row of fixed
-  height ("Seeds 1–8", or "Building 3 of 8…") above the cards, which pulse
-  until their maze is built and fill in as each one is, so nothing moves while a run goes on; "8 more" ends the
-  grid and appends. A card opens its maze in a view pushed over the gallery, a region named by its heading, which
-  takes the focus: on a phone the maze drawn large and, under it, its title line with Copy recipe, its tags and its
-  sentences, compact enough to fit above the footer; beside the editor on a notebook only the information, as the
-  editor's board previews it, a card under the pointer previewing too. Only this view has the footer, ‹ Use this ›,
-  and steps with a swipe or the arrow keys: › past the last maze builds 8 more and appends them (#9 of 16), a
-  spinner on › while they build, and moves to the first once built unless another maze was opened meanwhile. Back
-  and Esc go back to the gallery where it was, focusing the card; Esc in the gallery closes the panel. On a phone
-  the panel takes the whole screen. The settings are a view of their own behind a gear in the header. A batch
-  stops at 64 mazes, which the gallery says in place of 8 more, and the footer's line on the last maze. A first design with a Gallery or One switch and a progress bar
-  (24/10) made you scroll between a card and its details, and shifted the layout as runs started and ended.
+  height ("Seeds 1–8", or "Building 3 of 8…") above the cards, which show a grey wave until their maze is built and
+  fill in as each one is, so nothing moves while a run goes on; "8 more" ends the grid and appends. A card opens its
+  maze in a view pushed over the gallery, a region named by its heading, which takes the focus: on a phone the maze
+  drawn large and, under it, its title line with Copy recipe, its tags and its sentences, compact enough to fit above
+  the footer; beside the editor on a notebook only the information, as the editor's board previews it, a card under
+  the pointer previewing too. Only this view has the footer, ‹ Use this ›, and steps with a swipe or the arrow keys: ›
+  past the last maze builds 8 more and appends them (#9 of 16), a spinner on › while they build, and moves to the
+  first once built unless another maze was opened meanwhile. Back and Esc go back to the gallery where it was,
+  focusing the card; Esc in the gallery closes the panel. On a phone the panel takes the whole screen. The settings
+  are a view of their own behind a gear in the header. A batch stops at 64 mazes, which the gallery says in place of 8
+  more, and the footer's line on the last maze. A first design with a Gallery or One switch and a progress bar (24/10)
+  made you scroll between a card and its details, and shifted the layout as runs started and ended.
 - **Seeds over the whole 32-bit range** (owner, 24/10). The first seed and the dice draw from 0 to the largest first
   seed with `crypto.getRandomValues`: with a known preset, a range of 100,000 seeds could be built ahead of a
   contest in hours.

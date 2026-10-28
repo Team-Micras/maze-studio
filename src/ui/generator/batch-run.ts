@@ -2,8 +2,8 @@
  * Batches of generated mazes for the Generate dialog (the mockup's `batch.js`): each batch builds
  * {@link BATCH} seeds in a row, in up to four workers sharing a queue, each maze shown in its seed's
  * card as soon as it is built, and each pending maze's progress kept as a {@link LoadingTrack} for
- * the board's animation; a pasted recipe rebuilds its maze. One run at a time:
- * starting another, or cancelling, terminates the workers and drops the mazes still pending.
+ * the board's animation; a pasted recipe rebuilds its maze. One run at a time: the workers stop
+ * on a new run or when the panel closes, and the mazes still pending are dropped.
  *
  * @module
  */

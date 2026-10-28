@@ -1,6 +1,6 @@
 /**
  * The generator's worker: one maze per message ({@link runJob}), its progress streamed and its walls
- * transferred back. The page terminates it to cancel a run.
+ * transferred back. The page terminates it on a new run or when the panel closes.
  *
  * @module
  */
