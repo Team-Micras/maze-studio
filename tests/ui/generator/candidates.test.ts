@@ -26,6 +26,7 @@ function ready(): ReadyItem {
     n: 1,
     origin: 'seed',
     status: 'ready',
+    size: 16,
     seed: 1,
     grid: candidate.grid,
     recipe: withMaze(candidate.recipe, candidate.grid),
@@ -57,7 +58,7 @@ describe('Generate from the editor', () => {
       toggleWall(borderedMaze(16, 16), { direction: 'horizontal', x: 5, y: 5 }),
       { direction: 'vertical', x: 5, y: 5 }
     );
-    const pending: Item = { n: 2, origin: 'seed', status: 'pending' };
+    const pending: Item = { n: 2, origin: 'seed', status: 'pending', size: 16 };
 
     expect(replacesBoard(item, walled)).toBe(true);
     expect(replacesBoard(item, borderedMaze(32, 32))).toBe(false);
@@ -76,7 +77,7 @@ describe('Generate from the editor', () => {
 
   test('steps through the batch, not past its ends nor, during a run, past the last maze built', () => {
     const built = ready();
-    const pending: Item = { n: 3, origin: 'seed', status: 'pending' };
+    const pending: Item = { n: 3, origin: 'seed', status: 'pending', size: 16 };
     const items: Item[] = [built, { ...built, n: 2 }, pending];
 
     expect(stepTo(items, 0, -1, false)).toBeUndefined();

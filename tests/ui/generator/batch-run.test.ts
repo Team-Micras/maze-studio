@@ -17,6 +17,7 @@ import {
   type Spawn,
 } from '@/ui/generator/batch-run';
 import { isReady, itemWarning, profileOf, requestOf, statusLine } from '@/ui/generator/candidates';
+import { WAITING } from '@/render';
 import { runJob, type Job } from '@/ui/generator/job';
 
 const SETTINGS =
@@ -32,7 +33,7 @@ const SETTINGS =
 function workers(options: { fail?: (index: number) => boolean } = {}) {
   const live = new Set<object>();
   let started = 0;
-  const spawn: Spawn = (onResult, onError) => {
+  const spawn: Spawn = (onResult, onError, onProgress) => {
     const index = started++;
     const runner = {
       post: (job: Job) => {
@@ -41,7 +42,7 @@ function workers(options: { fail?: (index: number) => boolean } = {}) {
             if (options.fail?.(index) === true) {
               onError();
             } else {
-              onResult(runJob(job));
+              onResult(runJob(job, onProgress));
             }
           }
         }, 0);
@@ -231,6 +232,32 @@ describe('a batch of generated mazes', () => {
 
   test('runs one worker fewer than the cores, from one to four', () => {
     expect([undefined, 1, 2, 4, 16].map(workerCount)).toEqual([1, 1, 1, 3, 4]);
+  });
+
+  test('keeps the progress of each maze as it is built, and its walls once built', async () => {
+    let clock = 0;
+    const batch = new Batch({
+      spawn: workers().spawn,
+      workers: 1,
+      size: 2,
+      firstSeed: 1,
+      now: () => clock++,
+    });
+    const [first, second] = batch.generate(SETTINGS, true);
+
+    expect(batch.track(first?.n ?? 0)).toBe(WAITING);
+    await settled(batch);
+    const built = batch.getState().items;
+
+    for (const item of built) {
+      expect(batch.track(item.n).started).toBe(true);
+      expect(batch.track(item.n).walls).toEqual(item.grid?.walls);
+      expect(item.builtAt).toBeGreaterThan(0);
+    }
+
+    expect(second?.size).toBe(SETTINGS.size);
+    batch.generate(SETTINGS, true);
+    expect(batch.track(first?.n ?? 0)).toBe(WAITING);
   });
 
   test('sends a maze without its flood distances', () => {

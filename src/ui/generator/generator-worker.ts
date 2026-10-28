@@ -1,13 +1,18 @@
 /**
- * The generator's worker: one maze per message ({@link runJob}), its walls transferred back. The
- * page terminates it to cancel a run.
+ * The generator's worker: one maze per message ({@link runJob}), its progress streamed and its walls
+ * transferred back. The page terminates it to cancel a run.
  *
  * @module
  */
 
-import { runJob, type Job } from './job';
+import { runJob, type Job, type JobMessage } from './job';
+
+const send = (message: JobMessage, transfer: Transferable[]): void =>
+  self.postMessage(message, { transfer });
 
 self.addEventListener('message', (event: MessageEvent<Job>) => {
-  const result = runJob(event.data);
-  self.postMessage(result, { transfer: [result.grid.walls.buffer] });
+  const result = runJob(event.data, (progress) =>
+    send({ kind: 'progress', progress }, [progress.walls.buffer])
+  );
+  send({ kind: 'result', result }, [result.grid.walls.buffer]);
 });

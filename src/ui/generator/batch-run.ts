@@ -1,7 +1,8 @@
 /**
  * Batches of generated mazes for the Generate dialog (the mockup's `batch.js`): each batch builds
  * {@link BATCH} seeds in a row, in up to four workers sharing a queue, each maze shown in its seed's
- * card as soon as it is built; a pasted recipe rebuilds its maze. One run at a time:
+ * card as soon as it is built, and each pending maze's progress kept as a {@link LoadingTrack} for
+ * the board's animation; a pasted recipe rebuilds its maze. One run at a time:
  * starting another, or cancelling, terminates the workers and drops the mazes still pending.
  *
  * @module
@@ -20,8 +21,9 @@ import {
   type Settings,
   type Style,
 } from '@/generator';
+import { followTrack, WAITING, type LoadingTrack } from '@/render';
 
-import type { Job, JobResult } from './job';
+import type { Job, JobProgress, JobResult, JobMessage } from './job';
 
 /**
  * A maze of the batch: `n` tells it apart, never given twice by one batch; the dialog calls it by
@@ -32,6 +34,10 @@ export interface Item {
   /** A seed of a batch, or rebuilt from a recipe. */
   readonly origin: 'seed' | 'loaded';
   readonly status: 'pending' | 'ready' | 'failed';
+  /** The side of its board, in cells. */
+  readonly size: 16 | 32;
+  /** When a worker built it, on the batch's clock: the skeleton crossfades into it from then. */
+  readonly builtAt?: number;
   /** The seed it is built from; known once it is built. */
   readonly seed?: number;
   readonly style?: Style;
@@ -77,13 +83,26 @@ export interface Runner {
   readonly terminate: () => void;
 }
 
-/** Starts a worker that answers each job with `onResult`, or calls `onError` when it fails. */
-export type Spawn = (onResult: (result: JobResult) => void, onError: () => void) => Runner;
+/**
+ * Starts a worker that answers each job with `onResult`, after snapshots of its progress to
+ * `onProgress`, or calls `onError` when it fails.
+ */
+export type Spawn = (
+  onResult: (result: JobResult) => void,
+  onError: () => void,
+  onProgress: (progress: JobProgress) => void
+) => Runner;
 
 /** Starts a generator worker of the build, in its own chunk. */
-export const spawnWorker: Spawn = (onResult, onError) => {
+export const spawnWorker: Spawn = (onResult, onError, onProgress) => {
   const worker = new Worker(new URL('./generator-worker.ts', import.meta.url), { type: 'module' });
-  worker.addEventListener('message', (event: MessageEvent<JobResult>) => onResult(event.data));
+  worker.addEventListener('message', ({ data }: MessageEvent<JobMessage>) => {
+    if (data.kind === 'progress') {
+      onProgress(data.progress);
+    } else {
+      onResult(data.result);
+    }
+  });
   worker.addEventListener('error', (event) => {
     event.preventDefault();
     onError();
@@ -123,6 +142,8 @@ export interface BatchOptions {
   /** Mazes a batch shows. */
   readonly size?: number;
   readonly firstSeed?: number;
+  /** The clock of the tracks and of `builtAt`, in milliseconds; `performance.now` by default. */
+  readonly now?: () => number;
 }
 
 interface Run {
@@ -136,6 +157,8 @@ export class Batch {
   readonly #workers: number;
   readonly #size: number;
   readonly #listeners = new Set<() => void>();
+  readonly #now: () => number;
+  readonly #tracks = new Map<number, LoadingTrack>();
   #numbered = 0;
   #state: BatchState;
   #run: Run | undefined;
@@ -144,6 +167,7 @@ export class Batch {
     this.#spawn = options.spawn ?? spawnWorker;
     this.#workers = options.workers ?? workerCount(globalThis.navigator?.hardwareConcurrency);
     this.#size = options.size ?? BATCH;
+    this.#now = options.now ?? (() => performance.now());
     const seed = options.firstSeed ?? randomSeed(MAX_SEED - this.#size + 1);
     this.#state = {
       items: [],
@@ -153,6 +177,12 @@ export class Batch {
       stopped: false,
     };
   }
+
+  /**
+   * What the maze numbered `n` has shown of its progress so far; it changes without a call to the
+   * listeners, as often as the workers send snapshots, for an animation to read every frame.
+   */
+  readonly track = (n: number): LoadingTrack => this.#tracks.get(n) ?? WAITING;
 
   /** The batch now; a new object after every change. */
   readonly getState = (): BatchState => this.#state;
@@ -193,10 +223,15 @@ export class Batch {
     }
 
     this.#run = undefined;
+    const dropped = (item: Item) =>
+      item.status === 'pending' && run.items.some(({ n }) => n === item.n);
+
+    for (const item of this.#state.items.filter(dropped)) {
+      this.#tracks.delete(item.n);
+    }
+
     this.#set({
-      items: this.#state.items.filter(
-        (item) => item.status !== 'pending' || !run.items.some(({ n }) => n === item.n)
-      ),
+      items: this.#state.items.filter((item) => !dropped(item)),
       progress: null,
     });
   }
@@ -217,10 +252,16 @@ export class Batch {
       return [];
     }
 
+    if (fresh) {
+      this.#tracks.clear();
+    }
+
     const first = this.#state.nextSeed;
     const kept = fresh ? [] : this.#state.items;
     const shown = fresh ? null : (this.#state.seeds ?? undefined);
-    const items = Array.from({ length: this.#size }, () => pending(this.#number(), 'seed'));
+    const items = Array.from({ length: this.#size }, () =>
+      pending(this.#number(), 'seed', settings.size)
+    );
     this.#set({
       items: [...kept, ...items],
       nextSeed: first + this.#size > this.maxSeed ? 0 : first + this.#size,
@@ -255,6 +296,7 @@ export class Batch {
         n,
         origin: 'loaded',
         status: 'ready',
+        size: recipe.settings.size,
         seed: recipe.seed,
         recipe,
         energy: null,
@@ -266,9 +308,9 @@ export class Batch {
       return item;
     }
 
-    const item: Item = { ...pending(n, 'loaded'), older, hash: recipe.hash };
-    this.#set({ items: [...this.#state.items, item] });
     const own = older === undefined ? recipe.settings : olderSettings(recipe.settings, settings);
+    const item: Item = { ...pending(n, 'loaded', own.size), older, hash: recipe.hash };
+    this.#set({ items: [...this.#state.items, item] });
     this.#start(
       [
         recipe.base === undefined
@@ -349,13 +391,23 @@ export class Batch {
 
           const slot = holding.get(runner);
           const progress = this.#state.progress;
+          const builtAt = this.#now();
+
+          if (slot !== undefined) {
+            this.#tracks.set(slot.n, {
+              ...this.track(slot.n),
+              started: true,
+              walls: result.grid.walls,
+            });
+          }
+
           this.#set({
             progress: progress === null ? null : { ...progress, done: progress.done + 1 },
             items:
               slot === undefined
                 ? this.#state.items
                 : this.#state.items.map((item) =>
-                    item.n === slot.n ? filledItem(slot, result) : item
+                    item.n === slot.n ? { ...filledItem(slot, result), builtAt } : item
                   ),
           });
           post(runner);
@@ -371,6 +423,16 @@ export class Batch {
           for (let left = 1 + queue.splice(0).length; left > 0; left--) {
             finish();
           }
+        },
+        (snapshot) => {
+          const slot = holding.get(runner);
+
+          if (this.#run === run && slot !== undefined) {
+            this.#tracks.set(
+              slot.n,
+              followTrack(this.track(slot.n), snapshot, slot.size, this.#now())
+            );
+          }
         }
       );
       runners.push(runner);
@@ -379,8 +441,8 @@ export class Batch {
   }
 }
 
-function pending(n: number, origin: Item['origin']): Item {
-  return { n, origin, status: 'pending' };
+function pending(n: number, origin: Item['origin'], size: Item['size']): Item {
+  return { n, origin, status: 'pending', size };
 }
 
 function filledItem(item: Item, result: JobResult | undefined): Item {
