@@ -274,12 +274,12 @@ reached, and the measurements of the day, are in the git history of this file.
   drawn large and, under it, its title line with Copy recipe, its tags and its sentences, compact enough to fit above
   the footer; beside the editor on a notebook only the information, as the editor's board previews it, a card under
   the pointer previewing too. Only this view has the footer, ‹ Use this ›, and steps with a swipe or the arrow keys: ›
-  past the last maze builds 8 more and appends them (#9 of 16), a spinner on › while they build, and moves to the
-  first once built unless another maze was opened meanwhile. Back and Esc go back to the gallery where it was,
-  focusing the card; Esc in the gallery closes the panel. On a phone the panel takes the whole screen. The settings
-  are a view of their own behind a gear in the header. A batch stops at 64 mazes, which the gallery says in place of 8
-  more, and the footer's line on the last maze. A first design with a Gallery or One switch and a progress bar (24/10)
-  made you scroll between a card and its details, and shifted the layout as runs started and ended.
+  past the last maze builds 8 more, appends them (#9 of 16) and moves to the first at once, its loading board showing
+  it build; ‹ and › step onto mazes still building too, and a card still building opens. Back and Esc go back to the
+  gallery where it was, focusing the card; Esc in the gallery closes the panel. On a phone the panel takes the whole
+  screen. The settings are a view of their own behind a gear in the header. A batch stops at 64 mazes, which the gallery
+  says in place of 8 more, and the footer's line on the last maze. A first design with a Gallery or One switch and a
+  progress bar (24/10) made you scroll between a card and its details, and shifted the layout as runs started and ended.
 - **Seeds over the whole 32-bit range** (owner, 24/10). The first seed and the dice draw from 0 to the largest first
   seed with `crypto.getRandomValues`: with a known preset, a range of 100,000 seeds could be built ahead of a
   contest in hours.

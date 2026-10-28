@@ -24,7 +24,6 @@ import {
   CaretLeft,
   CaretRight,
   Check,
-  CircleNotch,
   Copy,
   DiceFive,
   GearSix,
@@ -578,18 +577,11 @@ export default function GenerateDialog({
   const backward = stepTo(items, index, -1);
   const canMore =
     !running && !invalid && items.length > 0 && index === items.length - 1 && batch.roomForMore;
-  const [appending, setAppending] = useState(false);
-  const building = running && appending;
   const full = !running && items.length > 0 && !batch.roomForMore;
-
-  if (appending && !running) {
-    setAppending(false);
-  }
 
   const more = (): void => {
     const [first] = batch.generate(structuredClone(choice.settings), false);
     setSelected(first?.n);
-    setAppending(first !== undefined);
   };
 
   const pick = (n: number | undefined): void => {
@@ -979,7 +971,6 @@ export default function GenerateDialog({
                 Use this
               </Button>
               <Button
-                aria-busy={building}
                 aria-keyshortcuts="ArrowRight"
                 aria-label={
                   forward === undefined && canMore
@@ -993,11 +984,7 @@ export default function GenerateDialog({
                 type="button"
                 variant="outline"
               >
-                {building ? (
-                  <CircleNotch aria-hidden className="animate-spin" />
-                ) : (
-                  <CaretRight aria-hidden />
-                )}
+                <CaretRight aria-hidden />
               </Button>
             </div>
           </div>
