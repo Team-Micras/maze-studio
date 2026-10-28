@@ -477,7 +477,6 @@ export default function GenerateDialog({
   });
   const [invalid, setInvalid] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(true);
-  const [awaiting, setAwaiting] = useState<number | undefined>(undefined);
   const gear = useRef<HTMLButtonElement>(null);
   const back = useRef<HTMLButtonElement>(null);
   const [selected, setSelected] = useState<number | undefined>(undefined);
@@ -564,8 +563,8 @@ export default function GenerateDialog({
       .catch(() => undefined);
   };
 
-  const forward = stepTo(items, index, 1, running);
-  const backward = stepTo(items, index, -1, running);
+  const forward = stepTo(items, index, 1);
+  const backward = stepTo(items, index, -1);
   const canMore =
     !running && !invalid && items.length > 0 && index === items.length - 1 && batch.roomForMore;
   const [appending, setAppending] = useState(false);
@@ -576,26 +575,13 @@ export default function GenerateDialog({
     setAppending(false);
   }
 
-  if (awaiting !== undefined) {
-    const arrived = items.find((item) => item.n === awaiting);
-
-    if (arrived === undefined || arrived.status !== 'pending') {
-      setAwaiting(undefined);
-
-      if (isReady(arrived)) {
-        setSelected(arrived.n);
-      }
-    }
-  }
-
   const more = (): void => {
     const [first] = batch.generate(structuredClone(choice.settings), false);
-    setAwaiting(first?.n);
+    setSelected(first?.n);
     setAppending(first !== undefined);
   };
 
   const pick = (n: number | undefined): void => {
-    setAwaiting(undefined);
     setSelected(n);
   };
 
@@ -655,7 +641,6 @@ export default function GenerateDialog({
   const closeDetail = (): void => {
     const opened = current?.n;
     setHovered(undefined);
-    setAwaiting(undefined);
     setLastOpened(opened);
     setDetail(false);
     requestAnimationFrame(() => {
@@ -669,7 +654,6 @@ export default function GenerateDialog({
   const showResults = (n: number | undefined): void => {
     setSelected(n);
     setLastOpened(undefined);
-    setAwaiting(undefined);
     setDetail(false);
     setSettingsOpen(false);
     setInvalid(false);

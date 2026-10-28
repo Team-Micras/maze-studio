@@ -75,17 +75,16 @@ describe('Generate from the editor', () => {
     );
   });
 
-  test('steps through the batch, not past its ends nor, during a run, past the last maze built', () => {
+  test('steps through the batch, mazes still building included, not past its ends', () => {
     const built = ready();
     const pending: Item = { n: 3, origin: 'seed', status: 'pending', size: 16 };
     const items: Item[] = [built, { ...built, n: 2 }, pending];
 
-    expect(stepTo(items, 0, -1, false)).toBeUndefined();
-    expect(stepTo(items, 0, 1, true)).toBe(1);
-    expect(stepTo(items, 1, 1, true)).toBeUndefined();
-    expect(stepTo(items, 1, 1, false)).toBe(2);
-    expect(stepTo(items, 2, 1, false)).toBeUndefined();
-    expect(stepTo(items, 2, -1, true)).toBe(1);
+    expect(stepTo(items, 0, -1)).toBeUndefined();
+    expect(stepTo(items, 0, 1)).toBe(1);
+    expect(stepTo(items, 1, 1)).toBe(2);
+    expect(stepTo(items, 2, 1)).toBeUndefined();
+    expect(stepTo(items, 2, -1)).toBe(1);
   });
 
   test('reads a mostly sideways swipe of 48 px or more as a step, left for the next maze', () => {

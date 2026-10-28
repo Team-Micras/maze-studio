@@ -200,13 +200,15 @@ describe('The Generate dialog', () => {
     await page.viewport(1440, 900);
   });
 
-  test('loads 8 more with › past the last maze, keeping #1 to #8, and lands on #9', async () => {
+  test('loads 8 more with › past the last maze, keeping #1 to #8, and lands on #9 while it builds', async () => {
     await mount();
     await generate();
     await expect.poll(building, GENERATION).toBe(false);
     await open(8);
     await userEvent.click(page.getByRole('button', { name: 'Next maze, building 8 more' }));
 
+    await expect.element(page.getByRole('heading', { name: /^#9 of 16/ })).toBeVisible();
+    await expect.element(page.getByRole('button', { name: 'Use this' })).toBeDisabled();
     await expect
       .element(page.getByRole('heading', { name: /^#9 of 16 · seed 9/ }), GENERATION)
       .toBeVisible();

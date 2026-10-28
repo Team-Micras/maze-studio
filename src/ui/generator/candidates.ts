@@ -191,22 +191,12 @@ export function unsupportedBoard(board: Maze): string {
 }
 
 /**
- * The index ‹ and › step to from `index`, if they can: not past the ends, and while a run is on its
- * way not past the last maze built.
+ * The index ‹ and › step to from `index`, if they can: anywhere but past the ends, a maze still
+ * being built included, which shows its loading board.
  */
-export function stepTo(
-  items: readonly Item[],
-  index: number,
-  delta: -1 | 1,
-  running: boolean
-): number | undefined {
+export function stepTo(items: readonly Item[], index: number, delta: -1 | 1): number | undefined {
   const next = index + delta;
-
-  if (next < 0 || next >= items.length) {
-    return undefined;
-  }
-
-  return delta < 0 || !running || items.slice(next).some(isReady) ? next : undefined;
+  return next < 0 || next >= items.length ? undefined : next;
 }
 
 /** The least sideways travel, in CSS pixels, that counts as a swipe. */
