@@ -344,7 +344,7 @@ function Details({
 
   return (
     <section aria-labelledby={`maze-${item.n}`} className="flex flex-col gap-1.5">
-      <div className="flex items-center gap-2">
+      <div className="flex min-h-7 items-center gap-2">
         <MazeTitle headingRef={headingRef} item={item} place={place} total={total} />
         {ready ? <CopyRecipe item={item} /> : null}
       </div>
