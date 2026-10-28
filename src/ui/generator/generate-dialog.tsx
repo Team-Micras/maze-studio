@@ -12,7 +12,7 @@ import {
 
 import { BATCH, readRecipe, resize } from '@/generator';
 import type { Maze } from '@/maze';
-import type { LoadingTrack } from '@/render/loading';
+import { SETTLE, type LoadingTrack } from '@/render/loading';
 import type { Generated } from '@/ui/editor/edit-session';
 import { ThumbnailCanvas } from '@/ui/board/thumbnail-canvas';
 import { copyText } from '@/ui/editor/share';
@@ -143,6 +143,38 @@ const FULL = `A batch holds ${MAX_ITEMS} mazes: start a new batch from the setti
 
 const NOT_A_RECIPE = 'This is not a recipe: copy it again with “Copy recipe”';
 
+/**
+ * A ready card's thumbnail; the first time a maze shows after it was built, painted at once rather
+ * than in idle time, under the skeleton that fades into it.
+ */
+function CardPicture({ item, place }: { item: ReadyItem; place: number }) {
+  const [settling] = useState(
+    () => item.builtAt !== undefined && performance.now() - item.builtAt < SETTLE
+  );
+
+  return (
+    <span className="relative self-center">
+      <ThumbnailCanvas
+        cached={!settling}
+        className="rounded-[4px]"
+        height={CARD_SIDE}
+        maze={measureItem(item).maze}
+        width={CARD_SIDE}
+      />
+      {settling ? (
+        <LoadingCanvas
+          builtAt={item.builtAt}
+          className="absolute inset-0 rounded-[4px]"
+          offset={place * WAVE_STAGGER}
+          scale="thumbnail"
+          size={item.size}
+          style={{ width: CARD_SIDE, height: CARD_SIDE }}
+        />
+      ) : null}
+    </span>
+  );
+}
+
 function Card({
   item,
   place,
@@ -202,24 +234,7 @@ function Card({
         onClick={onPick}
         type="button"
       >
-        <span className="relative self-center">
-          <ThumbnailCanvas
-            className="rounded-[4px]"
-            height={CARD_SIDE}
-            maze={measureItem(item).maze}
-            width={CARD_SIDE}
-          />
-          {item.builtAt === undefined ? null : (
-            <LoadingCanvas
-              builtAt={item.builtAt}
-              className="absolute inset-0 rounded-[4px]"
-              offset={place * WAVE_STAGGER}
-              scale="thumbnail"
-              size={item.size}
-              style={{ width: CARD_SIDE, height: CARD_SIDE }}
-            />
-          )}
-        </span>
+        <CardPicture item={item} place={place} />
         <span className="flex items-center gap-1">
           {warning === undefined ? null : (
             <span className="inline-flex" title={warning}>

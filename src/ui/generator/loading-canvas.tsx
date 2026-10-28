@@ -85,6 +85,7 @@ export function LoadingCanvas({
     const waiting = skeleton(size);
     let frame = 0;
     let shown: LoadingTrack | undefined;
+    let painted = false;
 
     const paint = (): void => {
       const now = performance.now();
@@ -101,8 +102,9 @@ export function LoadingCanvas({
       }
 
       const current = track?.();
+      const still = reduced || (current?.walls ?? null) !== null;
 
-      if (!reduced || current !== shown || shown === undefined) {
+      if (!still || current !== shown || !painted) {
         const geometry = boardGeometry(
           { width: size, height: size },
           { scale, size: element.width }
@@ -115,6 +117,7 @@ export function LoadingCanvas({
             : boardScene(current, waiting, size, now, reduced)
         );
         shown = current;
+        painted = true;
       }
 
       if (!reduced || track !== undefined || builtAt !== undefined) {
@@ -130,7 +133,7 @@ export function LoadingCanvas({
       );
       element.width = pixels;
       element.height = pixels;
-      shown = undefined;
+      painted = false;
       paint();
     };
 
