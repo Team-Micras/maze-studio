@@ -323,26 +323,30 @@ function MazeTitle({
   );
 }
 
-/** A ready maze's title line with Copy recipe, its tags and its sentences, the Off target one first. */
+/**
+ * A maze's title line, and once it is built Copy recipe, its tags and its sentences, the Off target
+ * one first. The title stays the same element as the maze gets built, so focus on it stays too.
+ */
 function Details({
   item,
   place,
   total,
   headingRef,
 }: {
-  item: ReadyItem;
+  item: Item;
   place: number;
   total: number;
   headingRef?: Ref<HTMLHeadingElement>;
 }) {
-  const warning = itemWarning(item);
-  const tags = itemTags(item);
+  const ready = isReady(item);
+  const warning = ready ? itemWarning(item) : undefined;
+  const tags = ready ? itemTags(item) : [];
 
   return (
     <section aria-labelledby={`maze-${item.n}`} className="flex flex-col gap-1.5">
       <div className="flex items-center gap-2">
         <MazeTitle headingRef={headingRef} item={item} place={place} total={total} />
-        <CopyRecipe item={item} />
+        {ready ? <CopyRecipe item={item} /> : null}
       </div>
       {tags.length === 0 ? null : (
         <ul aria-label="This maze has" className="flex flex-wrap gap-1">
@@ -353,17 +357,19 @@ function Details({
           ))}
         </ul>
       )}
-      <ul className="flex list-disc flex-col gap-0.5 pl-4 text-xs leading-4">
-        {warning === undefined ? null : (
-          <li className="-ml-4 flex list-none items-start gap-1 text-amber-700 dark:text-amber-400">
-            <Warning aria-hidden className="shrink-0" size={14} />
-            {warning}
-          </li>
-        )}
-        {itemFeatures(item).map((line) => (
-          <li key={line}>{line}</li>
-        ))}
-      </ul>
+      {!ready ? null : (
+        <ul className="flex list-disc flex-col gap-0.5 pl-4 text-xs leading-4">
+          {warning === undefined ? null : (
+            <li className="-ml-4 flex list-none items-start gap-1 text-amber-700 dark:text-amber-400">
+              <Warning aria-hidden className="shrink-0" size={14} />
+              {warning}
+            </li>
+          )}
+          {itemFeatures(item).map((line) => (
+            <li key={line}>{line}</li>
+          ))}
+        </ul>
+      )}
     </section>
   );
 }
@@ -440,13 +446,7 @@ function DetailView({ items, index, withBoard, headingRef, track, onSwipe }: Det
       ) : (
         <div className="aspect-square w-full rounded-[6px] bg-muted" />
       )}
-      {isReady(item) ? (
-        <Details headingRef={headingRef} item={item} place={index + 1} total={items.length} />
-      ) : (
-        <section aria-labelledby={`maze-${item.n}`}>
-          <MazeTitle headingRef={headingRef} item={item} place={index + 1} total={items.length} />
-        </section>
-      )}
+      <Details headingRef={headingRef} item={item} place={index + 1} total={items.length} />
     </div>
   );
 }

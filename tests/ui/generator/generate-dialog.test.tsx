@@ -126,7 +126,7 @@ describe('The Generate dialog', () => {
     await expect.poll(() => document.querySelectorAll('canvas[data-loading]').length).toBe(0);
   });
 
-  test('opens a card still building in the detail view, Use this off until its maze is built', async () => {
+  test('opens a card still building in the detail view, Use this off until its maze is built, the arrow keys working on', async () => {
     await mount();
     await generate();
     await userEvent.click(page.getByRole('button', { name: '#8, building' }));
@@ -134,6 +134,9 @@ describe('The Generate dialog', () => {
     await expect.element(page.getByRole('heading', { name: /^#8 of 8/ })).toBeVisible();
     await expect.element(page.getByRole('button', { name: 'Use this' })).toBeDisabled();
     await expect.element(page.getByRole('button', { name: 'Use this' }), GENERATION).toBeEnabled();
+    await expect.element(page.getByRole('heading', { name: /^#8 of 8/ })).toHaveFocus();
+    await userEvent.keyboard('{ArrowLeft}');
+    await expect.element(page.getByRole('heading', { name: /^#7 of 8/ })).toBeVisible();
   });
 
   test('stops its workers when it unmounts in the middle of a run', async () => {
