@@ -155,7 +155,6 @@ function CardPicture({ item, place }: { item: ReadyItem; place: number }) {
     <span className="relative self-center">
       <ThumbnailCanvas
         cached={!settling}
-        className="rounded-[4px]"
         height={CARD_SIDE}
         maze={measureItem(item).maze}
         width={CARD_SIDE}
@@ -163,7 +162,7 @@ function CardPicture({ item, place }: { item: ReadyItem; place: number }) {
       {settling ? (
         <LoadingCanvas
           builtAt={item.builtAt}
-          className="absolute inset-0 rounded-[4px]"
+          className="absolute inset-0"
           offset={place * WAVE_STAGGER}
           scale="thumbnail"
           size={item.size}
@@ -204,7 +203,7 @@ function Card({
           type="button"
         >
           <LoadingCanvas
-            className="self-center rounded-[4px]"
+            className="self-center"
             offset={place * WAVE_STAGGER}
             scale="thumbnail"
             size={item.size}
@@ -419,14 +418,14 @@ function DetailView({ items, index, withBoard, headingRef, track, onSwipe }: Det
       {!withBoard ? null : isReady(item) ? (
         <div className="relative" key={item.n}>
           <Board
-            className="h-auto w-full rounded-[6px]"
+            className="h-auto w-full"
             label={`Maze #${index + 1}, seed ${item.seed}`}
             maze={measureItem(item).maze}
           />
           {item.builtAt === undefined ? null : (
             <LoadingCanvas
               builtAt={item.builtAt}
-              className="absolute inset-0 w-full rounded-[6px]"
+              className="absolute inset-0 w-full"
               scale="board"
               size={item.size}
               track={() => track(item.n)}
@@ -436,7 +435,7 @@ function DetailView({ items, index, withBoard, headingRef, track, onSwipe }: Det
       ) : item.status === 'pending' ? (
         <div aria-busy key={item.n}>
           <LoadingCanvas
-            className="w-full rounded-[6px]"
+            className="w-full"
             scale="board"
             size={item.size}
             track={() => track(item.n)}
