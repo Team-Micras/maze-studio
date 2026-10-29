@@ -51,14 +51,18 @@ export interface LibraryChromeProps {
   readonly visible: boolean;
 }
 
-/** maze-studio's own repository, which the credit links. */
+/** maze-studio's own repository, which the pill beside the credit links. */
 const REPOSITORY = 'https://github.com/Team-Micras/maze-studio';
+
+const PILL =
+  'h-8 rounded-[10px] bg-card px-3 text-xs leading-8 whitespace-nowrap text-muted-foreground shadow-island';
 
 /**
  * The credit island (DESIGN.md 9.1 and 12): the mazes of the snapshot or the cache in use, at their
- * commit, ending in a link to maze-studio's repository, and beside it what the last check for
- * updates found; a phone names the repository without its owner. It gives way to the selection
- * bar, which sits where it does.
+ * commit, a pill of its own beside it linking maze-studio's repository, and what the last check
+ * for updates found. A phone names mazefiles without its owner, shows only the logo in the
+ * repository's pill and stacks the update note above. It gives way to the selection bar, which
+ * sits where it does.
  */
 function Credit({
   library,
@@ -69,14 +73,17 @@ function Credit({
   readonly note: string | undefined;
   readonly phone: boolean;
 }) {
-  const pill = `h-8 truncate rounded-[10px] bg-card px-3 text-xs leading-8 whitespace-nowrap text-muted-foreground shadow-island ${phone ? 'max-w-[calc(100vw-16px)]' : ''}`;
-
   return (
     <div
-      className={`fixed z-10 flex items-center gap-2 [:root:has([data-selection-bar])_&]:hidden ${phone ? 'bottom-safe-3 left-1/2 -translate-x-1/2 flex-col-reverse' : 'bottom-safe-[18px] left-safe-4'}`}
+      className={cn(
+        'fixed z-10 flex items-center gap-2 [:root:has([data-selection-bar])_&]:hidden',
+        phone
+          ? 'bottom-safe-3 left-1/2 -translate-x-1/2 flex-col-reverse'
+          : 'bottom-safe-[18px] left-safe-4'
+      )}
     >
-      <p className={`${pill} flex items-center gap-2`}>
-        <span className="truncate">
+      <div className="flex items-center gap-2">
+        <p className={cn(PILL, 'truncate', phone && 'max-w-[calc(100vw-56px)]')}>
           {library.repoCount} mazes from{' '}
           <a
             className="underline underline-offset-[3px] hover:text-foreground"
@@ -91,18 +98,28 @@ function Credit({
           <span className="font-mono tabular-nums" translate="no">
             {library.commit.slice(0, 7)}
           </span>
-        </span>
+        </p>
         <a
           aria-label="maze-studio on GitHub"
-          className="flex-none hover:text-foreground"
+          className={cn(
+            PILL,
+            'flex flex-none items-center gap-1.5 hover:text-foreground',
+            phone && 'w-8 justify-center px-0'
+          )}
+          data-repository=""
           href={REPOSITORY}
           rel="noreferrer"
           target="_blank"
+          translate="no"
         >
           <GithubLogo aria-hidden size={14} />
+          {phone ? null : 'maze-studio'}
         </a>
-      </p>
-      <output className={`${pill} empty:hidden`} data-update-note="">
+      </div>
+      <output
+        className={cn(PILL, 'truncate empty:hidden', phone && 'max-w-[calc(100vw-16px)]')}
+        data-update-note=""
+      >
         {note === undefined ? null : <Verbatim text={note} verbatim={library.commit.slice(0, 7)} />}
       </output>
     </div>

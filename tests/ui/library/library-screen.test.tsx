@@ -157,25 +157,35 @@ describe('The library grid', () => {
 
 describe('The credit', () => {
   test.each([
-    ['phone', 390, 844],
-    ['small phone', 360, 780],
-    ['notebook', 1440, 900],
-  ])('links maze-studio on GitHub on one untruncated line on a %s', async (_, width, height) => {
-    await page.viewport(width, height);
-    await mountApp();
-    const link = page.getByRole('link', { name: 'maze-studio on GitHub' });
-    const credit = link.element().closest('p');
-    const text = credit?.querySelector('span');
-    const box = link.element().getBoundingClientRect();
+    ['phone', 390, 844, ''],
+    ['small phone', 360, 780, ''],
+    ['notebook', 800, 900, 'maze-studio'],
+    ['notebook', 1440, 900, 'maze-studio'],
+  ])(
+    'keeps its commit whole on a %s %i px wide, with maze-studio on GitHub in a pill of its own',
+    async (_, width, height, label) => {
+      await page.viewport(width, height);
+      await mountApp();
+      const link = page.getByRole('link', { name: 'maze-studio on GitHub' });
+      const credit = document.querySelector('footer p');
+      const pill = link.element().getBoundingClientRect();
+      const box = credit?.getBoundingClientRect() ?? new DOMRect();
 
-    await expect
-      .element(link)
-      .toHaveAttribute('href', 'https://github.com/Team-Micras/maze-studio');
-    expect(credit?.getBoundingClientRect().height).toBe(32);
-    expect(text?.scrollWidth).toBeLessThanOrEqual(text?.clientWidth ?? 0);
-    expect(box.left).toBeGreaterThanOrEqual(0);
-    expect(box.right).toBeLessThanOrEqual(window.innerWidth);
-  });
+      await expect
+        .element(link)
+        .toHaveAttribute('href', 'https://github.com/Team-Micras/maze-studio');
+      await expect.element(link).toHaveTextContent(label === '' ? /^$/ : label);
+      expect(credit?.contains(link.element())).toBe(false);
+      expect(credit?.textContent).toMatch(/at [0-9a-f]{7}$/);
+      expect(credit?.scrollWidth).toBeLessThanOrEqual(credit?.clientWidth ?? 0);
+      expect(box.height).toBe(32);
+      expect(pill.height).toBe(32);
+      expect(pill.left).toBeGreaterThanOrEqual(box.right + 4);
+      expect(pill.top).toBe(box.top);
+      expect(box.left).toBeGreaterThanOrEqual(0);
+      expect(pill.right).toBeLessThanOrEqual(window.innerWidth);
+    }
+  );
 });
 
 describe('Search and filters', () => {
