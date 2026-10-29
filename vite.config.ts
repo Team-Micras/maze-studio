@@ -65,9 +65,16 @@ function chromium() {
 /**
  * How many test files run at once, so a full check stays near half the cores of the reference
  * notebook and well under 4 GB: each browser file is a Chromium page of 150–250 MB. The groups run
- * one after the other, unit tests first, and the performance tests alone, one file at a time.
+ * one after the other, unit tests first, and the performance tests alone, one file at a time. The
+ * e2e files run one at a time on the notebook and three at once on CI's 4 vCPUs: each launches its
+ * own Chromium against the one preview server and keeps its scratch files in a folder of its own.
  */
-const WORKERS = { unit: 6, browser: 4, performance: 1, e2e: 1 } as const;
+const WORKERS = {
+  unit: 6,
+  browser: 4,
+  performance: 1,
+  e2e: process.env.CI === undefined ? 1 : 3,
+} as const;
 
 /** The dark desk colour (`src/ui/theme.ts`), for the title bar and splash of the installed app. */
 const DARK_COLOR = '#191919';
