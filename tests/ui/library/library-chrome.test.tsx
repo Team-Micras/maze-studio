@@ -2,9 +2,11 @@ import { afterEach, describe, expect, test } from 'vitest';
 import { page } from 'vitest/browser';
 import { render } from 'vitest-browser-react';
 
+import { SearchIndex } from '@/library';
 import { libraryLayout } from '@/render';
 import { ChangesChip } from '@/ui/changes/changes';
 import { LibraryChrome } from '@/ui/library/library-chrome';
+import type { Library } from '@/ui/library/use-library';
 import { TooltipProvider } from '@/ui/primitives/tooltip';
 import '@/ui/styles.css';
 
@@ -12,18 +14,30 @@ afterEach(async () => {
   await page.viewport(1440, 900);
 });
 
+/** A library with an open folder and many mazes of My mazes, which widen the source filter. */
+const WIDE: Library = {
+  entries: [],
+  index: new SearchIndex([]),
+  mazeOf: () => undefined,
+  documentOf: () => undefined,
+  commit: '070f716b2f6e0a1a4c1a0b7c7d2a3e4f5a6b7c8d',
+  repoCount: 583,
+  mineCount: 120,
+  folder: { name: 'mazes', skipped: 0 },
+};
+
 async function mountChrome(): Promise<void> {
   await render(
     <TooltipProvider>
       <LibraryChrome
-        changes={<ChangesChip count={12} onToggle={() => undefined} open={false} phone={false} />}
+        changes={<ChangesChip count={99} onToggle={() => undefined} open={false} phone={false} />}
         files={{
           onExportAll: () => undefined,
           onImport: () => undefined,
           onCheckUpdates: () => undefined,
         }}
         filter={{ query: '', source: 'mine', category: 'training' }}
-        library={undefined}
+        library={WIDE}
         newName="Untitled maze"
         onFilter={() => undefined}
         onNew={() => undefined}
@@ -44,8 +58,8 @@ function apart(a: DOMRect, b: DOMRect): boolean {
 }
 
 describe("The notebook's top islands", () => {
-  test.each([1860, 1440, 1279, 1100, 800, 721])(
-    'never overlap at %i px with the Changes chip shown, show every filter, and end above the grid',
+  test.each([1860, 1440, 1340, 1339, 1100, 800, 721])(
+    'never overlap at %i px with an open folder and the widest Changes chip, show every filter, and end above the grid',
     async (width) => {
       await page.viewport(width, 900);
       await mountChrome();
@@ -62,12 +76,14 @@ describe("The notebook's top islands", () => {
       expect(chip).not.toBeNull();
       expect(apart(brand, filters) && apart(filters, actions) && apart(brand, actions)).toBe(true);
       expect(actions.right).toBeLessThanOrEqual(width);
-      expect(tabs).toHaveLength(6);
+      expect(tabs).toHaveLength(7);
       for (const tab of tabs) {
         expect(tab.left).toBeGreaterThanOrEqual(filters.left);
         expect(tab.right).toBeLessThanOrEqual(filters.right);
       }
-      expect(filters.bottom).toBeLessThan(libraryLayout(width, 'notebook', 1).insets.top);
+      expect(filters.bottom).toBeLessThan(
+        libraryLayout(width, width >= 1340 ? 'notebook' : 'stacked', 1).insets.top
+      );
     }
   );
 });

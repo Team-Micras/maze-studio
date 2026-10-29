@@ -2,8 +2,7 @@ import { FolderOpen, FolderSimple, GithubLogo, Moon, Plus, Sun } from '@/ui/icon
 import { useRef, type ReactNode } from 'react';
 
 import { MAZEFILES, type LibraryFilter } from '@/library';
-import { ONE_ROW_TOP_BAR_WIDTH } from '@/render';
-import { useMediaQuery } from '@/ui/hooks/use-media-query';
+import { useOneRowTopBar } from '@/ui/hooks/use-media-query';
 import { Island, IslandButton, IslandSeparator } from '@/ui/islands/island';
 import { ThemeButton } from '@/ui/islands/theme-button';
 import type { NewMazeRequest } from '@/ui/new-maze';
@@ -230,7 +229,7 @@ export function LibraryChrome({
   updateNote,
   visible,
 }: LibraryChromeProps) {
-  const oneRow = useMediaQuery(`(min-width: ${ONE_ROW_TOP_BAR_WIDTH}px)`);
+  const oneRow = useOneRowTopBar();
   const change = (next: Partial<LibraryFilter>): void => onFilter({ ...filter, ...next });
   const search = (
     <SearchField enabled={visible} onChange={(query) => change({ query })} value={filter.query} />

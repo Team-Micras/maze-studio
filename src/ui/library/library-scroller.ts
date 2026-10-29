@@ -1,8 +1,17 @@
-import type { Insets } from '@/render';
+import type { Insets, LibraryKind } from '@/render';
 
 /** The element the library scrolls in (`data-library-scroller`, `LibraryGrid`), once mounted. */
 export function libraryScroller(): HTMLElement | null {
   return document.querySelector<HTMLElement>('[data-library-scroller]');
+}
+
+/** The library's layout on a phone, or on a notebook whose top bar is one row or two. */
+export function libraryKind(phone: boolean, oneRowTopBar: boolean): LibraryKind {
+  if (phone) {
+    return 'phone';
+  }
+
+  return oneRowTopBar ? 'notebook' : 'stacked';
 }
 
 /**

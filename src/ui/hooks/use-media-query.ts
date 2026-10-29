@@ -38,3 +38,14 @@ export function usePhoneLayout(): boolean {
 export function useCoarsePointer(): boolean {
   return useMediaQuery('(pointer: coarse)');
 }
+
+/**
+ * The narrowest window whose notebook top bar holds the brand, the filters with an open folder and
+ * the actions with the Changes chip on one row; a narrower one puts the filters on a second row.
+ */
+export const ONE_ROW_TOP_BAR_QUERY = '(min-width: 1340px)';
+
+/** Whether the notebook's top bar is one row (see {@link ONE_ROW_TOP_BAR_QUERY}). */
+export function useOneRowTopBar(): boolean {
+  return useMediaQuery(ONE_ROW_TOP_BAR_QUERY);
+}

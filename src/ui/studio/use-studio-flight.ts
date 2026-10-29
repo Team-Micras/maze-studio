@@ -14,7 +14,13 @@ import {
   type WorldRect,
 } from '@/render';
 import { prefersReducedMotion, type CanvasCamera } from '@/ui/board/use-canvas-camera';
-import { focusArtboard, libraryScroller, scrolledInsets } from '@/ui/library/library-scroller';
+import { ONE_ROW_TOP_BAR_QUERY } from '@/ui/hooks/use-media-query';
+import {
+  focusArtboard,
+  libraryKind,
+  libraryScroller,
+  scrolledInsets,
+} from '@/ui/library/library-scroller';
 import type { OpenMaze } from '@/ui/open-maze';
 
 import {
@@ -143,7 +149,11 @@ function flyOut(now: FlightInput, previous: Shown): void {
   const layout =
     scroller === null
       ? undefined
-      : libraryLayout(scroller.clientWidth, now.phone ? 'phone' : 'notebook', now.shown.length);
+      : libraryLayout(
+          scroller.clientWidth,
+          libraryKind(now.phone, window.matchMedia(ONE_ROW_TOP_BAR_QUERY).matches),
+          now.shown.length
+        );
   const page =
     index < 0 || leaving === undefined || layout === undefined
       ? undefined

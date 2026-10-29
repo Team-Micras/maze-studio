@@ -12,11 +12,12 @@ import {
   type RowRange,
 } from '@/render';
 import { useDevicePixelRatio } from '@/ui/board/use-device-pixel-ratio';
+import { useOneRowTopBar } from '@/ui/hooks/use-media-query';
 import { Island, IslandButton } from '@/ui/islands/island';
 import { cn } from '@/ui/primitives/utils';
 
 import { Artboard } from './artboard';
-import { scrolledInsets } from './library-scroller';
+import { libraryKind, scrolledInsets } from './library-scroller';
 import type { Library } from './use-library';
 
 /** The props of {@link LibraryGrid}. */
@@ -145,7 +146,8 @@ export function LibraryGrid({
   }, [selecting]);
   const ratio = useDevicePixelRatio();
   const count = entries.length;
-  const layout = libraryLayout(view.width, phone ? 'phone' : 'notebook', count);
+  const kind = libraryKind(phone, useOneRowTopBar());
+  const layout = libraryLayout(view.width, kind, count);
   const band = thumbnailBand(layout.side * ratio);
 
   useEffect(() => {
@@ -154,8 +156,7 @@ export function LibraryGrid({
     }
 
     let frame = 0;
-    const layoutFor = (width: number): LibraryLayout =>
-      libraryLayout(width, phone ? 'phone' : 'notebook', count);
+    const layoutFor = (width: number): LibraryLayout => libraryLayout(width, kind, count);
     const update = (): void => {
       cancelAnimationFrame(frame);
       frame = requestAnimationFrame(() =>
@@ -174,7 +175,7 @@ export function LibraryGrid({
       observer.disconnect();
       scroller.removeEventListener('scroll', update);
     };
-  }, [scroller, phone, count]);
+  }, [scroller, kind, count]);
 
   useEffect(() => {
     if (scroller === null || hidden) {

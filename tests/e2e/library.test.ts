@@ -247,6 +247,41 @@ async function lowestAtTheEnd(page: Page): Promise<number> {
     .evaluateAll((links) => Math.max(...links.map((link) => link.getBoundingClientRect().bottom)));
 }
 
+describe('The top bar and the grid', () => {
+  let classicScrollbars: Browser;
+
+  beforeAll(async () => {
+    classicScrollbars = await chromium.launch({ ignoreDefaultArgs: ['--hide-scrollbars'] });
+  });
+
+  afterAll(async () => {
+    await classicScrollbars?.close();
+  });
+
+  test.each([1345, 1335, 1100])(
+    'agree at %i px on one row or two, with scrollbars that take room, the first row 52 px below the filters',
+    async (width) => {
+      const context = await classicScrollbars.newContext({ viewport: { width, height: 900 } });
+      contexts.push(context);
+      const page = await context.newPage();
+      await page.goto(`${app}#/?cat=training`);
+      await page.locator('a[data-artboard]').first().waitFor();
+      const gap = await page.evaluate(() => {
+        const scroller = document.querySelector<HTMLElement>('[data-library-scroller]');
+        const filters = document.querySelector('search > div')?.getBoundingClientRect();
+        const first = document.querySelector('a[data-artboard]')?.getBoundingClientRect();
+        return {
+          scrollbar: window.innerWidth - (scroller?.clientWidth ?? 0),
+          below: Math.round((first?.top ?? 0) - (filters?.bottom ?? 0)),
+        };
+      });
+
+      expect(gap.scrollbar).toBeGreaterThan(0);
+      expect(gap.below).toBe(52);
+    }
+  );
+});
+
 describe('The library above a home indicator', () => {
   test.each([
     ['phone', 390, 844, 12],
