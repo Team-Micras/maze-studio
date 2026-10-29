@@ -24,6 +24,7 @@ jobs:
       github.event.workflow_run.conclusion == 'success' &&
       github.event.workflow_run.head_repository.full_name == github.repository
     runs-on: ubuntu-24.04
+    environment: cloudflare
     permissions:
       pull-requests: write
       actions: read
@@ -47,10 +48,17 @@ jobs:
           [ "$pull" = "open $HEAD_SHA" ] || { echo "pull request #$number is not open at $HEAD_SHA" >&2; exit 1; }
           echo "number=$number" >> "$GITHUB_OUTPUT"
 
-      - name: Refuse symbolic links and .git entries
+      # _worker.js and _routes.json would make Cloudflare run the pull request's code as a server.
+      - name: Refuse links, .git, server code and anything over 50 MB
+        env:
+          SITE: ${{ runner.temp }}/preview/site
         run: |
-          if find "$RUNNER_TEMP/preview/site" -type l -o -name .git | grep -q .; then
-            echo "refusing the preview: it holds symbolic links or .git entries" >&2
+          if find "$SITE" -type l -o -name .git -o -name _worker.js -o -name _routes.json | grep -q .; then
+            echo "refusing the preview: it holds links, .git, _worker.js or _routes.json" >&2
+            exit 1
+          fi
+          if [ "$(du -sb "$SITE" | cut -f1)" -gt $((50 * 1024 * 1024)) ]; then
+            echo "refusing the preview: it is over 50 MB" >&2
             exit 1
           fi
 

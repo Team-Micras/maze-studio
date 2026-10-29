@@ -272,7 +272,10 @@ reached, and the measurements of the day, are in the git history of this file.
 - **Previews deploy from a trusted workflow.** The pull request is built by a `pull_request` workflow with read access
   and no secret, and a `workflow_run` workflow, trusted, uploads the artifact with `wrangler pages deploy`: it checks
   that the build came from a branch of this repository and that the number the artifact gives is an open pull request
-  whose head is the commit built, refuses symbolic links and `.git` entries, and never runs anything of the pull
-  request. `pages.yml` builds read only and publishes from a job that only uploads the artifact.
+  whose head is the commit built, refuses symbolic links, `.git` entries, `_worker.js`, `_routes.json` and anything over
+  50 MB, and never runs anything of the pull request. The token sits in an environment only `main` may deploy from:
+  both deploys run as `main` (`push` and `workflow_run`), and a pull request's own workflow, which a branch of this
+  repository may edit, gets no secret. `pages.yml` builds read only and publishes from a job that only uploads the
+  artifact.
 - **Previews only for branches of this repository.** A preview publishes the pull request's code under the project's
   domain, so a fork's pull request gets CI and no preview.

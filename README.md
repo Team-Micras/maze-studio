@@ -156,7 +156,9 @@ and nothing of the site's.
 
 - **Cloudflare**, once: a Pages project `maze-studio` with production branch `main` and the custom
   domain `maze.micras.team`, and a token with only Account, Cloudflare Pages, Edit, saved as the
-  repository secret `CLOUDFLARE_API_TOKEN`. The account id is in the deploy workflows.
+  secret `CLOUDFLARE_API_TOKEN` of an environment `cloudflare` that only `main` may deploy from. A
+  repository secret would reach the `pull_request` runs of every branch. The account id is in the
+  deploy workflows.
 - **Rules** for `main` and `develop` that require the `check` job of CI.
 - **Allow auto-merge**, for the weekly mazefiles bumps.
 
