@@ -71,6 +71,7 @@ export {
 export {
   artboardIn,
   LIBRARY_INSETS,
+  ONE_ROW_TOP_BAR_WIDTH,
   libraryColumns,
   libraryLayout,
   mountedRows,

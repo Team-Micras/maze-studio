@@ -22,6 +22,21 @@ export const LIBRARY_INSETS: Readonly<Record<'notebook' | 'phone', Insets>> = {
   phone: { top: 150, right: 14, bottom: 56, left: 14 },
 };
 
+/**
+ * The narrowest notebook whose top islands fit on one row with the Changes chip; a narrower one
+ * puts the search and filters on a second row, which the grid leaves room for.
+ */
+export const ONE_ROW_TOP_BAR_WIDTH = 1280;
+
+const SECOND_ROW = 52;
+
+function libraryInsets(viewportWidth: number, layout: 'notebook' | 'phone'): Insets {
+  const insets = LIBRARY_INSETS[layout];
+  return layout === 'notebook' && viewportWidth < ONE_ROW_TOP_BAR_WIDTH
+    ? { ...insets, top: insets.top + SECOND_ROW }
+    : insets;
+}
+
 const COLUMN_WIDTH = { notebook: 250, phone: 170 } as const;
 const MIN_COLUMNS = 2;
 const MAX_COLUMNS = 6;
@@ -70,7 +85,7 @@ export function libraryLayout(
   layout: 'notebook' | 'phone',
   count: number
 ): LibraryLayout {
-  const insets = LIBRARY_INSETS[layout];
+  const insets = libraryInsets(viewportWidth, layout);
   const columns = libraryColumns(viewportWidth, layout);
   const room = Math.max(1, viewportWidth - insets.left - insets.right);
   const side = room / (columns + (columns - 1) * SLOT_GAP_X);

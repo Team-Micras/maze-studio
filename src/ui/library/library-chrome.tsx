@@ -2,6 +2,8 @@ import { FolderOpen, FolderSimple, GithubLogo, Moon, Plus, Sun } from '@/ui/icon
 import { useRef, type ReactNode } from 'react';
 
 import { MAZEFILES, type LibraryFilter } from '@/library';
+import { ONE_ROW_TOP_BAR_WIDTH } from '@/render';
+import { useMediaQuery } from '@/ui/hooks/use-media-query';
 import { Island, IslandButton, IslandSeparator } from '@/ui/islands/island';
 import { ThemeButton } from '@/ui/islands/theme-button';
 import type { NewMazeRequest } from '@/ui/new-maze';
@@ -12,6 +14,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/ui/primitives/dropdown-menu';
+import { cn } from '@/ui/primitives/utils';
 import { useTheme } from '@/ui/theme';
 import { Verbatim } from '@/ui/verbatim';
 
@@ -53,8 +56,8 @@ const REPOSITORY = 'https://github.com/Team-Micras/maze-studio';
 
 /**
  * The credit island (DESIGN.md 9.1 and 12): the mazes of the snapshot or the cache in use, at their
- * commit, ending in a link to maze-studio's repository, and beside it what the last check for updates found. It gives way to the selection bar,
- * which sits where it does.
+ * commit, ending in a link to maze-studio's repository, and beside it what the last check for
+ * updates found. It gives way to the selection bar, which sits where it does.
  */
 function Credit({
   library,
@@ -191,9 +194,9 @@ function PhoneMenu({ onOpenFile, files, onNew, newName }: MenuProps) {
 /**
  * The library's islands (DESIGN.md 9.1): the brand, the search, source and category, the actions
  * and the credit; the zoom island is the studio's, since it changes with every move of the camera.
- * Its props do not, so a moving camera re-renders none of these. A phone stacks the search and the filters at the top and keeps only the
- * credit at the bottom. A notebook keeps the search and filters centred between the brand and the
- * actions while they fit, and otherwise lets them shrink and scroll rather than run under either.
+ * Its props do not, so a moving camera re-renders none of these. A phone stacks the search and the
+ * filters at the top and keeps only the credit at the bottom. A notebook centres the search and
+ * filters between the brand and the actions, or below them where one row would not hold all three.
  */
 export function LibraryChrome({
   library,
@@ -209,6 +212,7 @@ export function LibraryChrome({
   updateNote,
   visible,
 }: LibraryChromeProps) {
+  const oneRow = useMediaQuery(`(min-width: ${ONE_ROW_TOP_BAR_WIDTH}px)`);
   const change = (next: Partial<LibraryFilter>): void => onFilter({ ...filter, ...next });
   const search = (
     <SearchField enabled={visible} onChange={(query) => change({ query })} value={filter.query} />
@@ -252,7 +256,12 @@ export function LibraryChrome({
           </Island>
         </header>
       ) : (
-        <header className="pointer-events-none fixed top-safe-4 right-safe-4 left-safe-4 z-10 grid grid-cols-[1fr_auto_1fr] gap-2 *:pointer-events-auto">
+        <header
+          className={cn(
+            'pointer-events-none fixed top-safe-4 right-safe-4 left-safe-4 z-10 grid gap-2 *:pointer-events-auto',
+            oneRow ? 'grid-cols-[1fr_auto_1fr]' : 'grid-cols-[1fr_auto]'
+          )}
+        >
           <Island
             className="h-11 gap-[9px] justify-self-start pr-3 whitespace-nowrap pl-2.5 text-[13px] font-semibold"
             translate="no"
@@ -263,7 +272,9 @@ export function LibraryChrome({
             />
             {visible ? <h1>Maze Studio</h1> : 'Maze Studio'}
           </Island>
-          <search className="min-w-0">
+          <search
+            className={cn('min-w-0', !oneRow && 'col-span-full row-start-2 justify-self-center')}
+          >
             <Island className="h-11 overflow-x-auto overflow-y-hidden overscroll-x-contain [scrollbar-width:none]">
               {search}
               <IslandSeparator />

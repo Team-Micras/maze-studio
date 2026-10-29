@@ -8,6 +8,7 @@ import {
   libraryLayout,
   libraryRect,
   mountedRows,
+  ONE_ROW_TOP_BAR_WIDTH,
   revealCamera,
   revealScroll,
   rowOf,
@@ -54,6 +55,15 @@ describe('libraryLayout', () => {
       9
     );
     expect(empty.rows).toBe(1);
+  });
+
+  test("leaves a second row's room at the top of a notebook too narrow for one row of islands", () => {
+    expect(libraryLayout(ONE_ROW_TOP_BAR_WIDTH, 'notebook', 1).insets).toEqual(NOTEBOOK);
+    expect(libraryLayout(ONE_ROW_TOP_BAR_WIDTH - 1, 'notebook', 1).insets).toEqual({
+      ...NOTEBOOK,
+      top: NOTEBOOK.top + 52,
+    });
+    expect(libraryLayout(390, 'phone', 1).insets).toEqual(LIBRARY_INSETS.phone);
   });
 });
 

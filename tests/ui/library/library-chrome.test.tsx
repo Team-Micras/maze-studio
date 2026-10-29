@@ -2,6 +2,7 @@ import { afterEach, describe, expect, test } from 'vitest';
 import { page } from 'vitest/browser';
 import { render } from 'vitest-browser-react';
 
+import { libraryLayout } from '@/render';
 import { ChangesChip } from '@/ui/changes/changes';
 import { LibraryChrome } from '@/ui/library/library-chrome';
 import { TooltipProvider } from '@/ui/primitives/tooltip';
@@ -38,9 +39,13 @@ function boxOf(element: Element | null | undefined): DOMRect {
   return element?.getBoundingClientRect() ?? new DOMRect();
 }
 
+function apart(a: DOMRect, b: DOMRect): boolean {
+  return a.right <= b.left || b.right <= a.left || a.bottom <= b.top || b.bottom <= a.top;
+}
+
 describe("The notebook's top islands", () => {
-  test.each([1860, 1440, 1100, 800])(
-    'never overlap at %i px, with the Changes chip shown, and keep every filter in reach',
+  test.each([1860, 1440, 1279, 1100, 800, 721])(
+    'never overlap at %i px with the Changes chip shown, show every filter, and end above the grid',
     async (width) => {
       await page.viewport(width, 900);
       await mountChrome();
@@ -48,20 +53,21 @@ describe("The notebook's top islands", () => {
       const brand = boxOf(
         page.getByRole('heading', { name: 'Maze Studio' }).element().parentElement
       );
-      const filters = document.querySelector('search > div');
+      const filters = boxOf(document.querySelector('search > div'));
       const actions = boxOf(chip?.parentElement);
-      const middle = boxOf(filters);
+      const tabs = [...document.querySelectorAll('search [role="radio"]')].map((tab) =>
+        tab.getBoundingClientRect()
+      );
 
       expect(chip).not.toBeNull();
-      expect(brand.right).toBeLessThanOrEqual(middle.left);
-      expect(middle.right).toBeLessThanOrEqual(actions.left);
+      expect(apart(brand, filters) && apart(filters, actions) && apart(brand, actions)).toBe(true);
       expect(actions.right).toBeLessThanOrEqual(width);
-      filters?.scrollTo({ left: filters.scrollWidth });
-      const training = page
-        .getByRole('radio', { name: 'Training' })
-        .element()
-        .getBoundingClientRect();
-      expect(training.right).toBeLessThanOrEqual(middle.right + 1);
+      expect(tabs).toHaveLength(6);
+      for (const tab of tabs) {
+        expect(tab.left).toBeGreaterThanOrEqual(filters.left);
+        expect(tab.right).toBeLessThanOrEqual(filters.right);
+      }
+      expect(filters.bottom).toBeLessThan(libraryLayout(width, 'notebook', 1).insets.top);
     }
   );
 });
