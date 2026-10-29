@@ -50,7 +50,8 @@ export interface LibraryChromeProps {
 
 /**
  * The credit island (DESIGN.md 9.1 and 12): the mazes of the snapshot or the cache in use, at their
- * commit, and beside it what the last check for updates found.
+ * commit, and beside it what the last check for updates found. It gives way to the selection bar,
+ * which sits where it does.
  */
 function Credit({
   library,
@@ -65,7 +66,7 @@ function Credit({
 
   return (
     <div
-      className={`fixed z-10 flex items-center gap-2 ${phone ? 'bottom-safe-3 left-1/2 -translate-x-1/2 flex-col-reverse' : 'bottom-safe-[18px] left-safe-4'}`}
+      className={`fixed z-10 flex items-center gap-2 [:root:has([data-selection-bar])_&]:hidden ${phone ? 'bottom-safe-3 left-1/2 -translate-x-1/2 flex-col-reverse' : 'bottom-safe-[18px] left-safe-4'}`}
     >
       <p className={pill}>
         {library.repoCount} mazes from{' '}

@@ -259,6 +259,25 @@ describe('Selecting in My mazes', () => {
     expect(await selection(page).count()).toBe(0);
   });
 
+  test('on a phone, the bar keeps its count on one line and the credit gives way to it', async () => {
+    const page = await mineLibrary(true);
+    const credit = page.locator('footer p').first();
+    await holdFinger(page, 'a[data-artboard="mine:one"]', 700);
+    await selection(page).waitFor();
+
+    const count = await selection(page)
+      .getByText('1 selected')
+      .evaluate((span) => ({
+        height: span.getBoundingClientRect().height,
+        line: Number.parseFloat(getComputedStyle(span).lineHeight),
+      }));
+    expect(count.height).toBeLessThan(count.line * 1.5);
+    expect(await credit.isVisible()).toBe(false);
+
+    await selection(page).getByRole('button', { name: 'Cancel' }).tap();
+    await expect.poll(() => credit.isVisible()).toBe(true);
+  });
+
   test('on a phone, a held finger in the repo selects nothing', async () => {
     const page = await mineLibrary(true);
     await page.evaluate(() => {

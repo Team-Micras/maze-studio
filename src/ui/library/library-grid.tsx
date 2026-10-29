@@ -306,9 +306,10 @@ export function LibraryGrid({
         <Island
           aria-label="Selection"
           className="fixed bottom-safe-6 left-1/2 z-20 h-11 -translate-x-1/2 gap-1 pl-3 text-[13px]"
+          data-selection-bar=""
           role="toolbar"
         >
-          <span aria-hidden className="pr-2 tabular-nums">
+          <span aria-hidden className="pr-2 whitespace-nowrap tabular-nums">
             {picked.length} selected
           </span>
           <IslandButton
