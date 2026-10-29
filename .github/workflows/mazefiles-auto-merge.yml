@@ -28,8 +28,9 @@ jobs:
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
 
+      # fetch-metadata names the ecosystem `submodules`, where dependabot.yml says `gitsubmodule`.
       - name: Check that the pull request only moves the submodule
-        if: steps.metadata.outputs.package-ecosystem == 'gitsubmodule'
+        if: steps.metadata.outputs.package-ecosystem == 'submodules'
         id: scope
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
