@@ -192,7 +192,8 @@ function PhoneMenu({ onOpenFile, files, onNew, newName }: MenuProps) {
  * The library's islands (DESIGN.md 9.1): the brand, the search, source and category, the actions
  * and the credit; the zoom island is the studio's, since it changes with every move of the camera.
  * Its props do not, so a moving camera re-renders none of these. A phone stacks the search and the filters at the top and keeps only the
- * credit at the bottom.
+ * credit at the bottom. A notebook keeps the search and filters centred between the brand and the
+ * actions while they fit, and otherwise lets them shrink and scroll rather than run under either.
  */
 export function LibraryChrome({
   library,
@@ -251,9 +252,9 @@ export function LibraryChrome({
           </Island>
         </header>
       ) : (
-        <header>
+        <header className="pointer-events-none fixed top-safe-4 right-safe-4 left-safe-4 z-10 grid grid-cols-[1fr_auto_1fr] gap-2 *:pointer-events-auto">
           <Island
-            className="fixed top-safe-4 left-safe-4 h-11 gap-[9px] pr-3 pl-2.5 text-[13px] font-semibold"
+            className="h-11 gap-[9px] justify-self-start pr-3 whitespace-nowrap pl-2.5 text-[13px] font-semibold"
             translate="no"
           >
             <i
@@ -262,8 +263,8 @@ export function LibraryChrome({
             />
             {visible ? <h1>Maze Studio</h1> : 'Maze Studio'}
           </Island>
-          <search>
-            <Island className="fixed top-safe-4 left-1/2 h-11 -translate-x-1/2">
+          <search className="min-w-0">
+            <Island className="h-11 overflow-x-auto overflow-y-hidden overscroll-x-contain [scrollbar-width:none]">
               {search}
               <IslandSeparator />
               {source}
@@ -271,7 +272,7 @@ export function LibraryChrome({
               {category}
             </Island>
           </search>
-          <Island className="fixed top-safe-4 right-safe-4 h-11">
+          <Island className="h-11 justify-self-end">
             {changes}
             <MineAndFiles files={files} />
             <OpenFileButton onFile={onOpenFile} />
