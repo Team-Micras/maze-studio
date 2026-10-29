@@ -297,7 +297,8 @@ export function followTrack(
   size: number,
   now: number
 ): LoadingTrack {
-  const next = (snapshot.stage === undefined ? undefined : PHASES[snapshot.stage]) ?? track.phase;
+  const named = (snapshot.stage === undefined ? undefined : PHASES[snapshot.stage]) ?? track.phase;
+  const next = track.phase === 'another' && named === 'routes' ? 'another' : named;
   const moves =
     next !== track.phase && (track.phase === null || now - track.phaseSince >= PHASE_HOLD);
 

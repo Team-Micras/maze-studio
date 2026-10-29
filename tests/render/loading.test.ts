@@ -65,6 +65,10 @@ const closed = (size: number) => new Uint8Array(size * size).fill(15);
 
 const tried = (count: number) => Array.from({ length: count }, (_, k) => ({ route: [0, k + 1] }));
 
+/** The track of a 16 × 16 maze after a snapshot of a closed board at `stage`, `attempt` and `now`. */
+const at = (track: typeof WAITING, stage: string, attempt: number, now: number) =>
+  followTrack(track, { walls: closed(16), tried: [], stage, attempt }, 16, now);
+
 describe('decorativeMaze', () => {
   for (const size of [16, 32]) {
     test(`on ${size} × ${size} reaches every cell, its goal if any open through one entrance`, () => {
@@ -143,8 +147,6 @@ describe('followTrack', () => {
   });
 
   test('names a phase for at least half a second, the attempt count moving freely', () => {
-    const at = (track: typeof WAITING, stage: string, attempt: number, now: number) =>
-      followTrack(track, { walls: closed(size), tried: [], stage, attempt }, size, now);
     const routes = at(WAITING, 'board', 1, 0);
     const soon = at(routes, 'filler', 2, PHASE_HOLD - 1);
     const later = at(soon, 'filler', 2, PHASE_HOLD);
@@ -152,6 +154,12 @@ describe('followTrack', () => {
     expect([routes.phase, routes.attempt]).toEqual(['routes', 1]);
     expect([soon.phase, soon.attempt]).toEqual(['routes', 2]);
     expect([later.phase, later.phaseSince]).toEqual(['forest', PHASE_HOLD]);
+  });
+
+  test('keeps trying another way through the boards of the fallback', () => {
+    const another = at(at(WAITING, 'board', 1, 0), 'fallback', 1, PHASE_HOLD);
+
+    expect(at(another, 'board', 2, 2 * PHASE_HOLD).phase).toBe('another');
   });
 
   test('keeps the newest routes only, and lets them fade out', () => {
