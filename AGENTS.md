@@ -21,7 +21,7 @@
   and compact-code round trips, no `error` under the folder's profile, snapshot equal to the
   submodule), never counts of one commit, so a new maze upstream needs no change here.
 - On GitHub, the repository needs "Allow auto-merge" turned on, rules for `main` and `develop`
-  that require CI's `check` job, and Pages served from the `gh-pages` branch; see the README.
+  that require CI's `check` job, and the `CLOUDFLARE_API_TOKEN` secret the deploys use; see the README.
 - Reference screenshots (`tests/**/screenshots/`) are made in the Playwright image of the pinned
   version, `mcr.microsoft.com/playwright:v1.63.0`, so that they match CI and not one notebook.
   After a deliberate change of the drawing, check the disk with `df -h /` and, from the repository,

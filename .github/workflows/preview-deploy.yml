@@ -1,10 +1,11 @@
 name: Preview deploy
 
-# Publishes what Preview build made at pr-<n>/ of gh-pages and comments the link on the pull
-# request. It runs as this file is on the default branch, with write access, so it never checks out
-# nor runs anything of the pull request: it copies the built files, after checking that the build
-# came from a branch of this repository and that the number the artifact gives is an open pull
-# request whose head is the commit that was built.
+# Publishes what Preview build made to Cloudflare Pages, at pr-<n>.maze-studio-8ol.pages.dev, an
+# origin of its own, and comments the link on the pull request. It runs as this file is on the
+# default branch, with the Cloudflare token, so it never checks out nor runs anything of the pull
+# request: it uploads the built files, after checking that the build came from a branch of this
+# repository and that the number the artifact gives is an open pull request whose head is the
+# commit that was built.
 on:
   workflow_run:
     workflows: [Preview build]
@@ -24,12 +25,9 @@ jobs:
       github.event.workflow_run.head_repository.full_name == github.repository
     runs-on: ubuntu-24.04
     permissions:
-      contents: write
       pull-requests: write
       actions: read
     steps:
-      - uses: actions/checkout@v7
-
       - uses: actions/download-artifact@v4
         with:
           name: preview
@@ -49,19 +47,29 @@ jobs:
           [ "$pull" = "open $HEAD_SHA" ] || { echo "pull request #$number is not open at $HEAD_SHA" >&2; exit 1; }
           echo "number=$number" >> "$GITHUB_OUTPUT"
 
-      - run: .github/scripts/gh-pages.sh put "$NUMBER" "$RUNNER_TEMP/preview/site"
+      - name: Refuse symbolic links and .git entries
+        run: |
+          if find "$RUNNER_TEMP/preview/site" -type l -o -name .git | grep -q .; then
+            echo "refusing the preview: it holds symbolic links or .git entries" >&2
+            exit 1
+          fi
+
+      - run: >-
+          npx --yes wrangler@4.155.0 pages deploy "$RUNNER_TEMP/preview/site"
+          --project-name=maze-studio --branch="pr-$NUMBER" --commit-hash="$HEAD_SHA"
         env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: 34ebfad1eba77b88252b1f496592d5d2
           NUMBER: ${{ steps.pull.outputs.number }}
+          HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
 
       - env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           NUMBER: ${{ steps.pull.outputs.number }}
           HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
-          OWNER: ${{ github.repository_owner }}
-          REPO: ${{ github.event.repository.name }}
         run: |
           marker='<!-- maze-studio-preview -->'
-          url="https://${OWNER,,}.github.io/$REPO/pr-$NUMBER/"
+          url="https://pr-$NUMBER.maze-studio-8ol.pages.dev/"
           body="$marker
           Preview of ${HEAD_SHA:0:7}: $url"
           id="$(gh api "repos/$GITHUB_REPOSITORY/issues/$NUMBER/comments" --paginate \

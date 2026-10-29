@@ -2,7 +2,7 @@ name: Preview build
 
 # Builds a pull request of a branch of this repository for its preview, read only and with no
 # secret; Preview deploy, which runs trusted, publishes what this uploads. A fork's pull request
-# gets CI but no preview, since a preview runs its code on the site's origin.
+# gets CI but no preview, since a preview publishes its code under the project's own domain.
 on:
   pull_request:
     types: [opened, synchronize, reopened]
@@ -34,8 +34,6 @@ jobs:
       - run: bun install --frozen-lockfile
 
       - run: bun run build
-        env:
-          BASE_PATH: /${{ github.event.repository.name }}/pr-${{ github.event.number }}/
 
       - run: |
           mkdir preview
