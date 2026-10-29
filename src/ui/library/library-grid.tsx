@@ -257,7 +257,7 @@ export function LibraryGrid({
       >
         <section
           aria-label="Maze library"
-          className="relative"
+          className="relative box-content pb-[env(safe-area-inset-bottom)]"
           data-library-grid=""
           style={{ height: layout.height }}
         >

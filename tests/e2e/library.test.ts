@@ -223,6 +223,43 @@ function selection(page: Page) {
   return page.getByRole('toolbar', { name: 'Selection' });
 }
 
+describe('The library above a home indicator', () => {
+  test.each([
+    ['phone', 390, 844, 12],
+    ['notebook', 1440, 900, 18],
+  ])(
+    'ends its grid above the credit on a %s, so the last row shows whole',
+    async (_, width, height, gap) => {
+      const context = await browser.newContext({
+        viewport: { width, height },
+        hasTouch: width < 720,
+      });
+      contexts.push(context);
+      const page = await context.newPage();
+      const session = await context.newCDPSession(page);
+      await session.send('Emulation.setSafeAreaInsetsOverride', { insets: { bottom: 34 } });
+      await page.goto(`${app}#/?cat=training`);
+      await page.locator('a[data-artboard]').first().waitFor();
+      await page
+        .locator('[data-library-scroller]')
+        .evaluate((scroller) =>
+          scroller.scrollTo({ top: scroller.scrollHeight, behavior: 'instant' })
+        );
+      await page.waitForTimeout(300);
+
+      const lowest = await page
+        .locator('a[data-artboard]')
+        .evaluateAll((links) =>
+          Math.max(...links.map((link) => link.getBoundingClientRect().bottom))
+        );
+      const credit = await page.locator('footer p').first().boundingBox();
+
+      expect(credit?.y).toBeCloseTo(height - 34 - gap - 32, 0);
+      expect(lowest).toBeLessThanOrEqual(credit?.y ?? 0);
+    }
+  );
+});
+
 describe('Selecting in My mazes', () => {
   test('on a phone: a held finger selects, a tap toggles, Delete takes two taps, Cancel and Esc leave', async () => {
     const page = await mineLibrary(true);
