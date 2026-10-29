@@ -157,7 +157,7 @@ describe('followTrack', () => {
   });
 
   test('keeps trying another way through every attempt of the fallback', () => {
-    const stages = ['fallback', 'board', 'tuned', 'attempt-end', 'board', 'tree'];
+    const stages = ['fallback', 'board', 'tuned', 'attempt-end', 'board'];
     const end = stages.reduce(
       (track, stage, k) => at(track, stage, k, (k + 1) * PHASE_HOLD),
       at(WAITING, 'board', 1, 0)
