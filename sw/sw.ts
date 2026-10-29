@@ -7,17 +7,13 @@ import {
 } from 'workbox-precaching';
 import { NavigationRoute, registerRoute } from 'workbox-routing';
 
-import { PREVIEW_PATH } from '../src/preview';
-
 declare const self: ServiceWorkerGlobalScope & {
   readonly __WB_MANIFEST: Parameters<typeof precacheAndRoute>[0];
 };
 
 precacheAndRoute(self.__WB_MANIFEST);
 cleanupOutdatedCaches();
-registerRoute(
-  new NavigationRoute(createHandlerBoundToURL('index.html'), { denylist: [PREVIEW_PATH] })
-);
+registerRoute(new NavigationRoute(createHandlerBoundToURL('index.html')));
 
 self.addEventListener('activate', (event) => {
   event.waitUntil(self.clients.claim());

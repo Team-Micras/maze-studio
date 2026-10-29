@@ -85,7 +85,7 @@ export const CHUNK_SIZE_WARNING_KB = 400;
 const RADIX_MODULES =
   /node_modules[\\/](@radix-ui|radix-ui|@floating-ui|react-remove-scroll|react-remove-scroll-bar|react-style-singleton|use-callback-ref|use-sidecar|aria-hidden|get-nonce|detect-node-es|tslib)[\\/]/;
 
-/** The GitHub Pages site serves the app from `/maze-studio/`; anywhere else it is the root. */
+/** The app sits at the root; the e2e build sets `BASE_PATH` to check it also works under a path. */
 const base = process.env.BASE_PATH ?? '/';
 
 export default defineConfig({
