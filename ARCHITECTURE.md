@@ -10,6 +10,7 @@ server. The reasons behind the choices below are in [`decisions.md`](decisions.m
 | `src/maze/`        | The core: the model, the text format, the compact code, edits, history, diff and validation.           |
 | `src/library/`     | The catalog, the built-in snapshot, updates from GitHub, My mazes, backup, the folder and IndexedDB.   |
 | `src/render/`      | Geometry, the camera as pure functions, SVG path data and canvas thumbnails.                           |
+| `src/generator/`   | The maze generator: settings, presets, styles, the time model, recipes, features and the batch pick.   |
 | `src/ui/`          | The React interface; `src/ui/primitives/` holds the shadcn components.                                 |
 | `src/main.tsx`     | The entry point: loads the app, or the embed with `?embed`, and registers the app's service worker.    |
 | `sw/`              | The service worker (Workbox, `injectManifest`): precaches the build, leaves `pr-<n>/` previews alone.  |
@@ -19,7 +20,7 @@ server. The reasons behind the choices below are in [`decisions.md`](decisions.m
 
 ## Layers
 
-Each of `src/maze`, `src/library` and `src/render` has an `index.ts` as its public face.
+Each of `src/maze`, `src/library`, `src/render` and `src/generator` has an `index.ts` as its public face.
 
 - **`src/maze`** is pure: no React, no browser API. `Maze` holds walls as two immutable `Bits` sets, `(0, 0)` in the
   south-west corner. The text format reads into a `MazeText` of grid and trailer, reporting what the canonical text
@@ -35,6 +36,15 @@ Each of `src/maze`, `src/library` and `src/render` has an `index.ts` as its publ
   `track-layers.ts` and `overlay-layers.ts` give one SVG path per layer, `stroke.ts` turns a pointer path into walls,
   `camera.ts` and `camera-input.ts` hold the camera `{ x, y, k }` and its flights, `library-layout.ts` the grid,
   `thumbnails.ts` the bitmaps in an LRU of 64 MB.
+- **`src/generator`** builds mazes from settings and a seed, deterministically on every engine: the same seed gives the
+  same walls, which `wallHash` locks in each recipe under `GENERATOR_VERSION`. It works on a `Grid` of one wall byte
+  per cell (`grid.ts`, with `fromMaze` and `toMaze` to the app's `Maze`). `generator.ts` draws a seed's roles and style
+  and builds it routes first (`routes.ts`: a racing and a careful route, a forest off them, loops) or by annealing a
+  grown tree, against `Targets` (`types.ts`); `racing.ts` is the run-time model of three robot classes, `search.ts`
+  the wall follower and the flood-fill round trip, `sensor.ts` the sensor motifs, `analysis.ts` and `rules.ts` the
+  numbers and board rules. `presets.ts`, `features.ts`, `diversity.ts` and `batch.ts` give the presets, the sentences
+  and tags of a maze, the varied pick of a batch and recipes read back from text. Decisions avoid `Math.pow`, `log`,
+  `exp`, `atan2` and `hypot`, which engines round differently (`expOf`, `logOf`, `angleOf`).
 - **`src/ui`** is the app:
   - `app.tsx`, the shell: the route from the hash (`routes.ts`, `navigation.ts`), the library (`library/use-library.ts`),
     the maze the route opens (`open-maze.ts`), the editing session, toasts and theme.
@@ -59,14 +69,16 @@ Each of `src/maze`, `src/library` and `src/render` has an `index.ts` as its publ
 Checked by `bun run lint` through `no-restricted-imports` in `.oxlintrc.json`, and the rules themselves by
 `tests/config/import-fences.test.ts`.
 
-| Folder         | May import                       | Never imports                                        |
-| -------------- | -------------------------------- | ---------------------------------------------------- |
-| `src/maze/`    | its own files, by relative path  | anything else of the project, React, `node:` modules |
-| `src/library/` | `src/maze`, its own files        | `src/render`, `src/ui`, React                        |
-| `src/render/`  | `src/maze`, its own files        | `src/library`, `src/ui`, React                       |
-| `src/ui/`      | all of `src/` but `src/main.tsx` | any `@phosphor-icons/` package                       |
-| `scripts/`     | `src/maze`, `src/library`        | `src/render`, `src/ui`, tests, React                 |
-| any of `src/`  |                                  | `tests/`, `scripts/`, `vendor/`                      |
+| Folder           | May import                                        | Never imports                                                 |
+| ---------------- | ------------------------------------------------- | ------------------------------------------------------------- |
+| `src/maze/`      | its own files, by relative path                   | anything else of the project, React, `node:` modules          |
+| `src/library/`   | `src/maze`, its own files                         | `src/render`, `src/generator`, `src/ui`, React                |
+| `src/render/`    | `src/maze`, its own files                         | `src/library`, `src/generator`, `src/ui`, React               |
+| `src/generator/` | `src/maze`, its own files                         | `src/library`, `src/render`, `src/ui`, React, `node:` modules |
+| `src/ui/`        | all of `src/` but `src/main.tsx`                  | any `@phosphor-icons/` package                                |
+| `src/main.tsx`   | `src/maze`, `src/library`, `src/render`, `src/ui` | `src/generator`                                               |
+| `scripts/`       | `src/maze`, `src/library`                         | `src/render`, `src/generator`, `src/ui`, tests, React         |
+| any of `src/`    |                                                   | `tests/`, `scripts/`, `vendor/`                               |
 
 ## Tests
 
@@ -82,6 +94,9 @@ Four Vitest projects:
   the built app, and `phone-flights.test.ts` flies on an emulated phone.
 
 `bun run check` runs lint, format, typecheck, `unit`, `browser`, `e2e`, the build and the size report.
-`tests/maze/mazefiles-corpus.test.ts` reads every file of the pinned mazefiles and checks invariants only. Real touches
-go through the DevTools protocol (`tests/support/ui/touch.ts`). Reference screenshots live in `screenshots/` next to
-their test and are committed.
+`tests/generator/generator.test.ts` holds the golden hashes, seed to walls per preset at the generator's version, which
+a change of the walls never overwrites: it bumps the version and records new ones.
+`tests/generator/mockup-cross-check.ts` is a tool outside the check that builds the same seeds with the generator's
+mockup in the Micras workspace and compares the walls. `tests/maze/mazefiles-corpus.test.ts` reads every file of the
+pinned mazefiles and checks invariants only. Real touches go through the DevTools protocol
+(`tests/support/ui/touch.ts`). Reference screenshots live in `screenshots/` next to their test and are committed.
