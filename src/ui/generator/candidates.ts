@@ -242,7 +242,6 @@ export function phaseText({ phase, attempt }: LoadingTrack): string {
       return 'Fine-tuning';
     case 'another':
       return 'Trying another way';
-    case null:
-      return 'Building';
   }
+  return 'Building';
 }
