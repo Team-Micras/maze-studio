@@ -61,6 +61,7 @@ function wallsOf(...xs: number[]): Maze {
 class FakeMine implements MineStore {
   readonly items = new Map<string, MineMaze>();
   readonly log: string[] = [];
+  readonly drafts: MineDraft[] = [];
   failures = 0;
   #held: Promise<void> = Promise.resolve();
   #release: () => void = () => undefined;
@@ -82,6 +83,7 @@ class FakeMine implements MineStore {
 
   async create(draft: MineDraft): Promise<MineMaze> {
     await this.#held;
+    this.drafts.push(draft);
     this.#ids += 1;
     const item: MineMaze = {
       id: `u-${this.#ids}`,
@@ -297,6 +299,45 @@ describe('The writer of My mazes', () => {
     await Promise.all([first, second]);
 
     expect(mine.log).toEqual(['create shared']);
+  });
+
+  test('saves a link and a repository maze not edited under their own names, origin and notes kept', async () => {
+    const mine = new FakeMine();
+    const { writer } = writerOn(mine);
+    const origin = { path: 'classic/a.txt', sha: 'abc' };
+    const repo: OpenMaze = {
+      ...opened('a'),
+      document: { trailer: 'notes\n', profile: 'classic', origin },
+    };
+    await writer.saveToMine(openSession(repo));
+    await writer.saveToMine(openSession({ ...opened('shared'), key: 'link:abc' }));
+
+    expect(mine.log).toEqual(['create a', 'create shared']);
+    expect(mine.drafts[0]).toMatchObject({ trailer: 'notes\n', origin });
+  });
+
+  test('copies a generated new maze at once with its name and recipe, and a blank one only once edited', async () => {
+    const mine = new FakeMine();
+    const { writer } = writerOn(mine);
+    const recipe = { version: 7, seed: 3, settings: { size: 4 }, hash: '0123abcd' };
+    const generated: OpenMaze = {
+      ...opened('Generated 3'),
+      key: 'new:1',
+      maze: wallsOf(1),
+      document: { trailer: '', profile: 'classic', created: true, recipe },
+    };
+    const blank: OpenMaze = {
+      ...opened('Untitled maze'),
+      key: 'new:2',
+      document: { trailer: '', profile: 'classic', created: true },
+    };
+    writer.write(openSession(generated));
+    writer.write(openSession(blank));
+    await writer.idle();
+
+    expect(mine.log).toEqual(['create Generated 3']);
+    expect(mine.drafts[0]).toMatchObject({ trailer: '', profile: 'classic', recipe });
+    expect(mazesEqual(mine.mazeNamed('Generated 3') ?? EMPTY, wallsOf(1))).toBe(true);
   });
 
   test('saves an edit made while Save to My mazes copies, into that copy', async () => {

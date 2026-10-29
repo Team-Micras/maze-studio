@@ -68,7 +68,7 @@ async function generateAndPick(page: Page, card: number, hint?: string): Promise
 }
 
 describe('Generate in New maze (beta)', () => {
-  test('opens the maze picked as a new maze, keeps its recipe only with its own walls, and on reopening', async () => {
+  test('opens the maze picked as a new maze saved in My mazes, keeps its recipe only with its own walls, and on reopening', async () => {
     const page = await openPage(browser, contexts, app);
     await openGenerate(page, 'New maze');
     await page.getByText('Rules', { exact: true }).click();
@@ -77,7 +77,8 @@ describe('Generate in New maze (beta)', () => {
 
     const title = await page.locator('h1').textContent();
     expect(title).toMatch(/^Generated \d+$/);
-    expect(new URL(page.url()).hash).toBe('#/');
+    await page.waitForFunction(() => window.location.hash.startsWith('#/mine/'));
+    const id = mineId(page) ?? '';
     const recipe = await copiedRecipe(page);
     expect(recipe).toMatchObject({
       version: GENERATOR_VERSION,
@@ -85,11 +86,16 @@ describe('Generate in New maze (beta)', () => {
       settings: { size: 16, contest: false },
     });
     expect(recipe.hash).toMatch(/^[0-9a-f]{8}$/);
-
     const generated = toMaze(savedGrid({ ...recipe, walls: recipe.walls ?? '' }));
+    const kept = await expectSaved(page, sameMaze(generated));
+    expect(kept).toMatchObject({ name: title, recipe });
+    expect(await mineCount(page)).toBe(1);
+
     const point = await pagePoint(page, generated, edgeMiddle(EDGE));
     await page.mouse.click(point.x, point.y);
     const drawn = await expectSaved(page, sameMaze(toggleWall(generated, EDGE)));
+    expect(mineId(page)).toBe(id);
+    expect(await mineCount(page)).toBe(1);
     expect(drawn.name).toBe(title);
     expect(drawn.profile).toBe('classic');
     expect(drawn.recipe).toBeUndefined();
@@ -107,7 +113,6 @@ describe('Generate in New maze (beta)', () => {
       .toEqual(recipe);
     expect(saved.name).toBe(title);
 
-    const id = mineId(page) ?? '';
     await page.reload();
     await waitForMode(page, 'editor');
     expect((await storedMine(page, id))?.recipe).toEqual(recipe);
@@ -129,7 +134,7 @@ describe('Generate in New maze (beta)', () => {
     ).toBe('Custom (from Recommended)');
   });
 
-  test('opens Generate on a new blank maze, which closing leaves unsaved and Use this opens as the new maze', async () => {
+  test('opens Generate on a new blank maze, which closing leaves unsaved and Use this opens as the new maze, saved', async () => {
     const page = await openPage(browser, contexts, app);
     await openGenerate(page, 'New maze');
     await waitForMode(page, 'editor');
@@ -137,14 +142,19 @@ describe('Generate in New maze (beta)', () => {
     await page.keyboard.press('Escape');
     await expect.poll(() => page.getByRole('dialog', { name: 'Generate' }).count()).toBe(0);
     expect(await mineCount(page)).toBe(0);
+    await page.getByRole('button', { name: 'More actions' }).click();
+    await page.getByRole('menuitem', { name: 'Download .txt' }).waitFor();
+    expect(await page.getByRole('menuitem', { name: 'Save to My mazes' }).count()).toBe(0);
+    await page.keyboard.press('Escape');
 
     await page.getByRole('button', { name: 'Back to the library' }).click();
     await waitForMode(page, 'library');
     await openGenerate(page, 'New maze');
-    await generateAndPick(page, 3, 'Opens as a new maze; the first edit saves it in My mazes.');
+    await generateAndPick(page, 3, 'Opens as a new maze, saved in My mazes.');
     expect(await page.locator('h1').textContent()).toBe('Generated 3');
-    expect(await page.locator('h1 ~ p').first().textContent()).toBe('Generated maze, 16 × 16');
-    expect(await mineCount(page)).toBe(0);
+    await page.waitForFunction(() => window.location.hash.startsWith('#/mine/'));
+    expect(await mineCount(page)).toBe(1);
+    expect((await storedMine(page, mineId(page) ?? ''))?.name).toBe('Generated 3');
   });
 
   test.each([
