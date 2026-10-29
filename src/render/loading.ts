@@ -161,9 +161,17 @@ export function borderLines(size: number): LoadingLine[] {
   ];
 }
 
-/** The goal of a decorative maze: 2 × 2 in the middle of 16 × 16, 3 × 3 off the centre of 32 × 32. */
+/**
+ * The goal of a decorative maze: 2 × 2 in the middle of 16 × 16, where a classic goal always is;
+ * none on 32 × 32, whose goal moves from maze to maze, so the skeleton reads as texture only.
+ */
 export function decorativeGoals(size: number): number[] {
-  const [from, side] = size === 32 ? [13, 3] : [size / 2 - 1, 2];
+  if (size === 32) {
+    return [];
+  }
+
+  const from = size / 2 - 1;
+  const side = 2;
   const cells: number[] = [];
 
   for (let y = from; y < from + side; y++) {
@@ -184,7 +192,8 @@ const STEPS = [
 
 /**
  * A maze that looks generated, for the skeleton: a depth-first maze of `size` from the start, the
- * `goals` cells open inside with exactly one entrance, as the rules ask. The same for one seed.
+ * `goals` cells, if any, open inside with exactly one entrance, as the rules ask. The same for one
+ * seed.
  */
 export function decorativeMaze(size: number, goals: readonly number[], seed = 7): Uint8Array {
   let state = seed >>> 0;

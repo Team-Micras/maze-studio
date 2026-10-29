@@ -67,22 +67,21 @@ const tried = (count: number) => Array.from({ length: count }, (_, k) => ({ rout
 
 describe('decorativeMaze', () => {
   for (const size of [16, 32]) {
-    test(`on ${size} × ${size} reaches every cell and opens its goal through one entrance`, () => {
+    test(`on ${size} × ${size} reaches every cell, its goal if any open through one entrance`, () => {
       const goals = decorativeGoals(size);
       const walls = decorativeMaze(size, goals);
 
-      expect(goals).toHaveLength(size === 32 ? 9 : 4);
       expect(reached(walls, size).size).toBe(size * size);
-      expect(entrances(walls, size, goals)).toBe(1);
+      expect(entrances(walls, size, goals)).toBe(goals.length === 0 ? 0 : 1);
       expect(walls.every((w, c) => !goals.includes(c) || (w & 15) !== 15)).toBe(true);
       expect(decorativeMaze(size, goals)).toEqual(walls);
     });
   }
 
-  test('puts the goal of 16 × 16 in the middle and that of 32 × 32 off the centre', () => {
+  test('puts a 2 × 2 goal in the middle of 16 × 16 and none on 32 × 32', () => {
     expect(decorativeGoals(16)).toEqual([119, 120, 135, 136]);
-    expect(decorativeGoals(32)).toContain(13 * 32 + 13);
-    expect(decorativeGoals(32)).not.toContain(16 * 32 + 16);
+    expect(decorativeGoals(32)).toEqual([]);
+    expect(openPassages(decorativeMaze(32, []), 32)).toBe(32 * 32 - 1);
   });
 });
 

@@ -299,12 +299,12 @@ reached, and the measurements of the day, are in the git history of this file.
 - **The settings are kept per device in the `settings` store** of IndexedDB, as the folder's handle is, instead of the
   mockup's `localStorage`: the preset and the settings of the last valid change, checked with `isSettings` when read
   back. Another tab's change is not followed while the dialog is open.
-- **Loading is grey, ready is red** (owner, 28/10, the mockup's `loading/flow.html`). A card waiting for its maze
-  shows a decorative maze of the batch's size, goal open inside with one entrance, under a diagonal wave, each card's
-  clock 537 ms after the one before; the board of the maze picked shows the routes the generator is trying, then from
-  the first snapshot with half the passages of a spanning maze open the newest such snapshot, never the grid again
-  after a restart. A built maze replaces it at once, the grey fading out over it in 300 ms; without motion the wave
-  stands still, no route shows and the maze swaps in. The worker sends a snapshot at most every 25 ms and at each
+- **Loading is grey, ready is red** (owner, 28/10, the mockup's `loading/flow.html`). A card waiting for its maze shows
+  a decorative maze of the batch's size (16 × 16 with its goal, one entrance; 32 × 32 with none), under a diagonal wave,
+  each card's clock 537 ms after the one before; the board of the maze picked shows the routes the generator is trying,
+  then from the first snapshot with half the passages of a spanning maze open the newest such snapshot, never the grid
+  again after a restart. A built maze replaces it at once, the grey fading out over it in 300 ms; without motion the
+  wave stands still, no route shows and the maze swaps in. The worker sends a snapshot at most every 25 ms and at each
   change of stage, with the last 8 routes tried, which costs the generation under 1 %. The painting lives in
   `src/render/loading.ts`, kept out of `src/render/index.ts`: the first screen imports that index, and a module it
   re-exports lands in a chunk the first screen loads even when only the Generate chunk uses it.
