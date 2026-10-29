@@ -33,7 +33,7 @@ usual.
 
 ```html
 <iframe
-  src="https://team-micras.github.io/maze-studio/?embed#/repo/classic/br2025-robochallenge-day1.txt"
+  src="https://maze.micras.team/?embed#/repo/classic/br2025-robochallenge-day1.txt"
   title="Maze of RoboChallenge Brasil 2025, day 1"
   loading="lazy"
   style="width: 100%; aspect-ratio: 4 / 3; border: 0"
@@ -56,10 +56,7 @@ listens; send the theme on `maze-studio:ready` and whenever it changes:
 ```js
 const frame = document.querySelector('iframe');
 const sendTheme = (theme) =>
-  frame.contentWindow.postMessage(
-    { type: 'maze-studio:theme', theme },
-    'https://team-micras.github.io'
-  );
+  frame.contentWindow.postMessage({ type: 'maze-studio:theme', theme }, 'https://maze.micras.team');
 window.addEventListener('message', (event) => {
   if (event.source === frame.contentWindow && event.data?.type === 'maze-studio:ready') {
     sendTheme(document.documentElement.classList.contains('dark') ? 'dark' : 'light');
@@ -101,7 +98,7 @@ In a clone made without `--recurse-submodules`, run `git submodule update --init
 | Script                     | What it does                                                               |
 | -------------------------- | -------------------------------------------------------------------------- |
 | `bun run dev`              | Development server                                                         |
-| `bun run build`            | Typecheck and build into `dist/`; `BASE_PATH=/maze-studio/` for Pages      |
+| `bun run build`            | Typecheck and build into `dist/`; `BASE_PATH` sets a base other than `/`   |
 | `bun run preview`          | Serve the built app                                                        |
 | `bun run test`             | Unit tests (Node) and browser tests (Chromium)                             |
 | `bun run test:performance` | Frame-time tests in Chromium, one file at a time, outside the check        |
@@ -135,7 +132,8 @@ both sides is no conflict. The one case is `develop` a bump behind `main`, when 
 requests failed; the release then conflicts on `vendor/mazefiles`, and the newer commit is the one
 to keep.
 
-`pages.yml` publishes `main` on every push to it and on demand from the Actions tab.
+`pages.yml` publishes `main` to <https://maze.micras.team> on every push to it and on demand from
+the Actions tab.
 
 To understand the code, start with [`ARCHITECTURE.md`](ARCHITECTURE.md).
 
@@ -147,28 +145,22 @@ release is a pull request from `develop` to `main`, which publishes the site; a 
 starts from `main`.
 
 Every pull request from a branch of this repository gets a preview at
-`https://team-micras.github.io/maze-studio/pr-<number>/`, linked in a comment and updated on every
-push, and removed when the pull request closes. A pull request from a fork gets CI but no preview:
-a preview runs its code on the site's origin. GitHub Pages serves the `gh-pages` branch: the site at
-its root, written by `pages.yml`, and the previews at `pr-<number>/`. `preview-build.yml` builds the
-pull request with no write access, and `preview-deploy.yml`, which runs as it is on the default
-branch, copies the built files and never runs them. A preview registers no service worker and keeps
-its own database, and the site's worker leaves its pages to the network. If a preview shows the
-site, accept New version or open it in a private window.
+`https://pr-<number>.maze-studio-8ol.pages.dev/`, linked in a comment and updated on every push. A
+pull request from a fork gets CI but no preview: a preview publishes its code under the project's
+domain. The site and the previews are deployments of one Cloudflare Pages project, `maze-studio`:
+`main` is production, at `maze.micras.team`, and each pull request a branch `pr-<number>`.
+`preview-build.yml` builds the pull request with no write access and no secret, and
+`preview-deploy.yml`, which runs as it is on the default branch, uploads the built files and never
+runs them. Each preview is an origin of its own, so it keeps its own My mazes and service worker,
+and nothing of the site's.
 
-### Set up on GitHub
+### Set up
 
-- **Pages**, once, to move it to the `gh-pages` branch (Pages only takes a branch that exists, and
-  `pages.yml` runs as it is on `main`):
-  1. Merge the pull request that brings this setup into `develop`.
-  2. Create `gh-pages` from the current `main`: from a checkout of `develop`, make a worktree of
-     `origin/main`, build it there with `BASE_PATH=/<repository>/`, and run
-     `.github/scripts/gh-pages.sh site <worktree>/dist` from `develop`.
-  3. Switch the source and wait until `gh api repos/<owner>/<repository>/pages --jq .status` says
-     `built`:
-     `gh api -X PUT repos/<owner>/<repository>/pages -f build_type=legacy -f 'source[branch]=gh-pages' -f 'source[path]=/'`.
-  4. Release `develop` to `main` right after, so `pages.yml` publishes from then on.
-  5. To go back, set `build_type=workflow` the same way.
+- **Cloudflare**, once: a Pages project `maze-studio` with production branch `main` and the custom
+  domain `maze.micras.team`, and a token with only Account, Cloudflare Pages, Edit, saved as the
+  secret `CLOUDFLARE_API_TOKEN` of an environment `cloudflare` that only `main` may deploy from. A
+  repository secret would reach the `pull_request` runs of every branch. The account id is in the
+  deploy workflows.
 - **Rules** for `main` and `develop` that require the `check` job of CI.
 - **Allow auto-merge**, for the weekly mazefiles bumps.
 
