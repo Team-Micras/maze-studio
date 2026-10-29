@@ -294,7 +294,6 @@ function CopyRecipe({ item }: { item: ReadyItem }) {
   );
 }
 
-/** The line that names a maze: "#4 of 8 · seed 4004890115 · Diagonal staircases". */
 /** `read` of what `track` returns, read again a few times a second. */
 function useTrackText(
   track: () => LoadingTrack,
@@ -332,6 +331,7 @@ function Elapsed({ track }: { track: () => LoadingTrack }) {
   );
 }
 
+/** The line that names a maze: "#4 of 8 · seed 4004890115 · Diagonal staircases". */
 function MazeTitle({
   item,
   place,
@@ -343,7 +343,7 @@ function MazeTitle({
   place: number;
   total: number;
   headingRef?: Ref<HTMLHeadingElement>;
-  track?: () => LoadingTrack;
+  track: () => LoadingTrack;
 }) {
   return (
     <h3
@@ -359,10 +359,8 @@ function MazeTitle({
           itemOrigin(item)
         ) : item.status !== 'pending' ? (
           'The generator could not make this maze'
-        ) : track === undefined ? (
-          'Building…'
         ) : (
-          <PhaseText track={track} />
+          <PhaseText key={item.n} track={track} />
         )}
       </span>
     </h3>
@@ -384,7 +382,7 @@ function Details({
   place: number;
   total: number;
   headingRef?: Ref<HTMLHeadingElement>;
-  track?: () => LoadingTrack;
+  track: () => LoadingTrack;
 }) {
   const ready = isReady(item);
   const warning = ready ? itemWarning(item) : undefined;
@@ -396,8 +394,8 @@ function Details({
         <MazeTitle headingRef={headingRef} item={item} place={place} total={total} track={track} />
         {ready ? (
           <CopyRecipe item={item} />
-        ) : item.status === 'pending' && track !== undefined ? (
-          <Elapsed track={track} />
+        ) : item.status === 'pending' ? (
+          <Elapsed key={item.n} track={track} />
         ) : null}
       </div>
       {tags.length === 0 ? null : (
