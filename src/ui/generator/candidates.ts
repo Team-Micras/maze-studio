@@ -215,8 +215,20 @@ export function swipeStep(dx: number, dy: number): -1 | 0 | 1 {
   return dx < 0 ? 1 : -1;
 }
 
-/** What a maze still building is at, in the title line of the maze opened, before its dots. */
-export function phaseText({ phase, attempt }: LoadingTrack): string {
+/** From how long, in milliseconds, a maze building says for how long it has been at it. */
+export const SHOW_ELAPSED = 3000;
+
+/**
+ * What a maze still building is at, in the title line of the maze opened, and from
+ * {@link SHOW_ELAPSED} on for how many seconds, at `now`.
+ */
+export function phaseText(track: LoadingTrack, now: number): string {
+  const elapsed = track.started ? now - track.startedAt : 0;
+  const stage = stageText(track);
+  return elapsed < SHOW_ELAPSED ? stage : `${stage} · ${Math.floor(elapsed / 1000)} s`;
+}
+
+function stageText({ phase, attempt }: LoadingTrack): string {
   switch (phase) {
     case 'routes':
       return attempt > 1 ? `Trying routes · attempt ${attempt}` : 'Trying routes';

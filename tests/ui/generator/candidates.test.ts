@@ -8,6 +8,7 @@ import {
   generatesFor,
   isBlank,
   phaseText,
+  SHOW_ELAPSED,
   pickHint,
   replacesBoard,
   stepTo,
@@ -99,12 +100,16 @@ describe('Generate from the editor', () => {
 });
 
 describe('phaseText', () => {
-  test('names what a maze building is at, the attempt from the second board on', () => {
-    expect(phaseText(WAITING)).toBe('Building');
-    expect(phaseText({ ...WAITING, phase: 'routes', attempt: 1 })).toBe('Trying routes');
-    expect(phaseText({ ...WAITING, phase: 'routes', attempt: 12 })).toBe(
+  test('names what a maze building is at, the attempt from the second board on and the seconds from the third', () => {
+    const started = { ...WAITING, started: true, startedAt: 1000 };
+
+    expect(phaseText(WAITING, 9000)).toBe('Building');
+    expect(phaseText({ ...started, phase: 'routes', attempt: 1 }, 1500)).toBe('Trying routes');
+    expect(phaseText({ ...started, phase: 'routes', attempt: 12 }, 1500)).toBe(
       'Trying routes · attempt 12'
     );
-    expect(phaseText({ ...WAITING, phase: 'forest' })).toBe('Growing the maze around the routes');
+    expect(phaseText({ ...started, phase: 'tune' }, 1000 + SHOW_ELAPSED + 1200)).toBe(
+      'Fine-tuning · 4 s'
+    );
   });
 });

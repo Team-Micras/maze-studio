@@ -16,7 +16,7 @@ import { SETTLE, type LoadingTrack } from '@/render/loading';
 import type { Generated } from '@/ui/editor/edit-session';
 import { ThumbnailCanvas } from '@/ui/board/thumbnail-canvas';
 import { copyText } from '@/ui/editor/share';
-import { useCoarsePointer, useMediaQuery, usePhoneLayout } from '@/ui/hooks/use-media-query';
+import { useCoarsePointer, usePhoneLayout } from '@/ui/hooks/use-media-query';
 import { Board } from '@/ui/board/board';
 import { CANVAS_ID } from '@/ui/canvas-id';
 import {
@@ -137,9 +137,6 @@ const CARD_SIDE = 156;
 
 /** How often, in milliseconds, the title line of a maze building reads what it is at. */
 const PHASE_READ = 200;
-
-/** How long, in milliseconds, each count of the title line's dots lasts. */
-const DOT_STEP = 400;
 
 /** How far apart, in milliseconds, the waves of two cards in a row run. */
 const WAVE_STAGGER = 537;
@@ -298,13 +295,12 @@ function CopyRecipe({ item }: { item: ReadyItem }) {
 
 /** The line that names a maze: "#4 of 8 · seed 4004890115 · Diagonal staircases". */
 /**
- * What a maze still building is at, read again a few times a second from `track`, with dots that
- * count up so a long stage still shows it works; still, as an ellipsis, under reduced motion.
+ * What a maze still building is at, read again a few times a second from `track`, under a band of
+ * light that sweeps it so a long stage still shows it works; plain under reduced motion.
  */
 function PhaseText({ track }: { track: () => LoadingTrack }) {
   const latest = useRef(track);
-  const reduced = useMediaQuery('(prefers-reduced-motion: reduce)');
-  const [{ text, dots }, setShown] = useState(() => ({ text: phaseText(track()), dots: 1 }));
+  const [text, setText] = useState(() => phaseText(track(), performance.now()));
 
   useLayoutEffect(() => {
     latest.current = track;
@@ -312,24 +308,13 @@ function PhaseText({ track }: { track: () => LoadingTrack }) {
 
   useEffect(() => {
     const timer = setInterval(
-      () =>
-        setShown({
-          text: phaseText(latest.current()),
-          dots: (Math.floor(performance.now() / DOT_STEP) % 3) + 1,
-        }),
+      () => setText(phaseText(latest.current(), performance.now())),
       PHASE_READ
     );
     return () => clearInterval(timer);
   }, []);
 
-  return (
-    <>
-      {text}
-      <span aria-hidden className="inline-block w-[1.5ch]">
-        {reduced ? '…' : '.'.repeat(dots)}
-      </span>
-    </>
-  );
+  return <span className="text-shimmer">{text}</span>;
 }
 
 function MazeTitle({

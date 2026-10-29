@@ -57,6 +57,8 @@ export interface LoadingTrack {
   readonly phaseSince: number;
   /** How many boards the generator has started on. */
   readonly attempt: number;
+  /** When the first snapshot came. */
+  readonly startedAt: number;
 }
 
 /** What a maze being built is at, in the words the panel shows. */
@@ -96,6 +98,7 @@ export const WAITING: LoadingTrack = {
   phase: null,
   phaseSince: 0,
   attempt: 0,
+  startedAt: 0,
 };
 
 /** One sweep of the wave, in milliseconds. */
@@ -293,6 +296,7 @@ export function followTrack(
     phase: moves ? next : track.phase,
     phaseSince: moves ? now : track.phaseSince,
     attempt: snapshot.attempt ?? track.attempt,
+    startedAt: track.started ? track.startedAt : now,
     started: true,
     walls: looksLikeMaze(snapshot.walls, size) ? snapshot.walls : track.walls,
     trail: [
