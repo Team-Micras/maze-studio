@@ -3,7 +3,7 @@ import { describe, expect, test } from 'vitest';
 import { DEFAULT_FILTER } from '@/library/library-filter';
 import { loadSnapshot } from '@/library/snapshot';
 import { borderedMaze, encodeMazeCode, mazesEqual } from '@/maze';
-import { EMBED_REFUSED, embedMaze, SNAPSHOT_FAILED } from '@/ui/embed/embed-maze';
+import { EMBED_REFUSED, embedMaze, missingPath, SNAPSHOT_FAILED } from '@/ui/embed/embed-maze';
 
 const CLASSIC = 'classic/AAMC15Maze.txt';
 
@@ -26,7 +26,9 @@ describe('The maze of the embed', () => {
   });
 
   test('of a repository route waits for the snapshot', () => {
-    expect(embedMaze({ kind: 'repo', path: CLASSIC }, 'loading')).toEqual({ status: 'waiting' });
+    expect(embedMaze({ kind: 'repo', path: CLASSIC }, 'loading')).toEqual({
+      status: 'waiting',
+    });
   });
 
   test('of a repository route says so when the snapshot does not load', () => {
@@ -43,6 +45,58 @@ describe('The maze of the embed', () => {
       status: 'missing',
       message: 'No maze at that path',
     });
+  });
+
+  test('of a path the snapshot lacks waits for the fetch, then shows the file it found', async () => {
+    const snapshot = await loadSnapshot();
+    const route = {
+      kind: 'repo',
+      path: 'classic/maze-studio-absent-test.txt',
+    } as const;
+    const [found] = snapshot.files;
+
+    expect(embedMaze(route, snapshot, { status: 'loading' })).toEqual({
+      status: 'waiting',
+    });
+    expect(embedMaze(route, snapshot, { status: 'done', file: undefined })).toMatchObject({
+      status: 'missing',
+    });
+    expect(found).toBeDefined();
+    expect(
+      embedMaze(route, snapshot, {
+        status: 'done',
+        file: found && { ...found, path: route.path },
+      })
+    ).toMatchObject({
+      status: 'open',
+      name: 'maze-studio-absent-test',
+    });
+  });
+
+  test('of a path the snapshot has ignores the fetch', async () => {
+    const snapshot = await loadSnapshot();
+
+    expect(
+      embedMaze({ kind: 'repo', path: CLASSIC }, snapshot, {
+        status: 'loading',
+      })
+    ).toMatchObject({
+      status: 'open',
+      name: 'AAMC15Maze',
+    });
+  });
+
+  test('missingPath names the repository path a loaded snapshot lacks, and nothing else', async () => {
+    const snapshot = await loadSnapshot();
+    const absent = {
+      kind: 'repo',
+      path: 'classic/maze-studio-absent-test.txt',
+    } as const;
+
+    expect(missingPath(absent, snapshot)).toBe(absent.path);
+    expect(missingPath({ kind: 'repo', path: CLASSIC }, snapshot)).toBe(undefined);
+    expect(missingPath({ kind: 'link', code: 'x' }, snapshot)).toBe(undefined);
+    expect(missingPath(absent, 'loading')).toBe(undefined);
   });
 
   test('of a link decodes it without the snapshot', () => {

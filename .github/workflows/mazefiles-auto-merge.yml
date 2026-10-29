@@ -67,16 +67,23 @@ jobs:
           PR_URL: ${{ github.event.pull_request.html_url }}
         run: gh pr merge --auto --squash "$PR_URL"
 
-      - name: Publish main, which the merge does not start
-        if: steps.scope.outputs.only-submodule == 'true' && github.event.pull_request.base.ref == 'main'
+      # Dependabot deletes its branch once a bump merges into main, not into develop.
+      - name: Once it merges, publish main, which the merge does not start, or delete the branch on develop
+        if: steps.scope.outputs.only-submodule == 'true'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GH_REPO: ${{ github.repository }}
           PR_URL: ${{ github.event.pull_request.html_url }}
+          BASE_REF: ${{ github.event.pull_request.base.ref }}
+          HEAD_REF: ${{ github.event.pull_request.head.ref }}
         run: |
           for _ in $(seq 1 60); do
             if [ "$(gh pr view "$PR_URL" --json state --jq .state)" = MERGED ]; then
-              gh workflow run pages.yml --ref main
+              if [ "$BASE_REF" = main ]; then
+                gh workflow run pages.yml --ref main
+              else
+                gh api -X DELETE "repos/$GH_REPO/git/refs/heads/$HEAD_REF"
+              fi
               exit 0
             fi
             sleep 30
