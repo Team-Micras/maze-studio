@@ -191,3 +191,19 @@ describe('The Changes panel of an open maze', () => {
     }
   );
 });
+
+describe('Generate from the editor', () => {
+  test('stays closed on the next maze when the editor was left with it open', async () => {
+    await mountApp();
+    await openMaze();
+    await userEvent.click(page.getByRole('button', { name: 'More actions' }));
+    await userEvent.click(page.getByRole('menuitem', { name: /^Generate…/ }));
+    await expect.element(page.getByRole('dialog', { name: 'Generate' })).toBeVisible();
+
+    history.back();
+    await expect.poll(mode, { timeout: 3000 }).toBe('library');
+    await openMaze(7);
+
+    await expect.element(page.getByRole('dialog', { name: 'Generate' })).not.toBeInTheDocument();
+  });
+});

@@ -1,17 +1,19 @@
 /**
- * New mazes from the New maze menu (PLAN.md 3.4, DESIGN.md 9.2): a preset or a custom size, named
- * "Untitled maze" through `uniqueName` unless named in the dialog, open in the editor without a
- * route of their own, and written to My mazes only by their first edit, under their own name.
+ * New mazes from the New maze menu (PLAN.md 3.4, DESIGN.md 9.2): a preset, a custom size or a
+ * generated maze, named "Untitled maze" (or as the generator names it) through `uniqueName` unless
+ * named in the dialog, open in the editor without a route of their own, and written to My mazes
+ * only by their first edit, under their own name and with the generator's recipe.
  *
  * @module
  */
 
-import { looseKey, uniqueName } from '@/library';
+import { looseKey, uniqueName, type MineRecipe } from '@/library';
 import {
   borderedMaze,
   isMazeSide,
   presetMaze,
   presetProfile,
+  type Maze,
   type MazePreset,
   type Profile,
 } from '@/maze';
@@ -31,6 +33,13 @@ export type NewMazeRequest =
       readonly height: number;
       readonly profile: Profile;
       readonly name: string;
+    }
+  | {
+      readonly kind: 'generated';
+      readonly maze: Maze;
+      readonly profile: Profile;
+      readonly name: string;
+      readonly recipe: MineRecipe;
     };
 
 /** The menu's presets, in order, with their labels. */
@@ -60,6 +69,17 @@ export function openNewMaze(
   id: number,
   taken: Iterable<string>
 ): OpenMaze {
+  if (request.kind === 'generated') {
+    const { maze, profile, recipe } = request;
+    return {
+      key: looseKey('new', id),
+      maze,
+      name: newMazeName(request.name, taken),
+      detail: `Generated maze, ${sizeLabel(maze.width, maze.height)}`,
+      document: { trailer: '', profile, created: true, recipe },
+    };
+  }
+
   const maze =
     request.kind === 'preset'
       ? presetMaze(request.preset)

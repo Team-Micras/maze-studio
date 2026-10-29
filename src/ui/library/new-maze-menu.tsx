@@ -1,11 +1,13 @@
-import { Plus, Ruler, X } from '@/ui/icons';
+import { Plus, Ruler, Shuffle, X } from '@/ui/icons';
 import { useId, useRef, useState, type FormEvent, type ReactNode } from 'react';
 
 import type { Profile } from '@/maze';
+import { GenerateDialogLoader } from '@/ui/generator/generate-dialog-loader';
 import { useCoarsePointer } from '@/ui/hooks/use-media-query';
 import { PROFILE_NAMES } from '@/ui/labels';
 import { IslandButton } from '@/ui/islands/island';
 import { PRESETS, sideOf, type NewMazeRequest } from '@/ui/new-maze';
+import { Badge } from '@/ui/primitives/badge';
 import { Button } from '@/ui/primitives/button';
 import { Dialog, DialogClose, DialogContent, DialogTitle } from '@/ui/primitives/dialog';
 import {
@@ -27,13 +29,15 @@ export interface NewMazeItemsProps {
   readonly onNew: (request: NewMazeRequest) => void;
   /** Opens the Custom size dialog. */
   readonly onCustom: () => void;
+  /** Opens the Generate dialog. */
+  readonly onGenerate: () => void;
 }
 
 /**
  * The New maze items of a menu (DESIGN.md 9.2): "Classic, 16 × 16", "Half size, 32 × 32",
- * "Training, 16 × 16" and "Custom size…".
+ * "Training, 16 × 16", "Custom size…" and "Generate…", marked Beta.
  */
-export function NewMazeItems({ onNew, onCustom }: NewMazeItemsProps) {
+export function NewMazeItems({ onNew, onCustom, onGenerate }: NewMazeItemsProps) {
   return (
     <>
       <DropdownMenuLabel className="text-xs text-muted-foreground">New maze</DropdownMenuLabel>
@@ -51,6 +55,13 @@ export function NewMazeItems({ onNew, onCustom }: NewMazeItemsProps) {
       <DropdownMenuItem className="rounded-[9px]" onSelect={onCustom}>
         <Ruler aria-hidden size={16} />
         Custom size…
+      </DropdownMenuItem>
+      <DropdownMenuItem className="rounded-[9px]" onSelect={onGenerate}>
+        <Shuffle aria-hidden size={16} />
+        Generate…
+        <Badge className="ml-auto" variant="secondary">
+          Beta
+        </Badge>
       </DropdownMenuItem>
     </>
   );
@@ -230,17 +241,33 @@ export function CustomSizeDialog({
 export interface NewMazeDialogsProps {
   readonly defaultName: string;
   readonly onNew: (request: NewMazeRequest) => void;
+  /**
+   * Opens Generate on a new blank maze in the editor, so the board previews the candidates; without
+   * it, as on a phone, Generate opens over the library.
+   */
+  readonly onGenerate?: () => void;
   /** The menu, given the items to put in it. */
   readonly children: (items: ReactNode) => ReactNode;
 }
 
-/** A menu with the New maze items, and the Custom size dialog they open. */
-export function NewMazeDialogs({ defaultName, onNew, children }: NewMazeDialogsProps) {
+/**
+ * A menu with the New maze items, and the Custom size and Generate dialogs they open. The Generate
+ * dialog stays mounted once opened, so its batch is still there the next time.
+ */
+export function NewMazeDialogs({ defaultName, onNew, onGenerate, children }: NewMazeDialogsProps) {
   const [custom, setCustom] = useState(false);
+  const [generate, setGenerate] = useState(false);
 
   return (
     <>
-      {children(<NewMazeItems onCustom={() => setCustom(true)} onNew={onNew} />)}
+      {children(
+        <NewMazeItems
+          onCustom={() => setCustom(true)}
+          onGenerate={onGenerate ?? (() => setGenerate(true))}
+          onNew={onNew}
+        />
+      )}
+      <GenerateDialogLoader onOpenChange={setGenerate} onUse={onNew} open={generate} />
       <CustomSizeDialog
         defaultName={defaultName}
         onCreate={onNew}

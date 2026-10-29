@@ -13,8 +13,10 @@ the browser on a laptop or a phone, installs, and works offline at a competition
   goal, with checks against the classic rules ("Passes", or what is wrong and where).
 - **Editor.** Walls by drag or click, rectangles, clear area, start and goal, with undo and redo,
   a cell cursor on the keyboard, and New maze in the classic, half-size and training sizes or a
-  custom one. The first edit of a repository maze makes a copy in **My mazes**, kept in the browser and
-  saved as you go; the Changes chip lists what changed in the session, to discard or keep.
+  custom one, or generated (beta): a preset tuned on real finals, every target configurable, and a
+  batch of 8 candidates to pick from, whose recipe stays with the maze. The first edit of a
+  repository maze makes a copy in **My mazes**, kept in the browser and saved as you go; the
+  Changes chip lists what changed in the session, to discard or keep.
 - **Sharing and files.** Copy link (the maze in the URL), Share… on a phone, Download .txt, Open a
   `.txt`, Save to folder, and Export all and Import of My mazes as a zip.
 - **Offline and installable.** After the first visit the app opens, searches, edits and saves with

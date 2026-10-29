@@ -80,10 +80,11 @@ export const CHUNK_SIZE_WARNING_KB = 400;
 
 /**
  * Radix and the small packages its popovers and menus stand on, kept in a chunk of their own beside
- * React's, so the app's own chunk shows how much the app itself weighs.
+ * React's, so the app's own chunk shows how much the app itself weighs. The switch is left out: only
+ * the Generate dialog uses it, and it loads with that dialog's chunk.
  */
 const RADIX_MODULES =
-  /node_modules[\\/](@radix-ui|radix-ui|@floating-ui|react-remove-scroll|react-remove-scroll-bar|react-style-singleton|use-callback-ref|use-sidecar|aria-hidden|get-nonce|detect-node-es|tslib)[\\/]/;
+  /node_modules[\\/](@radix-ui[\\/](?!react-switch[\\/])[^\\/]+|radix-ui|@floating-ui|react-remove-scroll|react-remove-scroll-bar|react-style-singleton|use-callback-ref|use-sidecar|aria-hidden|get-nonce|detect-node-es|tslib)[\\/]/;
 
 /** The GitHub Pages site serves the app from `/maze-studio/`; anywhere else it is the root. */
 const base = process.env.BASE_PATH ?? '/';

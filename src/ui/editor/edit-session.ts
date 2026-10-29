@@ -5,7 +5,7 @@
  * @module
  */
 
-import { mineKey } from '@/library';
+import { mineKey, type MineRecipe } from '@/library';
 import {
   createHistory,
   endGesture,
@@ -36,16 +36,49 @@ export interface EditSession {
    * again, in a session of its own.
    */
   readonly moved?: boolean;
+  /**
+   * The mazes the generator made in this session, or that opened with a recipe, each with its
+   * recipe, which holds while the board shows that maze.
+   */
+  readonly generated: readonly Generated[];
+}
+
+/** A maze the generator made and its recipe. */
+export interface Generated {
+  readonly recipe: MineRecipe;
+  readonly maze: Maze;
 }
 
 /** A session on `opened`, with nothing to undo; a maze of My mazes saves to itself. */
 export function openSession(opened: OpenMaze): EditSession {
-  const { mine } = opened.document;
+  const { mine, recipe } = opened.document;
   return {
     opened,
     history: createHistory(opened.maze, { equals: mazesEqual }),
     profile: opened.document.profile,
     mine: mine && { ...mine, name: opened.name },
+    generated: recipe === undefined ? [] : [{ recipe, maze: opened.maze }],
+  };
+}
+
+/**
+ * The recipe of the walls on screen: the generator's while the board shows a maze it made, and
+ * none once an edit or an undo moved off every such maze, until the board shows one again.
+ */
+export function sessionRecipe(session: EditSession): MineRecipe | undefined {
+  const { generated, history } = session;
+  return generated.findLast(({ maze }) => mazesEqual(history.present, maze))?.recipe;
+}
+
+/**
+ * The session with the maze the generator made in place of the one on the board, as one step of
+ * undo, and its recipe.
+ */
+export function withGenerated(session: EditSession, generated: Generated): EditSession {
+  return {
+    ...session,
+    history: record(session.history, generated.maze),
+    generated: [...session.generated, generated],
   };
 }
 
@@ -86,6 +119,7 @@ export function sessionView(session: EditSession): OpenMaze {
       ...document,
       profile: session.profile,
       mine: mine && { id: mine.id, version: mine.version },
+      recipe: sessionRecipe(session),
       source: source !== undefined && mazesEqual(history.present, opened.maze) ? source : undefined,
     },
   };

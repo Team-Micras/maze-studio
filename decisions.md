@@ -16,8 +16,9 @@ reached, and the measurements of the day, are in the git history of this file.
   The import fences refuse any `@phosphor-icons/` import in `src`.
 - **No zip dependency.** `src/library/zip.ts` writes stored entries with CRC-32 and UTF-8 names, and reads deflated
   ones through `DecompressionStream('deflate-raw')`. A zip library would be the only runtime dependency for one button.
-- **Primitives** are the monitor's shadcn copies with Phosphor icons; Toggle, ToggleGroup, Popover, Dialog, Input and
-  Label come from shadcn's `new-york` source over the `radix-ui` package. Toasts are Radix `Toast` with a small zustand
+- **Primitives** are the monitor's shadcn copies with Phosphor icons, Badge and Switch among them; Toggle, ToggleGroup,
+  Popover, Dialog, Input and Label come from shadcn's `new-york` source over the `radix-ui` package, and the Sheet
+  takes shadcn's `side`, bottom or right. Toasts are Radix `Toast` with a small zustand
   store; no `sonner`.
 
 ## The text format and the code
@@ -233,7 +234,80 @@ reached, and the measurements of the day, are in the git history of this file.
   round differently, and a test reads the sources for them. A change that moves any seed's walls bumps the version and
   records new golden hashes beside the old ones, never over them.
 - **Only the UI imports it**, so it stays out of the first screen: the fence of `src/main.tsx` refuses it, and the UI
-  will load it on demand. Its presets carry English copy only, as the app does.
+  loads it on demand. Its presets carry English copy only, as the app does.
+- **Generate is part of New maze, marked Beta** (owner, 18/10 and 21/10): New maze → Generate… → settings and
+  candidates → Use this opens the maze in the editor as a new maze, written to My mazes by its first edit like any
+  other. No screen of its own. The presets are back, Recommended first, with Custom (from …) and a reset once a field
+  moves; every target the generator aims at is a field, the rarer ones under Fine tuning. The form is the mockup's
+  (`docs/maze-editor/mockups/generator/assets/settings-form.js`) in React, its logic without React in
+  `settings-model.ts`, its English copy only.
+- **Loaded when Generate first opens.** The dialog and the generator are one lazy chunk (about 28 KB gzip) and the
+  worker another (about 23 KB); the first screen gains about 4 KB gzip (207.9 to about 211.7 KB): the menu items, five
+  icons, the classes the dialog adds to the one stylesheet, the recipe in My mazes and the editor's preview. Radix's
+  switch is left out of the `radix` chunk group, which the first screen loads, since only the dialog uses it. A chunk
+  that fails to load says so in a toast and closes the dialog.
+- **A pool of workers, one maze per message.** Up to four workers, one fewer than the cores, share a queue of the
+  batch's 8 seeds in a row, and each maze shows in its seed's card as soon as it is built, so the cards stay in seed
+  order and the same settings and first seed show the same mazes on every computer; 8 more goes on from the next seed.
+  No hidden pool (owner, 24/10): building three seeds per card and keeping the most varied skewed the calibrated mix
+  toward outliers and style bonuses, tripled the time on a phone and read as "24" built for 8 shown. The varied pick
+  (`pickDiverse`, `pickBatch`) stays in the core for a later "More like this". A maze off its targets carries a
+  warning that names what it missed, worked out in the worker from the generator's `report` and `choiceMisses`
+  against its seed's targets, which only the worker has. A new run, closing the panel and leaving the editor (which
+  closes it) terminate the workers; there is no Cancel (owner, 25/10): a batch of 8 takes seconds, and Generate
+  asked again during a run starts over, while 8 more and › wait for the run to end. The dialog stays mounted once
+  opened, so its batch is there the next time.
+- **The board previews the candidate on a notebook** (owner, 24/10), as the mockup's editor did: from the editor
+  the panel docks on the right without a modal backdrop, so the board stays in reach to pan and zoom, and the studio
+  shows the candidate picked (or the last one built before it while it is on its way) on the board as a preview,
+  the title island's line reading "Preview · seed N" instead of a chip over the maze, through its existing
+  previewing state: no edit, no step of history, no tools, the ⋯ menu's edits off. Closing
+  the panel puts the open maze back as it was; Use this replaces it as before. New maze → Generate… on a notebook
+  opens a new blank maze of the saved settings' size with the panel open; its Use this opens the maze picked as the
+  new maze, with its name and recipe, and closing leaves the blank maze unsaved, as any new maze. The panel takes
+  the focus, Esc closes it, and "Back to the board" focuses the board. A phone keeps the sheet over the library or
+  the editor.
+- **A gallery, and a maze opened over it** (owner, 25/10). The gallery is the panel's home: a status row of fixed
+  height ("Seeds 1–8", or "Building 3 of 8…") above the cards, which show a grey wave until their maze is built and
+  fill in as each one is, so nothing moves while a run goes on; "8 more" ends the grid and appends. A card opens its
+  maze in a view pushed over the gallery, a region named by its heading, which takes the focus: on a phone the maze
+  drawn large and, under it, its title line with Copy recipe, its tags and its sentences, compact enough to fit above
+  the footer; beside the editor on a notebook only the information, as the editor's board previews it, a card under
+  the pointer previewing too. Only this view has the footer, ‹ Use this ›, and steps with a swipe or the arrow keys: ›
+  past the last maze builds 8 more, appends them (#9 of 16) and moves to the first at once, its loading board showing
+  it build; ‹ and › step onto mazes still building too, and a card still building opens. Back and Esc go back to the
+  gallery where it was, focusing the card; Esc in the gallery closes the panel. On a phone the panel takes the whole
+  screen. The settings are a view of their own behind a gear in the header. A batch stops at 64 mazes, which the gallery
+  says in place of 8 more, and the footer's line on the last maze. A first design with a Gallery or One switch and a
+  progress bar (24/10) made you scroll between a card and its details, and shifted the layout as runs started and ended.
+- **Seeds over the whole 32-bit range** (owner, 24/10). The first seed and the dice draw from 0 to the largest first
+  seed with `crypto.getRandomValues`: with a known preset, a range of 100,000 seeds could be built ahead of a
+  contest in hours.
+- **A recipe holds only for the walls it made** (owner, 24/10). An item of My mazes keeps the recipe (`recipe`:
+  version, settings, seed, wall hash, and the walls and goal cells it built) as data: `src/library` cannot read the
+  generator, so it checks only the shape, and the generator's `readRecipe` checks it before anything is rebuilt. The
+  editing session keeps the recipe with the maze it made and shows and saves it only while the board shows that maze:
+  a manual edit drops it from the item, and Undo back to the generated walls writes it again, with no state of its own
+  in the history. The backup's index carries it, and an index entry with a recipe of another shape is dropped. Copy
+  recipe in the editor's ⋯ menu copies it while it holds, and Rebuild from a recipe in the dialog builds it again and
+  says, as the mockup does, when this generator builds other walls than it saved, or when an older generator made it.
+- **Generate in the editor replaces the board** (owner, 24/10), as the mockup's panel did: Generate… in the ⋯ menu
+  opens the same dialog sized to the open maze when it is 16 × 16 or 32 × 32, and says so otherwise. Use this on a
+  maze of the board's size puts it on the board as one step of undo, under the same name, through the editor's own
+  path, so a repository maze is copied to My mazes as by any edit; a maze of another size opens as a new maze. The
+  hint "Replaces the maze on the board. Undo brings it back." is left out on a blank board.
+- **The settings are kept per device in the `settings` store** of IndexedDB, as the folder's handle is, instead of the
+  mockup's `localStorage`: the preset and the settings of the last valid change, checked with `isSettings` when read
+  back. Another tab's change is not followed while the dialog is open.
+- **Loading is grey, ready is red** (owner, 28/10, the mockup's `loading/flow.html`). A card waiting for its maze shows
+  a decorative maze of the batch's size (16 × 16 with its goal, one entrance; 32 × 32 with none), under a diagonal wave,
+  each card's clock 537 ms after the one before; the board of the maze picked shows the routes the generator is trying,
+  then from the first snapshot with half the passages of a spanning maze open the newest such snapshot, never the grid
+  again after a restart. A built maze replaces it at once, the grey fading out over it in 300 ms; without motion the
+  wave stands still, no route shows and the maze swaps in. The worker sends a snapshot at most every 25 ms and at each
+  change of stage, with the last 8 routes tried, which costs the generation under 1 %. The painting lives in
+  `src/render/loading.ts`, kept out of `src/render/index.ts`: the first screen imports that index, and a module it
+  re-exports lands in a chunk the first screen loads even when only the Generate chunk uses it.
 
 ## Tests and performance
 
@@ -258,7 +332,8 @@ reached, and the measurements of the day, are in the git history of this file.
   and fails only when it cannot find the chunk of one of them, never over the budget.
 - **Lint rules are relaxed only where a file needs it**, each override naming its files: `mine.ts`
   (`BroadcastChannel.postMessage` takes no origin), `thumbnails.ts` (`fill(path)` is not an array fill),
-  `camera-stage.tsx` (the application role), and `no-await-in-loop` for `scripts/`, the e2e tests and the frame and
+  `camera-stage.tsx` (the application role), `batch-run.ts` (`Worker.postMessage` takes no origin either), and
+  `no-await-in-loop` for `scripts/`, the e2e tests and the frame and
   touch helpers, which wait step by step on purpose.
 
 ## Branches, CI and previews

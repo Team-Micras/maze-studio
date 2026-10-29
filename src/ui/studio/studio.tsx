@@ -1,4 +1,6 @@
 import {
+  lazy,
+  Suspense,
   useCallback,
   useDeferredValue,
   useLayoutEffect,
@@ -37,6 +39,9 @@ import { CopyLinkButton, TitleActions } from '@/ui/editor/title-actions';
 import type { MazeEditor } from '@/ui/editor/use-maze-editor';
 import { useWriting } from '@/ui/editor/use-writing';
 import { useCoarsePointer, usePhoneLayout } from '@/ui/hooks/use-media-query';
+import { GenerateDialogLoader } from '@/ui/generator/generate-dialog-loader';
+import type { GeneratorPreview } from '@/ui/generator/generate-dialog';
+import { appStorage } from '@/ui/storage';
 import { EmptyLibrary } from '@/ui/library/empty-library';
 import type { MineAndFilesActions } from '@/ui/library/mine-and-files';
 import { LibraryGrid } from '@/ui/library/library-grid';
@@ -46,6 +51,7 @@ import type { Library } from '@/ui/library/use-library';
 import { openEntry, type OpenMaze } from '@/ui/open-maze';
 import { cn } from '@/ui/primitives/utils';
 import { useTheme } from '@/ui/theme';
+import { showToast } from '@/ui/toasts';
 import { newMazeName, type NewMazeRequest } from '@/ui/new-maze';
 import { routeOfEntry, type Route } from '@/ui/routes';
 
@@ -103,6 +109,17 @@ function editorInsetsFor(phone: boolean, viewing: boolean): Insets {
   return viewing ? EDITOR_PHONE_INSETS : EDITOR_PHONE_EDIT_INSETS;
 }
 
+/** The width the docked Generate panel takes from the board on a notebook, with its margin. */
+const GENERATE_PANEL = 452;
+
+/** What the editor says once a generated maze has taken the place of the one on the board. */
+const REPLACED = 'Maze replaced. Undo brings the old one back';
+
+/** The skeleton of a maze being generated, in the generator's chunk, which is loaded by then. */
+const LoadingCanvas = lazy(() =>
+  import('@/ui/generator/generate-dialog').then((module) => ({ default: module.LoadingCanvas }))
+);
+
 /** Where the content is while no board is on the stage, as in the library. */
 const NO_BOARD: WorldRect = { x: 0, y: 0, width: 1, height: 1 };
 
@@ -140,9 +157,11 @@ export function Studio({
   onPin,
 }: StudioProps) {
   const [store] = useState(createStudioStore);
+  const [generateFor, setGenerateFor] = useState<string | undefined>(undefined);
+  const [generateNext, setGenerateNext] = useState(false);
+  const [generatorPreview, setGeneratorPreview] = useState<GeneratorPreview | undefined>(undefined);
   const state = useStore(store);
   const phone = usePhoneLayout();
-  const editorInsets = editorInsetsFor(phone, state.viewing);
   const shown = library === undefined ? [] : filterCatalog(library.entries, filter, library.index);
   const { mode } = state;
   const newName = newMazeName('', mineNames);
@@ -162,7 +181,32 @@ export function Studio({
     previewEntry === undefined || library === undefined
       ? undefined
       : openEntry(previewEntry, library);
-  const onScreen = previewed ?? opened ?? state.leaving;
+  const editingKey = mode === 'editor' && opened !== undefined ? opened.key : undefined;
+  const generating = generateFor !== undefined && generateFor === editingKey;
+  const editorInsets =
+    generating && !phone
+      ? { ...EDITOR_INSETS, right: EDITOR_INSETS.right + GENERATE_PANEL }
+      : editorInsetsFor(phone, state.viewing);
+  const shownCandidate = generating && !phone ? generatorPreview : undefined;
+  const candidateShown =
+    generating && !phone && opened !== undefined
+      ? shownCandidate === undefined
+        ? opened
+        : {
+            ...opened,
+            maze: shownCandidate.maze ?? opened.maze,
+            detail:
+              shownCandidate.seed === undefined
+                ? 'Preview · building…'
+                : `Preview · seed ${shownCandidate.seed}`,
+          }
+      : undefined;
+  const loading =
+    shownCandidate !== undefined &&
+    (shownCandidate.maze === undefined || shownCandidate.builtAt !== undefined)
+      ? shownCandidate
+      : undefined;
+  const onScreen = previewed ?? candidateShown ?? opened ?? state.leaving;
   const board = onScreen === undefined ? undefined : boardOf(onScreen.maze);
   const inEditor = mode === 'editor' && board !== undefined;
   const pressEdits = inEditor && !state.viewing && !editor.readOnly;
@@ -171,7 +215,7 @@ export function Studio({
       ? { kind: 'library' }
       : mode !== 'editor'
         ? { kind: 'flying', maze: onScreen, board }
-        : previewed !== undefined
+        : previewed !== undefined || candidateShown !== undefined
           ? { kind: 'previewing', maze: onScreen, board }
           : {
               kind: 'editing',
@@ -179,6 +223,31 @@ export function Studio({
               board,
               drawable: pressEdits && !state.listOpen,
             };
+  if (generateFor !== undefined && generateFor !== editingKey) {
+    setGenerateFor(undefined);
+  }
+
+  if (generateNext && editingKey !== undefined) {
+    setGenerateNext(false);
+    setGenerateFor(editingKey);
+  }
+
+  const generateNew = phone
+    ? undefined
+    : () => {
+        void appStorage()
+          .then((storage) => storage?.settings.generator())
+          .catch(() => undefined)
+          .then((saved) => {
+            const settings: unknown = saved?.settings;
+            const half =
+              typeof settings === 'object' &&
+              settings !== null &&
+              Reflect.get(settings, 'size') === 32;
+            onNew({ kind: 'preset', preset: half ? 'halfsize' : 'classic' });
+            setGenerateNext(true);
+          });
+      };
 
   const camera = useCanvasCamera({
     content: board ?? NO_BOARD,
@@ -373,11 +442,30 @@ export function Studio({
           ) : preparedMaze === undefined ? null : (
             <OpenBoard maze={preparedMaze} rect={boardOf(preparedMaze)} shown={false} />
           )}
+          {loading === undefined || board === undefined ? null : (
+            <Suspense fallback={null}>
+              <LoadingCanvas
+                builtAt={loading.builtAt}
+                className="pointer-events-none absolute top-0 left-0"
+                key={loading.n}
+                scale="board"
+                size={loading.size}
+                style={{
+                  transform: `translate(${board.x}px, ${board.y}px)`,
+                  width: board.width,
+                  height: board.height,
+                }}
+                track={loading.track}
+                zoom={camera.camera?.k}
+              />
+            </Suspense>
+          )}
         </CameraStage>
         {emptyTitle === undefined ? null : (
           <EmptyLibrary
             mineIsEmpty={mineIsEmpty}
             newName={newName}
+            onGenerate={generateNew}
             onNew={onNew}
             title={emptyTitle}
           />
@@ -392,6 +480,7 @@ export function Studio({
         onFilter={changeFilter}
         changes={libraryVisible ? <ChangesChip {...changes.chip} /> : null}
         newName={newName}
+        onGenerate={generateNew}
         onNew={onNew}
         onOpenFile={onOpenFile}
         files={files}
@@ -411,7 +500,11 @@ export function Studio({
                 <MoreActions
                   {...editing.actions}
                   {...actions.menu}
+                  editable={editing.actions.editable && candidateShown === undefined}
                   onFit={() => refit({ animate: true })}
+                  onGenerate={
+                    editingKey === undefined ? undefined : () => setGenerateFor(editingKey)
+                  }
                   onToggleTheme={toggleTheme}
                   theme={theme}
                 />
@@ -441,11 +534,33 @@ export function Studio({
           phone={phone}
           visible={editorVisible}
         >
-          <EditControls {...editing.controls} />
+          {candidateShown === undefined ? <EditControls {...editing.controls} /> : null}
         </EditorChrome>
       ) : null}
       {mode === 'editor' && !coarse ? <ShortcutHelp {...editing.help} /> : null}
       {actions.rename === undefined ? null : <RenameDialog {...actions.rename} />}
+      <p aria-live="polite" className="sr-only">
+        {shownCandidate === undefined
+          ? ''
+          : shownCandidate.seed === undefined
+            ? 'Building the maze picked on the board'
+            : `Preview of seed ${shownCandidate.seed} on the board`}
+      </p>
+      <GenerateDialogLoader
+        board={editingKey === undefined ? undefined : opened?.maze}
+        fresh={
+          opened?.document.created === true && opened.document.mine === undefined && !editor.canUndo
+        }
+        onOpenChange={(next) => setGenerateFor(next ? editingKey : undefined)}
+        onPreview={phone ? undefined : setGeneratorPreview}
+        onReplace={(generated) => {
+          if (editor.replace(generated)) {
+            showToast(REPLACED);
+          }
+        }}
+        onUse={onNew}
+        open={generateFor !== undefined}
+      />
       {mode === 'library' || mode === 'editor' ? <ChangesPanel {...changes.panel} /> : null}
       {state.listOpen && library !== undefined && mode === 'editor' ? (
         <MazeList

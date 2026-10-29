@@ -20,7 +20,8 @@ server. The reasons behind the choices below are in [`decisions.md`](decisions.m
 
 ## Layers
 
-Each of `src/maze`, `src/library`, `src/render` and `src/generator` has an `index.ts` as its public face.
+Each of `src/maze`, `src/library`, `src/render` and `src/generator` has an `index.ts` as its public face; `src/render`
+has a second one, `loading.ts` (`@/render/loading`), which only the generator's chunk imports.
 
 - **`src/maze`** is pure: no React, no browser API. `Maze` holds walls as two immutable `Bits` sets, `(0, 0)` in the
   south-west corner. The text format reads into a `MazeText` of grid and trailer, reporting what the canonical text
@@ -28,14 +29,16 @@ Each of `src/maze`, `src/library`, `src/render` and `src/generator` has an `inde
   `history.ts` makes one undo step per gesture. `validateMaze` returns findings, never throws. `diffMazes` compares
   two mazes of one size.
 - **`src/library`** reads the snapshot, the cache of a newer commit (`repo-cache.ts`, `github-updater.ts`), My mazes
-  (`mine.ts`, a version per item, writes announced to other tabs), the local folder and the backup zip. `catalog.ts`
-  makes one entry per maze, under the key `maze-key.ts` gives it (`repo:<path>`, `mine:<id>`, `folder:<file>`), which
-  the app uses everywhere; `search.ts` and `library-filter.ts` filter them. `database.ts` is the small IndexedDB
-  wrapper under all of it.
+  (`mine.ts`, a version per item and the generator's recipe of a generated one, writes announced to other tabs), the
+  local folder and the backup zip. `catalog.ts` makes one entry per maze, under the key `maze-key.ts` gives it
+  (`repo:<path>`, `mine:<id>`, `folder:<file>`), which the app uses everywhere; `search.ts` and `library-filter.ts`
+  filter them. `database.ts` is the small IndexedDB wrapper under all of it.
 - **`src/render`** draws without React: `geometry.ts` and `board-placement.ts` place a board in the world,
   `track-layers.ts` and `overlay-layers.ts` give one SVG path per layer, `stroke.ts` turns a pointer path into walls,
   `camera.ts` and `camera-input.ts` hold the camera `{ x, y, k }` and its flights, `library-layout.ts` the grid,
-  `thumbnails.ts` the bitmaps in an LRU of 64 MB.
+  `thumbnails.ts` the bitmaps in an LRU of 64 MB. `loading.ts` paints the generator's grey loading skeletons from
+  plain wall bytes: the wave over a decorative maze, and the board's routes tried then newest snapshot that reads
+  as a maze; it stays out of `index.ts`, which the first screen imports, so that the first screen does not load it.
 - **`src/generator`** builds mazes from settings and a seed, deterministically on every engine: the same seed gives the
   same walls, which `wallHash` locks in each recipe under `GENERATOR_VERSION`. It works on a `Grid` of one wall byte
   per cell (`grid.ts`, with `fromMaze` and `toMaze` to the app's `Maze`). `generator.ts` draws a seed's roles and style
@@ -57,6 +60,13 @@ Each of `src/maze`, `src/library`, `src/render` and `src/generator` has an `inde
   - `changes/`: the session's Changes (`session-changes.ts`, pure over one store per tab), Discard (`discard.ts`)
     and their chip and panel.
   - `library/`: the library's islands, grid and artboards, New maze, backup and updates.
+  - `generator/`: the Generate dialog (beta) of New maze and of the editor's ⋯ menu, loaded on demand in its own
+    chunk with the generator (`generate-dialog-loader.tsx`): the settings form (`settings-model.ts` without React,
+    `settings-form.tsx`), the batch of 8 seeds in a row (`batch-run.ts`), which runs one maze per message (`job.ts`,
+    with the targets it missed, `misses.ts`, streaming throttled snapshots of its progress) in a pool of workers
+    (`generator-worker.ts`, a chunk of its own), what the dialog says about each maze (`candidates.ts`), and the
+    canvas of a maze still loading on a card or a board (`loading-canvas.tsx`), which the studio's board loads from
+    the dialog's chunk.
   - `board/`: `Board` (the SVG), `CameraStage` (the canvas with wheel, pinch, pan and the drawing gesture),
     `useCanvasCamera`, `Minimap`, `ThumbnailCanvas` and `paint-queue.ts`.
   - `embed/`: `Embed`, what `?embed` shows instead of the app, in its own chunk: the board of a repository or
