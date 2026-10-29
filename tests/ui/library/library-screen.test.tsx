@@ -250,6 +250,26 @@ describe('Search and filters', () => {
     expect(logged).toHaveBeenCalledWith('The library could not be read', failure);
   });
 
+  test('says so when the library never finishes loading, instead of staying blank', async () => {
+    const storage = await appStorage();
+
+    if (storage === undefined) {
+      throw new Error('the test browser has no IndexedDB');
+    }
+
+    vi.useFakeTimers({ toFake: ['setTimeout'] });
+    vi.spyOn(storage.mine, 'list').mockReturnValue(new Promise(() => undefined));
+    vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    window.history.replaceState(null, '', `${window.location.pathname}#/`);
+    await render(<App />);
+    await vi.advanceTimersByTimeAsync(10_000);
+    vi.useRealTimers();
+
+    await expect
+      .element(page.getByRole('heading', { name: 'The library could not be read' }))
+      .toBeVisible();
+  });
+
   test('/ focuses the search from the canvas and never types itself', async () => {
     await mountApp();
     artboards()[0]?.focus();

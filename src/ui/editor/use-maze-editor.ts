@@ -107,6 +107,9 @@ export const NEWER_ELSEWHERE = 'Opened in another tab. Reload to edit.';
 
 const MAY_BE_CLEARED = 'This browser may clear My mazes. Export a backup from the menu.';
 
+/** Whether this page already warned that the browser may clear My mazes: once is enough. */
+let warnedMayBeCleared = false;
+
 function sessionFor(
   session: EditSession | undefined,
   { opened, wanted }: MazeEditorInput
@@ -176,7 +179,8 @@ export function useMazeEditor(input: MazeEditorInput): MazeEditor {
 
         reloadLibrary();
         void appStorage().then((storage) => {
-          if (storage?.mine.persistence === 'best-effort') {
+          if (storage?.mine.persistence === 'best-effort' && !warnedMayBeCleared) {
+            warnedMayBeCleared = true;
             showToast(MAY_BE_CLEARED);
           }
         });
