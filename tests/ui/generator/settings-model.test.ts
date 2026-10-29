@@ -48,7 +48,10 @@ const BASE = presetSettings(RECOMMENDED);
 
 describe('the settings form', () => {
   test('starts from Recommended, or from the kept settings once they check', () => {
-    expect(startingSettings(undefined)).toEqual({ preset: RECOMMENDED, settings: BASE });
+    expect(startingSettings(undefined)).toEqual({
+      preset: RECOMMENDED,
+      settings: BASE,
+    });
     expect(startingSettings({ preset: 'uk', settings: { ...BASE, path: [40, 70] } })).toMatchObject(
       {
         preset: preset('uk'),
@@ -127,7 +130,7 @@ describe('the settings form', () => {
       /^Every maze/
     );
     expect(modeHint(BASE, 'zigzag')).toBe(
-      'In 12 % of the mazes: a slalom on the amber route, the heading changing every cell even with diagonals'
+      'In 12 % of the mazes: a slalom on the diagonal route (amber), the heading changing every cell even with diagonals'
     );
   });
 

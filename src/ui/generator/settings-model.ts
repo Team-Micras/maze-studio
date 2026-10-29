@@ -213,7 +213,12 @@ interface Field {
 }
 
 const FIELDS: Readonly<Record<FieldKey, Field>> = {
-  path: { get: (s) => s.path, min: 1, max: () => 999, set: (s, v) => ({ ...s, path: pairOf(v) }) },
+  path: {
+    get: (s) => s.path,
+    min: 1,
+    max: () => 999,
+    set: (s, v) => ({ ...s, path: pairOf(v) }),
+  },
   straights: {
     get: (s) => levelRange(s, 'straights'),
     min: 1,
@@ -660,9 +665,10 @@ export const COPY = {
   between: 'to',
   levels: { low: 'Short', medium: 'Medium', high: 'Long' } satisfies Record<Level, string>,
   on: {
-    racing: 'On the amber route',
+    racing: 'On the diagonal route (amber)',
     shortest: 'On the shortest path',
-    mixed: 'On the amber route of mazes with a route choice or a bait, else on the shortest path',
+    mixed:
+      'On the diagonal route (amber) of mazes with a route choice or a bait, else on the shortest path',
   },
   rangeError: (lo: number, hi: number) =>
     `Whole numbers from ${lo} to ${hi}, the first not above the second`,
@@ -682,10 +688,10 @@ export const COPY = {
       `More than ${n} loops is rare on this board: expect slow, off-target mazes`,
     texture: (lo: number, hi: number) =>
       `Outside ${lo}–${hi} % the generator rarely gets there: expect slow, off-target mazes`,
-    gain: 'An amber gain above 25 % is rare: expect slow, off-target mazes',
-    loss: 'The white robot nearly always loses 1 % or more on the amber route, and rarely over 25 %: expect slow, off-target mazes',
+    gain: 'A gain with diagonals above 25 % is rare: expect slow, off-target mazes',
+    loss: 'A robot without diagonals nearly always loses 1 % or more on the diagonal route, and rarely over 25 %: expect slow, off-target mazes',
     trap: (n: number) =>
-      `Mazes with a route choice trap only by their amber gain, at most ${n} %: above it only mazes without a route choice get a trap`,
+      `Mazes with a route choice trap only by their gain with diagonals, at most ${n} %: above it only mazes without a route choice get a trap`,
     deepTrap: 'Traps over 40 % are rare: expect slow, off-target mazes',
   },
   oneStyle: (style: string) =>
@@ -702,7 +708,11 @@ export const COPY = {
     ],
     goal: ['3 × 3 goal off the centre', 'Placed anew on every maze, as in the half-size finals'],
   } satisfies Record<RuleKey | 'goal', readonly [string, string]>,
-  modes: { always: 'Always', mix: 'Mix', none: 'Don’t require' } satisfies Record<Mode, string>,
+  modes: {
+    always: 'Always',
+    mix: 'Mix',
+    none: 'Don’t require',
+  } satisfies Record<Mode, string>,
   modeTitle: {
     choice: 'Route choice',
     trap: 'Search traps',
@@ -713,23 +723,23 @@ export const COPY = {
   modeHint: {
     zigzag: {
       always:
-        'Every maze: a slalom on the amber route, stubs from either side in turn, so even a robot with diagonals changes heading every cell',
+        'Every maze: a slalom on the diagonal route (amber), stubs from either side in turn, so even a robot with diagonals changes heading every cell',
       mix: (s: Settings) =>
-        `In ${pct(s.zigzag)} % of the mazes: a slalom on the amber route, the heading changing every cell even with diagonals`,
+        `In ${pct(s.zigzag)} % of the mazes: a slalom on the diagonal route (amber), the heading changing every cell even with diagonals`,
       none: 'Not required: a maze may still get one by chance',
     },
     dashed: {
       always:
-        'Every maze: an open area of short walls the amber route crosses row after row, through the gaps, with no side wall to correct the position on',
+        'Every maze: an open area of short walls the diagonal route (amber) crosses row after row, through the gaps, with no side wall to correct the position on',
       mix: (s: Settings) =>
-        `In ${pct(s.dashed)} % of the mazes: an open area of short walls the amber route crosses row after row, with no side wall to correct the position on`,
+        `In ${pct(s.dashed)} % of the mazes: an open area of short walls the diagonal route (amber) crosses row after row, with no side wall to correct the position on`,
       none: 'Not required: a maze may still get one by chance',
     },
     fishbone: {
       always:
-        'Every maze: a straight on the amber route lined with stubs instead of side walls, nothing to re-centre on or to reset the distance at',
+        'Every maze: a straight on the diagonal route (amber) lined with stubs instead of side walls, nothing to re-centre on or to reset the distance at',
       mix: (s: Settings) =>
-        `In ${pct(s.fishbone)} % of the mazes: a straight on the amber route lined with stubs instead of side walls`,
+        `In ${pct(s.fishbone)} % of the mazes: a straight on the diagonal route (amber) lined with stubs instead of side walls`,
       none: 'Not required: a maze may still get one by chance',
     },
     choice: {
@@ -765,8 +775,8 @@ export const COPY = {
     loops: 'Loops',
     deadEnds: 'Dead ends, % of the cells',
     corridors: 'Straight corridors, % of the cells',
-    racingGain: 'Amber route gain, %',
-    carefulLoss: 'White robot’s loss on the amber route, %',
+    racingGain: 'Gain with diagonals, %',
+    carefulLoss: 'Loss without diagonals, %',
     trapLoss: 'Search trap, least loss in %',
     choiceShare: 'Route choice, % of the mazes',
     trapShare: 'Search traps, % of the mazes',
@@ -787,8 +797,9 @@ export const COPY = {
     fishboneCells:
       'Longer means longer without a side wall to re-centre on: finals 3 to 7, half size up to 11',
     racingGain:
-      'How much faster a robot with diagonals is on the amber route than on the white one',
-    carefulLoss: 'How much slower a robot without diagonals is on the amber route than on its own',
+      'How much faster a robot with diagonals is on its own fastest route (amber) than on the fastest route without diagonals (white)',
+    carefulLoss:
+      'How much slower a robot without diagonals is on the diagonal route (amber) than on its own fastest route (white)',
     trapLoss: 'Deep traps of bait routes ask for 20 % or more',
     ties: 'Routes within 5 % of the fastest of a robot with diagonals; finals have about 3',
     symmetric: 'Mirrored in part on the start–goal diagonal, as 45 % of the finals',

@@ -2,8 +2,10 @@
  * Plain-language features of a maze: short sentences a room can discuss, ranked by how much they
  * set the maze apart, and the tags of a card. All copy lives in {@link TEXT}.
  *
- * The two route lines on the board are named by colour, never by robot: white is the fastest route
- * of a robot that does not run diagonals, amber the fastest route of one that does.
+ * The two routes are named by robot, never by colour alone: the route without diagonals is the
+ * fastest of a robot that does not run diagonals (white on the board), the diagonal route the
+ * fastest of one that does (amber). The colour appears in parentheses only where the text is about
+ * the lines drawn on the board.
  *
  * @module
  */
@@ -15,7 +17,7 @@ import { goalPerimeter, doorCount } from './rules';
 import { STAIRCASE_MIN, motifsOf, type Motif } from './sensor';
 import type { Analysis, Settings, Style } from './types';
 
-/** The share of the amber route that must leave the white one before the maze has two routes. */
+/** The share of the diagonal route that must leave the route without diagonals before the maze has two routes. */
 export const SPLIT = 0.25;
 
 const pct = (n: number) => `${Math.round(n)} %`;
@@ -45,11 +47,11 @@ export const TEXT = {
     variation: 'Reworked in places',
   } satisfies Record<Style, string>,
   twoRoutes: (white: RouteText, amber: RouteText & { best: string }) =>
-    `Two routes: white ${white.cells} cells with ${plural(white.turns, 'turn', 'turns')}, amber ${amber.cells} cells with ${amber.best}`,
+    `Two routes: without diagonals ${white.cells} cells with ${plural(white.turns, 'turn', 'turns')}, with diagonals ${amber.cells} cells with ${amber.best}`,
   straightOf: (n: number) => `a ${n}-move straight`,
   diagonalOf: (n: number) => `a ${n}-move diagonal`,
   tradeOff: (gain: number, loss: number) =>
-    `With diagonals, amber beats white by ${pct(gain)}; without, it loses ${pct(loss)}`,
+    `With diagonals, the diagonal route is ${pct(gain)} faster; without diagonals it is ${pct(loss)} slower`,
   oneRoute: (paths: number) =>
     paths > 1
       ? `One main route, ${plural(paths, 'shortest path', 'shortest paths')}`
@@ -125,7 +127,7 @@ export const shortestLoses = (a: Analysis): boolean =>
 
 /**
  * What a maze has, measured on it whatever the settings asked, so the room can pick: a route
- * choice (the two routes apart, the amber one faster with diagonals and slower without by at least
+ * choice (the two routes apart, the diagonal one faster with diagonals and slower without by at least
  * the floors of the settings' gain and loss), a search trap, never trivial, a shortest route that
  * loses, and the sensor motifs and a staircase on the racing route.
  *
@@ -161,7 +163,11 @@ export function features(a: Analysis, g: Grid): Feature[] {
   const two = routes(a);
   const { maxStraight, maxDiagonal } = a.choice ? a.choice.racingShape : a;
   if (two) {
-    out.push({ id: 'routes', text: TEXT.twoRoutes(two.white, two.amber), weight: 100 });
+    out.push({
+      id: 'routes',
+      text: TEXT.twoRoutes(two.white, two.amber),
+      weight: 100,
+    });
     out.push({
       id: 'tradeOff',
       text: TEXT.tradeOff(two.gain, two.loss),
@@ -175,7 +181,11 @@ export function features(a: Analysis, g: Grid): Feature[] {
   }
   const mirror = symmetry(g);
   if (mirror >= 0.62) {
-    out.push({ id: 'symmetric', text: TEXT.symmetric(mirror), weight: 20 + 100 * (mirror - 0.62) });
+    out.push({
+      id: 'symmetric',
+      text: TEXT.symmetric(mirror),
+      weight: 20 + 100 * (mirror - 0.62),
+    });
   }
   let column = 0;
   while (column < g.height - 1 && isOpen(g, column * g.width, 0)) {
