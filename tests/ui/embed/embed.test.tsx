@@ -121,14 +121,18 @@ describe('The embed', () => {
 
   test('shows a repository maze the snapshot lacks, read from GitHub', async () => {
     const asked: string[] = [];
-    await mountEmbed('#/repo/classic/br2026-rcx-day1.txt', '?embed', (url) => {
+    await mountEmbed('#/repo/classic/maze-studio-absent-test.txt', '?embed', (url) => {
       asked.push(url);
       return Promise.resolve(new Response(MAZE_A));
     });
 
-    await expect.element(page.getByRole('img', { name: /^br2026-rcx-day1, / })).toBeVisible();
+    await expect
+      .element(page.getByRole('img', { name: /^maze-studio-absent-test, / }))
+      .toBeVisible();
     expect(asked).toHaveLength(1);
-    expect(asked[0]).toContain('/micromouseonline/mazefiles/master/classic/br2026-rcx-day1.txt');
+    expect(asked[0]).toContain(
+      '/micromouseonline/mazefiles/master/classic/maze-studio-absent-test.txt'
+    );
   });
 
   test('does not ask GitHub for a maze the snapshot has', async () => {

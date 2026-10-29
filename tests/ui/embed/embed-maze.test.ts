@@ -51,7 +51,7 @@ describe('The maze of the embed', () => {
     const snapshot = await loadSnapshot();
     const route = {
       kind: 'repo',
-      path: 'classic/br2026-rcx-day1.txt',
+      path: 'classic/maze-studio-absent-test.txt',
     } as const;
     const [found] = snapshot.files;
 
@@ -69,7 +69,7 @@ describe('The maze of the embed', () => {
       })
     ).toMatchObject({
       status: 'open',
-      name: 'br2026-rcx-day1',
+      name: 'maze-studio-absent-test',
     });
   });
 
@@ -90,7 +90,7 @@ describe('The maze of the embed', () => {
     const snapshot = await loadSnapshot();
     const absent = {
       kind: 'repo',
-      path: 'classic/br2026-rcx-day1.txt',
+      path: 'classic/maze-studio-absent-test.txt',
     } as const;
 
     expect(missingPath(absent, snapshot)).toBe(absent.path);

@@ -4,7 +4,7 @@ import { decodeMazeCode, serializeMazeText } from '@/maze';
 import { fetchRepoFile, MAX_FILE_BYTES, rawFileUrl } from '@/ui/embed/fetch-repo-file';
 import { MAZE_A } from '@tests/support/library/fake-github';
 
-const PATH = 'classic/br2026-rcx-day1.txt';
+const PATH = 'classic/maze-studio-absent-test.txt';
 
 function answering(response: Response): {
   urls: string[];
@@ -26,7 +26,7 @@ describe('Reading a repository maze the snapshot lacks', () => {
     await fetchRepoFile(PATH, github.fetch);
 
     expect(github.urls).toEqual([
-      'https://raw.githubusercontent.com/micromouseonline/mazefiles/master/classic/br2026-rcx-day1.txt',
+      'https://raw.githubusercontent.com/micromouseonline/mazefiles/master/classic/maze-studio-absent-test.txt',
     ]);
   });
 
@@ -45,7 +45,7 @@ describe('Reading a repository maze the snapshot lacks', () => {
     );
     expect(await fetchRepoFile(PATH, answering(new Response('not a maze')).fetch)).toBe(undefined);
     expect(
-      await fetchRepoFile(PATH, answering(new Response('x'.repeat(MAX_FILE_BYTES + 1))).fetch)
+      await fetchRepoFile(PATH, answering(new Response(MAZE_A + '\n'.repeat(MAX_FILE_BYTES))).fetch)
     ).toBe(undefined);
   });
 

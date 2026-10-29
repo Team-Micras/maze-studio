@@ -17,6 +17,9 @@ export type FetchFile = (url: string) => Promise<Response>;
 /** The largest maze file read, as the app's Open does. */
 export const MAX_FILE_BYTES = 1024 * 1024;
 
+/** How long a request may take before the embed says there is no maze, rather than stay blank. */
+const FETCH_TIMEOUT_MS = 10_000;
+
 /** One folder or file name: plain characters only, since another site chose the path. */
 const NAME = '[A-Za-z0-9._-]+';
 
@@ -56,7 +59,7 @@ async function readMaze(bytes: Uint8Array, path: string): Promise<RepoFile | und
  */
 export async function fetchRepoFile(
   path: string,
-  fetchFile: FetchFile = (url) => fetch(url)
+  fetchFile: FetchFile = (url) => fetch(url, { signal: AbortSignal.timeout(FETCH_TIMEOUT_MS) })
 ): Promise<RepoFile | undefined> {
   const url = rawFileUrl(path);
 
