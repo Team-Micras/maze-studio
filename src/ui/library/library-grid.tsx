@@ -16,6 +16,7 @@ import { Island, IslandButton } from '@/ui/islands/island';
 import { cn } from '@/ui/primitives/utils';
 
 import { Artboard } from './artboard';
+import { scrolledInsets } from './library-scroller';
 import type { Library } from './use-library';
 
 /** The props of {@link LibraryGrid}. */
@@ -217,7 +218,7 @@ export function LibraryGrid({
         { y: box.top + scroller.scrollTop, height: box.height },
         scroller.scrollTop,
         scroller.clientHeight,
-        layout.insets
+        scrolledInsets(scroller, layout.insets)
       );
 
       if (top !== scroller.scrollTop) {
@@ -257,7 +258,11 @@ export function LibraryGrid({
       >
         <section
           aria-label="Maze library"
-          className="relative box-content pb-[env(safe-area-inset-bottom)]"
+          className={cn(
+            'relative box-content pb-[env(safe-area-inset-bottom)]',
+            phone &&
+              '[:root:has([data-update-note]:not(:empty))_&]:pb-[calc(env(safe-area-inset-bottom)+40px)]'
+          )}
           data-library-grid=""
           style={{ height: layout.height }}
         >
