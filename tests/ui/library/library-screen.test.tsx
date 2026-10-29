@@ -158,6 +158,7 @@ describe('The library grid', () => {
 describe('The credit', () => {
   test.each([
     ['phone', 390, 844],
+    ['small phone', 360, 780],
     ['notebook', 1440, 900],
   ])('links maze-studio on GitHub on one untruncated line on a %s', async (_, width, height) => {
     await page.viewport(width, height);

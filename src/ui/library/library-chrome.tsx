@@ -57,7 +57,8 @@ const REPOSITORY = 'https://github.com/Team-Micras/maze-studio';
 /**
  * The credit island (DESIGN.md 9.1 and 12): the mazes of the snapshot or the cache in use, at their
  * commit, ending in a link to maze-studio's repository, and beside it what the last check for
- * updates found. It gives way to the selection bar, which sits where it does.
+ * updates found; a phone names the repository without its owner. It gives way to the selection
+ * bar, which sits where it does.
  */
 function Credit({
   library,
@@ -84,7 +85,7 @@ function Credit({
             target="_blank"
             translate="no"
           >
-            {MAZEFILES.owner}/{MAZEFILES.name}
+            {phone ? MAZEFILES.name : `${MAZEFILES.owner}/${MAZEFILES.name}`}
           </a>{' '}
           at{' '}
           <span className="font-mono tabular-nums" translate="no">
