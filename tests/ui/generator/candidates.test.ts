@@ -7,6 +7,7 @@ import type { Item } from '@/ui/generator/batch-run';
 import {
   generatesFor,
   isBlank,
+  elapsedText,
   phaseText,
   SHOW_ELAPSED,
   pickHint,
@@ -100,16 +101,15 @@ describe('Generate from the editor', () => {
 });
 
 describe('phaseText', () => {
-  test('names what a maze building is at, the attempt from the second board on and the seconds from the third', () => {
+  test('names what a maze building is at, the attempt from the second board on, and the seconds from the third', () => {
     const started = { ...WAITING, started: true, startedAt: 1000 };
 
-    expect(phaseText(WAITING, 9000)).toBe('Building');
-    expect(phaseText({ ...started, phase: 'routes', attempt: 1 }, 1500)).toBe('Trying routes');
-    expect(phaseText({ ...started, phase: 'routes', attempt: 12 }, 1500)).toBe(
+    expect(phaseText(WAITING)).toBe('Building');
+    expect(phaseText({ ...started, phase: 'routes', attempt: 1 })).toBe('Trying routes');
+    expect(phaseText({ ...started, phase: 'routes', attempt: 12 })).toBe(
       'Trying routes · attempt 12'
     );
-    expect(phaseText({ ...started, phase: 'tune' }, 1000 + SHOW_ELAPSED + 1200)).toBe(
-      'Fine-tuning · 4 s'
-    );
+    expect(elapsedText(started, 1000 + SHOW_ELAPSED - 1)).toBe('');
+    expect(elapsedText(started, 1000 + SHOW_ELAPSED + 1200)).toBe('4 s');
   });
 });

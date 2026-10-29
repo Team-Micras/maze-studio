@@ -50,6 +50,7 @@ import {
   itemOrigin,
   itemTags,
   itemTitle,
+  elapsedText,
   phaseText,
   itemWarning,
   measureItem,
@@ -294,27 +295,41 @@ function CopyRecipe({ item }: { item: ReadyItem }) {
 }
 
 /** The line that names a maze: "#4 of 8 · seed 4004890115 · Diagonal staircases". */
-/**
- * What a maze still building is at, read again a few times a second from `track`, under a band of
- * light that sweeps it so a long stage still shows it works; plain under reduced motion.
- */
-function PhaseText({ track }: { track: () => LoadingTrack }) {
+/** `read` of what `track` returns, read again a few times a second. */
+function useTrackText(
+  track: () => LoadingTrack,
+  read: (track: LoadingTrack, now: number) => string
+): string {
   const latest = useRef(track);
-  const [text, setText] = useState(() => phaseText(track(), performance.now()));
+  const [text, setText] = useState(() => read(track(), performance.now()));
 
   useLayoutEffect(() => {
     latest.current = track;
   });
 
   useEffect(() => {
-    const timer = setInterval(
-      () => setText(phaseText(latest.current(), performance.now())),
-      PHASE_READ
-    );
+    const timer = setInterval(() => setText(read(latest.current(), performance.now())), PHASE_READ);
     return () => clearInterval(timer);
-  }, []);
+  }, [read]);
 
-  return <span className="text-shimmer">{text}</span>;
+  return text;
+}
+
+/**
+ * What a maze still building is at, under a band of light that sweeps it so a long stage still
+ * shows it works; plain under reduced motion.
+ */
+function PhaseText({ track }: { track: () => LoadingTrack }) {
+  return <span className="text-shimmer">{useTrackText(track, phaseText)}</span>;
+}
+
+/** For how long a maze has been building, at the end of its title line where Copy recipe comes. */
+function Elapsed({ track }: { track: () => LoadingTrack }) {
+  return (
+    <span className="shrink-0 font-mono text-xs text-muted-foreground tabular-nums">
+      {useTrackText(track, elapsedText)}
+    </span>
+  );
 }
 
 function MazeTitle({
@@ -379,7 +394,11 @@ function Details({
     <section aria-labelledby={`maze-${item.n}`} className="flex flex-col gap-1.5">
       <div className="flex min-h-7 items-center gap-2">
         <MazeTitle headingRef={headingRef} item={item} place={place} total={total} track={track} />
-        {ready ? <CopyRecipe item={item} /> : null}
+        {ready ? (
+          <CopyRecipe item={item} />
+        ) : item.status === 'pending' && track !== undefined ? (
+          <Elapsed track={track} />
+        ) : null}
       </div>
       {tags.length === 0 ? null : (
         <ul aria-label="This maze has" className="flex flex-wrap gap-1">

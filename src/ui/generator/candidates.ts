@@ -219,16 +219,16 @@ export function swipeStep(dx: number, dy: number): -1 | 0 | 1 {
 export const SHOW_ELAPSED = 3000;
 
 /**
- * What a maze still building is at, in the title line of the maze opened, and from
- * {@link SHOW_ELAPSED} on for how many seconds, at `now`.
+ * For how many seconds a maze building has been at it at `now`, from {@link SHOW_ELAPSED} on; empty
+ * before.
  */
-export function phaseText(track: LoadingTrack, now: number): string {
+export function elapsedText(track: LoadingTrack, now: number): string {
   const elapsed = track.started ? now - track.startedAt : 0;
-  const stage = stageText(track);
-  return elapsed < SHOW_ELAPSED ? stage : `${stage} · ${Math.floor(elapsed / 1000)} s`;
+  return elapsed < SHOW_ELAPSED ? '' : `${Math.floor(elapsed / 1000)} s`;
 }
 
-function stageText({ phase, attempt }: LoadingTrack): string {
+/** What a maze still building is at, in the title line of the maze opened. */
+export function phaseText({ phase, attempt }: LoadingTrack): string {
   switch (phase) {
     case 'routes':
       return attempt > 1 ? `Trying routes · attempt ${attempt}` : 'Trying routes';
