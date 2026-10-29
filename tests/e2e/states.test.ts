@@ -21,6 +21,8 @@ import { expectToast, openPage, waitForMode } from '@tests/support/e2e/studio-pa
 const app = inject('appUrl');
 const ROOT = join(import.meta.dirname, '..', '..');
 const CLASSIC = 'classic/AAMC15Maze.txt';
+
+const OTHER = 'classic/AAMC16Maze.txt';
 const EDGE: Edge = { direction: 'vertical', x: 6, y: 9 };
 const API = 'https://api.github.com/repos/micromouseonline/mazefiles';
 const NEWER = 'f'.repeat(40);
@@ -98,6 +100,12 @@ describe('Empty and error states (DESIGN.md 12)', () => {
     await expectToast(page, 'This browser may clear My mazes. Export a backup from the menu.');
     await page.mouse.click(point.x, point.y);
     await expectSaved(page, sameMaze(maze));
+    await page.goto(`${app}#/repo/${OTHER}`);
+    await waitForMode(page, 'editor');
+    const other = await repoContent(OTHER);
+    const otherPoint = await pagePoint(page, other.maze, edgeMiddle(EDGE));
+    await page.mouse.click(otherPoint.x, otherPoint.y);
+    await expectSaved(page, sameMaze(toggleWall(other.maze, EDGE)));
     await expect
       .poll(() =>
         page
