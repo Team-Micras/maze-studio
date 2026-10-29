@@ -301,7 +301,7 @@ describe('The writer of My mazes', () => {
     expect(mine.log).toEqual(['create shared']);
   });
 
-  test('saves a link under its own name and a repository maze as its first edit would, origin and notes kept', async () => {
+  test('saves a link and a repository maze not edited under their own names, origin and notes kept', async () => {
     const mine = new FakeMine();
     const { writer } = writerOn(mine);
     const origin = { path: 'classic/a.txt', sha: 'abc' };
@@ -312,7 +312,7 @@ describe('The writer of My mazes', () => {
     await writer.saveToMine(openSession(repo));
     await writer.saveToMine(openSession({ ...opened('shared'), key: 'link:abc' }));
 
-    expect(mine.log).toEqual(['create a (edited)', 'create shared']);
+    expect(mine.log).toEqual(['create a', 'create shared']);
     expect(mine.drafts[0]).toMatchObject({ trailer: 'notes\n', origin });
   });
 

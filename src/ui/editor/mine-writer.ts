@@ -7,7 +7,7 @@
  * @module
  */
 
-import { kindOf, uniqueName, type MineLibrary } from '@/library';
+import { uniqueName, type MineLibrary } from '@/library';
 import { mazesEqual, type Maze, type Profile } from '@/maze';
 import type { MineCopy, OpenMaze } from '@/ui/open-maze';
 
@@ -69,17 +69,17 @@ export class MineWriter {
   }
 
   /**
-   * Copies `session`'s maze to My mazes, edited or not, as Save to My mazes does: a link or a file
-   * under its own name, any other maze under the name its first edit would give it. Nothing happens
-   * once it has a copy, and a copy on its way is the one. The copy is registered at once, so an edit
-   * written meanwhile waits for it and saves into it.
+   * Copies `session`'s maze to My mazes under its own name, edited or not, as Save to My mazes does:
+   * only the copy a first edit makes is "<name> (edited)". Nothing happens once it has a copy, and a
+   * copy on its way is the one. The copy is registered at once, so an edit written meanwhile waits
+   * for it and saves into it.
    */
   saveToMine(session: EditSession): Promise<void> {
     if (this.#copies.get(session.opened) !== undefined || session.mine !== undefined) {
       return Promise.resolve();
     }
 
-    return this.#copyOnce(session, ['link', 'file'].includes(kindOf(session.opened.key) ?? ''));
+    return this.#copyOnce(session, true);
   }
 
   /**
@@ -90,7 +90,7 @@ export class MineWriter {
   async rename(session: EditSession, name: string): Promise<boolean> {
     await this.idle();
     const { opened } = session;
-    const copy = this.#copies.get(opened) ?? session.mine;
+    const copy = this.copyOf(session);
     const mine = await this.#mine();
 
     if (copy === undefined || mine === undefined) {
@@ -109,6 +109,11 @@ export class MineWriter {
     this.#versions.set(renamed.id, renamed.version);
     this.#events.saved(opened, renamed);
     return true;
+  }
+
+  /** The item of My mazes `session` writes to: the one it opened on, or the copy made for it. */
+  copyOf(session: EditSession): NamedCopy | undefined {
+    return this.#copies.get(session.opened) ?? session.mine;
   }
 
   /** The version of item `id` this tab saved last, if it saved one. */

@@ -91,7 +91,10 @@ export interface MazeEditor {
   readonly folderFile: string | undefined;
   /** Copies the maze to My mazes, edited or not, and moves the editor to the copy. */
   readonly saveToMine: () => void;
-  /** Renames the maze's item of My mazes; `false` when My mazes refused it. */
+  /**
+   * Renames the maze: its item of My mazes once the copy on its way, if any, has landed, or else the
+   * maze on screen until it is saved; `false` when My mazes refused it.
+   */
   readonly rename: (name: string) => Promise<boolean>;
   /** The version of item `id` of My mazes this tab saved last, if it saved one. */
   readonly savedVersion: (id: string) => number | undefined;
@@ -286,15 +289,30 @@ export function useMazeEditor(input: MazeEditorInput): MazeEditor {
     },
     rename: async (name) => {
       const now = latest.current;
-      const done = now === undefined ? false : await writer.current?.rename(now, name);
+      const mineWriter = writer.current;
 
-      if (done === true && now?.mine !== undefined) {
-        const renamed = { ...now.mine, name };
+      if (now === undefined || mineWriter === undefined) {
+        return false;
+      }
+
+      await mineWriter.idle();
+
+      if (mineWriter.copyOf(now) === undefined) {
+        const next = openSession({ ...sessionView(now), name });
+        latest.current = next;
+        setStored(next);
+        return true;
+      }
+
+      const done = await mineWriter.rename(now, name);
+      const renamed = mineWriter.copyOf(now);
+
+      if (done && renamed !== undefined) {
         setStored((before) => (before?.opened === now.opened ? withMine(before, renamed) : before));
         sessionChanges.setState((changes) => renameChange(changes, renamed.id, name));
       }
 
-      return done === true;
+      return done;
     },
     savedVersion: (id) => writer.current?.savedVersion(id),
     reopen: (open) => {
