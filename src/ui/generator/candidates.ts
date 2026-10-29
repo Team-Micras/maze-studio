@@ -176,7 +176,7 @@ export function replacesBoard(item: ReadyItem, board: Maze | undefined): boolean
 /** The line above Use this: what it does with the maze picked, from the library or the editor. */
 export function pickHint(item: Item | undefined, board: Maze | undefined): string | undefined {
   if (board === undefined || !isReady(item)) {
-    return 'Opens as a new maze; the first edit saves it in My mazes.';
+    return 'Opens as a new maze, saved in My mazes.';
   }
 
   if (replacesBoard(item, board)) {

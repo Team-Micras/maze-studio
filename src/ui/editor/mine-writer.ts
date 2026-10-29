@@ -1,12 +1,13 @@
 /**
- * Autosave (PLAN.md 3.4): the first edit of a maze that is not in My mazes copies it there, and every
- * gesture after that saves the item. One write runs at a time and the latest state wins, so a
- * burst of gestures makes at most one more write.
+ * Autosave (PLAN.md 3.4): the first edit of a maze that is not in My mazes copies it there, as
+ * opening a maze the generator made as a new maze does, and every gesture after that saves the
+ * item. One write runs at a time and the latest state wins, so a burst of gestures makes at most
+ * one more write.
  *
  * @module
  */
 
-import { uniqueName, type MineLibrary } from '@/library';
+import { kindOf, uniqueName, type MineLibrary } from '@/library';
 import { mazesEqual, type Maze, type Profile } from '@/maze';
 import type { MineCopy, OpenMaze } from '@/ui/open-maze';
 
@@ -68,16 +69,17 @@ export class MineWriter {
   }
 
   /**
-   * Copies `session`'s maze to My mazes under its own name, edited or not, as Save to My mazes does for a
-   * link or a file; nothing happens once it has a copy, and a copy on its way is the one. The copy
-   * is registered at once, so an edit written meanwhile waits for it and saves into it.
+   * Copies `session`'s maze to My mazes, edited or not, as Save to My mazes does: a link or a file
+   * under its own name, any other maze under the name its first edit would give it. Nothing happens
+   * once it has a copy, and a copy on its way is the one. The copy is registered at once, so an edit
+   * written meanwhile waits for it and saves into it.
    */
   saveToMine(session: EditSession): Promise<void> {
     if (this.#copies.get(session.opened) !== undefined || session.mine !== undefined) {
       return Promise.resolve();
     }
 
-    return this.#copyOnce(session, true);
+    return this.#copyOnce(session, ['link', 'file'].includes(kindOf(session.opened.key) ?? ''));
   }
 
   /**
