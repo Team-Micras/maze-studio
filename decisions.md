@@ -16,8 +16,9 @@ reached, and the measurements of the day, are in the git history of this file.
   The import fences refuse any `@phosphor-icons/` import in `src`.
 - **No zip dependency.** `src/library/zip.ts` writes stored entries with CRC-32 and UTF-8 names, and reads deflated
   ones through `DecompressionStream('deflate-raw')`. A zip library would be the only runtime dependency for one button.
-- **Primitives** are the monitor's shadcn copies with Phosphor icons; Toggle, ToggleGroup, Popover, Dialog, Input and
-  Label come from shadcn's `new-york` source over the `radix-ui` package. Toasts are Radix `Toast` with a small zustand
+- **Primitives** are the monitor's shadcn copies with Phosphor icons, Badge and Switch among them; Toggle, ToggleGroup,
+  Popover, Dialog, Input and Label come from shadcn's `new-york` source over the `radix-ui` package, and the Sheet
+  takes shadcn's `side`, bottom or right. Toasts are Radix `Toast` with a small zustand
   store; no `sonner`.
 
 ## The text format and the code
@@ -225,6 +226,92 @@ reached, and the measurements of the day, are in the git history of this file.
 - **English only**: counts stay as written, without `Intl.NumberFormat`. Names, paths and commits shown are
   `translate="no"`.
 
+## The generator
+
+- **A port of the mockup, not a redesign.** `src/generator` is the generator of the mockup in the Micras workspace
+  (`docs/maze-editor/mockups/generator/assets/`, version 7), typed, with its structure and names: it builds the same
+  walls from the same seed, which `tests/generator/mockup-cross-check.ts` checks against the mockup itself. The
+  measuring and calibration scripts stay in the mockup.
+- **Seeds verify on every engine.** A recipe carries `wallHash` of the walls it made under `GENERATOR_VERSION`;
+  decisions use `+ - × /` and `Math.sqrt`, never `Math.pow`, `exp`, `log`, `atan2`, `hypot` or `**`, which engines
+  round differently, and a test reads the sources for them. A change that moves any seed's walls bumps the version and
+  records new golden hashes beside the old ones, never over them.
+- **Only the UI imports it**, so it stays out of the first screen: the fence of `src/main.tsx` refuses it, and the UI
+  loads it on demand. Its presets carry English copy only, as the app does.
+- **Generate is part of New maze, marked Beta** (owner, 18/10 and 21/10): New maze → Generate… → settings and
+  candidates → Use this opens the maze in the editor as a new maze, written to My mazes by its first edit like any
+  other. No screen of its own. The presets are back, Recommended first, with Custom (from …) and a reset once a field
+  moves; every target the generator aims at is a field, the rarer ones under Fine tuning. The form is the mockup's
+  (`docs/maze-editor/mockups/generator/assets/settings-form.js`) in React, its logic without React in
+  `settings-model.ts`, its English copy only.
+- **Loaded when Generate first opens.** The dialog and the generator are one lazy chunk (about 28 KB gzip) and the
+  worker another (about 23 KB); the first screen gains about 4 KB gzip (207.9 to about 211.7 KB): the menu items, five
+  icons, the classes the dialog adds to the one stylesheet, the recipe in My mazes and the editor's preview. Radix's
+  switch is left out of the `radix` chunk group, which the first screen loads, since only the dialog uses it. A chunk
+  that fails to load says so in a toast and closes the dialog.
+- **A pool of workers, one maze per message.** Up to four workers, one fewer than the cores, share a queue of the
+  batch's 8 seeds in a row, and each maze shows in its seed's card as soon as it is built, so the cards stay in seed
+  order and the same settings and first seed show the same mazes on every computer; 8 more goes on from the next seed.
+  No hidden pool (owner, 24/10): building three seeds per card and keeping the most varied skewed the calibrated mix
+  toward outliers and style bonuses, tripled the time on a phone and read as "24" built for 8 shown. The varied pick
+  (`pickDiverse`, `pickBatch`) stays in the core for a later "More like this". A maze off its targets carries a
+  warning that names what it missed, worked out in the worker from the generator's `report` and `choiceMisses`
+  against its seed's targets, which only the worker has. A new run, closing the panel and leaving the editor (which
+  closes it) terminate the workers; there is no Cancel (owner, 25/10): a batch of 8 takes seconds, and Generate
+  asked again during a run starts over, while 8 more and › wait for the run to end. The dialog stays mounted once
+  opened, so its batch is there the next time.
+- **The board previews the candidate on a notebook** (owner, 24/10), as the mockup's editor did: from the editor
+  the panel docks on the right without a modal backdrop, so the board stays in reach to pan and zoom, and the studio
+  shows the candidate picked (or the last one built before it while it is on its way) on the board as a preview,
+  the title island's line reading "Preview · seed N" instead of a chip over the maze, through its existing
+  previewing state: no edit, no step of history, no tools, the ⋯ menu's edits off. Closing
+  the panel puts the open maze back as it was; Use this replaces it as before. New maze → Generate… on a notebook
+  opens a new blank maze of the saved settings' size with the panel open; its Use this opens the maze picked as the
+  new maze, with its name and recipe, and closing leaves the blank maze unsaved, as any new maze. The panel takes
+  the focus, Esc closes it, and "Back to the board" focuses the board. A phone keeps the sheet over the library or
+  the editor.
+- **A gallery, and a maze opened over it** (owner, 25/10). The gallery is the panel's home: a status row of fixed
+  height ("Seeds 1–8", or "Building 3 of 8…") above the cards, which show a grey wave until their maze is built and
+  fill in as each one is, so nothing moves while a run goes on; "8 more" ends the grid and appends. A card opens its
+  maze in a view pushed over the gallery, a region named by its heading, which takes the focus: on a phone the maze
+  drawn large and, under it, its title line with Copy recipe, its tags and its sentences, compact enough to fit above
+  the footer; beside the editor on a notebook only the information, as the editor's board previews it, a card under
+  the pointer previewing too. Only this view has the footer, ‹ Use this ›, and steps with a swipe or the arrow keys: ›
+  past the last maze builds 8 more, appends them (#9 of 16) and moves to the first at once, its loading board showing
+  it build; ‹ and › step onto mazes still building too, and a card still building opens. Back and Esc go back to the
+  gallery where it was, focusing the card; Esc in the gallery closes the panel. On a phone the panel takes the whole
+  screen. The settings are a view of their own behind a gear in the header. A batch stops at 64 mazes, which the gallery
+  says in place of 8 more, and the footer's line on the last maze. A first design with a Gallery or One switch and a
+  progress bar (24/10) made you scroll between a card and its details, and shifted the layout as runs started and ended.
+- **Seeds over the whole 32-bit range** (owner, 24/10). The first seed and the dice draw from 0 to the largest first
+  seed with `crypto.getRandomValues`: with a known preset, a range of 100,000 seeds could be built ahead of a
+  contest in hours.
+- **A recipe holds only for the walls it made** (owner, 24/10). An item of My mazes keeps the recipe (`recipe`:
+  version, settings, seed, wall hash, and the walls and goal cells it built) as data: `src/library` cannot read the
+  generator, so it checks only the shape, and the generator's `readRecipe` checks it before anything is rebuilt. The
+  editing session keeps the recipe with the maze it made and shows and saves it only while the board shows that maze:
+  a manual edit drops it from the item, and Undo back to the generated walls writes it again, with no state of its own
+  in the history. The backup's index carries it, and an index entry with a recipe of another shape is dropped. Copy
+  recipe in the editor's ⋯ menu copies it while it holds, and Rebuild from a recipe in the dialog builds it again and
+  says, as the mockup does, when this generator builds other walls than it saved, or when an older generator made it.
+- **Generate in the editor replaces the board** (owner, 24/10), as the mockup's panel did: Generate… in the ⋯ menu
+  opens the same dialog sized to the open maze when it is 16 × 16 or 32 × 32, and says so otherwise. Use this on a
+  maze of the board's size puts it on the board as one step of undo, under the same name, through the editor's own
+  path, so a repository maze is copied to My mazes as by any edit; a maze of another size opens as a new maze. The
+  hint "Replaces the maze on the board. Undo brings it back." is left out on a blank board.
+- **The settings are kept per device in the `settings` store** of IndexedDB, as the folder's handle is, instead of the
+  mockup's `localStorage`: the preset and the settings of the last valid change, checked with `isSettings` when read
+  back. Another tab's change is not followed while the dialog is open.
+- **Loading is grey, ready is red** (owner, 28/10, the mockup's `loading/flow.html`). A card waiting for its maze shows
+  a decorative maze of the batch's size (16 × 16 with its goal, one entrance; 32 × 32 with none), under a diagonal wave,
+  each card's clock 537 ms after the one before; the board of the maze picked shows the routes the generator is trying,
+  then from the first snapshot with half the passages of a spanning maze open the newest such snapshot, never the grid
+  again after a restart. A built maze replaces it at once, the grey fading out over it in 300 ms; without motion the
+  wave stands still, no route shows and the maze swaps in. The worker sends a snapshot at most every 25 ms and at each
+  change of stage, with the last 8 routes tried, which costs the generation under 1 %. The painting lives in
+  `src/render/loading.ts`, kept out of `src/render/index.ts`: the first screen imports that index, and a module it
+  re-exports lands in a chunk the first screen loads even when only the Generate chunk uses it.
+
 ## Tests and performance
 
 - **Four Vitest projects**: `unit` (Node), `browser` (Chromium), `performance` (outside the check, one file at a time)
@@ -248,7 +335,8 @@ reached, and the measurements of the day, are in the git history of this file.
   and fails only when it cannot find the chunk of one of them, never over the budget.
 - **Lint rules are relaxed only where a file needs it**, each override naming its files: `mine.ts`
   (`BroadcastChannel.postMessage` takes no origin), `thumbnails.ts` (`fill(path)` is not an array fill),
-  `camera-stage.tsx` (the application role), and `no-await-in-loop` for `scripts/`, the e2e tests and the frame and
+  `camera-stage.tsx` (the application role), `batch-run.ts` (`Worker.postMessage` takes no origin either), and
+  `no-await-in-loop` for `scripts/`, the e2e tests and the frame and
   touch helpers, which wait step by step on purpose.
 
 ## Branches, CI and previews
@@ -265,22 +353,20 @@ reached, and the measurements of the day, are in the git history of this file.
   measured 38.7 ms for the 27 ms benchmark, and the gate failed on a frame or two. With `CI` set, `production-frames`
   measures, prints and writes the numbers to the job summary, and fails on nothing but a broken measurement; on a known
   machine, locally and in reviews, it blocks as before.
-- **Previews of pull requests on gh-pages.** Pages serves the `gh-pages` branch, so the site and a `pr-<n>/` per pull
-  request can live side by side. The pull request is built by a `pull_request` workflow with read access only, and a
-  `workflow_run` workflow, trusted, publishes the artifact: it checks that the build came from a branch of this
-  repository and that the number the artifact gives is an open pull request whose head is the commit built, refuses
-  symbolic links, `.git` entries and anything over 50 MB, copies the files and comments the link, never running anything
-  of the pull request. `pull_request_target: closed` removes the preview without checking out the pull request. No
-  ready-made action was used: the ones found either deploy from the pull request's own workflow, which a fork cannot
-  write from, or run with write access on its code. `pages.yml` builds read only and publishes from a job that only
-  copies the artifact.
-- **gh-pages is a deploy target, written with a lease.** Each workflow has its own concurrency group, so two of them
-  can write at once. `.github/scripts/gh-pages.sh` makes each update one commit with no parent, so the branch never
-  grows, and pushes it with `--force-with-lease` on the commit it was made from; when another writer got there first,
-  the lease fails and it starts again from the new branch, up to five times. Five writers at once on a test repository
-  all landed.
-- **Previews only for branches of this repository.** A preview runs the pull request's code on
-  `team-micras.github.io`, beside the site, where it could read the My mazes of whoever opens it; so a fork's pull
-  request gets CI and no preview. A preview keeps its own database (`maze-studio-pr-<n>`, `databaseFor`), registers no
-  service worker (`registersServiceWorker`), and the site's worker leaves `pr-<n>/` navigations to the network
-  (`PREVIEW_PATH`); the three read the page's path, so the e2e build tests them served at `pr-1/`.
+- **The site and the previews on Cloudflare Pages** (owner, 29/10). The site moved from
+  `team-micras.github.io/maze-studio/` to `maze.micras.team`. A custom domain on GitHub Pages takes the whole site, so
+  previews at `github.io/maze-studio/pr-<n>/` would have moved with it; one Pages project on Cloudflare serves `main`
+  as production and each pull request as the branch `pr-<n>`, at `pr-<n>.maze-studio-8ol.pages.dev`. Each preview is
+  an origin of its own, so the path checks that kept a preview's database, service worker and navigations apart from
+  the site's (`src/preview.ts`) went, with `gh-pages.sh` and the cleanup workflow: Cloudflare keeps old deployments
+  at no cost. The few users were told to export their mazes before the move; the old origin got no notice.
+- **Previews deploy from a trusted workflow.** The pull request is built by a `pull_request` workflow with read access
+  and no secret, and a `workflow_run` workflow, trusted, uploads the artifact with `wrangler pages deploy`: it checks
+  that the build came from a branch of this repository and that the number the artifact gives is an open pull request
+  whose head is the commit built, refuses symbolic links, `.git` entries, `_worker.js`, `_routes.json` and anything over
+  50 MB, and never runs anything of the pull request. The token sits in an environment only `main` may deploy from:
+  both deploys run as `main` (`push` and `workflow_run`), and a pull request's own workflow, which a branch of this
+  repository may edit, gets no secret. `pages.yml` builds read only and publishes from a job that only uploads the
+  artifact.
+- **Previews only for branches of this repository.** A preview publishes the pull request's code under the project's
+  domain, so a fork's pull request gets CI and no preview.

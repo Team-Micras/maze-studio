@@ -4,7 +4,7 @@
  * @module
  */
 
-import type { CatalogEntry, MineOrigin } from '@/library';
+import type { CatalogEntry, MineOrigin, MineRecipe } from '@/library';
 import { keyOf } from '@/library/maze-key';
 import { decodeMazeCode, type Maze, type MazeTextSource, type Profile } from '@/maze';
 
@@ -35,6 +35,8 @@ export interface MazeDocument {
   readonly source?: MazeTextSource;
   /** Whether it was made in the app, so that its copy in My mazes keeps its name. */
   readonly created?: boolean;
+  /** How the generator made it, which its copy in My mazes keeps. */
+  readonly recipe?: MineRecipe;
 }
 
 /** A maze open on screen, its name and the line under it (DESIGN.md 9.2). */

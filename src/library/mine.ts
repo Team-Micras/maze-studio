@@ -35,6 +35,35 @@ export interface MineOrigin {
   readonly sha: string;
 }
 
+/**
+ * How the generator made a maze of My mazes, kept as it gave it: the generator's version, the
+ * settings and seed, and the wall hash of what it built, with any other field it adds (the walls,
+ * the goal cells). My mazes keeps it as data; the interface reads it back through the generator's
+ * own checks before rebuilding anything from it.
+ */
+export interface MineRecipe {
+  readonly version: number;
+  readonly seed: number;
+  readonly settings: object;
+  readonly hash?: string;
+}
+
+/** Whether `value` has the shape of a {@link MineRecipe}, as a backup's index must give it. */
+export function isMineRecipe(value: unknown): value is MineRecipe {
+  return (
+    typeof value === 'object' &&
+    value !== null &&
+    'version' in value &&
+    Number.isInteger(value.version) &&
+    'seed' in value &&
+    Number.isInteger(value.seed) &&
+    'settings' in value &&
+    typeof value.settings === 'object' &&
+    value.settings !== null &&
+    (!('hash' in value) || value.hash === undefined || typeof value.hash === 'string')
+  );
+}
+
 /** A maze of My mazes, as stored. */
 export interface MineMaze {
   readonly id: string;
@@ -48,6 +77,8 @@ export interface MineMaze {
   /** 1 when created, raised by each save. */
   readonly version: number;
   readonly origin?: MineOrigin;
+  /** How the generator made its walls, while they are the ones it made. */
+  readonly recipe?: MineRecipe;
 }
 
 /** What a new item of My mazes is made of. */
@@ -57,6 +88,7 @@ export interface MineDraft {
   readonly trailer?: string;
   readonly profile: Profile;
   readonly origin?: MineOrigin;
+  readonly recipe?: MineRecipe;
   /** The creation time, for an item restored from a backup; now, unless given. */
   readonly createdAt?: number;
 }
@@ -67,6 +99,8 @@ export interface MineChanges {
   readonly maze?: Maze;
   readonly trailer?: string;
   readonly profile?: Profile;
+  /** The generator's recipe of the walls saved, or `null` when they are no longer the ones it made. */
+  readonly recipe?: MineRecipe | null;
 }
 
 /** Why a save was refused: another tab saved a newer version, or removed the item. */
@@ -179,6 +213,7 @@ export class MineLibrary {
       updatedAt: now,
       version: 1,
       origin: draft.origin,
+      ...(draft.recipe === undefined ? {} : { recipe: draft.recipe }),
     };
     await this.#database.put('mine', item);
     this.#announce();
@@ -243,14 +278,21 @@ export class MineLibrary {
   }
 
   #changed(current: MineMaze, changes: MineChanges): MineMaze {
-    return {
+    const next: MineMaze = {
       ...current,
       name: changes.name ?? current.name,
       profile: changes.profile ?? current.profile,
       code: changedCode(current, changes),
       updatedAt: this.#now(),
       version: current.version + 1,
+      ...(changes.recipe ? { recipe: changes.recipe } : {}),
     };
+
+    if (changes.recipe === null) {
+      Reflect.deleteProperty(next, 'recipe');
+    }
+
+    return next;
   }
 
   #announce(): void {

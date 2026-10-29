@@ -1,6 +1,7 @@
 import { useRef, useState } from 'react';
 
 import {
+  Copy,
   CornersOut,
   DotsThree,
   DownloadSimple,
@@ -10,12 +11,14 @@ import {
   LinkSimple,
   Moon,
   ShareNetwork,
+  Shuffle,
   Square,
   Sun,
   Textbox,
   Trash,
 } from '@/ui/icons';
 import { IslandButton } from '@/ui/islands/island';
+import { Badge } from '@/ui/primitives/badge';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -41,6 +44,10 @@ export interface MoreActionsProps {
   readonly onCopyLink?: () => void;
   /** Shares the link with Web Share, where the browser has it. */
   readonly onShare?: () => void;
+  /** Copies the generator's recipe, only while the walls are the ones it made. */
+  readonly onCopyRecipe?: () => void;
+  /** Opens the Generate dialog, whose maze takes the place of this one. */
+  readonly onGenerate?: () => void;
   /** Renames the maze, only for a maze of My mazes. */
   readonly onRename?: () => void;
   /** Deletes the maze from My mazes, only for a maze of My mazes, on the second select. */
@@ -58,7 +65,7 @@ const ITEM = 'rounded-[9px]';
 
 /**
  * The editor's ⋯ menu (DESIGN.md 6, 6.1 and 9.2): Save to My mazes for a link or a `.txt`, Download .txt, Copy link and Share… on a phone,
- * Close outer walls, Changes, Rename and Delete for a maze of My mazes, Fit, the theme and the
+ * Copy recipe for a generated maze, Generate… (beta), Close outer walls, Changes, Rename and Delete for a maze of My mazes, Fit, the theme and the
  * shortcut help. Delete
  * takes two selects: the first keeps the menu open and turns it into "Confirm delete". A download
  * and Web Share start once the menu has closed.
@@ -71,6 +78,8 @@ export function MoreActions({
   onDownload,
   onCopyLink,
   onShare,
+  onCopyRecipe,
+  onGenerate,
   onRename,
   onDelete,
   onFit,
@@ -129,7 +138,22 @@ export function MoreActions({
             Share…
           </DropdownMenuItem>
         )}
+        {onCopyRecipe === undefined ? null : (
+          <DropdownMenuItem className={ITEM} onSelect={onCopyRecipe}>
+            <Copy aria-hidden size={16} />
+            Copy recipe
+          </DropdownMenuItem>
+        )}
         <DropdownMenuSeparator />
+        {onGenerate === undefined ? null : (
+          <DropdownMenuItem className={ITEM} disabled={!editable} onSelect={later(onGenerate)}>
+            <Shuffle aria-hidden size={16} />
+            Generate…
+            <Badge className="ml-auto" variant="secondary">
+              Beta
+            </Badge>
+          </DropdownMenuItem>
+        )}
         <DropdownMenuItem className={ITEM} disabled={!editable} onSelect={onCloseBorder}>
           <Square aria-hidden size={16} />
           Close outer walls

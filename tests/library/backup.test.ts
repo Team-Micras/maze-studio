@@ -88,6 +88,46 @@ describe('the backup of My mazes', () => {
     ).toBe(true);
   });
 
+  test("keeps a generated maze's recipe through a backup, and drops an index entry whose recipe is not one", async () => {
+    const recipe = { version: 7, seed: 6001, settings: { size: 16 }, hash: '0123abcd' };
+    const zip = exportMine([{ ...item('1', 'Generated'), recipe }]).zip;
+    const read = await readZip(zip);
+
+    if (!read.ok) {
+      throw new Error(read.error);
+    }
+
+    const index: unknown = JSON.parse(
+      new TextDecoder().decode(read.value.find((entry) => entry.name === BACKUP_INDEX)?.bytes)
+    );
+    expect(index).toMatchObject([{ name: 'Generated', recipe }]);
+    expect((await readImport([{ name: 'backup.zip', bytes: zip }])).drafts[0]?.recipe).toEqual(
+      recipe
+    );
+
+    const forged = writeZip([
+      { name: 'Generated.txt', bytes: encoder.encode(TEXT) },
+      {
+        name: BACKUP_INDEX,
+        bytes: encoder.encode(
+          JSON.stringify([
+            {
+              file: 'Generated.txt',
+              name: 'Kept',
+              profile: 'free',
+              createdAt: 1,
+              recipe: { seed: 'x' },
+            },
+          ])
+        ),
+      },
+    ]);
+    expect((await readImport([{ name: 'forged.zip', bytes: forged }])).drafts[0]).toMatchObject({
+      name: 'Generated',
+      recipe: undefined,
+    });
+  });
+
   test('reads loose .txt files and zips without an index as free mazes named after the file', async () => {
     const report = await readImport([
       { name: 'japan2019.txt', bytes: encoder.encode(TEXT) },

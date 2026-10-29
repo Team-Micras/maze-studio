@@ -84,6 +84,7 @@ function library({ commit, files, mine }: Loaded, folder: FolderContents | undef
           profile: item.profile,
           mine: { id: item.id, version: item.version },
           origin: item.origin,
+          recipe: item.recipe,
         },
       },
     ]),

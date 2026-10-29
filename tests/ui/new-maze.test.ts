@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'vitest';
 
-import { hasWall } from '@/maze';
+import { borderedMaze, hasWall } from '@/maze';
 import { newMazeName, openNewMaze, sideOf, UNTITLED } from '@/ui/new-maze';
 
 describe('A new maze', () => {
@@ -34,6 +34,22 @@ describe('A new maze', () => {
     expect(hasWall(open.maze, { direction: 'vertical', x: 3, y: 2 })).toBe(false);
     expect(open.document.profile).toBe('training');
     expect(open.name).toBe('Seven');
+  });
+
+  test('that was generated keeps its walls, rules and recipe, under the name it was given', () => {
+    const maze = borderedMaze(16, 16);
+    const recipe = { version: 7, seed: 6001, settings: { size: 16 }, hash: '0123abcd' };
+    const open = openNewMaze(
+      { kind: 'generated', maze, profile: 'classic', name: 'Generated 6001', recipe },
+      2,
+      ['Generated 6001']
+    );
+
+    expect(open.key).toBe('new:2');
+    expect(open.maze).toBe(maze);
+    expect(open.name).toBe('Generated 6001 2');
+    expect(open.detail).toBe('Generated maze, 16 × 16');
+    expect(open.document).toEqual({ trailer: '', profile: 'classic', created: true, recipe });
   });
 });
 

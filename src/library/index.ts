@@ -70,6 +70,7 @@ export {
 export { mazeOrigin, type MazeOrigin } from './maze-names';
 export { MAZEFILES, type MazeRepository } from './mazefiles';
 export {
+  isMineRecipe,
   MINE_CHANNEL,
   mineContent,
   MineLibrary,
@@ -78,6 +79,7 @@ export {
   type MineMaze,
   type MineOptions,
   type MineOrigin,
+  type MineRecipe,
   type NoticeChannel,
   type Persistence,
   type PersistentStorage,
@@ -91,6 +93,6 @@ export {
   type RepoMeta,
 } from './repo-cache';
 export { matchesTokens, queryTokens, SearchIndex, searchWords, type SearchWords } from './search';
-export { Settings } from './settings';
+export { Settings, type SavedGenerator } from './settings';
 export { loadSnapshot, readSnapshot, type RepoFile, type Snapshot } from './snapshot';
 export { crc32, readZip, writeZip, type ZipEntry } from './zip';

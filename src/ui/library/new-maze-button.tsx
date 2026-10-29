@@ -17,12 +17,14 @@ export interface NewMazeMenuProps {
   readonly newName: string;
   /** Where the menu opens against the button. */
   readonly align?: 'start' | 'center' | 'end';
+  /** Opens Generate in the editor on a new blank maze (`NewMazeDialogs`). */
+  readonly onGenerate?: () => void;
 }
 
 /** The New maze button and its menu of sizes (DESIGN.md 6.1). */
-export function NewMazeMenu({ onNew, newName, align = 'end' }: NewMazeMenuProps) {
+export function NewMazeMenu({ onNew, newName, align = 'end', onGenerate }: NewMazeMenuProps) {
   return (
-    <NewMazeDialogs defaultName={newName} onNew={onNew}>
+    <NewMazeDialogs defaultName={newName} onGenerate={onGenerate} onNew={onNew}>
       {(items) => (
         <DropdownMenu>
           <DropdownMenuTrigger asChild>

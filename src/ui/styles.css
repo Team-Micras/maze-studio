@@ -131,6 +131,38 @@
   bottom: calc(--value([length]) + env(safe-area-inset-bottom));
 }
 
+/**
+ * Text that works on: a band of light sweeps it, left to right, over the muted colour; plain muted
+ * text under reduced motion.
+ */
+@utility text-shimmer {
+  background-image: linear-gradient(
+    90deg,
+    var(--color-muted-foreground) 40%,
+    var(--color-foreground) 50%,
+    var(--color-muted-foreground) 60%
+  );
+  background-size: 300% 100%;
+  background-clip: text;
+  color: transparent;
+  animation: shimmer 2s linear infinite;
+
+  @media (prefers-reduced-motion: reduce) {
+    background-image: none;
+    color: var(--color-muted-foreground);
+  }
+}
+
+@keyframes shimmer {
+  from {
+    background-position: 100% 0;
+  }
+
+  to {
+    background-position: 0 0;
+  }
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;
