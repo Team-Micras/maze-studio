@@ -283,6 +283,45 @@ describe('Search and filters', () => {
     expect(logged).toHaveBeenCalledWith('The library could not be read', failure);
   });
 
+  test('says so when the library never finishes loading, instead of staying blank', async () => {
+    const storage = await appStorage();
+
+    if (storage === undefined) {
+      throw new Error('the test browser has no IndexedDB');
+    }
+
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+    vi.spyOn(storage.mine, 'list').mockReturnValue(new Promise(() => undefined));
+    vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    window.history.replaceState(null, '', `${window.location.pathname}#/`);
+
+    try {
+      await render(<App />);
+      await vi.advanceTimersByTimeAsync(10_000);
+    } finally {
+      vi.useRealTimers();
+    }
+
+    await expect
+      .element(page.getByRole('heading', { name: 'The library could not be read' }))
+      .toBeVisible();
+  });
+
+  test('logs no slow load once the library has loaded', async () => {
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+    const logged = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+
+    try {
+      await mountApp();
+      await expect.poll(() => artboards().length).toBeGreaterThan(0);
+      await vi.advanceTimersByTimeAsync(10_000);
+    } finally {
+      vi.useRealTimers();
+    }
+
+    expect(logged).not.toHaveBeenCalledWith('The library took too long to load');
+  });
+
   test('/ focuses the search from the canvas and never types itself', async () => {
     await mountApp();
     artboards()[0]?.focus();
