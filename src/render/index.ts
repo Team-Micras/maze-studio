@@ -1,7 +1,9 @@
 /**
  * Drawing mazes: where things are on a board, the track and the editor's overlays as path data,
  * the wall stroke, the camera, the minimap's arithmetic and the canvas thumbnails. It depends only
- * on `src/maze` and never on React; `src/ui` turns these into components.
+ * on `src/maze` and never on React; `src/ui` turns these into components. The generator's loading
+ * animations are a second entry, `@/render/loading`, left out of this one so that the first screen,
+ * which imports this one, does not load them.
  *
  * @module
  */

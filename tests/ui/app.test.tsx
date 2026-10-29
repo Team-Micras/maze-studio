@@ -196,7 +196,7 @@ describe('The shell', () => {
 
   test('has a skip link that puts the focus on the canvas of an open maze', async () => {
     await mountOnMaze('#/repo/classic/AAMC15Maze.txt');
-    await expect.element(page.getByRole('heading', { level: 1 })).toBeVisible();
+    await expect.element(page.getByRole('application')).toBeInTheDocument();
     page.getByRole('link', { name: 'Skip to the content' }).element().focus();
     await userEvent.keyboard('{Enter}');
 

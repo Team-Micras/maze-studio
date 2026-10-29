@@ -235,4 +235,15 @@ describe('the settings', () => {
     await settings.saveFolder(undefined);
     expect(await settings.folder()).toBeUndefined();
   });
+
+  test("keep the generator's last settings and preset, beside the folder", async () => {
+    const settings = new Settings<{ kind: string; name: string }>(await freshDatabase());
+    const saved = { preset: 'japan', settings: { size: 16, path: [57, 99] } };
+
+    expect(await settings.generator()).toBeUndefined();
+    await settings.saveFolder({ kind: 'directory', name: 'mazes' });
+    await settings.saveGenerator(saved);
+    expect(await settings.generator()).toEqual(saved);
+    expect(await settings.folder()).toEqual({ kind: 'directory', name: 'mazes' });
+  });
 });
