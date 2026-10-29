@@ -28,7 +28,8 @@ function canShare(): boolean {
  * The actions on the open maze (PLAN.md 3.4, DESIGN.md 6.1 and 12): Copy link, which says when
  * the notes after the grid stay out of the link and, without a clipboard, puts the link in the
  * address bar; Share… with Web Share; Download .txt under a stem that passes the name rule; Save
- * to My mazes and Save to folder; Rename and Delete for a maze of My mazes.
+ * to My mazes and Save to folder; Rename and Delete for a maze of My mazes; Copy recipe for a
+ * generated maze.
  */
 export function useMazeActions({
   store,
@@ -111,6 +112,14 @@ export function useMazeActions({
         }
       },
       onCopyLink: phone ? copyLink : undefined,
+      onCopyRecipe:
+        open?.document.recipe === undefined
+          ? undefined
+          : () => {
+              void copyText(JSON.stringify(open.document.recipe)).then((copied) =>
+                showToast(copied ? 'Recipe copied' : 'Copy failed')
+              );
+            },
       ...(phone && canShare() && open !== undefined
         ? {
             onShare: () => {

@@ -19,7 +19,7 @@ type Fence = readonly [
   form?: 'dynamic' | 'named',
 ];
 
-const LAYERS = ['maze', 'library', 'render', 'ui', 'main'] as const;
+const LAYERS = ['maze', 'library', 'render', 'generator', 'ui', 'main'] as const;
 
 type Layer = (typeof LAYERS)[number];
 
@@ -32,7 +32,8 @@ const MAY_IMPORT: Record<Layer | 'scripts', { any: readonly Layer[]; relative: r
     maze: { any: [], relative: ['maze'] },
     library: { any: ['maze'], relative: ['library'] },
     render: { any: ['maze'], relative: ['render'] },
-    ui: { any: ['maze', 'library', 'render', 'ui'], relative: [] },
+    generator: { any: ['maze'], relative: ['generator'] },
+    ui: { any: ['maze', 'library', 'render', 'generator', 'ui'], relative: [] },
     main: { any: ['maze', 'library', 'render', 'ui'], relative: [] },
     scripts: { any: ['maze', 'library'], relative: [] },
   };
@@ -53,6 +54,11 @@ const PROBES: Record<Layer | 'scripts', readonly (readonly [file: string, prefix
     ['src/render/probe.ts', '@/'],
     ['src/render/probe.ts', '../'],
     ['src/render/deep/probe.ts', '../../'],
+  ],
+  generator: [
+    ['src/generator/probe.ts', '@/'],
+    ['src/generator/probe.ts', '../'],
+    ['src/generator/deep/probe.ts', '../../'],
   ],
   ui: [
     ['src/ui/probe.ts', '@/'],
@@ -99,12 +105,20 @@ const OTHER_FENCES: readonly Fence[] = [
   ['src/render/probe.ts', 'react', true],
   ['src/render/named-probe.ts', '@phosphor-icons/react', true, 'named'],
 
+  ['src/generator/probe.ts', '../../vendor/mazefiles/README.md', true],
+  ['src/generator/probe.ts', 'react', true],
+  ['src/generator/probe.ts', 'node:fs', true],
+  ['src/generator/named-probe.ts', '@phosphor-icons/react', true, 'named'],
+  ['src/generator/lazy-probe.ts', '../ui/app', true, 'dynamic'],
+  ['src/generator/lazy-probe.ts', './racing', false, 'dynamic'],
+
   ['src/ui/probe.ts', 'react', false],
   ['src/ui/probe.ts', '../../tests/support/axe-check', true],
   ['src/ui/probe.ts', '@phosphor-icons/react', true],
   ['src/ui/named-probe.ts', '@phosphor-icons/core', true, 'named'],
   ['src/ui/named-probe.ts', '@/ui/icons', false, 'named'],
   ['src/ui/lazy-probe.ts', '@/render/svg', false, 'dynamic'],
+  ['src/ui/lazy-probe.ts', '@/generator', false, 'dynamic'],
 
   ['src/main.tsx', 'react', false],
   ['src/main.tsx', '@tests/support/axe-check', true],

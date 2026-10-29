@@ -10,8 +10,8 @@ import { sessionChanges, withoutChange, type ChangeItem } from './session-change
 /**
  * Discards `item` of the session's Changes: deletes a copy or a new maze from My mazes, leaving it
  * through `leave` if it is on screen, or saves back the first state of a maze of My mazes from
- * before and shows that state. A save refused because another tab saved since keeps the item and
- * says so.
+ * before, with the generator's recipe it had or none, and shows that state. A save refused
+ * because another tab saved since keeps the item and says so.
  *
  * @param leave Leaves the maze on screen for where the copy came from, if anywhere.
  */
@@ -42,7 +42,11 @@ export async function discardChange(
       ? undefined
       : await mine.save(
           item.id,
-          { maze: item.baseline, profile: item.baselineProfile },
+          {
+            maze: item.baseline,
+            profile: item.baselineProfile,
+            recipe: item.baselineRecipe ?? null,
+          },
           editor.savedVersion(item.id) ?? stored.version
         );
 
@@ -62,6 +66,7 @@ export async function discardChange(
         ...shown.document,
         profile: item.baselineProfile ?? shown.document.profile,
         mine: { id: item.id, version: saved.value.version },
+        recipe: item.baselineRecipe,
       },
     });
   }

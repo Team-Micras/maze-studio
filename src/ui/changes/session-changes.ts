@@ -8,6 +8,7 @@
 
 import { createStore, type StoreApi } from 'zustand/vanilla';
 
+import type { MineRecipe } from '@/library';
 import { diffMazes, mazesEqual, type Maze, type MazeDiff, type Profile } from '@/maze';
 import { categoryLabel } from '@/ui/labels';
 import type { Route } from '@/ui/routes';
@@ -28,6 +29,8 @@ export interface ChangeItem {
   readonly baseline: Maze | undefined;
   /** The profile of the baseline, which Discard of a maze of My mazes puts back with it. */
   readonly baselineProfile?: Profile;
+  /** The generator's recipe of the baseline, if it had one, which Discard puts back with it. */
+  readonly baselineRecipe?: MineRecipe;
   /** Where a copy came from, which Discard goes back to; none for a file or a new maze. */
   readonly source: Route | undefined;
 }
@@ -36,6 +39,7 @@ export interface ChangeItem {
 export interface SeenState {
   readonly maze: Maze;
   readonly profile: Profile;
+  readonly recipe?: MineRecipe;
 }
 
 /**
@@ -95,6 +99,7 @@ export function addExisting(changes: SessionChanges, id: string, name: string): 
         name,
         baseline: seen.maze,
         baselineProfile: seen.profile,
+        baselineRecipe: seen.recipe,
         source: undefined,
       },
     ],
