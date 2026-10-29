@@ -150,14 +150,17 @@ reached, and the measurements of the day, are in the git history of this file.
   of My mazes from its first save, against the state the session first opened. Discard, armed for 3 s, deletes a copy
   or saves back the first state; Keep takes the item out. An item back at its baseline, maze and profile (`differs`), is
   neither listed nor counted (owner, 14/10), nor turns the library to My mazes on leaving; nothing is deleted on its
-  own. Save to My mazes of a link or `.txt` not edited is no change
+  own. Save to My mazes of a maze not edited is no change
   (owner, 14/10): the copy is noted as a maze of My mazes from before the session, its saved state the baseline, so it
-  enters Changes only at a later save and Discard saves that state back.
+  enters Changes only at a later save and Discard saves that state back. A generated new maze is the exception: Use
+  this or Save to My mazes writes it as its first edit would, so it enters Changes as new (#29).
 - **The title opens Rename** (owner, 14/10), the dialog of the ⋯ menu, for a maze of My mazes and a new maze: an inline
   field had no confirm button on a phone. Dialogs close without an exit animation, as menus do, so their
   backdrop never swallows the next tap. "Show changes" shows its `D` only on a fine pointer outside the phone layout.
 - **Save to My mazes is in the ⋯ menu** (owner, 14/10), so the title keeps the island's width on a phone; it is not
   offered while editing on a phone, since the first edit saves anyway. A mouse has no view mode, so a notebook keeps it.
+  It is offered for any maze not in My mazes but a blank new one (#29), and keeps the maze's own name, origin and
+  recipe (owner, 29/10): "<name> (edited)" is only the name of the copy a real first edit makes.
 
 ## Sharing and files
 
@@ -239,9 +242,11 @@ reached, and the measurements of the day, are in the git history of this file.
 - **Only the UI imports it**, so it stays out of the first screen: the fence of `src/main.tsx` refuses it, and the UI
   loads it on demand. Its presets carry English copy only, as the app does.
 - **Generate is part of New maze, marked Beta** (owner, 18/10 and 21/10): New maze → Generate… → settings and
-  candidates → Use this opens the maze in the editor as a new maze, written to My mazes by its first edit like any
-  other. No screen of its own. The presets are back, Recommended first, with Custom (from …) and a reset once a field
-  moves; every target the generator aims at is a field, the rarer ones under Fine tuning. The form is the mockup's
+  candidates → Use this opens the maze in the editor as a new maze, written to My mazes at once with its recipe
+  (#29), as its first edit would; Use this that replaces the board, a saved generated maze's too, is a step of undo
+  like any edit (owner, 29/10). No screen of its own. The presets are back, Recommended first, with Custom (from …)
+  and a reset once a field moves; every target the generator aims at is a field, the rarer ones under Fine tuning. The
+  form is the mockup's
   (`docs/maze-editor/mockups/generator/assets/settings-form.js`) in React, its logic without React in
   `settings-model.ts`, its English copy only.
 - **Loaded when Generate first opens.** The dialog and the generator are one lazy chunk (about 28 KB gzip) and the

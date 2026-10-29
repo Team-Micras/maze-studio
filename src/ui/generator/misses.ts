@@ -28,13 +28,13 @@ const count = (n: number, one: string, many: string): string => `${n} ${n === 1 
 const CHOICE_TEXT: Readonly<Record<ChoiceMiss, (a: Analysis, t: Targets) => string>> = {
   routes: () => 'no route choice',
   detour: (a, t) =>
-    `amber off white for ${round(100 * (a.choice?.detour ?? 0))} % (asked ${t.choice?.detour ?? 0} % or more)`,
+    `diagonal route (amber) off the route without diagonals (white) for ${round(100 * (a.choice?.detour ?? 0))} % (asked ${t.choice?.detour ?? 0} % or more)`,
   apart: (a, t) =>
     `routes ${a.choice?.apart ?? 0} cells apart (asked ${t.choice?.apart ?? 0} or more)`,
   gain: (a, t) =>
-    `amber gain ${round(a.choice?.racingGain ?? 0)} % (${asked(t.choice?.gain ?? [0, 0])})`,
+    `gain with diagonals ${round(a.choice?.racingGain ?? 0)} % (${asked(t.choice?.gain ?? [0, 0])})`,
   loss: (a, t) =>
-    `white robot’s loss on amber ${round(a.choice?.carefulLoss ?? 0)} % (${asked(t.choice?.loss ?? [0, 0])})`,
+    `loss without diagonals ${round(a.choice?.carefulLoss ?? 0)} % (${asked(t.choice?.loss ?? [0, 0])})`,
   shape: () => 'a route too twisty for its shape',
 };
 

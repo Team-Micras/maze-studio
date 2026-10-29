@@ -280,6 +280,22 @@ describe('Save to My mazes', () => {
     expect(await page.getByRole('menuitem', { name: 'Save to My mazes' }).count()).toBe(0);
   });
 
+  test('keeps a repository maze not edited under its own name and origin, and edits then save into that copy', async () => {
+    const { maze } = await repoContent(CLASSIC);
+    const page = await openMaze(`#/repo/${CLASSIC}`);
+    await menu(page, 'Save to My mazes');
+    await page.waitForFunction(() => window.location.hash.startsWith('#/mine/'));
+    const id = mineId(page) ?? '';
+    const item = await storedMine(page, id);
+
+    expect(item?.name).toBe('AAMC15Maze');
+    expect(item?.origin?.path).toBe(CLASSIC);
+    await clickEdge(page, maze, EDGE);
+    await expectSaved(page, sameMaze(toggleWall(maze, EDGE)));
+    expect(mineId(page)).toBe(id);
+    expect(await mineCount(page)).toBe(1);
+  });
+
   test('is no change until an edit, and Discard then puts back the state saved', async () => {
     const { maze } = await repoContent(CLASSIC);
     const page = await openMaze(`#/m/${encodeMazeCode(maze, { name: 'Shared one' })}`);

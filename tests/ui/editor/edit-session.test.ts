@@ -14,6 +14,7 @@ import {
   type Maze,
 } from '@/maze';
 import {
+  canSaveToMine,
   cancelEdit,
   copyName,
   followRoute,
@@ -46,6 +47,11 @@ function repoMaze(): OpenMaze {
   };
 }
 
+/** Whether Save to My mazes is offered for `opened`, as it opens. */
+function saveable(opened: OpenMaze): boolean {
+  return canSaveToMine(openSession(opened));
+}
+
 /** The session with its history changed by `step`, as the editor's hook does it. */
 function edit(session: EditSession, step: (history: History<Maze>) => History<Maze>): EditSession {
   return { ...session, history: step(session.history) };
@@ -76,6 +82,28 @@ describe('An editing session', () => {
     expect(needsCopy(session)).toBe(true);
     session = edit(session, undo);
     expect(needsCopy(session)).toBe(false);
+  });
+
+  test('offers Save to My mazes for any maze not in it but a blank new one, and copies a generated one at once', () => {
+    const recipe = { version: 7, seed: 3, settings: { size: 4 } };
+    const fresh = (extra: object): OpenMaze => ({
+      ...repoMaze(),
+      key: 'new:1',
+      document: { trailer: '', profile: 'classic', created: true, ...extra },
+    });
+
+    expect(saveable(repoMaze())).toBe(true);
+    expect(saveable({ ...repoMaze(), key: 'link:abc' })).toBe(true);
+    expect(saveable({ ...repoMaze(), key: 'file:1' })).toBe(true);
+    expect(saveable({ ...repoMaze(), key: 'folder:a.txt' })).toBe(true);
+    expect(saveable(fresh({ recipe }))).toBe(true);
+    expect(saveable(fresh({}))).toBe(false);
+    expect(saveable(fresh({ mine: { id: 'u-1', version: 1 } }))).toBe(false);
+    expect(needsCopy(openSession(fresh({ recipe })))).toBe(true);
+    expect(needsCopy(openSession(fresh({})))).toBe(false);
+    expect(
+      needsCopy(withMine(openSession(fresh({ recipe })), { id: 'u-1', version: 1, name: 'g' }))
+    ).toBe(false);
   });
 
   test('once copied, answers to both keys and shows the copy, keeping the document', () => {

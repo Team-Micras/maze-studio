@@ -71,12 +71,8 @@ describe('Generate from the editor', () => {
     expect(pickHint(item, borderedMaze(8, 8))).toBe(
       'Not the board’s size (8 × 8): opens as a new maze.'
     );
-    expect(pickHint(item, undefined)).toBe(
-      'Opens as a new maze; the first edit saves it in My mazes.'
-    );
-    expect(pickHint(pending, undefined)).toBe(
-      'Opens as a new maze; the first edit saves it in My mazes.'
-    );
+    expect(pickHint(item, undefined)).toBe('Opens as a new maze, saved in My mazes.');
+    expect(pickHint(pending, undefined)).toBe('Opens as a new maze, saved in My mazes.');
   });
 
   test('steps through the batch, mazes still building included, not past its ends', () => {

@@ -20,6 +20,19 @@ export interface StoreWriter {
   clear(store: StoreName): void;
 }
 
+/** A record {@link Database.readable} left out: its key, what it holds if it read, and why. */
+export interface SkippedRecord {
+  readonly key: IDBValidKey;
+  readonly value?: unknown;
+  readonly reason: string;
+}
+
+/** What {@link Database.readable} read: the values it accepted and the records it left out. */
+export interface ReadableRecords<T> {
+  readonly values: T[];
+  readonly skipped: readonly SkippedRecord[];
+}
+
 /** The database's name in the browser. */
 export const DATABASE_NAME = 'maze-studio';
 
@@ -32,6 +45,10 @@ function result<T>(request: IDBRequest<T>): Promise<T> {
       reject(request.error ?? new Error('IndexedDB request failed'))
     );
   });
+}
+
+function reasonOf(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
 }
 
 function finished(transaction: IDBTransaction): Promise<void> {
@@ -55,7 +72,7 @@ export class Database {
   }
 
   /** The value at `key`, if there is one. */
-  async get<T>(store: StoreName, key: string): Promise<T | undefined> {
+  async get<T>(store: StoreName, key: IDBValidKey): Promise<T | undefined> {
     const transaction = this.#database.transaction(store, 'readonly');
     return result<T | undefined>(transaction.objectStore(store).get(key));
   }
@@ -64,6 +81,51 @@ export class Database {
   async getAll<T>(store: StoreName): Promise<T[]> {
     const transaction = this.#database.transaction(store, 'readonly');
     return result<T[]>(transaction.objectStore(store).getAll());
+  }
+
+  /**
+   * Every value of a store that `valid` accepts, in key order, and the records left out. When the
+   * browser cannot read the store at once, the values are read one by one, so one it cannot read is
+   * left out instead of failing them all. Each record left out is reported with `console.warn`.
+   */
+  async readable<T>(
+    store: StoreName,
+    valid: (value: unknown) => value is T
+  ): Promise<ReadableRecords<T>> {
+    const objects = this.#database.transaction(store, 'readonly').objectStore(store);
+    const [keys, all] = await Promise.allSettled([
+      result(objects.getAllKeys()),
+      result<unknown[]>(objects.getAll()),
+    ]);
+
+    if (keys.status === 'rejected') {
+      throw keys.reason;
+    }
+
+    if (all.status === 'rejected') {
+      console.warn(`Could not read the ${store} store at once, reading it one by one`, all.reason);
+    }
+
+    const reads =
+      all.status === 'fulfilled'
+        ? all.value.map((value): PromiseSettledResult<unknown> => ({ status: 'fulfilled', value }))
+        : await Promise.allSettled(keys.value.map((key) => this.get<unknown>(store, key)));
+    const values: T[] = [];
+    const skipped: SkippedRecord[] = [];
+    reads.forEach((read, index) => {
+      const key = keys.value[index] ?? index;
+
+      if (read.status === 'rejected') {
+        skipped.push({ key, reason: reasonOf(read.reason) });
+      } else if (valid(read.value)) {
+        values.push(read.value);
+      } else {
+        skipped.push({ key, value: read.value, reason: 'the stored record is malformed' });
+      }
+    });
+    skipped.forEach((record) => console.warn(`Skipped a record of ${store}`, record));
+
+    return { values, skipped };
   }
 
   /** Writes `value`, at `key` for the `settings` store, at its own key for the others. */
