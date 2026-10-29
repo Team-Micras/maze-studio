@@ -2,10 +2,12 @@ import { describe, expect, test } from 'vitest';
 
 import { generate, PRESETS, withMaze } from '@/generator';
 import { borderedMaze, presetMaze, toggleWall } from '@/maze';
+import { WAITING } from '@/render/loading';
 import type { Item } from '@/ui/generator/batch-run';
 import {
   generatesFor,
   isBlank,
+  phaseText,
   pickHint,
   replacesBoard,
   stepTo,
@@ -93,5 +95,16 @@ describe('Generate from the editor', () => {
     expect(swipeStep(-40, 0)).toBe(0);
     expect(swipeStep(-60, 40)).toBe(0);
     expect(swipeStep(0, 0)).toBe(0);
+  });
+});
+
+describe('phaseText', () => {
+  test('names what a maze building is at, the attempt from the second board on', () => {
+    expect(phaseText(WAITING)).toBe('Building…');
+    expect(phaseText({ ...WAITING, phase: 'routes', attempt: 1 })).toBe('Trying routes');
+    expect(phaseText({ ...WAITING, phase: 'routes', attempt: 12 })).toBe(
+      'Trying routes · attempt 12'
+    );
+    expect(phaseText({ ...WAITING, phase: 'forest' })).toBe('Growing the maze around the routes');
   });
 });

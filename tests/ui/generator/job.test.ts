@@ -38,6 +38,27 @@ describe('progressTrace', () => {
     expect(sent).toHaveLength(3);
   });
 
+  test('says the stage of each snapshot and how many boards the generator has started on', () => {
+    let clock = 0;
+    const sent: JobProgress[] = [];
+    const trace = progressTrace(
+      (progress) => sent.push(progress),
+      () => clock
+    );
+
+    trace('board', walls());
+    trace('miss', walls());
+    trace('board', walls());
+    trace('filler', walls());
+
+    expect(sent.map(({ stage, attempt }) => [stage, attempt])).toEqual([
+      ['board', 1],
+      ['miss', 1],
+      ['board', 2],
+      ['filler', 2],
+    ]);
+  });
+
   test('lets the routes tried ride along with the next snapshot, the newest eight', () => {
     let clock = 0;
     const sent: JobProgress[] = [];

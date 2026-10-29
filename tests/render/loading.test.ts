@@ -6,6 +6,7 @@ import {
   decorativeMaze,
   followTrack,
   looksLikeMaze,
+  PHASE_HOLD,
   openPassages,
   ROUTE_FADE,
   STILL_SHADE,
@@ -140,6 +141,18 @@ describe('followTrack', () => {
       lines: wallLines(maze, size).map((line) => ({ line, shade: 0.6 })),
       routes: [],
     });
+  });
+
+  test('names a phase for at least half a second, the attempt count moving freely', () => {
+    const at = (track: typeof WAITING, stage: string, attempt: number, now: number) =>
+      followTrack(track, { walls: closed(size), tried: [], stage, attempt }, size, now);
+    const routes = at(WAITING, 'board', 1, 0);
+    const soon = at(routes, 'filler', 2, PHASE_HOLD - 1);
+    const later = at(soon, 'filler', 2, PHASE_HOLD);
+
+    expect([routes.phase, routes.attempt]).toEqual(['routes', 1]);
+    expect([soon.phase, soon.attempt]).toEqual(['routes', 2]);
+    expect([later.phase, later.phaseSince]).toEqual(['forest', PHASE_HOLD]);
   });
 
   test('keeps the newest routes only, and lets them fade out', () => {

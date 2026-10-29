@@ -271,6 +271,8 @@ describe('a batch of generated mazes', () => {
     const snapshot: JobProgress = {
       walls: decorativeMaze(size, decorativeGoals(size)),
       tried: [{ route: [0, 1], kind: 'racing' }],
+      stage: 'candidate',
+      attempt: 1,
     };
     const [first] = batch.generate(SETTINGS, true);
 

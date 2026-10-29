@@ -8,6 +8,7 @@
 
 import { CHOICE, CHOICE_SHORT, features, measure, tags, TEXT, type Measured } from '@/generator';
 import { horizontalEdgeIndex, verticalEdgeIndex, type Maze, type Profile } from '@/maze';
+import type { LoadingTrack } from '@/render/loading';
 import type { NewMazeRequest } from '@/ui/new-maze';
 
 import type { BatchState, Item } from './batch-run';
@@ -212,4 +213,24 @@ export function swipeStep(dx: number, dy: number): -1 | 0 | 1 {
   }
 
   return dx < 0 ? 1 : -1;
+}
+
+/** What a maze still building is at, in the title line of the maze opened. */
+export function phaseText({ phase, attempt }: LoadingTrack): string {
+  switch (phase) {
+    case 'routes':
+      return attempt > 1 ? `Trying routes · attempt ${attempt}` : 'Trying routes';
+    case 'forest':
+      return 'Growing the maze around the routes';
+    case 'loops':
+      return 'Adding loops';
+    case 'check':
+      return 'Checking the targets';
+    case 'tune':
+      return 'Fine-tuning';
+    case 'another':
+      return 'Trying another way';
+    case null:
+      return 'Building…';
+  }
 }

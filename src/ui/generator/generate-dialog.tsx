@@ -50,6 +50,7 @@ import {
   itemOrigin,
   itemTags,
   itemTitle,
+  phaseText,
   itemWarning,
   measureItem,
   replacesBoard,
@@ -133,6 +134,9 @@ export interface GeneratorPreview {
 }
 
 const CARD_SIDE = 156;
+
+/** How often, in milliseconds, the title line of a maze building reads what it is at. */
+const PHASE_READ = 200;
 
 /** How far apart, in milliseconds, the waves of two cards in a row run. */
 const WAVE_STAGGER = 537;
@@ -290,16 +294,35 @@ function CopyRecipe({ item }: { item: ReadyItem }) {
 }
 
 /** The line that names a maze: "#4 of 8 · seed 4004890115 · Diagonal staircases". */
+/** What a maze still building is at, read again a few times a second from `track`. */
+function PhaseText({ track }: { track: () => LoadingTrack }) {
+  const latest = useRef(track);
+  const [text, setText] = useState(() => phaseText(track()));
+
+  useLayoutEffect(() => {
+    latest.current = track;
+  });
+
+  useEffect(() => {
+    const timer = setInterval(() => setText(phaseText(latest.current())), PHASE_READ);
+    return () => clearInterval(timer);
+  }, []);
+
+  return text;
+}
+
 function MazeTitle({
   item,
   place,
   total,
   headingRef,
+  track,
 }: {
   item: Item;
   place: number;
   total: number;
   headingRef?: Ref<HTMLHeadingElement>;
+  track?: () => LoadingTrack;
 }) {
   return (
     <h3
@@ -311,11 +334,15 @@ function MazeTitle({
       {itemTitle(place, total)}
       <span className="font-normal text-muted-foreground">
         {' · '}
-        {isReady(item)
-          ? itemOrigin(item)
-          : item.status === 'pending'
-            ? 'Building…'
-            : 'The generator could not make this maze'}
+        {isReady(item) ? (
+          itemOrigin(item)
+        ) : item.status !== 'pending' ? (
+          'The generator could not make this maze'
+        ) : track === undefined ? (
+          'Building…'
+        ) : (
+          <PhaseText track={track} />
+        )}
       </span>
     </h3>
   );
@@ -330,11 +357,13 @@ function Details({
   place,
   total,
   headingRef,
+  track,
 }: {
   item: Item;
   place: number;
   total: number;
   headingRef?: Ref<HTMLHeadingElement>;
+  track?: () => LoadingTrack;
 }) {
   const ready = isReady(item);
   const warning = ready ? itemWarning(item) : undefined;
@@ -343,7 +372,7 @@ function Details({
   return (
     <section aria-labelledby={`maze-${item.n}`} className="flex flex-col gap-1.5">
       <div className="flex min-h-7 items-center gap-2">
-        <MazeTitle headingRef={headingRef} item={item} place={place} total={total} />
+        <MazeTitle headingRef={headingRef} item={item} place={place} total={total} track={track} />
         {ready ? <CopyRecipe item={item} /> : null}
       </div>
       {tags.length === 0 ? null : (
@@ -444,7 +473,13 @@ function DetailView({ items, index, withBoard, headingRef, track, onSwipe }: Det
       ) : (
         <div className="aspect-square w-full rounded-[6px] bg-muted" />
       )}
-      <Details headingRef={headingRef} item={item} place={index + 1} total={items.length} />
+      <Details
+        headingRef={headingRef}
+        item={item}
+        place={index + 1}
+        total={items.length}
+        track={() => track(item.n)}
+      />
     </div>
   );
 }

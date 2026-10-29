@@ -54,10 +54,15 @@ export interface TriedRoute {
   readonly kind: string;
 }
 
-/** Where a job is: the walls now and the last few routes tried since the snapshot before. */
+/**
+ * Where a job is: the walls now, the last few routes tried since the snapshot before, the stage the
+ * generator is at and how many boards it has started over on.
+ */
 export interface JobProgress {
   readonly walls: Uint8Array;
   readonly tried: readonly TriedRoute[];
+  readonly stage: string;
+  readonly attempt: number;
 }
 
 /** What a worker answers a job with: snapshots of its progress, then its result. */
@@ -83,8 +88,13 @@ export function progressTrace(
   let last = -Infinity;
   let lastStage = '';
   let tried: TriedRoute[] = [];
+  let attempt = 0;
 
   return (stage, walls, info) => {
+    if (stage === 'board') {
+      attempt += 1;
+    }
+
     if (stage === 'candidate') {
       const route = info?.route;
       tried.push({
@@ -97,7 +107,7 @@ export function progressTrace(
     const at = now();
 
     if ((stage !== lastStage && stage !== 'candidate') || at - last >= SNAPSHOT_EVERY) {
-      onProgress({ walls: walls.slice(), tried });
+      onProgress({ walls: walls.slice(), tried, stage, attempt });
       tried = [];
       last = at;
       lastStage = stage;

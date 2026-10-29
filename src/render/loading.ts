@@ -51,10 +51,52 @@ export interface LoadingTrack {
   readonly walls: Uint8Array | null;
   /** The last routes tried, newest last. */
   readonly trail: readonly TrailRoute[];
+  /** What the generator is doing, held at least {@link PHASE_HOLD} so it can be read. */
+  readonly phase: LoadingPhase | null;
+  /** When {@link phase} last changed. */
+  readonly phaseSince: number;
+  /** How many boards the generator has started on. */
+  readonly attempt: number;
 }
 
+/** What a maze being built is at, in the words the panel shows. */
+export type LoadingPhase = 'routes' | 'forest' | 'loops' | 'check' | 'tune' | 'another';
+
+/** The generator's trace stages, as the phases the panel names. */
+const PHASES: Readonly<Record<string, LoadingPhase>> = {
+  style: 'routes',
+  board: 'routes',
+  candidate: 'routes',
+  routes: 'routes',
+  miss: 'routes',
+  motif: 'forest',
+  texture: 'forest',
+  filler: 'forest',
+  loop: 'loops',
+  filled: 'check',
+  chosen: 'check',
+  'attempt-end': 'check',
+  repair: 'tune',
+  tune: 'tune',
+  tuned: 'tune',
+  seed: 'tune',
+  choice: 'tune',
+  fallback: 'another',
+  tree: 'another',
+};
+
+/** The least time, in milliseconds, a phase stays named: stages can change many times a frame. */
+export const PHASE_HOLD = 500;
+
 /** A maze not started yet. */
-export const WAITING: LoadingTrack = { started: false, walls: null, trail: [] };
+export const WAITING: LoadingTrack = {
+  started: false,
+  walls: null,
+  trail: [],
+  phase: null,
+  phaseSince: 0,
+  attempt: 0,
+};
 
 /** One sweep of the wave, in milliseconds. */
 export const WAVE_PERIOD = 1800;
@@ -230,15 +272,27 @@ export function looksLikeMaze(walls: ArrayLike<number>, size: number): boolean {
 /**
  * The track after a snapshot arrived at `now`: its routes tried join the trail, and its walls
  * replace the ones shown if they read as a maze; a restart that brings the grid back keeps the
- * last good walls.
+ * last good walls. Its stage moves the phase only once the one named has shown {@link PHASE_HOLD}.
  */
 export function followTrack(
   track: LoadingTrack,
-  snapshot: { readonly walls: Uint8Array; readonly tried: readonly { route: readonly number[] }[] },
+  snapshot: {
+    readonly walls: Uint8Array;
+    readonly tried: readonly { route: readonly number[] }[];
+    readonly stage?: string;
+    readonly attempt?: number;
+  },
   size: number,
   now: number
 ): LoadingTrack {
+  const next = (snapshot.stage === undefined ? undefined : PHASES[snapshot.stage]) ?? track.phase;
+  const moves =
+    next !== track.phase && (track.phase === null || now - track.phaseSince >= PHASE_HOLD);
+
   return {
+    phase: moves ? next : track.phase,
+    phaseSince: moves ? now : track.phaseSince,
+    attempt: snapshot.attempt ?? track.attempt,
     started: true,
     walls: looksLikeMaze(snapshot.walls, size) ? snapshot.walls : track.walls,
     trail: [
