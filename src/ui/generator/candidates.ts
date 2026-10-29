@@ -72,7 +72,7 @@ export function itemFeatures(item: ReadyItem): string[] {
   return item.relaxed === true
     ? [
         ...lines,
-        `Route choice relaxed: amber keeps off white for ${CHOICE_SHORT.detour} % of its moves and ${CHOICE_SHORT.apart} cells apart, not ${CHOICE.detour} % and ${CHOICE.apart}`,
+        `Route choice relaxed: the diagonal route (amber) keeps off the route without diagonals (white) for ${CHOICE_SHORT.detour} % of its moves and ${CHOICE_SHORT.apart} cells apart, not ${CHOICE.detour} % and ${CHOICE.apart}`,
       ]
     : lines;
 }
