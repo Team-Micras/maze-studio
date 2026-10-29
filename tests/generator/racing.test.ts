@@ -159,6 +159,7 @@ describe('the run-time model', () => {
 
   test('agrees with its search and orders the classes on the All Japan finals', () => {
     const wrong: string[] = [];
+    expect(finals().length).toBeGreaterThan(0);
     for (const { name, grid: g } of finals()) {
       const careful = fastestRoute(g, PROFILES.orthogonal);
       const racing = fastestRoute(g, PROFILES.diagonal);
@@ -178,6 +179,7 @@ describe('the run-time model', () => {
 
   test('finds the four reference behaviours on the All Japan finals', () => {
     const wrong: string[] = [];
+    expect(finals().length).toBeGreaterThan(0);
     for (const { name, grid: g } of finals().slice(0, 9)) {
       const ref = references(g);
       const cells = bfs(g, [g.start]).dist;
