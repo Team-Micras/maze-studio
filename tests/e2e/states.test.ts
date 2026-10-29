@@ -7,6 +7,7 @@ import { afterAll, beforeAll, describe, expect, inject, test } from 'vitest';
 import { loadSnapshot } from '@/library/snapshot';
 import { readZip } from '@/library/zip';
 import { encodeMazeCode, toggleWall, type Edge } from '@/maze';
+import { UP_TO_DATE_MS } from '@/ui/library/update-note';
 import {
   edgeMiddle,
   expectSaved,
@@ -200,7 +201,7 @@ describe('Check for updates', () => {
     expect(await page.locator('footer').textContent()).toContain(`at ${NEWER.slice(0, 7)}`);
   });
 
-  test('the same commit leaves the library as it is and says it is up to date', async () => {
+  test('the same commit leaves the library as it is and says it is up to date for a moment', async () => {
     const page = await openPage(browser, contexts, app);
     const { commit, files } = await loadSnapshot();
     await page.route(`${API}/branches/master`, (route) => json(route, { commit: { sha: commit } }));
@@ -210,5 +211,8 @@ describe('Check for updates', () => {
     expect(await page.locator('footer').textContent()).toContain(
       `${files.length} mazes from micromouseonline/mazefiles at ${commit.slice(0, 7)}`
     );
+    await page.waitForTimeout(UP_TO_DATE_MS - 1000);
+    expect(await creditNote(page)).toBe('Up to date');
+    await expect.poll(() => creditNote(page), { timeout: 3000 }).toBe('');
   });
 });

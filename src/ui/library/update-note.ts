@@ -14,6 +14,9 @@ export type UpdateStatus =
   | { readonly kind: 'up-to-date' }
   | { readonly kind: 'failed'; readonly reason: UpdateFailure };
 
+/** How long "Up to date" stays on the credit before it goes by itself. */
+export const UP_TO_DATE_MS = 3000;
+
 const REASONS: Readonly<Record<UpdateFailure, string>> = {
   offline: 'Offline',
   'rate-limited': 'GitHub’s hourly limit reached',
