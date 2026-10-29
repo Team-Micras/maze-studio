@@ -148,22 +148,40 @@ async function loadLibrary(): Promise<Loaded> {
   return { commit: copy.commit, files: copy.files, mine };
 }
 
+/** The library as {@link useLibrary} gives it. */
+export interface LibraryLoad {
+  /** The library, or `undefined` while it loads or when it failed to. */
+  readonly library: Library | undefined;
+  /** Whether the library could not be read; a later failure keeps the library already shown. */
+  readonly failed: boolean;
+}
+
 /**
- * The library, or `undefined` while it loads, with the mazes of `folder` when one is open. It loads
- * again when another tab writes to My mazes, or when this one says it did with {@link reloadLibrary}.
+ * The library, with the mazes of `folder` when one is open. It loads again when another tab writes
+ * to My mazes, or when this one says it did with {@link reloadLibrary}. A load that fails is logged
+ * with `console.error`.
  */
-export function useLibrary(folder?: FolderContents): Library | undefined {
-  const [loaded, setLoaded] = useState<Loaded | undefined>(undefined);
+export function useLibrary(folder?: FolderContents): LibraryLoad {
+  const [loaded, setLoaded] = useState<Loaded | 'failed' | undefined>(undefined);
 
   useEffect(() => {
     let current = true;
     let unsubscribe: (() => void) | undefined;
     const load = (): void => {
-      void loadLibrary().then((next) => {
-        if (current) {
-          setLoaded(next);
+      loadLibrary().then(
+        (next) => {
+          if (current) {
+            setLoaded(next);
+          }
+        },
+        (error: unknown) => {
+          console.error('The library could not be read', error);
+
+          if (current) {
+            setLoaded((previous) => previous ?? 'failed');
+          }
         }
-      });
+      );
     };
 
     load();
@@ -182,7 +200,10 @@ export function useLibrary(folder?: FolderContents): Library | undefined {
   }, []);
 
   return useMemo(
-    () => (loaded === undefined ? undefined : library(loaded, folder)),
+    () => ({
+      library: loaded === undefined || loaded === 'failed' ? undefined : library(loaded, folder),
+      failed: loaded === 'failed',
+    }),
     [loaded, folder]
   );
 }

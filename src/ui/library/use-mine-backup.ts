@@ -49,11 +49,12 @@ export function useMineBackup(): MineBackup {
       return;
     }
 
-    const items = await storage.mine.list();
+    const { items, unreadable } = await storage.mine.read();
     const now = new Date();
-    const { zip, skipped } = exportMine(items, now);
+    const { zip, skipped: unwritten } = exportMine(items, now);
+    const skipped = [...unreadable, ...unwritten];
     downloadBlob(backupFileName(now), new Blob([zip.slice()], { type: 'application/zip' }));
-    const note = exportNote(items.length - skipped.length, skipped.length);
+    const note = exportNote(items.length - unwritten.length, skipped.length);
 
     if (skipped.length === 0) {
       showToast(note);

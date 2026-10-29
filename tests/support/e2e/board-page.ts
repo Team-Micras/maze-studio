@@ -175,7 +175,7 @@ export function repoText(path: string): string {
 /** Puts `items` in My mazes as stored, beside whatever is there, and reloads the page to show them. */
 export async function storeMine(
   page: Page,
-  items: readonly { id: string; name: string; code: string }[]
+  items: readonly { id: string; name: string; code: string; recipe?: unknown }[]
 ): Promise<void> {
   await page.evaluate(
     ([database, stored]) =>

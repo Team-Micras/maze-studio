@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, test } from 'vitest';
+import { afterEach, describe, expect, test, vi } from 'vitest';
 
 import {
   exportMine,
@@ -15,6 +15,7 @@ import { createMaze, mazesEqual, setWall, type Maze } from '@/maze';
 const opened: { database: Database; name: string; libraries: MineLibrary[] }[] = [];
 
 afterEach(async () => {
+  vi.restoreAllMocks();
   await Promise.all(
     opened.splice(0).map(({ database, name, libraries }) => {
       libraries.forEach((library) => library.close());
@@ -63,6 +64,14 @@ function summary(items: readonly MineMaze[]): string[] {
       ]);
     })
     .toSorted((left, right) => left.localeCompare(right));
+}
+
+/** A real request on `store` that fails with an `error` event, as one IndexedDB cannot read does. */
+function failedRequest(store: IDBObjectStore): IDBRequest<IDBValidKey[]> {
+  const doomed = store.transaction.db.transaction(store.name, 'readonly');
+  const request = doomed.objectStore(store.name).getAllKeys();
+  doomed.abort();
+  return request;
 }
 
 const MAZE = createMaze({ width: 4, height: 3, start: { x: 0, y: 0 }, goals: [{ x: 3, y: 2 }] });
@@ -115,6 +124,50 @@ describe('My mazes', () => {
     await mine.remove(second.id);
     expect(await mine.get(second.id)).toBeUndefined();
     expect(await mine.list()).toHaveLength(1);
+  });
+
+  test('lists around a malformed item, and reports it', async () => {
+    const [{ mine, database }] = await tabs();
+    const kept = await mine.create({ name: 'Kept', maze: MAZE, profile: 'free' });
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+    await database.put('mine', { id: 'no-code', name: 'Broken', profile: 'free', version: 1 });
+    await database.put('mine', { ...kept, id: 'bad-recipe', recipe: { seed: 'x' } });
+
+    expect(await mine.read()).toEqual({
+      items: [kept],
+      unreadable: [
+        { id: 'bad-recipe', name: 'Kept', message: 'the stored record is malformed' },
+        { id: 'no-code', name: 'Broken', message: 'the stored record is malformed' },
+      ],
+    });
+    expect(await mine.list()).toEqual([kept]);
+    expect(warn).toHaveBeenCalledTimes(4);
+  });
+
+  test('lists around an item the browser cannot read, reading them one by one', async () => {
+    const [{ mine }] = await tabs();
+    const kept = await mine.create({ name: 'Kept', maze: MAZE, profile: 'free' });
+    const lost = await mine.create({ name: 'Lost', maze: MAZE, profile: 'free' });
+    const { get } = Object.getOwnPropertyDescriptors(IDBObjectStore.prototype);
+    vi.spyOn(IDBObjectStore.prototype, 'getAll').mockImplementation(function (
+      this: IDBObjectStore
+    ) {
+      return failedRequest(this);
+    });
+    vi.spyOn(IDBObjectStore.prototype, 'get').mockImplementation(function (
+      this: IDBObjectStore,
+      key: IDBValidKey | IDBKeyRange
+    ) {
+      return key === lost.id || get.value === undefined
+        ? failedRequest(this)
+        : Reflect.apply(get.value, this, [key]);
+    });
+    vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+
+    expect(await mine.read()).toEqual({
+      items: [kept],
+      unreadable: [{ id: lost.id, name: lost.id, message: expect.stringContaining('aborted') }],
+    });
   });
 
   test('keeps the recipe of a generated maze until a save drops it, and takes one back', async () => {

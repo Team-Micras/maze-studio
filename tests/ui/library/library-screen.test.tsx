@@ -1,7 +1,10 @@
-import { afterEach, describe, expect, test } from 'vitest';
+import { afterEach, describe, expect, test, vi } from 'vitest';
 import { page, userEvent } from 'vitest/browser';
+import { render } from 'vitest-browser-react';
 
 import { loadSnapshot, repoCatalog } from '@/library';
+import { App } from '@/ui/app';
+import { appStorage } from '@/ui/storage';
 import '@/ui/styles.css';
 import { axeViolations } from '@tests/support/axe-check';
 import { settled } from '@tests/support/ui/animations';
@@ -11,6 +14,7 @@ const COLUMNS_AT_1440 = 5;
 const INSETS = { top: 112, bottom: 72 };
 
 afterEach(async () => {
+  vi.restoreAllMocks();
   document.documentElement.classList.remove('dark');
   await page.viewport(1440, 900);
   scroller()?.scrollTo({ top: 0, behavior: 'instant' });
@@ -224,6 +228,26 @@ describe('Search and filters', () => {
     await expect.element(page.getByRole('heading', { name: 'No mazes match' })).toBeVisible();
     const none = page.getByRole('heading', { name: 'No mazes match' }).element().parentElement;
     expect(none?.querySelector('button')).toBeNull();
+  });
+
+  test('says when the library cannot be read, logs why, and offers to reload', async () => {
+    const storage = await appStorage();
+
+    if (storage === undefined) {
+      throw new Error('the test browser has no IndexedDB');
+    }
+
+    const failure = new Error('IndexedDB could not be read');
+    vi.spyOn(storage.mine, 'list').mockRejectedValue(failure);
+    const logged = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    window.history.replaceState(null, '', `${window.location.pathname}#/`);
+    await render(<App />);
+
+    const heading = page.getByRole('heading', { name: 'The library could not be read' });
+    await expect.element(heading).toBeVisible();
+    expect(heading.element().parentElement?.querySelector('button')?.textContent).toBe('Reload');
+    expect(artboards()).toHaveLength(0);
+    expect(logged).toHaveBeenCalledWith('The library could not be read', failure);
   });
 
   test('/ focuses the search from the canvas and never types itself', async () => {
