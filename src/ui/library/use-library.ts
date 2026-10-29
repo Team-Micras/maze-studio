@@ -170,16 +170,21 @@ export function useLibrary(folder?: FolderContents): LibraryLoad {
   useEffect(() => {
     let current = true;
     let unsubscribe: (() => void) | undefined;
-    let latest = 0;
+    let started = 0;
+    let shown = 0;
     const load = (): void => {
-      const started = ++latest;
+      const order = ++started;
       loadLibrary().then(
         (next) => {
-          if (current && started === latest) {
+          clearTimeout(slow);
+
+          if (current && order > shown) {
+            shown = order;
             setLoaded(next);
           }
         },
         (error: unknown) => {
+          clearTimeout(slow);
           console.error('The library could not be read', error);
 
           if (current) {

@@ -257,17 +257,36 @@ describe('Search and filters', () => {
       throw new Error('the test browser has no IndexedDB');
     }
 
-    vi.useFakeTimers({ toFake: ['setTimeout'] });
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
     vi.spyOn(storage.mine, 'list').mockReturnValue(new Promise(() => undefined));
     vi.spyOn(console, 'error').mockImplementation(() => undefined);
     window.history.replaceState(null, '', `${window.location.pathname}#/`);
-    await render(<App />);
-    await vi.advanceTimersByTimeAsync(10_000);
-    vi.useRealTimers();
+
+    try {
+      await render(<App />);
+      await vi.advanceTimersByTimeAsync(10_000);
+    } finally {
+      vi.useRealTimers();
+    }
 
     await expect
       .element(page.getByRole('heading', { name: 'The library could not be read' }))
       .toBeVisible();
+  });
+
+  test('logs no slow load once the library has loaded', async () => {
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+    const logged = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+
+    try {
+      await mountApp();
+      await expect.poll(() => artboards().length).toBeGreaterThan(0);
+      await vi.advanceTimersByTimeAsync(10_000);
+    } finally {
+      vi.useRealTimers();
+    }
+
+    expect(logged).not.toHaveBeenCalledWith('The library took too long to load');
   });
 
   test('/ focuses the search from the canvas and never types itself', async () => {
