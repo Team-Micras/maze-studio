@@ -113,6 +113,19 @@ export function isMineMaze(value: unknown): value is MineMaze {
   );
 }
 
+/** An item of My mazes that could not be read: its id, its name when it has one, and why. */
+export interface UnreadableMine {
+  readonly id: string;
+  readonly name: string;
+  readonly message: string;
+}
+
+/** What {@link MineLibrary.read} gives: the items, and those that could not be read. */
+export interface MineRead {
+  readonly items: MineMaze[];
+  readonly unreadable: readonly UnreadableMine[];
+}
+
 /** What a new item of My mazes is made of. */
 export interface MineDraft {
   readonly name: string;
@@ -219,8 +232,20 @@ export class MineLibrary {
 
   /** Every item, the most recently saved first; one that cannot be read is left out and reported. */
   async list(): Promise<MineMaze[]> {
-    const items = await this.#database.readable('mine', isMineMaze);
-    return items.toSorted((left, right) => right.updatedAt - left.updatedAt);
+    return (await this.read()).items;
+  }
+
+  /** Every item, the most recently saved first, and those that could not be read, with why. */
+  async read(): Promise<MineRead> {
+    const { values, skipped } = await this.#database.readable('mine', isMineMaze);
+    return {
+      items: values.toSorted((left, right) => right.updatedAt - left.updatedAt),
+      unreadable: skipped.map(({ key, value, reason }) => {
+        const id = typeof key === 'string' ? key : JSON.stringify(key);
+        const name = isRecord(value) && typeof value.name === 'string' ? value.name : id;
+        return { id, name, message: reason };
+      }),
+    };
   }
 
   /** The item with `id`, if there is one. */

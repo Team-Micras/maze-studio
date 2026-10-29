@@ -66,8 +66,12 @@ function summary(items: readonly MineMaze[]): string[] {
     .toSorted((left, right) => left.localeCompare(right));
 }
 
-function unreadable(): never {
-  throw new DOMException('Failed to read large IndexedDB value', 'UnknownError');
+/** A real request on `store` that fails with an `error` event, as one IndexedDB cannot read does. */
+function failedRequest(store: IDBObjectStore): IDBRequest<IDBValidKey[]> {
+  const doomed = store.transaction.db.transaction(store.name, 'readonly');
+  const request = doomed.objectStore(store.name).getAllKeys();
+  doomed.abort();
+  return request;
 }
 
 const MAZE = createMaze({ width: 4, height: 3, start: { x: 0, y: 0 }, goals: [{ x: 3, y: 2 }] });
@@ -129,8 +133,15 @@ describe('My mazes', () => {
     await database.put('mine', { id: 'no-code', name: 'Broken', profile: 'free', version: 1 });
     await database.put('mine', { ...kept, id: 'bad-recipe', recipe: { seed: 'x' } });
 
+    expect(await mine.read()).toEqual({
+      items: [kept],
+      unreadable: [
+        { id: 'bad-recipe', name: 'Kept', message: 'the stored record is malformed' },
+        { id: 'no-code', name: 'Broken', message: 'the stored record is malformed' },
+      ],
+    });
     expect(await mine.list()).toEqual([kept]);
-    expect(warn).toHaveBeenCalledTimes(2);
+    expect(warn).toHaveBeenCalledTimes(4);
   });
 
   test('lists around an item the browser cannot read, reading them one by one', async () => {
@@ -138,21 +149,25 @@ describe('My mazes', () => {
     const kept = await mine.create({ name: 'Kept', maze: MAZE, profile: 'free' });
     const lost = await mine.create({ name: 'Lost', maze: MAZE, profile: 'free' });
     const { get } = Object.getOwnPropertyDescriptors(IDBObjectStore.prototype);
-    vi.spyOn(IDBObjectStore.prototype, 'getAll').mockImplementation(unreadable);
+    vi.spyOn(IDBObjectStore.prototype, 'getAll').mockImplementation(function (
+      this: IDBObjectStore
+    ) {
+      return failedRequest(this);
+    });
     vi.spyOn(IDBObjectStore.prototype, 'get').mockImplementation(function (
       this: IDBObjectStore,
       key: IDBValidKey | IDBKeyRange
     ) {
-      return key === lost.id ? unreadable() : Reflect.apply(get.value ?? unreadable, this, [key]);
+      return key === lost.id || get.value === undefined
+        ? failedRequest(this)
+        : Reflect.apply(get.value, this, [key]);
     });
-    const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+    vi.spyOn(console, 'warn').mockImplementation(() => undefined);
 
-    expect(await mine.list()).toEqual([kept]);
-    expect(warn).toHaveBeenCalledWith(
-      'Skipped a record of mine that could not be read',
-      lost.id,
-      expect.any(DOMException)
-    );
+    expect(await mine.read()).toEqual({
+      items: [kept],
+      unreadable: [{ id: lost.id, name: lost.id, message: expect.stringContaining('aborted') }],
+    });
   });
 
   test('keeps the recipe of a generated maze until a save drops it, and takes one back', async () => {

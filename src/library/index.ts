@@ -42,6 +42,8 @@ export {
   Database,
   DATABASE_NAME,
   openDatabase,
+  type ReadableRecords,
+  type SkippedRecord,
   type StoreName,
   type StoreWriter,
 } from './database';
@@ -79,11 +81,13 @@ export {
   type MineMaze,
   type MineOptions,
   type MineOrigin,
+  type MineRead,
   type MineRecipe,
   type NoticeChannel,
   type Persistence,
   type PersistentStorage,
   type SaveConflict,
+  type UnreadableMine,
 } from './mine';
 export {
   RepoCache,

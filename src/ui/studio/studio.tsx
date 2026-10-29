@@ -171,6 +171,7 @@ export function Studio({
   const shown = library === undefined ? [] : filterCatalog(library.entries, filter, library.index);
   const { mode } = state;
   const newName = newMazeName('', mineNames);
+  const failedShown = libraryFailed && mode === 'library';
   const mineIsEmpty = filter.source === 'mine' && library?.mineCount === 0;
   const emptyTitle =
     library !== undefined && mode === 'library' && shown.length === 0
@@ -467,7 +468,7 @@ export function Studio({
             </Suspense>
           )}
         </CameraStage>
-        {libraryFailed && mode === 'library' ? <LibraryError title={FAILED_TITLE} /> : null}
+        {failedShown ? <LibraryError title={FAILED_TITLE} /> : null}
         {emptyTitle === undefined ? null : (
           <EmptyLibrary
             mineIsEmpty={mineIsEmpty}
@@ -478,7 +479,7 @@ export function Studio({
           />
         )}
         <p aria-live="polite" className="sr-only">
-          {libraryFailed ? FAILED_TITLE : (emptyTitle ?? '')}
+          {failedShown ? FAILED_TITLE : (emptyTitle ?? '')}
         </p>
       </main>
       <LibraryChrome

@@ -82,18 +82,23 @@ describe('the repository cache', () => {
     expect((await cache.current()).source).toBe('github');
   });
 
-  test('leaves out a stored file that is malformed, and reports it', async () => {
+  test('leaves out a stored file that is malformed, and fetches it again at the next check', async () => {
     const db = await freshDatabase();
-    const github = await fakeGitHub({ 'classic/a.txt': MAZE_A });
+    const github = await fakeGitHub({ 'classic/a.txt': MAZE_A, 'classic/b.txt': MAZE_B });
     const built = await snapshot();
     const cache = new RepoCache(db, { snapshot: async () => built, fetch: github.fetch });
     await cache.check();
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
-    await db.put('repo-files', { path: 'classic/broken.txt', sha: 42 });
+    await db.put('repo-files', { path: 'classic/b.txt', sha: 42 });
 
-    const copy = await cache.current();
-    expect(copy.files.map((file) => file.path)).toEqual(['classic/a.txt']);
+    expect((await cache.current()).files.map((file) => file.path)).toEqual(['classic/a.txt']);
     expect(warn).toHaveBeenCalledOnce();
+
+    expect(await cache.check(true)).toMatchObject({ status: 'updated', added: ['classic/b.txt'] });
+    expect((await cache.current()).files.map((file) => file.path)).toEqual([
+      'classic/a.txt',
+      'classic/b.txt',
+    ]);
   });
 
   test('keeps the etag it has when an unchanged answer carries none', async () => {

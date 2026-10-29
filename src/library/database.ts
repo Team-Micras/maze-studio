@@ -20,6 +20,19 @@ export interface StoreWriter {
   clear(store: StoreName): void;
 }
 
+/** A record {@link Database.readable} left out: its key, what it holds if it read, and why. */
+export interface SkippedRecord {
+  readonly key: IDBValidKey;
+  readonly value?: unknown;
+  readonly reason: string;
+}
+
+/** What {@link Database.readable} read: the values it accepted and the records it left out. */
+export interface ReadableRecords<T> {
+  readonly values: T[];
+  readonly skipped: readonly SkippedRecord[];
+}
+
 /** The database's name in the browser. */
 export const DATABASE_NAME = 'maze-studio';
 
@@ -32,6 +45,10 @@ function result<T>(request: IDBRequest<T>): Promise<T> {
       reject(request.error ?? new Error('IndexedDB request failed'))
     );
   });
+}
+
+function reasonOf(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
 }
 
 function finished(transaction: IDBTransaction): Promise<void> {
@@ -67,38 +84,48 @@ export class Database {
   }
 
   /**
-   * Every value of a store that `valid` accepts, in key order. When the browser cannot read the
-   * store at once, the values are read one by one, so one it cannot read is left out instead of
-   * failing them all. Each value left out is reported with `console.warn`.
+   * Every value of a store that `valid` accepts, in key order, and the records left out. When the
+   * browser cannot read the store at once, the values are read one by one, so one it cannot read is
+   * left out instead of failing them all. Each record left out is reported with `console.warn`.
    */
-  async readable<T>(store: StoreName, valid: (value: unknown) => value is T): Promise<T[]> {
-    const values = await this.getAll<unknown>(store).catch(async (error: unknown) => {
-      console.warn(`Could not read the ${store} store at once, reading it one by one`, error);
-      const transaction = this.#database.transaction(store, 'readonly');
-      const keys = await result(transaction.objectStore(store).getAllKeys());
-      const reads = await Promise.allSettled(keys.map((key) => this.get<unknown>(store, key)));
-      return reads.flatMap((read, index) => {
-        if (read.status === 'fulfilled') {
-          return [read.value];
-        }
+  async readable<T>(
+    store: StoreName,
+    valid: (value: unknown) => value is T
+  ): Promise<ReadableRecords<T>> {
+    const objects = this.#database.transaction(store, 'readonly').objectStore(store);
+    const [keys, all] = await Promise.allSettled([
+      result(objects.getAllKeys()),
+      result<unknown[]>(objects.getAll()),
+    ]);
 
-        console.warn(
-          `Skipped a record of ${store} that could not be read`,
-          keys[index],
-          read.reason
-        );
-        return [];
-      });
-    });
+    if (keys.status === 'rejected') {
+      throw keys.reason;
+    }
 
-    return values.filter((value): value is T => {
-      if (valid(value)) {
-        return true;
+    if (all.status === 'rejected') {
+      console.warn(`Could not read the ${store} store at once, reading it one by one`, all.reason);
+    }
+
+    const reads =
+      all.status === 'fulfilled'
+        ? all.value.map((value): PromiseSettledResult<unknown> => ({ status: 'fulfilled', value }))
+        : await Promise.allSettled(keys.value.map((key) => this.get<unknown>(store, key)));
+    const values: T[] = [];
+    const skipped: SkippedRecord[] = [];
+    reads.forEach((read, index) => {
+      const key = keys.value[index] ?? index;
+
+      if (read.status === 'rejected') {
+        skipped.push({ key, reason: reasonOf(read.reason) });
+      } else if (valid(read.value)) {
+        values.push(read.value);
+      } else {
+        skipped.push({ key, value: read.value, reason: 'the stored record is malformed' });
       }
-
-      console.warn(`Skipped a malformed record of ${store}`, value);
-      return false;
     });
+    skipped.forEach((record) => console.warn(`Skipped a record of ${store}`, record));
+
+    return { values, skipped };
   }
 
   /** Writes `value`, at `key` for the `settings` store, at its own key for the others. */

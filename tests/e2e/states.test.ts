@@ -108,12 +108,13 @@ describe('Empty and error states (DESIGN.md 12)', () => {
       .toBeLessThanOrEqual(1);
   });
 
-  test('Export all downloads the readable mazes and details the skipped one with its reason', async () => {
+  test('Export all downloads the readable mazes and details the skipped ones with their reason', async () => {
     const page = await openPage(browser, contexts, app);
     const { maze } = await repoContent(CLASSIC);
     await storeMine(page, [
       { id: 'good', name: 'Good maze', code: encodeMazeCode(maze) },
       { id: 'bad', name: 'Broken maze', code: 'not a maze code' },
+      { id: 'odd', name: 'Odd maze', code: encodeMazeCode(maze), recipe: { seed: 'x' } },
     ]);
     const [download] = await Promise.all([
       page.waitForEvent('download'),
@@ -129,12 +130,14 @@ describe('Empty and error states (DESIGN.md 12)', () => {
       'maze-studio-backup.json',
     ]);
 
-    await expectToast(page, 'Exported 1, skipped 1');
+    await expectToast(page, 'Exported 1, skipped 2');
     await page.getByRole('button', { name: 'Details' }).click();
     const dialog = page.getByRole('dialog', { name: 'Skipped in the export' });
     await dialog.waitFor();
-    expect(await dialog.getByRole('listitem').count()).toBe(1);
-    expect(await dialog.getByRole('listitem').textContent()).toContain('Broken maze');
+    const rows = await dialog.getByRole('listitem').allTextContents();
+    expect(rows).toHaveLength(2);
+    expect(rows.join('\n')).toContain('Broken maze');
+    expect(rows.join('\n')).toContain('Odd mazethe stored record is malformed');
   });
 
   test('Import adds, renames on a clash and skips with the reason, then shows My mazes', async () => {
