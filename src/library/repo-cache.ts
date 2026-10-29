@@ -16,7 +16,7 @@ import {
   type UpdateFailure,
   type UpdateResult,
 } from './github-updater';
-import type { RepoFile, Snapshot } from './snapshot';
+import { isRepoFile, type Snapshot } from './snapshot';
 
 const META = 'repo-meta';
 
@@ -73,12 +73,15 @@ export class RepoCache {
     return (await this.#database.get<RepoMeta>('settings', META)) ?? {};
   }
 
-  /** The files the library shows: those of the last update, or the built-in snapshot's. */
+  /**
+   * The files the library shows: those of the last update, or the built-in snapshot's. A stored
+   * file that cannot be read is left out and reported.
+   */
   async current(): Promise<RepoCopy> {
     const [snapshot, meta] = await Promise.all([this.#snapshot(), this.meta()]);
 
     if (meta.commit !== undefined && meta.snapshotCommit === snapshot.commit) {
-      const files = await this.#database.getAll<RepoFile>('repo-files');
+      const files = await this.#database.readable('repo-files', isRepoFile);
       return {
         source: 'github',
         commit: meta.commit,

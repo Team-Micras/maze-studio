@@ -10,7 +10,9 @@ import { parseMazeText, serializeMazeText, type Profile } from '@/maze';
 
 import { uniqueStems } from './file-names';
 import {
+  isMineOrigin,
   isMineRecipe,
+  isProfile,
   mineContent,
   type MineDraft,
   type MineMaze,
@@ -21,8 +23,6 @@ import { MAX_ARCHIVE_BYTES, MAX_ENTRY_BYTES, readZip, writeZip, type ZipEntry } 
 
 /** The name of the index inside a backup zip. */
 export const BACKUP_INDEX = 'maze-studio-backup.json';
-
-const PROFILES: readonly Profile[] = ['classic', 'halfsize', 'training', 'free'];
 
 /** What the index says about one file of a backup. */
 interface IndexEntry {
@@ -62,11 +62,8 @@ function isIndexEntry(value: unknown): value is IndexEntry {
     typeof value.file === 'string' &&
     typeof value.name === 'string' &&
     typeof value.createdAt === 'number' &&
-    PROFILES.some((profile) => profile === value.profile) &&
-    (value.origin === undefined ||
-      (isRecord(value.origin) &&
-        typeof value.origin.path === 'string' &&
-        typeof value.origin.sha === 'string')) &&
+    isProfile(value.profile) &&
+    (value.origin === undefined || isMineOrigin(value.origin)) &&
     (value.recipe === undefined || isMineRecipe(value.recipe))
   );
 }

@@ -48,6 +48,22 @@ export interface MineRecipe {
   readonly hash?: string;
 }
 
+const PROFILES: readonly Profile[] = ['classic', 'halfsize', 'training', 'free'];
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null;
+}
+
+/** Whether `value` is one of the profiles. */
+export function isProfile(value: unknown): value is Profile {
+  return PROFILES.some((profile) => profile === value);
+}
+
+/** Whether `value` has the shape of a {@link MineOrigin}. */
+export function isMineOrigin(value: unknown): value is MineOrigin {
+  return isRecord(value) && typeof value.path === 'string' && typeof value.sha === 'string';
+}
+
 /** Whether `value` has the shape of a {@link MineRecipe}, as a backup's index must give it. */
 export function isMineRecipe(value: unknown): value is MineRecipe {
   return (
@@ -79,6 +95,22 @@ export interface MineMaze {
   readonly origin?: MineOrigin;
   /** How the generator made its walls, while they are the ones it made. */
   readonly recipe?: MineRecipe;
+}
+
+/** Whether `value` has the shape of a stored {@link MineMaze}. */
+export function isMineMaze(value: unknown): value is MineMaze {
+  return (
+    isRecord(value) &&
+    typeof value.id === 'string' &&
+    typeof value.name === 'string' &&
+    typeof value.code === 'string' &&
+    isProfile(value.profile) &&
+    Number.isFinite(value.createdAt) &&
+    Number.isFinite(value.updatedAt) &&
+    Number.isInteger(value.version) &&
+    (value.origin === undefined || isMineOrigin(value.origin)) &&
+    (value.recipe === undefined || isMineRecipe(value.recipe))
+  );
 }
 
 /** What a new item of My mazes is made of. */
@@ -185,9 +217,9 @@ export class MineLibrary {
     return this.#persistence;
   }
 
-  /** Every item, the most recently saved first. */
+  /** Every item, the most recently saved first; one that cannot be read is left out and reported. */
   async list(): Promise<MineMaze[]> {
-    const items = await this.#database.getAll<MineMaze>('mine');
+    const items = await this.#database.readable('mine', isMineMaze);
     return items.toSorted((left, right) => right.updatedAt - left.updatedAt);
   }
 

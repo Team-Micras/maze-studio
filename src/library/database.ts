@@ -55,7 +55,7 @@ export class Database {
   }
 
   /** The value at `key`, if there is one. */
-  async get<T>(store: StoreName, key: string): Promise<T | undefined> {
+  async get<T>(store: StoreName, key: IDBValidKey): Promise<T | undefined> {
     const transaction = this.#database.transaction(store, 'readonly');
     return result<T | undefined>(transaction.objectStore(store).get(key));
   }
@@ -64,6 +64,41 @@ export class Database {
   async getAll<T>(store: StoreName): Promise<T[]> {
     const transaction = this.#database.transaction(store, 'readonly');
     return result<T[]>(transaction.objectStore(store).getAll());
+  }
+
+  /**
+   * Every value of a store that `valid` accepts, in key order. When the browser cannot read the
+   * store at once, the values are read one by one, so one it cannot read is left out instead of
+   * failing them all. Each value left out is reported with `console.warn`.
+   */
+  async readable<T>(store: StoreName, valid: (value: unknown) => value is T): Promise<T[]> {
+    const values = await this.getAll<unknown>(store).catch(async (error: unknown) => {
+      console.warn(`Could not read the ${store} store at once, reading it one by one`, error);
+      const transaction = this.#database.transaction(store, 'readonly');
+      const keys = await result(transaction.objectStore(store).getAllKeys());
+      const reads = await Promise.allSettled(keys.map((key) => this.get<unknown>(store, key)));
+      return reads.flatMap((read, index) => {
+        if (read.status === 'fulfilled') {
+          return [read.value];
+        }
+
+        console.warn(
+          `Skipped a record of ${store} that could not be read`,
+          keys[index],
+          read.reason
+        );
+        return [];
+      });
+    });
+
+    return values.filter((value): value is T => {
+      if (valid(value)) {
+        return true;
+      }
+
+      console.warn(`Skipped a malformed record of ${store}`, value);
+      return false;
+    });
   }
 
   /** Writes `value`, at `key` for the `settings` store, at its own key for the others. */

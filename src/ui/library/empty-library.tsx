@@ -1,4 +1,5 @@
-import { Island } from '@/ui/islands/island';
+import { ArrowClockwise } from '@/ui/icons';
+import { Island, IslandButton } from '@/ui/islands/island';
 import type { NewMazeRequest } from '@/ui/new-maze';
 
 import { NewMazeMenu } from './new-maze-button';
@@ -17,6 +18,9 @@ export interface EmptyLibraryProps {
   readonly newName: string;
 }
 
+const PANEL =
+  'fixed top-1/2 left-1/2 w-[min(340px,calc(100vw-32px))] -translate-x-1/2 -translate-y-1/2 flex-col items-start gap-3 rounded-[18px] p-5 text-[13px]';
+
 /** What the library says when it shows no maze (DESIGN.md 12); an empty My mazes offers a new maze. */
 export function EmptyLibrary({
   mineIsEmpty,
@@ -26,7 +30,7 @@ export function EmptyLibrary({
   newName,
 }: EmptyLibraryProps) {
   return (
-    <Island className="fixed top-1/2 left-1/2 w-[min(340px,calc(100vw-32px))] -translate-x-1/2 -translate-y-1/2 flex-col items-start gap-3 rounded-[18px] p-5 text-[13px]">
+    <Island className={PANEL}>
       <h2 className="text-[15px] leading-5 font-semibold">{title}</h2>
       <p className="text-pretty text-muted-foreground">
         {mineIsEmpty
@@ -36,6 +40,22 @@ export function EmptyLibrary({
       {mineIsEmpty ? (
         <NewMazeMenu align="start" newName={newName} onGenerate={onGenerate} onNew={onNew} />
       ) : null}
+    </Island>
+  );
+}
+
+/** What the library says, with a Reload button, when the browser's storage could not be read. */
+export function LibraryError({ title }: { readonly title: string }) {
+  return (
+    <Island className={PANEL}>
+      <h2 className="text-[15px] leading-5 font-semibold">{title}</h2>
+      <p className="text-pretty text-muted-foreground">
+        Something this browser keeps for the app failed to load. Reload to try again.
+      </p>
+      <IslandButton onClick={() => window.location.reload()} variant="default">
+        <ArrowClockwise aria-hidden size={16} />
+        Reload
+      </IslandButton>
     </Island>
   );
 }

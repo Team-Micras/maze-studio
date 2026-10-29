@@ -28,7 +28,8 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null;
 }
 
-function isRepoFile(value: unknown): value is RepoFile {
+/** Whether `value` has the shape of a {@link RepoFile}. */
+export function isRepoFile(value: unknown): value is RepoFile {
   return (
     isRecord(value) &&
     typeof value.path === 'string' &&

@@ -42,7 +42,7 @@ import { useCoarsePointer, usePhoneLayout } from '@/ui/hooks/use-media-query';
 import { GenerateDialogLoader } from '@/ui/generator/generate-dialog-loader';
 import type { GeneratorPreview } from '@/ui/generator/generate-dialog';
 import { appStorage } from '@/ui/storage';
-import { EmptyLibrary } from '@/ui/library/empty-library';
+import { EmptyLibrary, LibraryError } from '@/ui/library/empty-library';
 import type { MineAndFilesActions } from '@/ui/library/mine-and-files';
 import { LibraryGrid } from '@/ui/library/library-grid';
 import { libraryScroller } from '@/ui/library/library-scroller';
@@ -67,8 +67,10 @@ import { boardOf, createStudioStore, type StudioScreen } from './studio-store';
 
 /** The props of {@link Studio}. */
 export interface StudioProps {
-  /** The library, or `undefined` while it loads. */
+  /** The library, or `undefined` while it loads or when it could not be read. */
   readonly library: Library | undefined;
+  /** Whether the library could not be read, which it then says in place of the mazes. */
+  readonly libraryFailed?: boolean;
   /** The maze the route or an opened file puts on screen, if any, as edited. */
   readonly opened: OpenMaze | undefined;
   /** The editing of the maze on screen. */
@@ -112,6 +114,9 @@ function editorInsetsFor(phone: boolean, viewing: boolean): Insets {
 /** The width the docked Generate panel takes from the board on a notebook, with its margin. */
 const GENERATE_PANEL = 452;
 
+/** What the library says when it could not be read. */
+const FAILED_TITLE = 'The library could not be read';
+
 /** What the editor says once a generated maze has taken the place of the one on the board. */
 const REPLACED = 'Maze replaced. Undo brings the old one back';
 
@@ -141,6 +146,7 @@ function stillLimits(viewport: ViewportSize): CameraLimits {
  */
 export function Studio({
   library,
+  libraryFailed = false,
   opened,
   editor,
   filter,
@@ -461,6 +467,7 @@ export function Studio({
             </Suspense>
           )}
         </CameraStage>
+        {libraryFailed && mode === 'library' ? <LibraryError title={FAILED_TITLE} /> : null}
         {emptyTitle === undefined ? null : (
           <EmptyLibrary
             mineIsEmpty={mineIsEmpty}
@@ -471,7 +478,7 @@ export function Studio({
           />
         )}
         <p aria-live="polite" className="sr-only">
-          {emptyTitle ?? ''}
+          {libraryFailed ? FAILED_TITLE : (emptyTitle ?? '')}
         </p>
       </main>
       <LibraryChrome

@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, test } from 'vitest';
+import { afterEach, describe, expect, test, vi } from 'vitest';
 
 import {
   openDatabase,
@@ -22,6 +22,7 @@ import {
 const opened: { database: Database; name: string }[] = [];
 
 afterEach(async () => {
+  vi.restoreAllMocks();
   await Promise.all(
     opened.splice(0).map(({ database, name }) => {
       database.close();
@@ -79,6 +80,20 @@ describe('the repository cache', () => {
     expect(await cache.check(true)).toEqual({ status: 'unchanged', etag: '"new-etag"' });
     expect(await cache.meta()).toMatchObject({ commit: NEW_COMMIT, checkedAt: now });
     expect((await cache.current()).source).toBe('github');
+  });
+
+  test('leaves out a stored file that is malformed, and reports it', async () => {
+    const db = await freshDatabase();
+    const github = await fakeGitHub({ 'classic/a.txt': MAZE_A });
+    const built = await snapshot();
+    const cache = new RepoCache(db, { snapshot: async () => built, fetch: github.fetch });
+    await cache.check();
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+    await db.put('repo-files', { path: 'classic/broken.txt', sha: 42 });
+
+    const copy = await cache.current();
+    expect(copy.files.map((file) => file.path)).toEqual(['classic/a.txt']);
+    expect(warn).toHaveBeenCalledOnce();
   });
 
   test('keeps the etag it has when an unchanged answer carries none', async () => {
