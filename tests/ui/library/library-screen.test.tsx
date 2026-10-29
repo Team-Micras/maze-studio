@@ -155,6 +155,28 @@ describe('The library grid', () => {
   });
 });
 
+describe('The credit', () => {
+  test.each([
+    ['phone', 390, 844],
+    ['notebook', 1440, 900],
+  ])('links maze-studio on GitHub on one untruncated line on a %s', async (_, width, height) => {
+    await page.viewport(width, height);
+    await mountApp();
+    const link = page.getByRole('link', { name: 'maze-studio on GitHub' });
+    const credit = link.element().closest('p');
+    const text = credit?.querySelector('span');
+    const box = link.element().getBoundingClientRect();
+
+    await expect
+      .element(link)
+      .toHaveAttribute('href', 'https://github.com/Team-Micras/maze-studio');
+    expect(credit?.getBoundingClientRect().height).toBe(32);
+    expect(text?.scrollWidth).toBeLessThanOrEqual(text?.clientWidth ?? 0);
+    expect(box.left).toBeGreaterThanOrEqual(0);
+    expect(box.right).toBeLessThanOrEqual(window.innerWidth);
+  });
+});
+
 describe('Search and filters', () => {
   test('21 shows every 21×21 maze', async () => {
     const expected = repoCatalog((await loadSnapshot()).files).filter(

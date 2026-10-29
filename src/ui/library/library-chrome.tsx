@@ -1,4 +1,4 @@
-import { FolderOpen, FolderSimple, Moon, Plus, Sun } from '@/ui/icons';
+import { FolderOpen, FolderSimple, GithubLogo, Moon, Plus, Sun } from '@/ui/icons';
 import { useRef, type ReactNode } from 'react';
 
 import { MAZEFILES, type LibraryFilter } from '@/library';
@@ -48,9 +48,12 @@ export interface LibraryChromeProps {
   readonly visible: boolean;
 }
 
+/** maze-studio's own repository, which the credit links. */
+const REPOSITORY = 'https://github.com/Team-Micras/maze-studio';
+
 /**
  * The credit island (DESIGN.md 9.1 and 12): the mazes of the snapshot or the cache in use, at their
- * commit, and beside it what the last check for updates found. It gives way to the selection bar,
+ * commit, ending in a link to maze-studio's repository, and beside it what the last check for updates found. It gives way to the selection bar,
  * which sits where it does.
  */
 function Credit({
@@ -68,21 +71,32 @@ function Credit({
     <div
       className={`fixed z-10 flex items-center gap-2 [:root:has([data-selection-bar])_&]:hidden ${phone ? 'bottom-safe-3 left-1/2 -translate-x-1/2 flex-col-reverse' : 'bottom-safe-[18px] left-safe-4'}`}
     >
-      <p className={pill}>
-        {library.repoCount} mazes from{' '}
+      <p className={`${pill} flex items-center gap-2`}>
+        <span className="truncate">
+          {library.repoCount} mazes from{' '}
+          <a
+            className="underline underline-offset-[3px] hover:text-foreground"
+            href={MAZEFILES.url}
+            rel="noreferrer"
+            target="_blank"
+            translate="no"
+          >
+            {MAZEFILES.owner}/{MAZEFILES.name}
+          </a>{' '}
+          at{' '}
+          <span className="font-mono tabular-nums" translate="no">
+            {library.commit.slice(0, 7)}
+          </span>
+        </span>
         <a
-          className="underline underline-offset-[3px] hover:text-foreground"
-          href={MAZEFILES.url}
+          aria-label="maze-studio on GitHub"
+          className="flex-none hover:text-foreground"
+          href={REPOSITORY}
           rel="noreferrer"
           target="_blank"
-          translate="no"
         >
-          {MAZEFILES.owner}/{MAZEFILES.name}
-        </a>{' '}
-        at{' '}
-        <span className="font-mono tabular-nums" translate="no">
-          {library.commit.slice(0, 7)}
-        </span>
+          <GithubLogo aria-hidden size={14} />
+        </a>
       </p>
       <output className={`${pill} empty:hidden`} data-update-note="">
         {note === undefined ? null : <Verbatim text={note} verbatim={library.commit.slice(0, 7)} />}
