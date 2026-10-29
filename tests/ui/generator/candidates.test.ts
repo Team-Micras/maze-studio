@@ -100,7 +100,7 @@ describe('Generate from the editor', () => {
 
 describe('phaseText', () => {
   test('names what a maze building is at, the attempt from the second board on', () => {
-    expect(phaseText(WAITING)).toBe('Building…');
+    expect(phaseText(WAITING)).toBe('Building');
     expect(phaseText({ ...WAITING, phase: 'routes', attempt: 1 })).toBe('Trying routes');
     expect(phaseText({ ...WAITING, phase: 'routes', attempt: 12 })).toBe(
       'Trying routes · attempt 12'

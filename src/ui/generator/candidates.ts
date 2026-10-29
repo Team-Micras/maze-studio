@@ -215,7 +215,7 @@ export function swipeStep(dx: number, dy: number): -1 | 0 | 1 {
   return dx < 0 ? 1 : -1;
 }
 
-/** What a maze still building is at, in the title line of the maze opened. */
+/** What a maze still building is at, in the title line of the maze opened, before its dots. */
 export function phaseText({ phase, attempt }: LoadingTrack): string {
   switch (phase) {
     case 'routes':
@@ -231,6 +231,6 @@ export function phaseText({ phase, attempt }: LoadingTrack): string {
     case 'another':
       return 'Trying another way';
     case null:
-      return 'Building…';
+      return 'Building';
   }
 }
