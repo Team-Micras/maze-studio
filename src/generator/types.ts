@@ -246,6 +246,8 @@ export interface Analysis extends BaseAnalysis {
  * Records a step of the generator for an animation; never set in normal use. The stage names the
  * step (`candidate` for a route drawn and not yet judged, `routes`, `filler`, `loop`, `tune`,
  * `board` and so on), the walls are the board at that step, shared and changed by later steps.
+ * The walls and the info are the generator's own: a trace only reads them, or the same seed would
+ * build other walls once traced.
  */
 export type Trace = (
   stage: string,

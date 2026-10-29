@@ -11,7 +11,7 @@ import type { Maze } from '@/maze';
 import { analyse } from './analysis';
 import { pickDiverse, type CandidateAnalysis, type Pickable } from './diversity';
 import { LEVELS, isContest, type Recipe } from './generator';
-import { toMaze, type Grid } from './grid';
+import { neighbour, toMaze, type Grid } from './grid';
 import { routeChoice, shortestCost } from './racing';
 import { closedBoard } from './rules';
 import { searchRun } from './search';
@@ -107,6 +107,7 @@ export function isSettings(s: unknown): s is Settings {
     [s.trap, s.zigzag, s.dashed, s.fishbone].every((v) => v === undefined || isShare(v)) &&
     ['symmetric', 'westStart', 'twoDoors'].every((k) => isFraction(s[k])) &&
     (s.ties === undefined || isInt(s.ties, 0, 20)) &&
+    [s.competition, s.oneEntry, s.loopsRequired].every((v) => typeof v === 'boolean') &&
     [s.follower, s.contest].every((v) => v === undefined || typeof v === 'boolean') &&
     (s.scoring === undefined || s.scoring === 'best' || s.scoring === 'search') &&
     (s.goal === undefined || s.goal === 2 || s.goal === 3) &&
@@ -117,6 +118,30 @@ export function isSettings(s: unknown): s is Settings {
           ([k, v]) => ['orthogonal', 'diagonal', 'both'].includes(k) && isFraction(v)
         ))) &&
     isFraction(s.classFlip)
+  );
+}
+
+/** Whether every wall of `walls` stands on both of its sides. */
+function isConsistent(walls: readonly number[], size: number): boolean {
+  const grid = { width: size, height: size };
+  return walls.every((w, i) =>
+    [0, 1, 2, 3].every((d) => {
+      const n = neighbour(grid, i, d);
+      return n < 0 || ((w >> d) & 1) === ((walls[n] >> ((d + 2) % 4)) & 1);
+    })
+  );
+}
+
+/** Whether `cells` make a square block of 2 × 2 or 3 × 3 cells. */
+function isBlock(cells: readonly number[], size: number): boolean {
+  const side = cells.length === 4 ? 2 : cells.length === 9 ? 3 : 0;
+  const x = Math.min(...cells.map((c) => c % size));
+  const y = Math.min(...cells.map((c) => Math.floor(c / size)));
+  return (
+    side > 0 &&
+    x + side <= size &&
+    new Set(cells).size === cells.length &&
+    cells.every((c) => (c % size) - x < side && Math.floor(c / size) - y < side)
   );
 }
 
@@ -134,13 +159,13 @@ function isSavedRecipe(r: unknown): r is SavedRecipe {
       (typeof walls === 'string' && walls.length === cells && /^[0-9a-f]+$/.test(walls))) &&
     (goals === undefined ||
       (Array.isArray(goals) &&
-        goals.length >= 1 &&
-        goals.length <= 9 &&
-        goals.every((c) => isInt(c, 0, cells - 1)))) &&
+        goals.every((c) => isInt(c, 0, cells - 1)) &&
+        isBlock(goals, r.settings.size))) &&
     (base === undefined ||
       (Array.isArray(base) &&
         base.length === cells &&
         base.every((v) => isInt(v, 0, 15)) &&
+        isConsistent(base, r.settings.size) &&
         typeof r.strength === 'number' &&
         r.strength >= 0 &&
         r.strength <= 1))

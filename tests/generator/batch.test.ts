@@ -55,6 +55,22 @@ describe('a batch', () => {
     );
     expect(() => readRecipe(JSON.stringify({ recipe: 'x', ...good }))).toThrow('bad recipe');
     expect(() =>
+      readRecipe(JSON.stringify({ ...good, settings: { ...settings, competition: 'no' } }))
+    ).toThrow('bad recipe');
+    expect(() => readRecipe(JSON.stringify({ ...good, goals: [0] }))).toThrow('bad recipe');
+    expect(() => readRecipe(JSON.stringify({ ...good, goals: [0, 1, 16, 18] }))).toThrow(
+      'bad recipe'
+    );
+    expect(readRecipe(JSON.stringify({ ...good, goals: [119, 120, 135, 136] })).goals).toHaveLength(
+      4
+    );
+    const base = [...closedBoard(16).walls];
+    expect(readRecipe(JSON.stringify({ ...good, base, strength: 0.3 })).base).toHaveLength(256);
+    base[0] &= ~2;
+    expect(() => readRecipe(JSON.stringify({ ...good, base, strength: 0.3 }))).toThrow(
+      'bad recipe'
+    );
+    expect(() =>
       readRecipe(JSON.stringify({ ...good, settings: { ...settings, straights: 'toString' } }))
     ).toThrow('bad recipe');
     expect(
