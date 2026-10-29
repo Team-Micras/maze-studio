@@ -284,7 +284,9 @@ export function looksLikeMaze(walls: ArrayLike<number>, size: number): boolean {
 /**
  * The track after a snapshot arrived at `now`: its routes tried join the trail, and its walls
  * replace the ones shown if they read as a maze; a restart that brings the grid back keeps the
- * last good walls. Its stage moves the phase only once the one named has shown {@link PHASE_HOLD}.
+ * last good walls. Its stage moves the phase only once the one named has shown
+ * {@link PHASE_HOLD}, and never off `another`: the fallback is the generator's last way, though its
+ * attempts go through every stage.
  */
 export function followTrack(
   track: LoadingTrack,
@@ -298,7 +300,7 @@ export function followTrack(
   now: number
 ): LoadingTrack {
   const named = (snapshot.stage === undefined ? undefined : PHASES[snapshot.stage]) ?? track.phase;
-  const next = track.phase === 'another' && named === 'routes' ? 'another' : named;
+  const next = track.phase === 'another' ? 'another' : named;
   const moves =
     next !== track.phase && (track.phase === null || now - track.phaseSince >= PHASE_HOLD);
 

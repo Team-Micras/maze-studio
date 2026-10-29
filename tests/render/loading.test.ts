@@ -156,10 +156,14 @@ describe('followTrack', () => {
     expect([later.phase, later.phaseSince]).toEqual(['forest', PHASE_HOLD]);
   });
 
-  test('keeps trying another way through the boards of the fallback', () => {
-    const another = at(at(WAITING, 'board', 1, 0), 'fallback', 1, PHASE_HOLD);
+  test('keeps trying another way through every attempt of the fallback', () => {
+    const stages = ['fallback', 'board', 'tuned', 'attempt-end', 'board', 'tree'];
+    const end = stages.reduce(
+      (track, stage, k) => at(track, stage, k, (k + 1) * PHASE_HOLD),
+      at(WAITING, 'board', 1, 0)
+    );
 
-    expect(at(another, 'board', 2, 2 * PHASE_HOLD).phase).toBe('another');
+    expect(end.phase).toBe('another');
   });
 
   test('keeps the newest routes only, and lets them fade out', () => {
