@@ -1,6 +1,7 @@
 import { CheckCircle, Info, Warning, WarningCircle, X, type Icon } from '@/ui/icons';
 import { useState, type ReactNode } from 'react';
 
+import { isProfile } from '@/library';
 import type { Finding, Profile, Severity } from '@/maze';
 import { CANVAS_ID } from '@/ui/canvas-id';
 import { IslandButton } from '@/ui/islands/island';
@@ -54,10 +55,6 @@ const SEVERITY_NAMES: Readonly<Record<Severity, string>> = {
   warning: 'Warning',
   hint: 'Hint',
 };
-
-function isProfile(value: string): value is Profile {
-  return PROFILE_NAMES.some(([profile]) => profile === value);
-}
 
 interface PanelProps extends Omit<ChecksProps, 'phone'> {
   readonly onClose: () => void;
