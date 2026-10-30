@@ -7,7 +7,7 @@
 
 import type { SkippedExport, SkippedImport } from '@/library';
 
-import type { Report } from './report-dialog';
+import type { Report, ReportRow } from './report-dialog';
 
 /** A maze an import added to My mazes: the name it got, and the one it came with when that was taken. */
 export interface ImportedMaze {
@@ -30,15 +30,23 @@ export function exportNote(count: number, skipped: number): string {
   return skipped === 0 ? `Exported ${count}` : `Exported ${count}, skipped ${skipped}`;
 }
 
-/** The details of an export that left mazes out: each one and why. */
-export function exportReport(skipped: readonly SkippedExport[]): Report {
+function row(item: SkippedExport): ReportRow {
+  return { id: item.id, name: item.name, detail: item.message };
+}
+
+/**
+ * The details of an export that left mazes out, or exported some without a field it could not read:
+ * each one and why.
+ */
+export function exportReport(
+  skipped: readonly SkippedExport[],
+  partial: readonly SkippedExport[]
+): Report {
   return {
-    title: 'Skipped in the export',
+    title: 'Left out of the export',
     sections: [
-      {
-        title: 'Skipped',
-        rows: skipped.map((item) => ({ id: item.id, name: item.name, detail: item.message })),
-      },
+      { title: 'Skipped', rows: skipped.map(row) },
+      { title: 'Exported without a field', rows: partial.map(row) },
     ],
   };
 }

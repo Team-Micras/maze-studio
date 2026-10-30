@@ -82,7 +82,7 @@ describe('the repository cache', () => {
     expect((await cache.current()).source).toBe('github');
   });
 
-  test('leaves out a stored file that is malformed, and fetches it again at the next check', async () => {
+  test('leaves out a stored file that is malformed, and repairs it at the next check', async () => {
     const db = await freshDatabase();
     const github = await fakeGitHub({ 'classic/a.txt': MAZE_A, 'classic/b.txt': MAZE_B });
     const built = await snapshot();
@@ -94,7 +94,7 @@ describe('the repository cache', () => {
     expect((await cache.current()).files.map((file) => file.path)).toEqual(['classic/a.txt']);
     expect(warn).toHaveBeenCalledOnce();
 
-    expect(await cache.check(true)).toMatchObject({ status: 'updated', added: ['classic/b.txt'] });
+    expect(await cache.check(true)).toEqual({ status: 'repaired' });
     expect((await cache.current()).files.map((file) => file.path)).toEqual([
       'classic/a.txt',
       'classic/b.txt',

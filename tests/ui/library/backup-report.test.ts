@@ -17,14 +17,17 @@ describe('exportNote', () => {
 });
 
 describe('exportReport', () => {
-  test('lists each skipped maze with its reason', () => {
+  test('lists each skipped maze, and each exported without a field, with its reason', () => {
     expect(
-      exportReport([
-        { id: 'a', name: 'A', message: 'bad code' },
-        { id: 'b', name: 'A', message: 'too long' },
-      ])
+      exportReport(
+        [
+          { id: 'a', name: 'A', message: 'bad code' },
+          { id: 'b', name: 'A', message: 'too long' },
+        ],
+        [{ id: 'c', name: 'C', message: 'left out its malformed recipe' }]
+      )
     ).toEqual({
-      title: 'Skipped in the export',
+      title: 'Left out of the export',
       sections: [
         {
           title: 'Skipped',
@@ -32,6 +35,10 @@ describe('exportReport', () => {
             { id: 'a', name: 'A', detail: 'bad code' },
             { id: 'b', name: 'A', detail: 'too long' },
           ],
+        },
+        {
+          title: 'Exported without a field',
+          rows: [{ id: 'c', name: 'C', detail: 'left out its malformed recipe' }],
         },
       ],
     });

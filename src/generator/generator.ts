@@ -1660,7 +1660,10 @@ export interface Recipe {
   readonly strength?: number;
   /** The goal cells of the maze varied. */
   readonly goals?: readonly number[];
-  /** The {@link wallHash} of the maze it made, so a rebuild can tell whether it made the same one. */
+  /**
+   * The {@link wallHash} of the maze it made, so a rebuild can tell whether it made the same one;
+   * absent when an {@link Effort} other than its trace made it, since the recipe does not rebuild it.
+   */
   readonly hash?: string;
 }
 
@@ -1681,7 +1684,10 @@ export interface Candidate {
   readonly evaluations: number;
 }
 
-/** How hard the generator tries, for tests and probes. */
+/**
+ * How hard the generator tries, for tests and probes. Anything but `trace` leaves the
+ * recipe without its hash: the recipe no longer rebuilds the maze.
+ */
 export interface Effort {
   /** Layouts tried by the construction. */
   readonly layouts?: number;
@@ -1691,9 +1697,16 @@ export interface Effort {
   readonly steps?: number;
   /** Restarts of the fallback. */
   readonly attempts?: number;
-  /** Forces the style; the recipe then no longer regenerates the maze. */
+  /** Forces the style. */
   readonly style?: Style;
   readonly trace?: Trace;
+}
+
+/** The hash a recipe holds of `g`: none when `effort` changed more than the trace. */
+function recipeHash(effort: Effort, g: Grid): { hash?: string } {
+  return Object.entries(effort).some(([key, value]) => key !== 'trace' && value !== undefined)
+    ? {}
+    : { hash: wallHash(g) };
 }
 
 function aimAt([lo, hi]: Range, rnd: Random): Range {
@@ -1806,7 +1819,7 @@ export function generate(settings: Settings, seed: number, effort: Effort = {}):
     return {
       seed,
       style: built,
-      recipe: { version: GENERATOR_VERSION, settings, seed, hash: wallHash(best.grid) },
+      recipe: { version: GENERATOR_VERSION, settings, seed, ...recipeHash(effort, best.grid) },
       grid: best.grid,
       analysis: a,
       energy: energy(a, t),
@@ -2037,7 +2050,7 @@ export function vary(
       base: Array.from(base),
       strength,
       goals,
-      hash: wallHash(chosen.grid),
+      ...recipeHash(effort, chosen.grid),
     },
     grid: chosen.grid,
     analysis: a,

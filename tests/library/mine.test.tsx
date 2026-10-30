@@ -131,17 +131,28 @@ describe('My mazes', () => {
     const kept = await mine.create({ name: 'Kept', maze: MAZE, profile: 'free' });
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
     await database.put('mine', { id: 'no-code', name: 'Broken', profile: 'free', version: 1 });
-    await database.put('mine', { ...kept, id: 'bad-recipe', recipe: { seed: 'x' } });
 
     expect(await mine.read()).toEqual({
       items: [kept],
-      unreadable: [
-        { id: 'bad-recipe', name: 'Kept', message: 'the stored record is malformed' },
-        { id: 'no-code', name: 'Broken', message: 'the stored record is malformed' },
-      ],
+      unreadable: [{ id: 'no-code', name: 'Broken', message: 'the stored record is malformed' }],
+      partial: [],
     });
     expect(await mine.list()).toEqual([kept]);
-    expect(warn).toHaveBeenCalledTimes(4);
+    expect(warn).toHaveBeenCalledTimes(2);
+  });
+
+  test('keeps an item whose optional fields are malformed, without them, and reports them', async () => {
+    const [{ mine, database }] = await tabs();
+    const kept = await mine.create({ name: 'Kept', maze: MAZE, profile: 'free' });
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+    await database.put('mine', { ...kept, recipe: { seed: 'x' }, origin: { path: 1 } });
+
+    expect(await mine.read()).toEqual({
+      items: [kept],
+      unreadable: [],
+      partial: [{ id: kept.id, name: 'Kept', message: 'left out its malformed origin and recipe' }],
+    });
+    expect(warn).toHaveBeenCalledOnce();
   });
 
   test('lists around an item the browser cannot read, reading them one by one', async () => {
@@ -167,6 +178,7 @@ describe('My mazes', () => {
     expect(await mine.read()).toEqual({
       items: [kept],
       unreadable: [{ id: lost.id, name: lost.id, message: expect.stringContaining('aborted') }],
+      partial: [],
     });
   });
 

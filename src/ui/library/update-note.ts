@@ -14,8 +14,8 @@ export type UpdateStatus =
   | { readonly kind: 'up-to-date' }
   | { readonly kind: 'failed'; readonly reason: UpdateFailure };
 
-/** How long "Up to date" stays on the credit before it goes by itself. */
-export const UP_TO_DATE_MS = 3000;
+/** How long "Updated" and "Up to date" stay on the credit before they go by themselves. */
+export const PASSING_NOTE_MS = 3000;
 
 const REASONS: Readonly<Record<UpdateFailure, string>> = {
   offline: 'Offline',
