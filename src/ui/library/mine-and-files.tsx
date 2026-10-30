@@ -1,6 +1,6 @@
 import { useRef, type ReactNode } from 'react';
 
-import { ArrowsClockwise, Export, FolderSimple, UploadSimple } from '@/ui/icons';
+import { ArrowsClockwise, Export, UploadSimple } from '@/ui/icons';
 import { DropdownMenuItem, DropdownMenuSeparator } from '@/ui/primitives/dropdown-menu';
 
 import { pickedFiles } from './picked-file';
@@ -10,8 +10,6 @@ export interface MineAndFilesActions {
   readonly onExportAll: () => void;
   readonly onImport: (files: readonly File[]) => void;
   readonly onCheckUpdates: () => void;
-  /** Opens a local folder as the Folder source; absent where the browser cannot. */
-  readonly onOpenFolder?: () => void;
 }
 
 /** The props of {@link MineAndFilesItems}. */
@@ -22,12 +20,12 @@ export interface MineAndFilesItemsProps {
 }
 
 /**
- * The items of the "My mazes and files" menu: Export all, Import…, Open folder… where the browser can
- * open one, and Check for updates. The notebook shows them in their own menu, a phone in its `+`.
+ * The items of the "My mazes and files" menu: Export all, Import… and Check for updates. The
+ * notebook shows them in their own menu, a phone in its `+`.
  */
 export function MineAndFilesItems({ actions, children }: MineAndFilesItemsProps) {
   const input = useRef<HTMLInputElement>(null);
-  const { onExportAll, onImport, onCheckUpdates, onOpenFolder } = actions;
+  const { onExportAll, onImport, onCheckUpdates } = actions;
 
   return (
     <>
@@ -41,12 +39,6 @@ export function MineAndFilesItems({ actions, children }: MineAndFilesItemsProps)
             <UploadSimple aria-hidden size={16} />
             Import…
           </DropdownMenuItem>
-          {onOpenFolder === undefined ? null : (
-            <DropdownMenuItem className="rounded-[9px]" onSelect={onOpenFolder}>
-              <FolderSimple aria-hidden size={16} />
-              Open folder…
-            </DropdownMenuItem>
-          )}
           <DropdownMenuSeparator />
           <DropdownMenuItem className="rounded-[9px]" onSelect={onCheckUpdates}>
             <ArrowsClockwise aria-hidden size={16} />

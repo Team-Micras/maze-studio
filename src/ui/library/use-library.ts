@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 
 import {
-  folderCatalog,
   loadSnapshot,
   mineCatalog,
   repoCatalog,
@@ -9,7 +8,6 @@ import {
   mineKey,
   SearchIndex,
   type CatalogEntry,
-  type FolderContents,
   type MineMaze,
   type RepoFile,
 } from '@/library';
@@ -37,8 +35,6 @@ export interface Library {
   readonly commit: string;
   readonly repoCount: number;
   readonly mineCount: number;
-  /** The opened folder: its name and how many of its `.txt` files did not parse; none if closed. */
-  readonly folder?: { readonly name: string; readonly skipped: number };
   /** The maze of an entry, decoded on first use. */
   readonly mazeOf: (key: string) => Maze | undefined;
   /** What the maze of an entry carries besides its walls, decoded on first use. */
@@ -55,18 +51,17 @@ interface Decoded {
   readonly document: MazeDocument;
 }
 
-/** What the library is built from: the repository's files, My mazes, and maybe an opened folder. */
+/** What the library is built from: the repository's files and My mazes. */
 interface Loaded {
   readonly commit: string;
   readonly files: readonly RepoFile[];
   readonly mine: readonly MineMaze[];
 }
 
-function library({ commit, files, mine }: Loaded, folder: FolderContents | undefined): Library {
+function library({ commit, files, mine }: Loaded): Library {
   const repoEntries = repoCatalog(files);
   const mineEntries = mineCatalog(mine);
-  const folderEntries = folder === undefined ? [] : folderCatalog(folder.files);
-  const entries = [...repoEntries, ...mineEntries, ...folderEntries];
+  const entries = [...repoEntries, ...mineEntries];
   const stored = new Map<string, Stored>([
     ...files.map((file): [string, Stored] => [
       keyOf({ kind: 'repo', path: file.path }),
@@ -92,19 +87,7 @@ function library({ commit, files, mine }: Loaded, folder: FolderContents | undef
       },
     ]),
   ]);
-  const decoded = new Map<string, Decoded>(
-    (folder?.files ?? []).map((file): [string, Decoded] => [
-      keyOf({ kind: 'folder', file: file.fileName }),
-      {
-        maze: file.text.maze,
-        document: {
-          trailer: file.text.trailer,
-          profile: 'free',
-          source: file.text.source,
-        },
-      },
-    ])
-  );
+  const decoded = new Map<string, Decoded>();
   const decode = (key: string): Decoded | undefined => {
     const known = decoded.get(key);
 
@@ -133,7 +116,6 @@ function library({ commit, files, mine }: Loaded, folder: FolderContents | undef
     commit,
     repoCount: repoEntries.length,
     mineCount: mineEntries.length,
-    folder: folder && { name: folder.name, skipped: folder.skipped },
     mazeOf: (key) => decode(key)?.maze,
     documentOf: (key) => decode(key)?.document,
   };
@@ -160,11 +142,11 @@ export interface LibraryLoad {
 }
 
 /**
- * The library, with the mazes of `folder` when one is open. It loads again when another tab writes
- * to My mazes, or when this one says it did with {@link reloadLibrary}. A load that fails, or that
- * is still pending after {@link LOAD_TIMEOUT_MS}, is logged with `console.error`.
+ * The library. It loads again when another tab writes to My mazes, or when this one says it did
+ * with {@link reloadLibrary}. A load that fails, or that is still pending after
+ * {@link LOAD_TIMEOUT_MS}, is logged with `console.error`.
  */
-export function useLibrary(folder?: FolderContents): LibraryLoad {
+export function useLibrary(): LibraryLoad {
   const [loaded, setLoaded] = useState<Loaded | 'failed' | undefined>(undefined);
 
   useEffect(() => {
@@ -217,9 +199,9 @@ export function useLibrary(folder?: FolderContents): LibraryLoad {
 
   return useMemo(
     () => ({
-      library: loaded === undefined || loaded === 'failed' ? undefined : library(loaded, folder),
+      library: loaded === undefined || loaded === 'failed' ? undefined : library(loaded),
       failed: loaded === 'failed',
     }),
-    [loaded, folder]
+    [loaded]
   );
 }

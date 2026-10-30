@@ -95,7 +95,6 @@ describe('An editing session', () => {
     expect(saveable(repoMaze())).toBe(true);
     expect(saveable({ ...repoMaze(), key: 'link:abc' })).toBe(true);
     expect(saveable({ ...repoMaze(), key: 'file:1' })).toBe(true);
-    expect(saveable({ ...repoMaze(), key: 'folder:a.txt' })).toBe(true);
     expect(saveable(fresh({ recipe }))).toBe(true);
     expect(saveable(fresh({}))).toBe(false);
     expect(saveable(fresh({ mine: { id: 'u-1', version: 1 } }))).toBe(false);

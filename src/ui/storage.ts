@@ -13,15 +13,13 @@ import {
   openDatabase,
   RepoCache,
   Settings,
-  type FolderHandle,
 } from '@/library';
 
 /** The app's stores. */
 export interface AppStorage {
   readonly repo: RepoCache;
   readonly mine: MineLibrary;
-  /** The handle of the local folder. */
-  readonly settings: Settings<FolderHandle>;
+  readonly settings: Settings;
 }
 
 let opened: Promise<AppStorage | undefined> | undefined;
@@ -29,10 +27,12 @@ let opened: Promise<AppStorage | undefined> | undefined;
 async function open(): Promise<AppStorage | undefined> {
   try {
     const database = await openDatabase(DATABASE_NAME);
+    const settings = new Settings(database);
+    void settings.forgetFolder().catch(() => undefined);
     return {
       repo: new RepoCache(database, { snapshot: loadSnapshot }),
       mine: new MineLibrary(database),
-      settings: new Settings<FolderHandle>(database),
+      settings,
     };
   } catch {
     return undefined;

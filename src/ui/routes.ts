@@ -26,7 +26,7 @@ export type Route = LibraryRoute | MazeRef;
 /** The library with the default filter. */
 export const LIBRARY_ROUTE: LibraryRoute = { kind: 'library', filter: DEFAULT_FILTER };
 
-const MAZE_PREFIXES = { repo: '/repo/', mine: '/mine/', folder: '/folder/', link: '/m/' } as const;
+const MAZE_PREFIXES = { repo: '/repo/', mine: '/mine/', link: '/m/' } as const;
 
 function decodePath(path: string): string | undefined {
   try {
@@ -65,8 +65,6 @@ function mazeRoute(path: string): Route | undefined {
         return { kind: 'repo', path: rest };
       case 'mine':
         return { kind: 'mine', id: rest };
-      case 'folder':
-        return { kind: 'folder', file: rest };
       default:
         return { kind: 'link', code: rest };
     }
@@ -113,20 +111,14 @@ export function routeHash(route: Route): string {
       return `#${MAZE_PREFIXES.repo}${encodePath(route.path)}`;
     case 'mine':
       return `#${MAZE_PREFIXES.mine}${encodeURIComponent(route.id)}`;
-    case 'folder':
-      return `#${MAZE_PREFIXES.folder}${encodePath(route.file)}`;
     default:
       return `#${MAZE_PREFIXES.link}${encodeURIComponent(route.code)}`;
   }
 }
 
-/** The route of a catalog entry's maze: in the repository, in My mazes, or in the opened folder. */
+/** The route of a catalog entry's maze: in the repository or in My mazes. */
 export function routeOfEntry(entry: CatalogEntry): Route {
-  if (entry.origin === 'mine' && entry.id !== undefined) {
-    return { kind: 'mine', id: entry.id };
-  }
-
-  return entry.origin === 'folder'
-    ? { kind: 'folder', file: entry.path ?? `${entry.name}.txt` }
+  return entry.origin === 'mine' && entry.id !== undefined
+    ? { kind: 'mine', id: entry.id }
     : { kind: 'repo', path: entry.path ?? entry.name };
 }

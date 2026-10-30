@@ -108,7 +108,6 @@ describe('The embed', () => {
 
   test.each([
     ['My mazes', '#/mine/6f1c0b2e-1d7a-4c35-9f43-8a0f2b51e9aa', EMBED_REFUSED],
-    ['the folder', '#/folder/maze.txt', EMBED_REFUSED],
     ['the library', '#/', EMBED_REFUSED],
     ['a path the repository lacks', '#/repo/classic/x.txt', 'No maze at that path'],
   ])('refuses %s with a sentence and no board', async (_where, hash, message) => {

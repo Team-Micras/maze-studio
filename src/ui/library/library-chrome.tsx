@@ -235,7 +235,6 @@ export function LibraryChrome({
   );
   const source = (
     <SourceFilter
-      folder={library?.folder}
       mineCount={library?.mineCount ?? 0}
       onChange={(next) => change({ source: next })}
       value={filter.source}

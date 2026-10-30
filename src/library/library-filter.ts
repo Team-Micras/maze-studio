@@ -7,8 +7,8 @@
 import type { CatalogEntry } from './catalog';
 import type { SearchIndex } from './search';
 
-/** Where the mazes come from: the repository, My mazes, or an opened folder. */
-export type LibrarySource = 'repo' | 'mine' | 'folder';
+/** Where the mazes come from: the repository or My mazes. */
+export type LibrarySource = 'repo' | 'mine';
 
 /** A repository folder to show, or `''` for all of them. */
 export type LibraryCategory = '' | 'classic' | 'halfsize' | 'training';
@@ -21,7 +21,7 @@ export interface LibraryFilter {
 }
 
 /** Every source in the order the filter offers them. */
-export const LIBRARY_SOURCES: readonly LibrarySource[] = ['repo', 'mine', 'folder'];
+export const LIBRARY_SOURCES: readonly LibrarySource[] = ['repo', 'mine'];
 
 /** Every category in the order the filter offers them, all first. */
 export const LIBRARY_CATEGORIES: readonly LibraryCategory[] = [

@@ -1,14 +1,6 @@
 import { isLibrarySource, type LibraryCategory, type LibrarySource } from '@/library';
-import { Hint } from '@/ui/islands/island';
 import { ToggleGroup, ToggleGroupItem } from '@/ui/primitives/toggle-group';
 import { cn } from '@/ui/primitives/utils';
-
-/** What the Folder source's tooltip says: the folder's name, and the files it skipped. */
-function folderHint(folder: { readonly name: string; readonly skipped: number }): string {
-  return folder.skipped === 0
-    ? folder.name
-    : `${folder.name}, ${folder.skipped} file${folder.skipped === 1 ? '' : 's'} skipped`;
-}
 
 const SEGMENT =
   'h-9 flex-none rounded-[10px] px-2.5 text-[13px] font-medium text-muted-foreground hover:bg-accent hover:text-foreground data-[state=on]:bg-accent data-[state=on]:text-foreground data-[state=on]:shadow-[inset_0_0_0_1px_var(--border)] aria-checked:bg-accent aria-checked:text-foreground aria-checked:shadow-[inset_0_0_0_1px_var(--border)] max-[720px]:h-10';
@@ -19,16 +11,11 @@ const ALL = 'all';
 export interface SourceFilterProps {
   readonly value: LibrarySource;
   readonly mineCount: number;
-  /** The opened folder, which adds the Folder source; none while no folder is open. */
-  readonly folder?: { readonly name: string; readonly skipped: number };
   readonly onChange: (source: LibrarySource) => void;
 }
 
-/**
- * Repo or My mazes, with My mazes' count in mono, and Folder while a folder is open, named with the files
- * it skipped in its tooltip (DESIGN.md 6.1 and 9.1).
- */
-export function SourceFilter({ value, mineCount, folder, onChange }: SourceFilterProps) {
+/** Repo or My mazes, with My mazes' count in mono (DESIGN.md 6.1 and 9.1). */
+export function SourceFilter({ value, mineCount, onChange }: SourceFilterProps) {
   return (
     <ToggleGroup
       aria-label="Source"
@@ -52,13 +39,6 @@ export function SourceFilter({ value, mineCount, folder, onChange }: SourceFilte
           </span>
         ) : null}
       </ToggleGroupItem>
-      {folder === undefined ? null : (
-        <Hint label={folderHint(folder)} side="bottom">
-          <ToggleGroupItem className={SEGMENT} data-folder="" value="folder">
-            Folder
-          </ToggleGroupItem>
-        </Hint>
-      )}
     </ToggleGroup>
   );
 }
