@@ -41,9 +41,10 @@ export function useCoarsePointer(): boolean {
 
 /**
  * The narrowest window whose notebook top bar holds the brand, the filters and the actions with
- * the Changes chip on one row; a narrower one puts the filters on a second row.
+ * the Changes chip on one row (1267 px with 3-digit My mazes and "99 changed"); a narrower one
+ * puts the filters on a second row.
  */
-export const ONE_ROW_TOP_BAR_QUERY = '(min-width: 1340px)';
+export const ONE_ROW_TOP_BAR_QUERY = '(min-width: 1280px)';
 
 /** Whether the notebook's top bar is one row (see {@link ONE_ROW_TOP_BAR_QUERY}). */
 export function useOneRowTopBar(): boolean {

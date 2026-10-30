@@ -57,7 +57,7 @@ function apart(a: DOMRect, b: DOMRect): boolean {
 }
 
 describe("The notebook's top islands", () => {
-  test.each([1340, 1339, 721])(
+  test.each([1280, 1279, 721])(
     'never overlap at %i px with the widest Changes chip, show every filter, and end above the grid',
     async (width) => {
       await page.viewport(width, 900);
@@ -81,8 +81,33 @@ describe("The notebook's top islands", () => {
         expect(tab.right).toBeLessThanOrEqual(filters.right);
       }
       expect(filters.bottom).toBeLessThan(
-        libraryLayout(width, width >= 1340 ? 'notebook' : 'stacked', 1).insets.top
+        libraryLayout(width, width >= 1280 ? 'notebook' : 'stacked', 1).insets.top
       );
     }
   );
+
+  test.each([1279, 1100, 760, 721])(
+    'put the filters on a second row as wide as the first at %i px',
+    async (width) => {
+      await page.viewport(width, 900);
+      await mountChrome();
+      const brand = boxOf(
+        page.getByRole('heading', { name: 'Maze Studio' }).element().parentElement
+      );
+      const filters = boxOf(document.querySelector('search > div'));
+      const actions = boxOf(document.querySelector('[data-changes-chip]')?.parentElement);
+
+      expect(filters.top).toBeGreaterThan(brand.bottom);
+      expect(Math.abs(filters.left - brand.left)).toBeLessThanOrEqual(1);
+      expect(Math.abs(filters.right - actions.right)).toBeLessThanOrEqual(1);
+    }
+  );
+
+  test('keeps the filters on the first row at 1280 px', async () => {
+    await page.viewport(1280, 900);
+    await mountChrome();
+    const brand = boxOf(page.getByRole('heading', { name: 'Maze Studio' }).element().parentElement);
+
+    expect(boxOf(document.querySelector('search > div')).top).toBe(brand.top);
+  });
 });

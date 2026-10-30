@@ -3,6 +3,7 @@ import { afterEach, describe, expect, test, vi } from 'vitest';
 import {
   browserIdleScheduler,
   createPaintQueue,
+  FRAME_PAINT_MS,
   MIN_IDLE_MS,
   type IdlePeriod,
   type IdleScheduler,
@@ -43,7 +44,9 @@ describe('The paint queue', () => {
     const queue = createPaintQueue(scheduler.whenIdle);
     const painted = { count: 0 };
     for (let index = 0; index < 5; index++) {
-      queue.schedule(() => painted.count++);
+      queue.schedule(() => {
+        painted.count++;
+      });
     }
 
     scheduler.turn(shrinkingPeriod(MIN_IDLE_MS + 6, false, painted));
@@ -58,7 +61,9 @@ describe('The paint queue', () => {
     const queue = createPaintQueue(scheduler.whenIdle);
     const painted = { count: 0 };
     for (let index = 0; index < 3; index++) {
-      queue.schedule(() => painted.count++);
+      queue.schedule(() => {
+        painted.count++;
+      });
     }
 
     for (let turn = 1; turn <= 3; turn++) {
@@ -69,12 +74,76 @@ describe('The paint queue', () => {
     expect(scheduler.turn({ timeRemaining: () => 0, mustProgress: true })).toBe(false);
   });
 
+  test('runs the previews before the other paints', () => {
+    const scheduler = manualScheduler();
+    const queue = createPaintQueue(scheduler.whenIdle);
+    const painted: string[] = [];
+    queue.schedule(() => {
+      painted.push('sharp');
+    });
+    queue.schedule(() => {
+      painted.push('preview');
+    }, true);
+    const takeBack = queue.schedule(() => {
+      painted.push('taken back');
+    }, true);
+    takeBack();
+    scheduler.turn({ timeRemaining: () => 0, mustProgress: true });
+
+    expect(painted).toEqual(['preview']);
+  });
+
+  test('adds only previews after the first paint of a period that must progress', () => {
+    const scheduler = manualScheduler();
+    const queue = createPaintQueue(scheduler.whenIdle);
+    const painted: string[] = [];
+    queue.schedule(() => {
+      painted.push('sharp a');
+    });
+    queue.schedule(() => {
+      painted.push('sharp b');
+    });
+    queue.schedule(() => {
+      painted.push('preview a');
+    }, true);
+    queue.schedule(() => {
+      painted.push('preview b');
+    }, true);
+    const frame = { timeRemaining: () => 50, mustProgress: true };
+
+    scheduler.turn(frame);
+    expect(painted).toEqual(['preview a', 'preview b']);
+
+    scheduler.turn(frame);
+    expect(painted).toEqual(['preview a', 'preview b', 'sharp a']);
+
+    scheduler.turn({ timeRemaining: () => 50, mustProgress: false });
+    expect(painted).toEqual(['preview a', 'preview b', 'sharp a', 'sharp b']);
+  });
+
+  test('lets a paint that painted nothing take no room in a frame', () => {
+    const scheduler = manualScheduler();
+    const queue = createPaintQueue(scheduler.whenIdle);
+    const painted: string[] = [];
+    queue.schedule(() => false);
+    queue.schedule(() => {
+      painted.push('sharp');
+    });
+    scheduler.turn({ timeRemaining: () => 0, mustProgress: true });
+
+    expect(painted).toEqual(['sharp']);
+  });
+
   test('forgets a paint taken back before it runs', () => {
     const scheduler = manualScheduler();
     const queue = createPaintQueue(scheduler.whenIdle);
     const painted: string[] = [];
-    queue.schedule(() => painted.push('kept'));
-    const takeBack = queue.schedule(() => painted.push('taken back'));
+    queue.schedule(() => {
+      painted.push('kept');
+    });
+    const takeBack = queue.schedule(() => {
+      painted.push('taken back');
+    });
     takeBack();
     scheduler.turn({ timeRemaining: () => 50, mustProgress: false });
 
@@ -125,6 +194,7 @@ describe("The browser's idle scheduler", () => {
 
   test('runs nothing at once, and the frame takes back the idle callback', () => {
     const { frames, idles } = fakeBrowser();
+    const now = vi.spyOn(performance, 'now').mockReturnValue(100);
     const periods: IdlePeriod[] = [];
     browserIdleScheduler(true)((period) => periods.push(period));
 
@@ -133,9 +203,12 @@ describe("The browser's idle scheduler", () => {
 
     frames.fire((callback) => callback(0));
     expect(idles.size).toBe(0);
-    expect(periods.map((period) => [period.timeRemaining(), period.mustProgress])).toEqual([
-      [0, true],
-    ]);
+    expect(periods.map((period) => period.mustProgress)).toEqual([true]);
+    expect(periods[0]?.timeRemaining()).toBe(MIN_IDLE_MS + FRAME_PAINT_MS);
+
+    now.mockReturnValue(100 + FRAME_PAINT_MS);
+    expect(periods[0]?.timeRemaining()).toBe(MIN_IDLE_MS);
+    now.mockRestore();
   });
 
   test('takes back the frame when the idle callback comes first', () => {

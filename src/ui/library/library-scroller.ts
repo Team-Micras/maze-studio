@@ -5,6 +5,28 @@ export function libraryScroller(): HTMLElement | null {
   return document.querySelector<HTMLElement>('[data-library-scroller]');
 }
 
+/**
+ * The scroll speed, in CSS pixels a millisecond, past which the grid counts as flung: 33 px a
+ * frame, under what one sharp paint a frame keeps up with at four times throttling (decisions.md).
+ */
+const FLING_SPEED = 2;
+
+/** How long after its last scroll event the grid still counts as flung, in milliseconds. */
+const FLING_HOLD_MS = 50;
+
+let lastScroll = { top: 0, at: Number.NEGATIVE_INFINITY, speed: 0 };
+
+/** Notes that the grid scrolled to `top`, for {@link libraryFlung}. */
+export function noteLibraryScroll(top: number): void {
+  const at = performance.now();
+  lastScroll = { top, at, speed: Math.abs(top - lastScroll.top) / Math.max(1, at - lastScroll.at) };
+}
+
+/** Whether the grid moves faster than {@link FLING_SPEED}, its last scroll event that recent. */
+export function libraryFlung(): boolean {
+  return lastScroll.speed > FLING_SPEED && performance.now() - lastScroll.at < FLING_HOLD_MS;
+}
+
 /** The library's layout on a phone, or on a notebook whose top bar is one row or two. */
 export function libraryKind(phone: boolean, oneRowTopBar: boolean): LibraryKind {
   if (phone) {
