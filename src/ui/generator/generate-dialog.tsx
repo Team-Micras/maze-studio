@@ -673,15 +673,11 @@ export default function GenerateDialog({
     setSelected(first?.n);
   };
 
-  const pick = (n: number | undefined): void => {
-    setSelected(n);
-  };
-
   const step = (delta: -1 | 1): void => {
     const next = delta < 0 ? backward : forward;
 
     if (next !== undefined) {
-      pick(items[next]?.n);
+      setSelected(items[next]?.n);
     } else if (delta > 0 && canMore) {
       more();
     }
@@ -721,7 +717,7 @@ export default function GenerateDialog({
 
   const openDetail = (n: number): void => {
     galleryScroll.current = body.current?.scrollTop ?? 0;
-    pick(n);
+    setSelected(n);
     setHovered(undefined);
     setDetail(true);
     requestAnimationFrame(() => {
