@@ -55,6 +55,13 @@ describe('libraryLayout', () => {
     );
     expect(empty.rows).toBe(1);
   });
+
+  test("leaves a second row's room at the top of a notebook whose top bar takes two", () => {
+    const stacked = libraryLayout(1100, 'stacked', 1);
+
+    expect(stacked.insets).toEqual({ ...NOTEBOOK, top: NOTEBOOK.top + 52 });
+    expect(stacked.columns).toBe(libraryLayout(1100, 'notebook', 1).columns);
+  });
 });
 
 describe('libraryRect and artboardIn', () => {

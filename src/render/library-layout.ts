@@ -16,13 +16,20 @@ export const SLOT_GAP_X = 200 / ARTBOARD_SIZE;
 /** The gap between two rows, room for the name above each slot, as a share of the slot's side. */
 export const SLOT_GAP_Y = 210 / ARTBOARD_SIZE;
 
+/**
+ * How the library is laid out: a notebook with its top islands on one row, a notebook with the
+ * search and filters on a second row below them, or a phone.
+ */
+export type LibraryKind = 'notebook' | 'stacked' | 'phone';
+
 /** The room left for the library's islands around the grid. */
-export const LIBRARY_INSETS: Readonly<Record<'notebook' | 'phone', Insets>> = {
+export const LIBRARY_INSETS: Readonly<Record<LibraryKind, Insets>> = {
   notebook: { top: 112, right: 56, bottom: 72, left: 56 },
+  stacked: { top: 164, right: 56, bottom: 72, left: 56 },
   phone: { top: 150, right: 14, bottom: 56, left: 14 },
 };
 
-const COLUMN_WIDTH = { notebook: 250, phone: 170 } as const;
+const COLUMN_WIDTH = { notebook: 250, stacked: 250, phone: 170 } as const;
 const MIN_COLUMNS = 2;
 const MAX_COLUMNS = 6;
 const COLUMN_ALLOWANCE = 32;
@@ -56,7 +63,7 @@ export interface RowRange {
 }
 
 /** How many columns a viewport this wide shows: 2 to 6. */
-export function libraryColumns(viewportWidth: number, layout: 'notebook' | 'phone'): number {
+export function libraryColumns(viewportWidth: number, layout: LibraryKind): number {
   return clamp(
     Math.floor((viewportWidth - COLUMN_ALLOWANCE) / COLUMN_WIDTH[layout]),
     MIN_COLUMNS,
@@ -67,7 +74,7 @@ export function libraryColumns(viewportWidth: number, layout: 'notebook' | 'phon
 /** The grid of `count` mazes in a viewport `viewportWidth` wide. */
 export function libraryLayout(
   viewportWidth: number,
-  layout: 'notebook' | 'phone',
+  layout: LibraryKind,
   count: number
 ): LibraryLayout {
   const insets = LIBRARY_INSETS[layout];

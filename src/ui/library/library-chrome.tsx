@@ -1,7 +1,8 @@
-import { FolderOpen, FolderSimple, Moon, Plus, Sun } from '@/ui/icons';
+import { FolderOpen, FolderSimple, GithubLogo, Moon, Plus, Sun } from '@/ui/icons';
 import { useRef, type ReactNode } from 'react';
 
 import { MAZEFILES, type LibraryFilter } from '@/library';
+import { useOneRowTopBar } from '@/ui/hooks/use-media-query';
 import { Island, IslandButton, IslandSeparator } from '@/ui/islands/island';
 import { ThemeButton } from '@/ui/islands/theme-button';
 import type { NewMazeRequest } from '@/ui/new-maze';
@@ -12,6 +13,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/ui/primitives/dropdown-menu';
+import { cn } from '@/ui/primitives/utils';
 import { useTheme } from '@/ui/theme';
 import { Verbatim } from '@/ui/verbatim';
 
@@ -48,9 +50,18 @@ export interface LibraryChromeProps {
   readonly visible: boolean;
 }
 
+/** maze-studio's own repository, which the pill beside the credit links. */
+const REPOSITORY = 'https://github.com/Team-Micras/maze-studio';
+
+const PILL =
+  'h-8 rounded-[10px] bg-card px-3 text-xs leading-8 whitespace-nowrap text-muted-foreground shadow-island';
+
 /**
  * The credit island (DESIGN.md 9.1 and 12): the mazes of the snapshot or the cache in use, at their
- * commit, and beside it what the last check for updates found.
+ * commit, a pill of its own beside it linking maze-studio's repository, and what the last check
+ * for updates found. A phone names mazefiles without its owner, shows only the logo in the
+ * repository's pill and stacks the update note above. It gives way to the selection bar, which
+ * sits where it does.
  */
 function Credit({
   library,
@@ -61,29 +72,53 @@ function Credit({
   readonly note: string | undefined;
   readonly phone: boolean;
 }) {
-  const pill = `h-8 truncate rounded-[10px] bg-card px-3 text-xs leading-8 whitespace-nowrap text-muted-foreground shadow-island ${phone ? 'max-w-[calc(100vw-16px)]' : ''}`;
-
   return (
     <div
-      className={`fixed z-10 flex items-center gap-2 ${phone ? 'bottom-safe-3 left-1/2 -translate-x-1/2 flex-col-reverse' : 'bottom-safe-[18px] left-safe-4'}`}
+      className={cn(
+        'fixed z-10 flex items-center gap-2 [:root:has([data-selection-bar])_&]:hidden',
+        phone
+          ? 'bottom-safe-3 left-1/2 -translate-x-1/2 flex-col-reverse'
+          : 'bottom-safe-[18px] left-safe-4'
+      )}
     >
-      <p className={pill}>
-        {library.repoCount} mazes from{' '}
+      <div className="flex items-center gap-2">
+        <p className={cn(PILL, 'truncate', phone && 'max-w-[calc(100vw-56px)]')}>
+          {library.repoCount} mazes from{' '}
+          <a
+            className="underline underline-offset-[3px] hover:text-foreground"
+            href={MAZEFILES.url}
+            rel="noreferrer"
+            target="_blank"
+            translate="no"
+          >
+            {phone ? MAZEFILES.name : `${MAZEFILES.owner}/${MAZEFILES.name}`}
+          </a>{' '}
+          at{' '}
+          <span className="font-mono tabular-nums" translate="no">
+            {library.commit.slice(0, 7)}
+          </span>
+        </p>
         <a
-          className="underline underline-offset-[3px] hover:text-foreground"
-          href={MAZEFILES.url}
+          aria-label="maze-studio on GitHub"
+          className={cn(
+            PILL,
+            'flex flex-none items-center gap-1.5 hover:text-foreground',
+            phone && 'w-8 justify-center px-0'
+          )}
+          data-repository=""
+          href={REPOSITORY}
           rel="noreferrer"
           target="_blank"
           translate="no"
         >
-          {MAZEFILES.owner}/{MAZEFILES.name}
-        </a>{' '}
-        at{' '}
-        <span className="font-mono tabular-nums" translate="no">
-          {library.commit.slice(0, 7)}
-        </span>
-      </p>
-      <output className={`${pill} empty:hidden`} data-update-note="">
+          <GithubLogo aria-hidden size={14} />
+          {phone ? null : 'maze-studio'}
+        </a>
+      </div>
+      <output
+        className={cn(PILL, 'truncate empty:hidden', phone && 'max-w-[calc(100vw-16px)]')}
+        data-update-note=""
+      >
         {note === undefined ? null : <Verbatim text={note} verbatim={library.commit.slice(0, 7)} />}
       </output>
     </div>
@@ -176,8 +211,9 @@ function PhoneMenu({ onOpenFile, files, onNew, newName }: MenuProps) {
 /**
  * The library's islands (DESIGN.md 9.1): the brand, the search, source and category, the actions
  * and the credit; the zoom island is the studio's, since it changes with every move of the camera.
- * Its props do not, so a moving camera re-renders none of these. A phone stacks the search and the filters at the top and keeps only the
- * credit at the bottom.
+ * Its props do not, so a moving camera re-renders none of these. A phone stacks the search and the
+ * filters at the top and keeps only the credit at the bottom. A notebook centres the search and
+ * filters between the brand and the actions, or below them where one row would not hold all three.
  */
 export function LibraryChrome({
   library,
@@ -193,6 +229,7 @@ export function LibraryChrome({
   updateNote,
   visible,
 }: LibraryChromeProps) {
+  const oneRow = useOneRowTopBar();
   const change = (next: Partial<LibraryFilter>): void => onFilter({ ...filter, ...next });
   const search = (
     <SearchField enabled={visible} onChange={(query) => change({ query })} value={filter.query} />
@@ -236,9 +273,14 @@ export function LibraryChrome({
           </Island>
         </header>
       ) : (
-        <header>
+        <header
+          className={cn(
+            'pointer-events-none fixed top-safe-4 right-safe-4 left-safe-4 z-10 grid gap-2 *:pointer-events-auto',
+            oneRow ? 'grid-cols-[1fr_auto_1fr]' : 'grid-cols-[1fr_auto]'
+          )}
+        >
           <Island
-            className="fixed top-safe-4 left-safe-4 h-11 gap-[9px] pr-3 pl-2.5 text-[13px] font-semibold"
+            className="h-11 gap-[9px] justify-self-start pr-3 whitespace-nowrap pl-2.5 text-[13px] font-semibold"
             translate="no"
           >
             <i
@@ -247,8 +289,10 @@ export function LibraryChrome({
             />
             {visible ? <h1>Maze Studio</h1> : 'Maze Studio'}
           </Island>
-          <search>
-            <Island className="fixed top-safe-4 left-1/2 h-11 -translate-x-1/2">
+          <search
+            className={cn('min-w-0', !oneRow && 'col-span-full row-start-2 justify-self-center')}
+          >
+            <Island className="h-11 overflow-x-auto overflow-y-hidden overscroll-x-contain [scrollbar-width:none]">
               {search}
               <IslandSeparator />
               {source}
@@ -256,7 +300,7 @@ export function LibraryChrome({
               {category}
             </Island>
           </search>
-          <Island className="fixed top-safe-4 right-safe-4 h-11">
+          <Island className="h-11 justify-self-end">
             {changes}
             <MineAndFiles files={files} />
             <OpenFileButton onFile={onOpenFile} />
