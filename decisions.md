@@ -89,8 +89,9 @@ reached, and the measurements of the day, are in the git history of this file.
 - **Thumbnails paint in idle time** (`paint-queue.ts`), in idle periods with at least 8 ms left. The library's
   artboards also paint one at the next animation frame when that comes first, as all through a fling on a phone,
   which leaves almost no idle time (issue #16); the quick list's rows do not, as one a frame cost it a dropped
-  frame while ↓ is held. Without `requestIdleCallback` only the frames paint, one each. A cached bitmap shows at
-  once; until a paint the canvas keeps its previous bitmap, scaled, or its floor colour.
+  frame while ↓ is held. Without `requestIdleCallback` only the frames paint, one thumbnail a frame for the whole
+  app. A cached bitmap shows at once; until a paint the canvas keeps its previous bitmap, scaled, or its floor
+  colour.
 - **Live mazes are painted, not cached.** The minimap paints the maze being edited straight onto its canvas.
 - **Artboards carry a crisp shadow**, a hairline ring and a 2 px drop: the slab's blurred shadow on every mounted
   artboard broke the frame budget. The editor's board keeps the slab, which scales with the camera.

@@ -85,7 +85,10 @@ export function browserIdleScheduler(eachFrame: boolean): IdleScheduler {
     }
 
     const idle = window.requestIdleCallback((deadline) => {
-      cancelAnimationFrame(frame);
+      if (frame !== undefined) {
+        cancelAnimationFrame(frame);
+      }
+
       run({ timeRemaining: () => deadline.timeRemaining(), mustProgress: false });
     });
     const frame = eachFrame
@@ -93,7 +96,7 @@ export function browserIdleScheduler(eachFrame: boolean): IdleScheduler {
           window.cancelIdleCallback(idle);
           nextFrame();
         })
-      : 0;
+      : undefined;
   };
 }
 
@@ -101,14 +104,16 @@ const shared = new Map<boolean, PaintQueue>();
 
 /**
  * Runs `paint` in a coming idle period of one of the app's two queues, the one that with
- * `eachFrame` also paints one a frame; the function returned takes it back.
+ * `eachFrame` also paints one a frame; the function returned takes it back. Without
+ * `requestIdleCallback` both are one queue, so a frame paints one thumbnail, not two.
  */
 export function schedulePaint(paint: () => void, eachFrame = false): () => void {
-  let queue = shared.get(eachFrame);
+  const kind = eachFrame && typeof window.requestIdleCallback === 'function';
+  let queue = shared.get(kind);
 
   if (queue === undefined) {
-    queue = createPaintQueue(browserIdleScheduler(eachFrame));
-    shared.set(eachFrame, queue);
+    queue = createPaintQueue(browserIdleScheduler(kind));
+    shared.set(kind, queue);
   }
 
   return queue.schedule(paint);

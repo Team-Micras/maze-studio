@@ -1,6 +1,7 @@
-import { describe, expect, test } from 'vitest';
+import { afterEach, describe, expect, test, vi } from 'vitest';
 
 import {
+  browserIdleScheduler,
   createPaintQueue,
   MIN_IDLE_MS,
   type IdlePeriod,
@@ -78,5 +79,81 @@ describe('The paint queue', () => {
     scheduler.turn({ timeRemaining: () => 50, mustProgress: false });
 
     expect(painted).toEqual(['kept']);
+  });
+});
+
+/** Callbacks of one kind the browser holds until the test fires them. */
+class Pending<Callback> {
+  readonly #callbacks = new Map<number, Callback>();
+  #next = 1;
+
+  add = (callback: Callback): number => {
+    this.#callbacks.set(this.#next, callback);
+    return this.#next++;
+  };
+
+  cancel = (id: number): void => {
+    this.#callbacks.delete(id);
+  };
+
+  get size(): number {
+    return this.#callbacks.size;
+  }
+
+  /** Runs and forgets every callback held. */
+  fire(call: (callback: Callback) => void): void {
+    const callbacks = [...this.#callbacks.values()];
+    this.#callbacks.clear();
+    callbacks.forEach(call);
+  }
+}
+
+/** A browser whose animation frames and idle callbacks run only when the test fires them. */
+function fakeBrowser() {
+  const frames = new Pending<FrameRequestCallback>();
+  const idles = new Pending<IdleRequestCallback>();
+  vi.stubGlobal('requestAnimationFrame', frames.add);
+  vi.stubGlobal('cancelAnimationFrame', frames.cancel);
+  vi.stubGlobal('window', { requestIdleCallback: idles.add, cancelIdleCallback: idles.cancel });
+  return { frames, idles };
+}
+
+describe("The browser's idle scheduler", () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  test('runs nothing at once, and the frame takes back the idle callback', () => {
+    const { frames, idles } = fakeBrowser();
+    const periods: IdlePeriod[] = [];
+    browserIdleScheduler(true)((period) => periods.push(period));
+
+    expect(periods).toEqual([]);
+    expect([frames.size, idles.size]).toEqual([1, 1]);
+
+    frames.fire((callback) => callback(0));
+    expect(idles.size).toBe(0);
+    expect(periods.map((period) => [period.timeRemaining(), period.mustProgress])).toEqual([
+      [0, true],
+    ]);
+  });
+
+  test('takes back the frame when the idle callback comes first', () => {
+    const { frames, idles } = fakeBrowser();
+    const periods: IdlePeriod[] = [];
+    browserIdleScheduler(true)((period) => periods.push(period));
+
+    idles.fire((callback) => callback({ didTimeout: false, timeRemaining: () => 12 }));
+    expect(frames.size).toBe(0);
+    expect(periods.map((period) => [period.timeRemaining(), period.mustProgress])).toEqual([
+      [12, false],
+    ]);
+  });
+
+  test('asks for no frame unless told to paint each frame', () => {
+    const { frames, idles } = fakeBrowser();
+    browserIdleScheduler(false)(() => undefined);
+
+    expect([frames.size, idles.size]).toEqual([0, 1]);
   });
 });
