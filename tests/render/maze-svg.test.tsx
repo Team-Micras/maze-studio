@@ -1,14 +1,25 @@
 import { describe, expect, test } from 'vitest';
 
-import { createMaze, fillBorder } from '@/maze';
-import { boardGeometry, formatLength, mazeSvg, SLAB_RING, trackPaint } from '@/render';
-import styles from '@/ui/styles.css?raw';
+import { createMaze, fillBorder, setGoals, setStart } from '@/maze';
+import { boardGeometry, formatLength, mazeSvg, trackPaint } from '@/render';
 import { REPO_MAZES, repoMaze } from '@tests/support/ui/repo-mazes';
 
 function parse(svg: string): Element {
   const document = new DOMParser().parseFromString(svg, 'image/svg+xml');
   expect(document.querySelector('parsererror')).toBeNull();
   return document.documentElement;
+}
+
+function painted(color: string): readonly number[] {
+  const context = new OffscreenCanvas(1, 1).getContext('2d');
+
+  if (context === null) {
+    throw new Error('no 2D context');
+  }
+
+  context.fillStyle = color;
+  context.fillRect(0, 0, 1, 1);
+  return [...context.getImageData(0, 0, 1, 1).data].slice(0, 3);
 }
 
 async function imageOf(svg: string): Promise<HTMLImageElement> {
@@ -36,7 +47,7 @@ describe('mazeSvg', () => {
     );
     expect(root.getAttribute('width')).toBe(formatLength(geometry.width));
     expect(image.naturalWidth).toBe(Math.round(geometry.width));
-    expect(svg).not.toMatch(/<script|href|url\(|@import|@font-face/);
+    expect(svg).not.toMatch(/<script|<style|href|url\(/);
   });
 
   test('draws the layers the board draws, a straight run of walls as one shape', () => {
@@ -51,15 +62,33 @@ describe('mazeSvg', () => {
     expect(walls?.d.match(/M/g)).toHaveLength(4);
   });
 
-  test("rings the board in the dark theme with the app's slab ring and not in the light one", () => {
-    const style = parse(mazeSvg(fillBorder(createMaze({ width: 4, height: 3 })))).querySelector(
-      'style'
-    )?.textContent;
-    const darkSlab = styles.slice(styles.indexOf('.dark {')).match(/--slab-shadow:([^;]*);/)?.[1];
+  test('writes each colour of the board as the sRGB the browser paints it', () => {
+    const maze = setGoals(
+      setStart(fillBorder(createMaze({ width: 4, height: 3 })), { x: 0, y: 0 }),
+      [{ x: 3, y: 2 }]
+    );
+    const layers = trackPaint(maze, boardGeometry(maze)).filter((layer) => layer.d !== '');
+    const svg = mazeSvg(maze);
+    const paths = [...parse(svg).querySelectorAll('path')];
+    const pairs = layers.flatMap((layer, index) =>
+      (['fill', 'stroke'] as const).flatMap((key) => {
+        const source = layer[key];
+        return source === undefined || source === 'none'
+          ? []
+          : [{ source, written: paths[index]?.getAttribute(key) ?? '' }];
+      })
+    );
+    const drift = pairs.map(({ source, written }) =>
+      Math.max(
+        ...painted(source).map((channel, rgb) => Math.abs(channel - (painted(written)[rgb] ?? 0)))
+      )
+    );
 
-    expect(style).toContain('.slab{fill:none;stroke:none}');
-    expect(style).toContain(`@media (prefers-color-scheme:dark){.slab{stroke:${SLAB_RING}}}`);
-    expect(darkSlab).toContain(`0 0 0 1px ${SLAB_RING}`);
-    expect(styles.slice(0, styles.indexOf('.dark {'))).not.toContain(`0 0 0 1px ${SLAB_RING}`);
+    expect(svg).not.toContain('oklch(');
+    expect(pairs).toHaveLength(10);
+    expect(pairs.map(({ written }) => written)).toEqual(
+      pairs.map(() => expect.stringMatching(/^#[0-9a-f]{6}$/))
+    );
+    expect(Math.max(...drift)).toBeLessThanOrEqual(1);
   });
 });

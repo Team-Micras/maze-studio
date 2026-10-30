@@ -85,7 +85,7 @@ export {
   type RowRange,
 } from './library-layout';
 export { LruCache } from './lru-cache';
-export { mazeSvg, SLAB_RING } from './maze-svg';
+export { mazeSvg } from './maze-svg';
 export { formatLength } from './path';
 export {
   MINIMAP_SIZE,
