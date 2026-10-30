@@ -139,21 +139,23 @@ describe('the generator', () => {
   test('shows each route it draws to the trace and builds the same walls on every path', () => {
     const recommended = PRESETS[0].settings;
     const [first, repaired] = golden.get('recommended') ?? [];
-    const runs: [Candidate, (trace: Trace) => Candidate][] = [
-      [first, (trace) => generate(recommended, first.seed, { trace })],
-      [repaired, (trace) => generate(recommended, repaired.seed, { trace })],
+    const runs: [Candidate, (trace: Trace) => Candidate, string][] = [
+      [first, (trace) => generate(recommended, first.seed, { trace }), 'candidate'],
+      [repaired, (trace) => generate(recommended, repaired.seed, { trace }), 'repair'],
       [
         generate(recommended, 1, { style: 'annealed' }),
         (trace) => generate(recommended, 1, { style: 'annealed', trace }),
+        'fallback',
       ],
       [
         vary(recommended, 11, first.grid.walls, 0.2),
         (trace) => vary(recommended, 11, first.grid.walls, 0.2, { trace }),
+        'tune',
       ],
     ];
-    const stages = new Set<string>();
     const candidates: Readonly<Record<string, unknown>>[] = [];
-    for (const [plain, run] of runs) {
+    for (const [plain, run, path] of runs) {
+      const stages = new Set<string>();
       const traced = run((stage, _walls, info) => {
         stages.add(stage);
         if (stage === 'candidate' && info) {
@@ -164,8 +166,8 @@ describe('the generator', () => {
       expect(traced.recipe).toEqual(plain.recipe);
       expect(traced.energy).toBe(plain.energy);
       expect(traced.analysis).toEqual(plain.analysis);
+      expect(stages).toContain(path);
     }
-    expect([...stages]).toEqual(expect.arrayContaining(['repair', 'fallback', 'tune']));
     expect(candidates.length).toBeGreaterThan(0);
     for (const { route, kind } of candidates) {
       expect(Array.isArray(route)).toBe(true);
@@ -173,7 +175,7 @@ describe('the generator', () => {
     }
   }, 60_000);
 
-  test('leaves the hash out of a recipe that an effort override made', () => {
+  test('leaves the hash out of a recipe that an effort override made, even one forcing the style the seed draws anyway', () => {
     const recommended = PRESETS[0].settings;
     const [first] = golden.get('recommended') ?? [];
     const forced = generate(recommended, first.seed, { style: first.style });
