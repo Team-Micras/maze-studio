@@ -21,6 +21,7 @@ import {
   type Grid,
   type Range,
   type Settings,
+  type Trace,
 } from '@/generator';
 import { expOf, logOf } from '@/generator/generator';
 import { isOpen, neighbour } from '@/generator/grid';
@@ -151,26 +152,42 @@ describe('the generator', () => {
     }
   }, 60_000);
 
-  test('shows each route it draws to the trace and builds the same walls', () => {
-    const [first] = golden.get('recommended') ?? [];
+  test('shows each route it draws to the trace and builds the same walls on every path', () => {
+    const recommended = PRESETS[0].settings;
+    const [first, repaired] = golden.get('recommended') ?? [];
+    const runs: [Candidate, (trace: Trace) => Candidate][] = [
+      [first, (trace) => generate(recommended, first.seed, { trace })],
+      [repaired, (trace) => generate(recommended, repaired.seed, { trace })],
+      [
+        generate(recommended, 1, { style: 'annealed' }),
+        (trace) => generate(recommended, 1, { style: 'annealed', trace }),
+      ],
+      [
+        vary(recommended, 11, first.grid.walls, 0.2),
+        (trace) => vary(recommended, 11, first.grid.walls, 0.2, { trace }),
+      ],
+    ];
+    const stages = new Set<string>();
     const candidates: Readonly<Record<string, unknown>>[] = [];
-    const traced = generate(first.recipe.settings, first.recipe.seed, {
-      trace: (stage, _walls, info) => {
+    for (const [plain, run] of runs) {
+      const traced = run((stage, _walls, info) => {
+        stages.add(stage);
         if (stage === 'candidate' && info) {
           candidates.push(info);
         }
-      },
-    });
-    expect(traced.grid.walls).toEqual(first.grid.walls);
-    expect(traced.recipe).toEqual(first.recipe);
-    expect(traced.energy).toBe(first.energy);
-    expect(traced.analysis).toEqual(first.analysis);
+      });
+      expect(traced.grid.walls).toEqual(plain.grid.walls);
+      expect(traced.recipe).toEqual(plain.recipe);
+      expect(traced.energy).toBe(plain.energy);
+      expect(traced.analysis).toEqual(plain.analysis);
+    }
+    expect([...stages]).toEqual(expect.arrayContaining(['repair', 'fallback', 'tune']));
     expect(candidates.length).toBeGreaterThan(0);
     for (const { route, kind } of candidates) {
       expect(Array.isArray(route)).toBe(true);
       expect(['racing', 'careful']).toContain(kind);
     }
-  });
+  }, 60_000);
 
   test('builds other walls from other seeds', () => {
     const [one, two] = golden.get('recommended') ?? [];
