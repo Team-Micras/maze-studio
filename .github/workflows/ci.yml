@@ -13,8 +13,22 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  check:
+  part:
+    name: ${{ matrix.part }}
     runs-on: ubuntu-24.04
+    strategy:
+      matrix:
+        include:
+          - part: static
+            run: bun run lint && bun run format:check && bun run typecheck && bun run build && bun run size
+          - part: unit
+            run: bun run test:unit
+          - part: browser
+            run: bun run test:browser
+          - part: e2e 1/2
+            run: bun run test:e2e --shard=1/2
+          - part: e2e 2/2
+            run: bun run test:e2e --shard=2/2
     steps:
       - uses: actions/checkout@v7
         with:
@@ -45,4 +59,11 @@ jobs:
       - if: steps.browsers.outputs.cache-hit == 'true'
         run: bunx playwright install-deps chromium
 
-      - run: bun run check
+      - run: ${{ matrix.run }}
+
+  check:
+    if: always()
+    needs: part
+    runs-on: ubuntu-24.04
+    steps:
+      - run: test "${{ needs.part.result }}" = success
