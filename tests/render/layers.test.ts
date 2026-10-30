@@ -3,6 +3,7 @@ import { describe, expect, test } from 'vitest';
 import { createMaze, diffMazes, fillBorder, setGoals, setStart, setWall, type Maze } from '@/maze';
 import {
   boardGeometry,
+  formatLength,
   overlayLayers,
   overlayStrokes,
   trackLayers,
@@ -14,13 +15,13 @@ function shapes(path: string): number {
 }
 
 const BORDERED = fillBorder(createMaze({ width: 4, height: 3 }));
-const EDGES_OF_4_BY_3 = { walls: 2 * 4 + 2 * 3, posts: 5 * 4 };
+const EDGES_OF_4_BY_3 = { borderRuns: 4, posts: 5 * 4 };
 
 describe('trackLayers', () => {
   test('paints every wall and post red when nothing is marked', () => {
     const layers = trackLayers(BORDERED, boardGeometry(BORDERED));
 
-    expect(shapes(layers.redWalls)).toBe(EDGES_OF_4_BY_3.walls);
+    expect(shapes(layers.redWalls)).toBe(EDGES_OF_4_BY_3.borderRuns);
     expect(shapes(layers.redPosts)).toBe(EDGES_OF_4_BY_3.posts);
     expect(layers.bareWalls).toBe('');
     expect(layers.barePosts).toBe('');
@@ -36,11 +37,27 @@ describe('trackLayers', () => {
     const layers = trackLayers(marked, boardGeometry(marked));
 
     expect(shapes(layers.bareWalls)).toBe(5);
-    expect(shapes(layers.redWalls)).toBe(EDGES_OF_4_BY_3.walls + 1 - 5);
+    expect(shapes(layers.redWalls)).toBe(EDGES_OF_4_BY_3.borderRuns);
     expect(shapes(layers.barePosts)).toBe(8);
     expect(shapes(layers.redPosts)).toBe(EDGES_OF_4_BY_3.posts - 8);
     expect(shapes(layers.goal)).toBe(1);
     expect(shapes(layers.start)).toBe(1);
+  });
+
+  test('draws each straight run of walls of one paint as one rectangle', () => {
+    const row = [0, 1, 2, 3].reduce(
+      (maze, x) => setWall(maze, { direction: 'horizontal', x, y: 1 }, true),
+      BORDERED
+    );
+    const split = setGoals(row, [{ x: 1, y: 1 }]);
+    const geometry = boardGeometry(row);
+
+    expect(shapes(trackLayers(row, geometry).redWalls)).toBe(EDGES_OF_4_BY_3.borderRuns + 1);
+    expect(trackLayers(row, geometry).redWalls).toContain(
+      `h${formatLength(4 * geometry.pitch)}v${formatLength(geometry.wall)}`
+    );
+    expect(shapes(trackLayers(split, geometry).bareWalls)).toBe(1);
+    expect(shapes(trackLayers(split, geometry).redWalls)).toBe(EDGES_OF_4_BY_3.borderRuns + 2);
   });
 
   test('a wall put later next to a goal comes out bare', () => {

@@ -34,7 +34,8 @@ has a second one, `loading.ts` (`@/render/loading`), which only the generator's 
   (`repo:<path>`, `mine:<id>`), which the app uses everywhere; `search.ts` and `library-filter.ts`
   filter them. `database.ts` is the small IndexedDB wrapper under all of it.
 - **`src/render`** draws without React: `geometry.ts` and `board-placement.ts` place a board in the world,
-  `track-layers.ts` and `overlay-layers.ts` give one SVG path per layer, `stroke.ts` turns a pointer path into walls,
+  `track-layers.ts` and `overlay-layers.ts` give one SVG path per layer, a straight run of walls as one shape,
+  `maze-svg.ts` writes the board as a standalone SVG file, `stroke.ts` turns a pointer path into walls,
   `camera.ts` and `camera-input.ts` hold the camera `{ x, y, k }` and its flights, `library-layout.ts` the grid,
   `thumbnails.ts` the bitmaps in an LRU of 64 MB. `loading.ts` paints the generator's grey loading skeletons from
   plain wall bytes: the wave over a decorative maze, and the board's routes tried then newest snapshot that reads

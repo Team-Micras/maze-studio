@@ -190,7 +190,7 @@ export function useMazeEditor(input: MazeEditorInput): MazeEditor {
       refused: (opened) => setRefused((before) => new Set([...before, opened])),
       failed: (error) => {
         showToast(
-          `Could not save to My mazes (${error instanceof Error ? error.message : String(error)}). Download .txt to keep it`
+          `Could not save to My mazes (${error instanceof Error ? error.message : String(error)}). Download mazefile (.txt) to keep it`
         );
       },
     });

@@ -13,12 +13,17 @@ import type { MazeEditor } from '@/ui/editor/use-maze-editor';
 import { replaceRoute } from '@/ui/navigation';
 import { showToast } from '@/ui/toasts';
 import { encodeMazeCode } from '@/maze';
+import { mazeSvg } from '@/render';
 
 import type { StudioScreen, StudioState } from './studio-store';
 
 const COPY_FAILED = 'Copy failed, link is in the address bar';
 
 const NOTES_LEFT_OUT = 'Notes after the grid are not in the link';
+
+function copy(text: string, done: string): void {
+  void copyText(text).then((copied) => showToast(copied ? done : 'Copy failed'));
+}
 
 function canShare(): boolean {
   return typeof navigator.share === 'function';
@@ -27,7 +32,8 @@ function canShare(): boolean {
 /**
  * The actions on the open maze (PLAN.md 3.4, DESIGN.md 6.1 and 12): Copy link, which says when
  * the notes after the grid stay out of the link and, without a clipboard, puts the link in the
- * address bar; Share… with Web Share; Download .txt under a stem that passes the name rule; Save
+ * address bar; Share… with Web Share; Download mazefile (.txt) and Download SVG under a stem that
+ * passes the name rule, Copy mazefile (.txt) and Copy SVG; Save
  * to My mazes; Rename and Delete for a maze of My mazes; Copy recipe for a generated maze.
  */
 export function useMazeActions({
@@ -99,15 +105,26 @@ export function useMazeActions({
           downloadText(downloadName(open), mazeFileText(open));
         }
       },
+      onCopyText: () => {
+        if (open !== undefined) {
+          copy(mazeFileText(open), 'Mazefile copied');
+        }
+      },
+      onDownloadSvg: () => {
+        if (open !== undefined) {
+          downloadText(downloadName(open, '.svg'), mazeSvg(open.maze), 'image/svg+xml');
+        }
+      },
+      onCopySvg: () => {
+        if (open !== undefined) {
+          copy(mazeSvg(open.maze), 'SVG copied');
+        }
+      },
       onCopyLink: phone ? copyLink : undefined,
       onCopyRecipe:
         open?.document.recipe === undefined
           ? undefined
-          : () => {
-              void copyText(JSON.stringify(open.document.recipe)).then((copied) =>
-                showToast(copied ? 'Recipe copied' : 'Copy failed')
-              );
-            },
+          : () => copy(JSON.stringify(open.document.recipe), 'Recipe copied'),
       ...(phone && canShare() && open !== undefined
         ? {
             onShare: () => {
