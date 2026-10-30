@@ -173,6 +173,21 @@ describe('the generator', () => {
     }
   }, 60_000);
 
+  test('leaves the hash out of a recipe that an effort override made', () => {
+    const recommended = PRESETS[0].settings;
+    const [first] = golden.get('recommended') ?? [];
+    const forced = generate(recommended, first.seed, { style: first.style });
+
+    expect(forced.grid.walls).toEqual(first.grid.walls);
+    expect(forced.recipe).not.toHaveProperty('hash');
+    expect(vary(recommended, 11, first.grid.walls, 0.2, { steps: 50 }).recipe).not.toHaveProperty(
+      'hash'
+    );
+    expect(generate(recommended, first.seed, { steps: undefined }).recipe.hash).toBe(
+      first.recipe.hash
+    );
+  });
+
   test('builds other walls from other seeds', () => {
     const [one, two] = golden.get('recommended') ?? [];
     expect(one.grid.walls).not.toEqual(two.grid.walls);
