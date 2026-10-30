@@ -30,6 +30,11 @@ export interface ThumbnailCanvasProps {
    * Changes panel's thumbnails.
    */
   readonly diff?: ThumbnailDiff;
+  /**
+   * Whether a missing bitmap paints at the next frame when no idle time comes first, as through a
+   * fling of the library's grid, which leaves almost no idle time on a phone; off by default.
+   */
+  readonly eachFrame?: boolean;
   readonly className?: string;
 }
 
@@ -56,7 +61,8 @@ function paintCached(
   maze: Maze,
   band: ThumbnailBand,
   blank: boolean,
-  diff: ThumbnailDiff | undefined
+  diff: ThumbnailDiff | undefined,
+  eachFrame: boolean
 ): () => void {
   const key = encodeMazeCode(maze);
 
@@ -73,7 +79,10 @@ function paintCached(
     return () => undefined;
   }
 
-  return schedulePaint(() => showBitmap(canvas, thumbnailCache.thumbnail(key, maze, band)));
+  return schedulePaint(
+    () => showBitmap(canvas, thumbnailCache.thumbnail(key, maze, band)),
+    eachFrame
+  );
 }
 
 function paintLive(
@@ -111,6 +120,7 @@ export function ThumbnailCanvas({
   resolution,
   cached = true,
   diff,
+  eachFrame = false,
   className,
 }: ThumbnailCanvasProps) {
   const canvas = useRef<HTMLCanvasElement>(null);
@@ -125,12 +135,19 @@ export function ThumbnailCanvas({
     }
 
     if (cached) {
-      return paintCached(element, maze, band, element.dataset.painted === undefined, diff);
+      return paintCached(
+        element,
+        maze,
+        band,
+        element.dataset.painted === undefined,
+        diff,
+        eachFrame
+      );
     }
 
     paintLive(element, maze, { width: width * ratio, height: height * ratio });
     return undefined;
-  }, [maze, width, height, ratio, cached, band, diff]);
+  }, [maze, width, height, ratio, cached, band, diff, eachFrame]);
 
   return (
     <canvas aria-hidden className={cn('block', className)} ref={canvas} style={{ width, height }} />
