@@ -44,8 +44,14 @@ export interface RepoCopy extends RepoState {
   readonly source: 'snapshot' | 'github';
 }
 
-/** What a check did: nothing when it was not due, or the update's result. */
-export type CheckResult = { readonly status: 'not-due' } | UpdateResult;
+/**
+ * What a check did: nothing when it was not due, the update's result, or `repaired` when it only
+ * fetched again, at the same commit, stored files it could not read.
+ */
+export type CheckResult =
+  | { readonly status: 'not-due' }
+  | { readonly status: 'repaired' }
+  | UpdateResult;
 
 /** What the cache runs on; the browser's own by default. */
 export interface RepoCacheOptions {
@@ -84,7 +90,7 @@ export class RepoCache {
   /**
    * Asks GitHub for a newer commit and keeps what it brings; on failure, keeps what there is and
    * remembers why. When a stored file could not be read, it asks for the whole tree again, even at
-   * the same commit, so the file comes back.
+   * the same commit, so the file comes back; at the same commit, that is a repair, not an update.
    *
    * @param force Check even if the last check was less than a day ago, as the update button does.
    */
@@ -134,7 +140,9 @@ export class RepoCache {
       });
     }
 
-    return result;
+    return result.status === 'updated' && result.state.commit === copy.commit
+      ? { status: 'repaired' }
+      : result;
   }
 
   async #read(): Promise<{ copy: RepoCopy; complete: boolean }> {

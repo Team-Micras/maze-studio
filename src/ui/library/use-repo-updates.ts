@@ -24,6 +24,7 @@ function statusOf(result: CheckResult): UpdateStatus {
     case 'updated':
       return { kind: 'updated' };
     case 'unchanged':
+    case 'repaired':
       return { kind: 'up-to-date' };
     case 'failed':
       return { kind: 'failed', reason: result.reason };
@@ -47,7 +48,7 @@ async function runCheck(force: boolean): Promise<UpdateStatus> {
     return error === undefined ? { kind: 'quiet' } : { kind: 'failed', reason: error.reason };
   }
 
-  if (result.status === 'updated') {
+  if (result.status === 'updated' || result.status === 'repaired') {
     reloadLibrary();
   }
 
@@ -56,7 +57,8 @@ async function runCheck(force: boolean): Promise<UpdateStatus> {
 
 /**
  * The updates of the repository's mazes (PLAN.md 3.2): asked of GitHub at most once a day when the
- * app opens, in production, and at once by Check for updates; a newer commit reloads the library.
+ * app opens, in production, and at once by Check for updates; a newer commit, or stored files
+ * fetched again because they could not be read, reload the library.
  * A failure the last check left stays on the credit until a check succeeds; "Up to date" goes
  * after {@link UP_TO_DATE_MS}.
  */

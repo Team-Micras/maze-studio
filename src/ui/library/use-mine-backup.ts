@@ -21,7 +21,7 @@ export interface MineBackup {
   /** The report on screen, if any. */
   readonly report: Report | undefined;
   readonly closeReport: () => void;
-  /** Downloads My mazes as a zip and says how many mazes went in. */
+  /** Downloads My mazes as a zip and says how many mazes went in, or that it could not. */
   readonly exportAll: () => Promise<void>;
   /** Adds the mazes of `files` to My mazes and shows the report; resolves to how many were added. */
   readonly importFiles: (files: readonly File[]) => Promise<number>;
@@ -49,21 +49,30 @@ export function useMineBackup(): MineBackup {
       return;
     }
 
-    const { items, unreadable } = await storage.mine.read();
+    const read = await storage.mine.read().catch((error: unknown) => {
+      showToast(`Could not export My mazes (${reasonOf(error)})`);
+      return undefined;
+    });
+
+    if (read === undefined) {
+      return;
+    }
+
+    const { items, unreadable, partial } = read;
     const now = new Date();
     const { zip, skipped: unwritten } = exportMine(items, now);
     const skipped = [...unreadable, ...unwritten];
     downloadBlob(backupFileName(now), new Blob([zip.slice()], { type: 'application/zip' }));
     const note = exportNote(items.length - unwritten.length, skipped.length);
 
-    if (skipped.length === 0) {
+    if (skipped.length === 0 && partial.length === 0) {
       showToast(note);
     } else {
       showToast(note, {
         action: {
           label: 'Details',
           altText: 'Show the skipped mazes',
-          run: () => setReport(exportReport(skipped)),
+          run: () => setReport(exportReport(skipped, partial)),
         },
       });
     }

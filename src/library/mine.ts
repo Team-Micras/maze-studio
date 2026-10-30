@@ -97,8 +97,12 @@ export interface MineMaze {
   readonly recipe?: MineRecipe;
 }
 
-/** Whether `value` has the shape of a stored {@link MineMaze}. */
-export function isMineMaze(value: unknown): value is MineMaze {
+type StoredMine = Omit<MineMaze, 'origin' | 'recipe'> & {
+  readonly origin?: unknown;
+  readonly recipe?: unknown;
+};
+
+function hasMineCore(value: unknown): value is StoredMine {
   return (
     isRecord(value) &&
     typeof value.id === 'string' &&
@@ -107,10 +111,23 @@ export function isMineMaze(value: unknown): value is MineMaze {
     isProfile(value.profile) &&
     Number.isFinite(value.createdAt) &&
     Number.isFinite(value.updatedAt) &&
-    Number.isInteger(value.version) &&
-    (value.origin === undefined || isMineOrigin(value.origin)) &&
-    (value.recipe === undefined || isMineRecipe(value.recipe))
+    Number.isInteger(value.version)
   );
+}
+
+function withReadableFields(stored: StoredMine): { item: MineMaze; dropped: string[] } {
+  const { origin, recipe, ...core } = stored;
+  return {
+    item: {
+      ...core,
+      ...(isMineOrigin(origin) ? { origin } : {}),
+      ...(isMineRecipe(recipe) ? { recipe } : {}),
+    },
+    dropped: [
+      ...(origin === undefined || isMineOrigin(origin) ? [] : ['origin']),
+      ...(recipe === undefined || isMineRecipe(recipe) ? [] : ['recipe']),
+    ],
+  };
 }
 
 /** An item of My mazes that could not be read: its id, its name when it has one, and why. */
@@ -120,10 +137,14 @@ export interface UnreadableMine {
   readonly message: string;
 }
 
-/** What {@link MineLibrary.read} gives: the items, and those that could not be read. */
+/**
+ * What {@link MineLibrary.read} gives: the items, those that could not be read, and those kept
+ * without an optional field (`origin`, `recipe`) that could not be read.
+ */
 export interface MineRead {
   readonly items: MineMaze[];
   readonly unreadable: readonly UnreadableMine[];
+  readonly partial: readonly UnreadableMine[];
 }
 
 /** What a new item of My mazes is made of. */
@@ -235,16 +256,31 @@ export class MineLibrary {
     return (await this.read()).items;
   }
 
-  /** Every item, the most recently saved first, and those that could not be read, with why. */
+  /**
+   * Every item, the most recently saved first, and those that could not be read, with why. An item
+   * whose `origin` or `recipe` cannot be read is kept without it, and reported with `console.warn`.
+   */
   async read(): Promise<MineRead> {
-    const { values, skipped } = await this.#database.readable('mine', isMineMaze);
+    const { values, skipped } = await this.#database.readable('mine', hasMineCore);
+    const read = values.map(withReadableFields);
+    const partial = read
+      .filter(({ dropped }) => dropped.length > 0)
+      .map(({ item, dropped }) => ({
+        id: item.id,
+        name: item.name,
+        message: `left out its malformed ${dropped.join(' and ')}`,
+      }));
+    partial.forEach((item) => console.warn('Left out a malformed field of mine', item));
     return {
-      items: values.toSorted((left, right) => right.updatedAt - left.updatedAt),
+      items: read
+        .map(({ item }) => item)
+        .toSorted((left, right) => right.updatedAt - left.updatedAt),
       unreadable: skipped.map(({ key, value, reason }) => {
         const id = typeof key === 'string' ? key : JSON.stringify(key);
         const name = isRecord(value) && typeof value.name === 'string' ? value.name : id;
         return { id, name, message: reason };
       }),
+      partial,
     };
   }
 
