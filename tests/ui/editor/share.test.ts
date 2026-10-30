@@ -1,13 +1,19 @@
 import { describe, expect, test } from 'vitest';
 
 import { decodeMazeCode, createMaze, mazesEqual } from '@/maze';
-import { downloadName, linkDropsNotes, mazeFileText, mazeLink } from '@/ui/editor/share';
+import {
+  downloadName,
+  linkDropsNotes,
+  mazeFileText,
+  mazeLink,
+  mazeMarkdown,
+} from '@/ui/editor/share';
 import type { OpenMaze } from '@/ui/open-maze';
 
 const MAZE = createMaze({ width: 3, height: 2 });
 
-function open(name: string, trailer = ''): OpenMaze {
-  return { key: 'mine:u', maze: MAZE, name, detail: '', document: { trailer, profile: 'free' } };
+function open(name: string, trailer = '', key = 'mine:u'): OpenMaze {
+  return { key, maze: MAZE, name, detail: '', document: { trailer, profile: 'free' } };
 }
 
 describe('Sharing a maze', () => {
@@ -31,5 +37,18 @@ describe('Sharing a maze', () => {
     expect(downloadName(open('AAMC15Maze (edited)'))).toBe('AAMC15Maze-edited.txt');
     expect(downloadName(open('Ünïcode naME!'))).toBe('Unicode-naME.txt');
     expect(mazeFileText(open('a', 'notes\n')).endsWith('\nnotes\n')).toBe(true);
+  });
+
+  test('writes Markdown of the SVG, linked by route for a repository maze, else by its link', () => {
+    const page = 'https://example.org/maze-studio/?theme=dark#/';
+    const repo = open('AAMC15Maze', '', 'repo:classic/AAMC15Maze.txt');
+    const mine = open('Run [2] \\ final');
+
+    expect(mazeMarkdown(repo, page)).toBe(
+      '[![AAMC15Maze](AAMC15Maze.svg)](https://example.org/maze-studio/?theme=dark#/repo/classic/AAMC15Maze.txt)'
+    );
+    expect(mazeMarkdown(mine, page)).toBe(
+      `[![Run \\[2\\] \\\\ final](${downloadName(mine, '.svg')})](${mazeLink(mine, page)})`
+    );
   });
 });

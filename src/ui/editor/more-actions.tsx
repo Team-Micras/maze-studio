@@ -5,6 +5,7 @@ import {
   CornersOut,
   DotsThree,
   DownloadSimple,
+  Export,
   FloppyDisk,
   GitDiff,
   Keyboard,
@@ -17,14 +18,19 @@ import {
   Textbox,
   Trash,
 } from '@/ui/icons';
+import { usePhoneLayout } from '@/ui/hooks/use-media-query';
 import { IslandButton } from '@/ui/islands/island';
 import { Badge } from '@/ui/primitives/badge';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuPortal,
   DropdownMenuSeparator,
   DropdownMenuShortcut,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from '@/ui/primitives/dropdown-menu';
 import { cn } from '@/ui/primitives/utils';
@@ -44,6 +50,8 @@ export interface MoreActionsProps {
   readonly onDownloadSvg: () => void;
   /** Copies the board's SVG as text. */
   readonly onCopySvg: () => void;
+  /** Copies Markdown that shows the downloaded SVG and links to the maze. */
+  readonly onCopyMarkdown: () => void;
   /** Copies the link, here on a phone, where the island has no link button. */
   readonly onCopyLink?: () => void;
   /** Shares the link with Web Share, where the browser has it. */
@@ -68,11 +76,18 @@ export interface MoreActionsProps {
 const ITEM = 'rounded-[9px]';
 
 /**
- * The editor's ⋯ menu (DESIGN.md 6, 6.1 and 9.2): Save to My mazes for a maze not in it yet, Download .txt, Download SVG, Copy SVG, Copy link and Share… on a phone,
- * Copy recipe for a generated maze, Generate… (beta), Close outer walls, Changes, Rename and Delete for a maze of My mazes, Fit, the theme and the
- * shortcut help. Delete
- * takes two selects: the first keeps the menu open and turns it into "Confirm delete". A download
- * and Web Share start once the menu has closed.
+ * How far the Export submenu lies over the ⋯ menu on a phone, so that it stays on a 360 px screen:
+ * Radix moves a submenu only up and down, never sideways.
+ */
+const PHONE_SUBMENU_OFFSET = -96;
+
+/**
+ * The editor's ⋯ menu (DESIGN.md 6, 6.1 and 9.2): Save to My mazes for a maze not in it yet;
+ * Export, a submenu of Download mazefile (.txt), Download SVG, Copy SVG and Copy Markdown; Copy
+ * link and Share… on a phone; Copy recipe for a generated maze; Generate… (beta), Close outer
+ * walls, Changes, Rename and Delete for a maze of My mazes; Fit, the theme and the shortcut help.
+ * Delete takes two selects: the first keeps the menu open and turns it into "Confirm delete". A
+ * download and Web Share start once the menu has closed.
  */
 export function MoreActions({
   editable,
@@ -82,6 +97,7 @@ export function MoreActions({
   onDownload,
   onDownloadSvg,
   onCopySvg,
+  onCopyMarkdown,
   onCopyLink,
   onShare,
   onCopyRecipe,
@@ -93,6 +109,7 @@ export function MoreActions({
   onToggleTheme,
   onHelp,
 }: MoreActionsProps) {
+  const phone = usePhoneLayout();
   const [armed, setArmed] = useState(false);
   const afterClose = useRef<(() => void) | undefined>(undefined);
   const later = (action: () => void) => () => {
@@ -128,18 +145,35 @@ export function MoreActions({
             Save to My mazes
           </DropdownMenuItem>
         )}
-        <DropdownMenuItem className={ITEM} onSelect={later(onDownload)}>
-          <DownloadSimple aria-hidden size={16} />
-          Download .txt
-        </DropdownMenuItem>
-        <DropdownMenuItem className={ITEM} onSelect={later(onDownloadSvg)}>
-          <DownloadSimple aria-hidden size={16} />
-          Download SVG
-        </DropdownMenuItem>
-        <DropdownMenuItem className={ITEM} onSelect={onCopySvg}>
-          <Copy aria-hidden size={16} />
-          Copy SVG
-        </DropdownMenuItem>
+        <DropdownMenuSub>
+          <DropdownMenuSubTrigger className={ITEM}>
+            <Export aria-hidden size={16} />
+            Export
+          </DropdownMenuSubTrigger>
+          <DropdownMenuPortal>
+            <DropdownMenuSubContent
+              className="z-20 min-w-52 rounded-[14px]"
+              sideOffset={phone ? PHONE_SUBMENU_OFFSET : undefined}
+            >
+              <DropdownMenuItem className={ITEM} onSelect={later(onDownload)}>
+                <DownloadSimple aria-hidden size={16} />
+                Download mazefile (.txt)
+              </DropdownMenuItem>
+              <DropdownMenuItem className={ITEM} onSelect={later(onDownloadSvg)}>
+                <DownloadSimple aria-hidden size={16} />
+                Download SVG
+              </DropdownMenuItem>
+              <DropdownMenuItem className={ITEM} onSelect={onCopySvg}>
+                <Copy aria-hidden size={16} />
+                Copy SVG
+              </DropdownMenuItem>
+              <DropdownMenuItem className={ITEM} onSelect={onCopyMarkdown}>
+                <Copy aria-hidden size={16} />
+                Copy Markdown
+              </DropdownMenuItem>
+            </DropdownMenuSubContent>
+          </DropdownMenuPortal>
+        </DropdownMenuSub>
         {onCopyLink === undefined ? null : (
           <DropdownMenuItem className={ITEM} onSelect={onCopyLink}>
             <LinkSimple aria-hidden size={16} />

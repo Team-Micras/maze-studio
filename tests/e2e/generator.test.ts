@@ -143,7 +143,7 @@ describe('Generate in New maze (beta)', () => {
     await expect.poll(() => page.getByRole('dialog', { name: 'Generate' }).count()).toBe(0);
     expect(await mineCount(page)).toBe(0);
     await page.getByRole('button', { name: 'More actions' }).click();
-    await page.getByRole('menuitem', { name: 'Download .txt' }).waitFor();
+    await page.getByRole('menuitem', { name: 'Export' }).waitFor();
     expect(await page.getByRole('menuitem', { name: 'Save to My mazes' }).count()).toBe(0);
     await page.keyboard.press('Escape');
 

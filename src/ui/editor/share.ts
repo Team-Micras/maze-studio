@@ -1,22 +1,40 @@
 /**
  * Sharing the maze on screen (PLAN.md 3.4, DESIGN.md 6.1 and 12): its link, which carries the walls,
- * the marks and the name but not the text after the grid; its `.txt` and its SVG; and copying text with the
- * clipboard, or without it on a page served over plain HTTP.
+ * the marks and the name but not the text after the grid; its `.txt`, its SVG and Markdown that
+ * shows the SVG; and copying text with the clipboard, or without it on a page served over plain
+ * HTTP.
  *
  * @module
  */
 
 import { uniqueStems } from '@/library';
+import { refOf, type MazeRef } from '@/library/maze-key';
 import { encodeMazeCode, serializeMazeText } from '@/maze';
 import { downloadBlob } from '@/ui/download';
 import type { OpenMaze } from '@/ui/open-maze';
 import { routeHash } from '@/ui/routes';
 
+function linkTo(ref: MazeRef, href: string): string {
+  const url = new URL(href);
+  url.hash = routeHash(ref);
+  return url.href;
+}
+
 /** The link that opens `open`, on the page at `href`. */
 export function mazeLink(open: OpenMaze, href: string): string {
-  const url = new URL(href);
-  url.hash = routeHash({ kind: 'link', code: encodeMazeCode(open.maze, { name: open.name }) });
-  return url.href;
+  return linkTo({ kind: 'link', code: encodeMazeCode(open.maze, { name: open.name }) }, href);
+}
+
+/**
+ * Markdown for a README or a pull request: the image Download SVG saves, under the name it saves it
+ * as, linked to the maze on the page at `href`, by its repository route for a maze of the
+ * repository and by the link Copy link copies for any other.
+ */
+export function mazeMarkdown(open: OpenMaze, href: string): string {
+  const ref = refOf(open.key);
+  const link = ref?.kind === 'repo' ? linkTo(ref, href) : mazeLink(open, href);
+  const alt = open.name.replaceAll(/[[\]\\]/g, (character) => `\\${character}`);
+  return `[![${alt}](${downloadName(open, '.svg')})](${link})`;
 }
 
 /** Whether the link leaves out text after the grid that the maze has. */
