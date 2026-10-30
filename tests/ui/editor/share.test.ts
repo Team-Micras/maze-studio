@@ -16,6 +16,17 @@ function open(name: string, trailer = '', key = 'mine:u'): OpenMaze {
   return { key, maze: MAZE, name, detail: '', document: { trailer, profile: 'free' } };
 }
 
+function repoFile(name: string, path: string): OpenMaze {
+  const opened = open(name, '', `repo:${path}`);
+  return {
+    ...opened,
+    document: {
+      ...opened.document,
+      source: { fileName: path, irregularities: [], hadCR: false, hadFinalNewline: true },
+    },
+  };
+}
+
 describe('Sharing a maze', () => {
   test('makes a link to the same maze and name, on the page it is on', () => {
     const link = new URL(
@@ -41,14 +52,18 @@ describe('Sharing a maze', () => {
 
   test('writes Markdown of the SVG, linked by route for a repository maze, else by its link', () => {
     const page = 'https://example.org/maze-studio/?theme=dark#/';
-    const repo = open('AAMC15Maze', '', 'repo:classic/AAMC15Maze.txt');
+    const repo = repoFile('AAMC15Maze', 'classic/AAMC15Maze.txt');
+    const edited = open('AAMC15Maze (edited)', '', 'repo:classic/AAMC15Maze.txt');
     const mine = open('Run [2] \\ final');
 
     expect(mazeMarkdown(repo, page)).toBe(
-      '[![AAMC15Maze](AAMC15Maze.svg)](https://example.org/maze-studio/?theme=dark#/repo/classic/AAMC15Maze.txt)'
+      '[![AAMC15Maze](AAMC15Maze.svg)](<https://example.org/maze-studio/?theme=dark#/repo/classic/AAMC15Maze.txt>)'
+    );
+    expect(mazeMarkdown(edited, page)).toBe(
+      `[![AAMC15Maze (edited)](AAMC15Maze-edited.svg)](<${mazeLink(edited, page)}>)`
     );
     expect(mazeMarkdown(mine, page)).toBe(
-      `[![Run \\[2\\] \\\\ final](${downloadName(mine, '.svg')})](${mazeLink(mine, page)})`
+      `[![Run \\[2\\] \\\\ final](${downloadName(mine, '.svg')})](<${mazeLink(mine, page)}>)`
     );
   });
 });

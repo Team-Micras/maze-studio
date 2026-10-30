@@ -27,14 +27,18 @@ export function mazeLink(open: OpenMaze, href: string): string {
 
 /**
  * Markdown for a README or a pull request: the image Download SVG saves, under the name it saves it
- * as, linked to the maze on the page at `href`, by its repository route for a maze of the
- * repository and by the link Copy link copies for any other.
+ * as, linked to the maze on the page at `href`: by its repository route for a maze of the
+ * repository still as its file has it, and by the link Copy link copies for any other, an edited
+ * repository maze included while its copy in My mazes is not written yet.
  */
 export function mazeMarkdown(open: OpenMaze, href: string): string {
   const ref = refOf(open.key);
-  const link = ref?.kind === 'repo' ? linkTo(ref, href) : mazeLink(open, href);
+  const link =
+    ref?.kind === 'repo' && open.document.source !== undefined
+      ? linkTo(ref, href)
+      : mazeLink(open, href);
   const alt = open.name.replaceAll(/[[\]\\]/g, (character) => `\\${character}`);
-  return `[![${alt}](${downloadName(open, '.svg')})](${link})`;
+  return `[![${alt}](${downloadName(open, '.svg')})](<${link}>)`;
 }
 
 /** Whether the link leaves out text after the grid that the maze has. */

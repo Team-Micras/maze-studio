@@ -255,7 +255,7 @@ describe('Copy Markdown', () => {
     await expectToast(page, 'Markdown copied');
 
     expect(await page.evaluate(() => navigator.clipboard.readText())).toBe(
-      `[![AAMC15Maze](AAMC15Maze.svg)](${new URL(`#/repo/${CLASSIC}`, app).href})`
+      `[![AAMC15Maze](AAMC15Maze.svg)](<${new URL(`#/repo/${CLASSIC}`, app).href}>)`
     );
   });
 
@@ -268,7 +268,7 @@ describe('Copy Markdown', () => {
     await exportMenu(page, 'Copy Markdown');
     await expectToast(page, 'Markdown copied');
     const markdown = await page.evaluate(() => navigator.clipboard.readText());
-    const [, alt, image, link = ''] = /^\[!\[(.*)\]\((.*)\)\]\((.*)\)$/.exec(markdown) ?? [];
+    const [, alt, image, link = ''] = /^\[!\[(.*)\]\((.*)\)\]\(<(.*)>\)$/.exec(markdown) ?? [];
     const [svgName] = await downloaded(page, () => exportMenu(page, 'Download SVG'));
 
     expect([alt, image]).toEqual(['AAMC15Maze (edited)', svgName]);
@@ -286,7 +286,7 @@ describe('Copy Markdown', () => {
   });
 });
 
-describe('The Export submenu', () => {
+describe('The Export menu', () => {
   test('opens and downloads from the keyboard', async () => {
     const page = await openMaze(`#/repo/${CLASSIC}`);
     await page.getByRole('button', { name: 'More actions' }).focus();
@@ -298,6 +298,7 @@ describe('The Export submenu', () => {
       await page.keyboard.press('ArrowDown');
     }
 
+    await page.locator('[role=menuitem][data-highlighted]', { hasText: 'Export' }).waitFor();
     await page.keyboard.press('ArrowRight');
     await expect
       .poll(() => page.evaluate(() => document.activeElement?.textContent))
@@ -308,33 +309,47 @@ describe('The Export submenu', () => {
     expect(await page.getByRole('menu').count()).toBe(0);
   });
 
-  test.each([360, 390])('opens with a tap on a %d px phone, inside the screen', async (width) => {
-    const context = await browser.newContext({
-      viewport: { width, height: 844 },
-      hasTouch: true,
-    });
-    contexts.push(context);
-    await context.grantPermissions(['clipboard-read', 'clipboard-write']);
-    const page = await context.newPage();
-    await openMaze(`#/repo/${CLASSIC}`, page);
-    await page.getByRole('button', { name: 'More actions' }).tap();
-    await page.getByRole('menuitem', { name: 'Export' }).tap();
-    const item = page.getByRole('menuitem', { name: 'Copy Markdown' });
-    await item.waitFor();
-    const menus = await page.getByRole('menu').evaluateAll((elements) =>
-      elements.map((element) => {
-        const { left, right, bottom } = element.getBoundingClientRect();
-        return { left, right, bottom };
-      })
-    );
+  test.each([320, 360, 390])(
+    'opens under Export with a tap on a %d px phone and closes with another',
+    async (width) => {
+      const context = await browser.newContext({
+        viewport: { width, height: 844 },
+        hasTouch: true,
+      });
+      contexts.push(context);
+      await context.grantPermissions(['clipboard-read', 'clipboard-write']);
+      const page = await context.newPage();
+      await openMaze(`#/repo/${CLASSIC}`, page);
+      await page.getByRole('button', { name: 'More actions' }).tap();
+      const exportItem = page.getByRole('menuitem', { name: 'Export' });
+      const items = page.getByRole('menuitem', {
+        name: /^(Download|Copy) (mazefile|SVG|Markdown)/,
+      });
+      await exportItem.tap();
+      await items.nth(3).waitFor();
+      const boxes = await items.evaluateAll((elements) =>
+        elements.map((element) => {
+          const { left, right, bottom } = element.getBoundingClientRect();
+          return { left, right, bottom };
+        })
+      );
 
-    expect(menus).toHaveLength(2);
-    expect(menus.every((box) => box.left >= 0 && box.right <= width && box.bottom <= 844)).toBe(
-      true
-    );
-    await item.tap();
-    await expectToast(page, 'Markdown copied');
-  });
+      expect(await exportItem.getAttribute('aria-expanded')).toBe('true');
+      expect(await page.getByRole('menu').count()).toBe(1);
+      expect(boxes).toHaveLength(4);
+      expect(boxes.every((box) => box.left >= 0 && box.right <= width && box.bottom <= 844)).toBe(
+        true
+      );
+      await exportItem.tap();
+
+      await expect.poll(() => items.count()).toBe(0);
+      expect(await exportItem.getAttribute('aria-expanded')).toBe('false');
+      expect(await page.getByRole('menu').count()).toBe(1);
+      await exportItem.tap();
+      await page.getByRole('menuitem', { name: 'Copy Markdown' }).tap();
+      await expectToast(page, 'Markdown copied');
+    }
+  );
 });
 
 describe('Save to My mazes', () => {
