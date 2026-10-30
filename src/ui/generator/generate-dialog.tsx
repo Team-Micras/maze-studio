@@ -109,8 +109,10 @@ export interface GenerateDialogProps {
   /**
    * Puts the maze picked on the board in place of the open one, as one step of undo; only for a
    * maze of the board's size.
+   *
+   * @returns Whether the board took it, which a read-only board does not.
    */
-  readonly onReplace?: (generated: Generated) => void;
+  readonly onReplace?: (generated: Generated) => boolean;
   /**
    * Whether the open maze is a new maze not yet edited, which the maze picked takes the place of as
    * a new maze of its own, with its name and recipe.
@@ -663,8 +665,7 @@ export default function GenerateDialog({
 
   const forward = stepTo(items, index, 1);
   const backward = stepTo(items, index, -1);
-  const canMore =
-    !running && !invalid && items.length > 0 && index === items.length - 1 && batch.roomForMore;
+  const canMore = !running && items.length > 0 && index === items.length - 1 && batch.roomForMore;
   const full = !running && items.length > 0 && !batch.roomForMore;
 
   const more = (): void => {
@@ -775,14 +776,16 @@ export default function GenerateDialog({
 
   const use = (): void => {
     if (isReady(current)) {
-      batch.use(current.n);
       onOpenChange(false);
 
       if (onReplace !== undefined && !freshMaze && replacesBoard(current, board)) {
-        onReplace({ maze: measureItem(current).maze, recipe: current.recipe });
+        if (onReplace({ maze: measureItem(current).maze, recipe: current.recipe })) {
+          batch.use(current.n);
+        }
         return;
       }
 
+      batch.use(current.n);
       onUse(requestOf(current));
     }
   };
@@ -943,7 +946,7 @@ export default function GenerateDialog({
       {items.length === 0 || !batch.roomForMore ? null : (
         <Button
           className="self-start rounded-[10px]"
-          disabled={invalid || running}
+          disabled={running}
           onClick={more}
           type="button"
           variant="outline"

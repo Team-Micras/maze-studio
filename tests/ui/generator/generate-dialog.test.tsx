@@ -276,7 +276,7 @@ describe('The Generate dialog', () => {
       board,
       onOpenChange: () => undefined,
       onPreview: (preview: GeneratorPreview | undefined) => previews.push(preview),
-      onReplace: () => undefined,
+      onReplace: () => true,
       onUse: () => undefined,
     };
     const screen = await render(<GenerateDialog {...props} open />);
@@ -309,7 +309,7 @@ describe('The Generate dialog', () => {
         board={borderedMaze(16, 16)}
         onOpenChange={() => undefined}
         onPreview={(preview) => previews.push(preview)}
-        onReplace={() => undefined}
+        onReplace={() => true}
         onUse={() => undefined}
         open
       />
@@ -333,7 +333,7 @@ describe('The Generate dialog', () => {
         board={borderedMaze(16, 16)}
         onOpenChange={() => undefined}
         onPreview={(preview) => previews.push(preview)}
-        onReplace={() => undefined}
+        onReplace={() => true}
         onUse={() => undefined}
         open
       />
@@ -349,6 +349,55 @@ describe('The Generate dialog', () => {
     await open(3);
     await expect.poll(building, GENERATION).toBe(false);
     await expect.element(page.getByRole('heading', { name: /^#3 of 24 ·/ })).toBeVisible();
+  });
+
+  test("builds More past the last maze with the batch's own settings, whatever the form says since", async () => {
+    const batch = new Batch();
+    await render(
+      <GenerateDialog batch={batch} onOpenChange={() => undefined} onUse={() => undefined} open />
+    );
+    await generate();
+    await expect.poll(building, GENERATION).toBe(false);
+    const made = batch.getState().settings?.path;
+    await userEvent.click(page.getByRole('button', { name: 'Settings' }));
+    await userEvent.fill(
+      page.getByRole('spinbutton', { name: 'Shortest path, in cells, from' }),
+      String((made?.[0] ?? 60) + 1)
+    );
+    await userEvent.click(page.getByRole('button', { name: 'Back to the mazes' }));
+    await open(8);
+    await userEvent.click(page.getByRole('button', { name: 'Next maze, building 8 more' }));
+    await expect.poll(() => batch.getState().progress, GENERATION).toBeNull();
+
+    const more = batch.getState().items.slice(8);
+    expect(more).toHaveLength(8);
+    expect(more.map((item) => item.recipe?.settings.path)).toEqual(Array(8).fill(made));
+  });
+
+  test('marks a maze In use only once the board takes it', async () => {
+    const batch = new Batch();
+    let takes = false;
+    await render(
+      <GenerateDialog
+        batch={batch}
+        board={borderedMaze(16, 16)}
+        onOpenChange={() => undefined}
+        onReplace={() => takes}
+        onUse={() => undefined}
+        open
+      />
+    );
+    await generate();
+    await expect.poll(building, GENERATION).toBe(false);
+    await open(2);
+    await userEvent.click(page.getByRole('button', { name: 'Use this' }));
+    expect(batch.getState().used).toBeUndefined();
+    expect(page.getByText('In use', { exact: true }).query()).toBeNull();
+
+    takes = true;
+    await userEvent.click(page.getByRole('button', { name: 'Use this' }));
+    expect(batch.getState().used).toBe(batch.getState().items[1]?.n);
+    await expect.element(page.getByText('In use', { exact: true })).toBeVisible();
   });
 
   test('goes back one view per Esc: settings, then the maze opened, then the gallery, which closes', async () => {
@@ -482,7 +531,7 @@ describe('The Generate dialog', () => {
         batch={new Batch()}
         board={BOARD}
         onOpenChange={() => undefined}
-        onReplace={(generated) => replaced.push(generated)}
+        onReplace={(generated) => replaced.push(generated) > 0}
         onUse={(request) => used.push(request)}
         open
       />
@@ -512,7 +561,7 @@ describe('The Generate dialog', () => {
         batch={new Batch()}
         board={borderedMaze(8, 8)}
         onOpenChange={() => undefined}
-        onReplace={() => undefined}
+        onReplace={() => true}
         onUse={() => undefined}
         open
       />

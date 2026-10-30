@@ -557,9 +557,13 @@ export function Studio({
         onOpenChange={(next) => setGenerateFor(next ? editingKey : undefined)}
         onPreview={phone ? undefined : setGeneratorPreview}
         onReplace={(generated) => {
-          if (editor.replace(generated)) {
+          const replaced = editor.replace(generated);
+
+          if (replaced) {
             showToast(REPLACED);
           }
+
+          return replaced;
         }}
         onUse={onNew}
         open={generateFor !== undefined}
