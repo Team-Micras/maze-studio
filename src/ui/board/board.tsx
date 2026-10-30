@@ -9,7 +9,7 @@ import {
   overlayStrokes,
   TRACK_COLORS,
   TRACK_OPACITY,
-  trackLayers,
+  trackPaint,
   type BoardGeometry,
   type BoardOverlays,
 } from '@/render';
@@ -39,10 +39,11 @@ interface LayerProps {
   readonly strokeOpacity?: number;
   readonly strokeWidth?: number;
   readonly strokeDasharray?: readonly number[];
-  readonly round?: boolean;
+  readonly strokeLinecap?: 'round';
+  readonly strokeLinejoin?: 'round';
 }
 
-function Layer({ name, d, fill = 'none', strokeDasharray, round = false, ...paint }: LayerProps) {
+function Layer({ name, d, fill = 'none', strokeDasharray, ...paint }: LayerProps) {
   if (d === '') {
     return null;
   }
@@ -53,39 +54,17 @@ function Layer({ name, d, fill = 'none', strokeDasharray, round = false, ...pain
       data-layer={name}
       fill={fill}
       strokeDasharray={strokeDasharray?.join(' ')}
-      strokeLinecap={round ? 'round' : undefined}
-      strokeLinejoin={round ? 'round' : undefined}
       {...paint}
     />
   );
 }
 
 function Track({ maze, geometry }: { readonly maze: Maze; readonly geometry: BoardGeometry }) {
-  const layers = trackLayers(maze, geometry);
-  const postOutline = { stroke: TRACK_COLORS.floor, strokeWidth: geometry.postOutline };
-
   return (
     <g data-group="track">
-      <Layer name="floor" d={layers.floor} fill={TRACK_COLORS.floor} />
-      <Layer name="rails" d={layers.rails} fill={TRACK_COLORS.rail} />
-      <Layer
-        name="goal"
-        d={layers.goal}
-        fill={TRACK_COLORS.goal}
-        fillOpacity={TRACK_OPACITY.goal}
-      />
-      <Layer
-        name="start"
-        d={layers.start}
-        stroke={TRACK_COLORS.bare}
-        strokeOpacity={TRACK_OPACITY.start}
-        strokeWidth={geometry.startStroke}
-        round
-      />
-      <Layer name="red-walls" d={layers.redWalls} fill={TRACK_COLORS.wall} />
-      <Layer name="bare-walls" d={layers.bareWalls} fill={TRACK_COLORS.bare} />
-      <Layer name="red-posts" d={layers.redPosts} fill={TRACK_COLORS.post} {...postOutline} />
-      <Layer name="bare-posts" d={layers.barePosts} fill={TRACK_COLORS.bare} {...postOutline} />
+      {trackPaint(maze, geometry).map((layer) => (
+        <Layer key={layer.name} {...layer} />
+      ))}
     </g>
   );
 }

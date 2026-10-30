@@ -1,6 +1,6 @@
 /**
  * Sharing the maze on screen (PLAN.md 3.4, DESIGN.md 6.1 and 12): its link, which carries the walls,
- * the marks and the name but not the text after the grid; its `.txt`; and copying text with the
+ * the marks and the name but not the text after the grid; its `.txt` and its SVG; and copying text with the
  * clipboard, or without it on a page served over plain HTTP.
  *
  * @module
@@ -24,9 +24,9 @@ export function linkDropsNotes(open: OpenMaze): boolean {
   return open.document.trailer !== '';
 }
 
-/** The name a download of `open` takes: a stem that passes the repository's name rule, `.txt`. */
-export function downloadName(open: OpenMaze): string {
-  return `${uniqueStems([open.name])[0] ?? 'maze'}.txt`;
+/** The name a download of `open` takes: a stem that passes the repository's name rule, `extension`. */
+export function downloadName(open: OpenMaze, extension: '.txt' | '.svg' = '.txt'): string {
+  return `${uniqueStems([open.name])[0] ?? 'maze'}${extension}`;
 }
 
 /** The text of `open` as a mazefiles `.txt`, with its text after the grid. */
@@ -53,7 +53,7 @@ export async function copyText(text: string): Promise<boolean> {
   }
 }
 
-/** Downloads `text` as `fileName`. */
-export function downloadText(fileName: string, text: string): void {
-  downloadBlob(fileName, new Blob([text], { type: 'text/plain' }));
+/** Downloads `text` as `fileName`, of the media `type`. */
+export function downloadText(fileName: string, text: string, type = 'text/plain'): void {
+  downloadBlob(fileName, new Blob([text], { type }));
 }

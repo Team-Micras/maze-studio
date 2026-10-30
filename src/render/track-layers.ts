@@ -9,8 +9,9 @@
 
 import { cellIndex, hasWall, type Cell, type Edge, type Maze } from '@/maze';
 
-import { cellRect, toBoardPoint, wallRect, type BoardGeometry } from './geometry';
+import { cellRect, toBoardPoint, wallRect, type BoardGeometry, type BoardRect } from './geometry';
 import { formatLength, rectPath } from './path';
+import { TRACK_COLORS, TRACK_OPACITY } from './track-colors';
 
 /** Path data of each layer of the track; an empty string draws nothing. */
 export interface TrackLayers {
@@ -86,45 +87,79 @@ function chevronPath(geometry: BoardGeometry, start: Cell | undefined): string {
   return `M${f(left.x)} ${f(left.y)}L${f(tip.x)} ${f(tip.y)}L${f(right.x)} ${f(right.y)}`;
 }
 
-function* walls(maze: Maze): Generator<Edge> {
-  for (let y = 0; y <= maze.height; y++) {
-    for (let x = 0; x < maze.width; x++) {
-      const edge: Edge = { direction: 'horizontal', x, y };
-
-      if (hasWall(maze, edge)) {
-        yield edge;
-      }
-    }
-  }
-
-  for (let y = 0; y < maze.height; y++) {
-    for (let x = 0; x <= maze.width; x++) {
-      const edge: Edge = { direction: 'vertical', x, y };
-
-      if (hasWall(maze, edge)) {
-        yield edge;
-      }
-    }
-  }
-}
-
 function touchesMark(edge: Edge, marked: (x: number, y: number) => boolean): boolean {
   return edge.direction === 'horizontal'
     ? marked(edge.x, edge.y) || marked(edge.x, edge.y - 1)
     : marked(edge.x, edge.y) || marked(edge.x - 1, edge.y);
 }
 
+function edgeOn(direction: Edge['direction'], line: number, step: number): Edge {
+  return direction === 'horizontal'
+    ? { direction, x: step, y: line }
+    : { direction, x: line, y: step };
+}
+
+function spanRect(first: BoardRect, last: BoardRect): BoardRect {
+  const x = Math.min(first.x, last.x);
+  const y = Math.min(first.y, last.y);
+  return {
+    x,
+    y,
+    width: Math.max(first.x + first.width, last.x + last.width) - x,
+    height: Math.max(first.y + first.height, last.y + last.height) - y,
+  };
+}
+
+/**
+ * The walls of `maze` as runs, each the longest line of walls of one paint, so that a maze draws
+ * with one rectangle per straight stretch of wall rather than one per edge.
+ */
+function wallRuns(
+  maze: Maze,
+  geometry: BoardGeometry,
+  marked: (x: number, y: number) => boolean
+): { readonly red: string[]; readonly bare: string[] } {
+  const runs = { red: [] as string[], bare: [] as string[] };
+
+  for (const direction of ['horizontal', 'vertical'] as const) {
+    const lines = direction === 'horizontal' ? maze.height + 1 : maze.width + 1;
+    const steps = direction === 'horizontal' ? maze.width : maze.height;
+
+    for (let line = 0; line < lines; line++) {
+      let from: number | undefined;
+      let fromBare = false;
+
+      for (let step = 0; step <= steps; step++) {
+        const edge = step < steps ? edgeOn(direction, line, step) : undefined;
+        const walled = edge !== undefined && hasWall(maze, edge);
+        const bare = walled && touchesMark(edge, marked);
+
+        if (from !== undefined && (!walled || bare !== fromBare)) {
+          const rect = spanRect(
+            wallRect(geometry, edgeOn(direction, line, from)),
+            wallRect(geometry, edgeOn(direction, line, step - 1))
+          );
+          (fromBare ? runs.bare : runs.red).push(rectPath(rect));
+          from = undefined;
+        }
+
+        if (walled && from === undefined) {
+          from = step;
+          fromBare = bare;
+        }
+      }
+    }
+  }
+
+  return runs;
+}
+
 /** The track of `maze` drawn with `geometry`. */
 export function trackLayers(maze: Maze, geometry: BoardGeometry): TrackLayers {
   const marked = markedCells(maze);
-  const redWalls: string[] = [];
-  const bareWalls: string[] = [];
+  const walls = wallRuns(maze, geometry, marked);
   const redPosts: string[] = [];
   const barePosts: string[] = [];
-
-  for (const edge of walls(maze)) {
-    (touchesMark(edge, marked) ? bareWalls : redWalls).push(rectPath(wallRect(geometry, edge)));
-  }
 
   for (let y = 0; y <= maze.height; y++) {
     for (let x = 0; x <= maze.width; x++) {
@@ -145,9 +180,48 @@ export function trackLayers(maze: Maze, geometry: BoardGeometry): TrackLayers {
     rails: railsPath(geometry),
     goal: maze.goals.map((cell) => rectPath(cellRect(geometry, cell))).join(''),
     start: chevronPath(geometry, maze.start),
-    redWalls: redWalls.join(''),
-    bareWalls: bareWalls.join(''),
+    redWalls: walls.red.join(''),
+    bareWalls: walls.bare.join(''),
     redPosts: redPosts.join(''),
     barePosts: barePosts.join(''),
   };
+}
+
+/** One layer of the track as an SVG path paints it, with React's names for the attributes. */
+export interface TrackPaint {
+  readonly name: string;
+  readonly d: string;
+  readonly fill: string;
+  readonly fillOpacity?: number;
+  readonly stroke?: string;
+  readonly strokeOpacity?: number;
+  readonly strokeWidth?: number;
+  readonly strokeLinecap?: 'round';
+  readonly strokeLinejoin?: 'round';
+}
+
+/** The layers of the track of `maze` drawn with `geometry`, with their paint, in painting order. */
+export function trackPaint(maze: Maze, geometry: BoardGeometry): readonly TrackPaint[] {
+  const layers = trackLayers(maze, geometry);
+  const postOutline = { stroke: TRACK_COLORS.floor, strokeWidth: geometry.postOutline };
+
+  return [
+    { name: 'floor', d: layers.floor, fill: TRACK_COLORS.floor },
+    { name: 'rails', d: layers.rails, fill: TRACK_COLORS.rail },
+    { name: 'goal', d: layers.goal, fill: TRACK_COLORS.goal, fillOpacity: TRACK_OPACITY.goal },
+    {
+      name: 'start',
+      d: layers.start,
+      fill: 'none',
+      stroke: TRACK_COLORS.bare,
+      strokeOpacity: TRACK_OPACITY.start,
+      strokeWidth: geometry.startStroke,
+      strokeLinecap: 'round',
+      strokeLinejoin: 'round',
+    },
+    { name: 'red-walls', d: layers.redWalls, fill: TRACK_COLORS.wall },
+    { name: 'bare-walls', d: layers.bareWalls, fill: TRACK_COLORS.bare },
+    { name: 'red-posts', d: layers.redPosts, fill: TRACK_COLORS.post, ...postOutline },
+    { name: 'bare-posts', d: layers.barePosts, fill: TRACK_COLORS.bare, ...postOutline },
+  ];
 }

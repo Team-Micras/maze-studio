@@ -40,6 +40,10 @@ export interface MoreActionsProps {
   readonly onSaveToMine?: () => void;
   /** Downloads the maze as a `.txt`. */
   readonly onDownload: () => void;
+  /** Downloads the board as an `.svg`. */
+  readonly onDownloadSvg: () => void;
+  /** Copies the board's SVG as text. */
+  readonly onCopySvg: () => void;
   /** Copies the link, here on a phone, where the island has no link button. */
   readonly onCopyLink?: () => void;
   /** Shares the link with Web Share, where the browser has it. */
@@ -64,7 +68,7 @@ export interface MoreActionsProps {
 const ITEM = 'rounded-[9px]';
 
 /**
- * The editor's ⋯ menu (DESIGN.md 6, 6.1 and 9.2): Save to My mazes for a maze not in it yet, Download .txt, Copy link and Share… on a phone,
+ * The editor's ⋯ menu (DESIGN.md 6, 6.1 and 9.2): Save to My mazes for a maze not in it yet, Download .txt, Download SVG, Copy SVG, Copy link and Share… on a phone,
  * Copy recipe for a generated maze, Generate… (beta), Close outer walls, Changes, Rename and Delete for a maze of My mazes, Fit, the theme and the
  * shortcut help. Delete
  * takes two selects: the first keeps the menu open and turns it into "Confirm delete". A download
@@ -76,6 +80,8 @@ export function MoreActions({
   onChanges,
   onSaveToMine,
   onDownload,
+  onDownloadSvg,
+  onCopySvg,
   onCopyLink,
   onShare,
   onCopyRecipe,
@@ -125,6 +131,14 @@ export function MoreActions({
         <DropdownMenuItem className={ITEM} onSelect={later(onDownload)}>
           <DownloadSimple aria-hidden size={16} />
           Download .txt
+        </DropdownMenuItem>
+        <DropdownMenuItem className={ITEM} onSelect={later(onDownloadSvg)}>
+          <DownloadSimple aria-hidden size={16} />
+          Download SVG
+        </DropdownMenuItem>
+        <DropdownMenuItem className={ITEM} onSelect={onCopySvg}>
+          <Copy aria-hidden size={16} />
+          Copy SVG
         </DropdownMenuItem>
         {onCopyLink === undefined ? null : (
           <DropdownMenuItem className={ITEM} onSelect={onCopyLink}>

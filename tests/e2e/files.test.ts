@@ -14,6 +14,7 @@ import {
   type Maze,
 } from '@/maze';
 import { DATABASE_NAME } from '@/library/database';
+import { mazeSvg } from '@/render';
 import {
   contentOf,
   edgeMiddle,
@@ -206,6 +207,23 @@ describe('Download .txt', () => {
 
     expect(edited).toBe('AAMC15Maze-edited.txt');
     expect(parsed.ok && mazesEqual(parsed.value.maze, toggleWall(maze, EDGE))).toBe(true);
+  });
+});
+
+describe('Copy SVG and Download SVG', () => {
+  test('copy and download the board as an SVG named after the maze', async () => {
+    const { maze } = await repoContent(CLASSIC);
+    const page = await openMaze(`#/repo/${CLASSIC}`);
+    await page.context().grantPermissions(['clipboard-read', 'clipboard-write']);
+    await menu(page, 'Copy SVG');
+    await expectToast(page, 'SVG copied');
+
+    expect(await page.evaluate(() => navigator.clipboard.readText())).toBe(mazeSvg(maze));
+
+    const [name, svg] = await downloaded(page, () => menu(page, 'Download SVG'));
+
+    expect(name).toBe('AAMC15Maze.svg');
+    expect(svg).toBe(mazeSvg(maze));
   });
 });
 

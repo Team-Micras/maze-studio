@@ -13,6 +13,7 @@ import type { MazeEditor } from '@/ui/editor/use-maze-editor';
 import { replaceRoute } from '@/ui/navigation';
 import { showToast } from '@/ui/toasts';
 import { encodeMazeCode } from '@/maze';
+import { mazeSvg } from '@/render';
 
 import type { StudioScreen, StudioState } from './studio-store';
 
@@ -27,7 +28,8 @@ function canShare(): boolean {
 /**
  * The actions on the open maze (PLAN.md 3.4, DESIGN.md 6.1 and 12): Copy link, which says when
  * the notes after the grid stay out of the link and, without a clipboard, puts the link in the
- * address bar; Share… with Web Share; Download .txt under a stem that passes the name rule; Save
+ * address bar; Share… with Web Share; Download .txt and Download SVG under a stem that passes the
+ * name rule, and Copy SVG; Save
  * to My mazes; Rename and Delete for a maze of My mazes; Copy recipe for a generated maze.
  */
 export function useMazeActions({
@@ -97,6 +99,18 @@ export function useMazeActions({
       onDownload: () => {
         if (open !== undefined) {
           downloadText(downloadName(open), mazeFileText(open));
+        }
+      },
+      onDownloadSvg: () => {
+        if (open !== undefined) {
+          downloadText(downloadName(open, '.svg'), mazeSvg(open.maze), 'image/svg+xml');
+        }
+      },
+      onCopySvg: () => {
+        if (open !== undefined) {
+          void copyText(mazeSvg(open.maze)).then((copied) =>
+            showToast(copied ? 'SVG copied' : 'Copy failed')
+          );
         }
       },
       onCopyLink: phone ? copyLink : undefined,
