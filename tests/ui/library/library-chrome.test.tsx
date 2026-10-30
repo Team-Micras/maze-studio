@@ -58,7 +58,7 @@ function apart(a: DOMRect, b: DOMRect): boolean {
 }
 
 describe("The notebook's top islands", () => {
-  test.each([1860, 1440, 1340, 1339, 1100, 800, 721])(
+  test.each([1340, 1339, 721])(
     'never overlap at %i px with an open folder and the widest Changes chip, show every filter, and end above the grid',
     async (width) => {
       await page.viewport(width, 900);

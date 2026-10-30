@@ -7,7 +7,7 @@ import { afterAll, beforeAll, describe, expect, inject, test } from 'vitest';
 import { loadSnapshot } from '@/library/snapshot';
 import { readZip } from '@/library/zip';
 import { encodeMazeCode, toggleWall, type Edge } from '@/maze';
-import { UP_TO_DATE_MS } from '@/ui/library/update-note';
+import { PASSING_NOTE_MS } from '@/ui/library/update-note';
 import {
   edgeMiddle,
   expectSaved,
@@ -117,7 +117,7 @@ describe('Empty and error states (DESIGN.md 12)', () => {
       .toBeLessThanOrEqual(1);
   });
 
-  test('Export all downloads the readable mazes and details the skipped ones with their reason', async () => {
+  test('Export all downloads the readable mazes and details what it left out, with the reason', async () => {
     const page = await openPage(browser, contexts, app);
     const { maze } = await repoContent(CLASSIC);
     await storeMine(page, [
@@ -136,17 +136,18 @@ describe('Empty and error states (DESIGN.md 12)', () => {
     const zip = await readZip(new Uint8Array(readFileSync(path)));
     expect(zip.ok && zip.value.map((entry) => entry.name)).toEqual([
       'Good-maze.txt',
+      'Odd-maze.txt',
       'maze-studio-backup.json',
     ]);
 
-    await expectToast(page, 'Exported 1, skipped 2');
+    await expectToast(page, 'Exported 2, skipped 1');
     await page.getByRole('button', { name: 'Details' }).click();
-    const dialog = page.getByRole('dialog', { name: 'Skipped in the export' });
+    const dialog = page.getByRole('dialog', { name: 'Left out of the export' });
     await dialog.waitFor();
     const rows = await dialog.getByRole('listitem').allTextContents();
     expect(rows).toHaveLength(2);
     expect(rows.join('\n')).toContain('Broken maze');
-    expect(rows.join('\n')).toContain('Odd mazethe stored record is malformed');
+    expect(rows.join('\n')).toContain('Odd mazeleft out its malformed recipe');
   });
 
   test('Import adds, renames on a clash and skips with the reason, then shows My mazes', async () => {
@@ -190,7 +191,7 @@ describe('Empty and error states (DESIGN.md 12)', () => {
 });
 
 describe('Check for updates', () => {
-  test('a newer commit updates the library and the credit says so', async () => {
+  test('a newer commit updates the library and the credit says so for a moment', async () => {
     const page = await openPage(browser, contexts, app);
     const snapshot = await loadSnapshot();
     const kept = snapshot.files.slice(1);
@@ -207,6 +208,7 @@ describe('Check for updates', () => {
     await expect
       .poll(() => page.locator('footer').textContent())
       .toContain(`${kept.length} mazes from micromouseonline/mazefiles at ${NEWER.slice(0, 7)}`);
+    await expect.poll(() => creditNote(page), { timeout: PASSING_NOTE_MS + 2000 }).toBe('');
     await page.reload();
     await page.locator('a[data-artboard]').first().waitFor();
     expect(await page.locator('footer').textContent()).toContain(`at ${NEWER.slice(0, 7)}`);
@@ -222,7 +224,7 @@ describe('Check for updates', () => {
     expect(await page.locator('footer').textContent()).toContain(
       `${files.length} mazes from micromouseonline/mazefiles at ${commit.slice(0, 7)}`
     );
-    await page.waitForTimeout(UP_TO_DATE_MS - 1000);
+    await page.waitForTimeout(PASSING_NOTE_MS - 1000);
     expect(await creditNote(page)).toBe('Up to date');
     await expect.poll(() => creditNote(page), { timeout: 3000 }).toBe('');
   });
