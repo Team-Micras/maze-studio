@@ -26,6 +26,7 @@ import { Badge } from '@/ui/primitives/badge';
 import {
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuGroup,
   DropdownMenuItem,
   DropdownMenuPortal,
   DropdownMenuSeparator,
@@ -189,7 +190,13 @@ export function MoreActions({
                 size={16}
               />
             </DropdownMenuItem>
-            {exportOpen ? <ExportItems className={cn(ITEM, 'pl-7')} items={exports} /> : null}
+            {exportOpen ? (
+              <DropdownMenuGroup className="grid grid-rows-[1fr] transition-[grid-template-rows] duration-200 ease-(--ease) starting:grid-rows-[0fr] motion-reduce:transition-none">
+                <div className="min-h-0 overflow-hidden">
+                  <ExportItems className={cn(ITEM, 'pl-7')} items={exports} />
+                </div>
+              </DropdownMenuGroup>
+            ) : null}
           </>
         ) : (
           <DropdownMenuSub>
