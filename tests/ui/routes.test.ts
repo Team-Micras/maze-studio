@@ -56,5 +56,7 @@ describe('The routes of a maze', () => {
     expect(parseRoute('#/repo/classic//x.txt')).toEqual(LIBRARY_ROUTE);
     expect(parseRoute('#/repo/%E0%A4%A')).toEqual(LIBRARY_ROUTE);
     expect(parseRoute('#/elsewhere/x')).toEqual(LIBRARY_ROUTE);
+    expect(parseRoute('#/folder/my%20maze.txt')).toEqual(LIBRARY_ROUTE);
+    expect(parseRoute('#/?src=folder')).toEqual(LIBRARY_ROUTE);
   });
 });
