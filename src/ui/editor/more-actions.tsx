@@ -87,12 +87,14 @@ interface ExportItem {
 function ExportItems({
   items,
   className,
+  disabled,
 }: {
   readonly items: readonly ExportItem[];
   readonly className: string;
+  readonly disabled?: boolean;
 }) {
   return items.map(({ label, Icon, onSelect }) => (
-    <DropdownMenuItem className={className} key={label} onSelect={onSelect}>
+    <DropdownMenuItem className={className} disabled={disabled} key={label} onSelect={onSelect}>
       <Icon aria-hidden size={16} />
       {label}
     </DropdownMenuItem>
@@ -190,13 +192,22 @@ export function MoreActions({
                 size={16}
               />
             </DropdownMenuItem>
-            {exportOpen ? (
-              <DropdownMenuGroup className="grid grid-rows-[1fr] transition-[grid-template-rows] duration-200 ease-(--ease) starting:grid-rows-[0fr] motion-reduce:transition-none">
-                <div className="min-h-0 overflow-hidden">
-                  <ExportItems className={cn(ITEM, 'pl-7')} items={exports} />
-                </div>
-              </DropdownMenuGroup>
-            ) : null}
+            <DropdownMenuGroup
+              aria-hidden={!exportOpen}
+              className={cn(
+                'grid transition-[grid-template-rows] duration-200 ease-(--ease) motion-reduce:transition-none',
+                exportOpen ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]'
+              )}
+              inert={!exportOpen}
+            >
+              <div className="min-h-0 overflow-hidden">
+                <ExportItems
+                  className={cn(ITEM, 'pl-7 data-[disabled]:opacity-100')}
+                  disabled={!exportOpen}
+                  items={exports}
+                />
+              </div>
+            </DropdownMenuGroup>
           </>
         ) : (
           <DropdownMenuSub>
