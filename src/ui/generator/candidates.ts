@@ -8,7 +8,7 @@
 
 import { CHOICE, CHOICE_SHORT, features, measure, tags, TEXT, type Measured } from '@/generator';
 import { horizontalEdgeIndex, verticalEdgeIndex, type Maze, type Profile } from '@/maze';
-import type { LoadingTrack } from '@/render/loading';
+import { trackAt, type LoadingTrack } from '@/render/loading';
 import type { NewMazeRequest } from '@/ui/new-maze';
 
 import type { BatchState, Item } from './batch-run';
@@ -227,8 +227,9 @@ export function elapsedText(track: LoadingTrack, now: number): string {
   return elapsed < SHOW_ELAPSED ? '' : `${Math.floor(elapsed / 1000)} s`;
 }
 
-/** What a maze still building is at, in the title line of the maze opened. */
-export function phaseText({ phase, attempt }: LoadingTrack): string {
+/** What a maze still building is at by `now`, in the title line of the maze opened. */
+export function phaseText(track: LoadingTrack, now: number): string {
+  const { phase, attempt } = trackAt(track, now);
   switch (phase) {
     case 'routes':
       return attempt > 1 ? `Trying routes · attempt ${attempt}` : 'Trying routes';
