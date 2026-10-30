@@ -92,6 +92,8 @@ function stroke(
 
   context.strokeStyle = TRACK_COLORS.diff;
   context.lineWidth = width;
+  context.lineCap = 'butt';
+  context.lineJoin = 'miter';
   context.setLineDash(dash);
   context.stroke(new Path2D(path));
   context.setLineDash([]);

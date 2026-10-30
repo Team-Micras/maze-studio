@@ -55,7 +55,7 @@ describe('mazeSvg', () => {
     const paths = [...parse(mazeSvg(maze)).querySelectorAll('path')].map((path) =>
       path.getAttribute('d')
     );
-    const layers = trackPaint(maze, boardGeometry(maze)).filter((layer) => layer.d !== '');
+    const layers = trackPaint(maze, boardGeometry(maze));
     const walls = layers.find((layer) => layer.name === 'red-walls');
 
     expect(paths).toEqual(layers.map((layer) => layer.d));
@@ -67,7 +67,7 @@ describe('mazeSvg', () => {
       setStart(fillBorder(createMaze({ width: 4, height: 3 })), { x: 0, y: 0 }),
       [{ x: 3, y: 2 }]
     );
-    const layers = trackPaint(maze, boardGeometry(maze)).filter((layer) => layer.d !== '');
+    const layers = trackPaint(maze, boardGeometry(maze));
     const svg = mazeSvg(maze);
     const paths = [...parse(svg).querySelectorAll('path')];
     const pairs = layers.flatMap((layer, index) =>

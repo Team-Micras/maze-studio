@@ -60,7 +60,6 @@ export function mazeSvg(maze: Maze): string {
   const width = formatLength(geometry.width);
   const height = formatLength(geometry.height);
   const paths = trackPaint(maze, geometry)
-    .filter((layer) => layer.d !== '')
     .map(
       ({ name: _name, ...paint }) =>
         `<path ${Object.entries(paint)

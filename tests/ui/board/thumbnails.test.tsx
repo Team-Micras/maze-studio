@@ -5,6 +5,7 @@ import { diffMazes, encodeMazeCode, setStart, toggleWall, type Maze } from '@/ma
 import {
   boardGeometry,
   drawThumbnail,
+  paintTrack,
   PREVIEW_BAND,
   THUMBNAIL_BANDS,
   THUMBNAIL_CACHE_BYTES,
@@ -55,6 +56,26 @@ function redShare(canvas: HTMLCanvasElement | null): number {
   return red / (data.length / 4);
 }
 
+/** The line cap of each stroke `paintTrack` makes for `before` with one wall put, diff on top. */
+function strokeCaps(before: Maze): string[] {
+  const after = toggleWall(before, { direction: 'horizontal', x: 5, y: 5 });
+  const geometry = boardGeometry(after, { scale: 'thumbnail', size: 128 });
+  const context = new OffscreenCanvas(128, 128).getContext('2d');
+  const seen: string[] = [];
+
+  if (context === null) {
+    throw new Error('no 2D context');
+  }
+
+  const draw = context.stroke.bind(context);
+  vi.spyOn(context, 'stroke').mockImplementation((path?: Path2D) => {
+    seen.push(context.lineCap);
+    draw(path ?? new Path2D());
+  });
+  paintTrack(context, after, geometry, diffMazes(before, after));
+  return seen;
+}
+
 describe('drawThumbnail', () => {
   test('paints the floor, red walls, and posts at the size of its band', async () => {
     const maze = await repoMaze(REPO_MAZES.classic);
@@ -81,6 +102,13 @@ describe('drawThumbnail', () => {
 
     expect(differs(margin + cell * 5.5, 128 - margin - cell * 5)).toBe(true);
     expect(differs(margin + cell * 10.5, 128 - margin - cell * 10.5)).toBe(false);
+  });
+
+  test('ends the diff outlines square, with or without a start chevron before them', async () => {
+    const maze = await repoMaze(REPO_MAZES.classic);
+    const startless = { ...maze, start: undefined };
+    expect(strokeCaps(maze)).toEqual(['round', 'butt']);
+    expect(strokeCaps(startless)).toEqual(['butt']);
   });
 });
 

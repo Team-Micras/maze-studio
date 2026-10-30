@@ -210,12 +210,15 @@ export interface TrackPaint {
   readonly strokeLinejoin?: 'round';
 }
 
-/** The layers of the track of `maze` drawn with `geometry`, with their paint, in painting order. */
+/**
+ * The layers of the track of `maze` drawn with `geometry` that have something to draw, with their
+ * paint, in painting order.
+ */
 export function trackPaint(maze: Maze, geometry: BoardGeometry): readonly TrackPaint[] {
   const layers = trackLayers(maze, geometry);
   const postOutline = { stroke: TRACK_COLORS.floor, strokeWidth: geometry.postOutline };
 
-  return [
+  const paint: readonly TrackPaint[] = [
     { name: 'floor', d: layers.floor, fill: TRACK_COLORS.floor },
     { name: 'rails', d: layers.rails, fill: TRACK_COLORS.rail },
     { name: 'goal', d: layers.goal, fill: TRACK_COLORS.goal, fillOpacity: TRACK_OPACITY.goal },
@@ -234,4 +237,5 @@ export function trackPaint(maze: Maze, geometry: BoardGeometry): readonly TrackP
     { name: 'red-posts', d: layers.redPosts, fill: TRACK_COLORS.post, ...postOutline },
     { name: 'bare-posts', d: layers.barePosts, fill: TRACK_COLORS.bare, ...postOutline },
   ];
+  return paint.filter((layer) => layer.d !== '');
 }
