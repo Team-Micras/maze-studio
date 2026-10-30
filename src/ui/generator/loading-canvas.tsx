@@ -3,13 +3,10 @@ import { useLayoutEffect, useRef, useState, type CSSProperties } from 'react';
 import { boardGeometry, type TrackScale } from '@/render';
 import {
   boardScene,
-  decorativeGoals,
-  decorativeMaze,
   paintLoading,
   SETTLE,
-  wallLines,
+  waitingLines,
   waveScene,
-  type LoadingLine,
   type LoadingTrack,
 } from '@/render/loading';
 import { useDevicePixelRatio } from '@/ui/board/use-device-pixel-ratio';
@@ -36,21 +33,6 @@ export interface LoadingCanvasProps {
 
 /** The longest side of its bitmap, in device pixels, however far a camera zooms in. */
 const MAX_PIXELS = 4096;
-
-const skeletons = new Map<number, readonly LoadingLine[]>();
-
-/** The walls of the decorative maze of `size`, built once. */
-function skeleton(size: number): readonly LoadingLine[] {
-  const known = skeletons.get(size);
-
-  if (known !== undefined) {
-    return known;
-  }
-
-  const lines = wallLines(decorativeMaze(size, decorativeGoals(size)), size);
-  skeletons.set(size, lines);
-  return lines;
-}
 
 /**
  * A maze still being generated, in grey on a canvas of its own (the mockup's `flow.html`): the
@@ -116,7 +98,7 @@ export function LoadingCanvas({
       return undefined;
     }
 
-    const waiting = skeleton(size);
+    const waiting = waitingLines(size);
     let frame = 0;
     let shown: LoadingTrack | undefined;
     let first: LoadingTrack | undefined;

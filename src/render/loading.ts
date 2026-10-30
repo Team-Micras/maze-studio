@@ -333,6 +333,21 @@ export function followTrack(
   };
 }
 
+const waitingBySize = new Map<number, readonly LoadingLine[]>();
+
+/** The walls of the decorative maze of `size` a maze waiting its turn shows, built once. */
+export function waitingLines(size: number): readonly LoadingLine[] {
+  const known = waitingBySize.get(size);
+
+  if (known !== undefined) {
+    return known;
+  }
+
+  const lines = wallLines(decorativeMaze(size, decorativeGoals(size)), size);
+  waitingBySize.set(size, lines);
+  return lines;
+}
+
 /** The shade of the wave on `line` at `time`: a band sweeping from the start corner to the far one. */
 export function waveShade(line: LoadingLine, size: number, time: number, reduced: boolean): number {
   if (reduced) {

@@ -1,7 +1,8 @@
 /**
  * Thumbnails: a maze painted on a canvas at thumbnail scale (no rails, thick walls), on demand, in
- * fixed bands of 64, 128, 256 and 512 pixels on the longest side, and kept in one cache bounded by
- * the bytes of the bitmaps (PLAN.md 3.3, DESIGN.md 7). The library, the minimap, the quick list
+ * fixed bands of 64, 128, 256 and 512 pixels on the longest side, and kept in caches bounded by
+ * the bytes of the bitmaps (PLAN.md 3.3, DESIGN.md 7): one for the small bands, roomy enough for a
+ * preview of every maze, and one for the large bands. The library, the minimap, the quick list
  * and the Changes panel, which draws the diff on top, all take them from here.
  *
  * @module
@@ -21,8 +22,20 @@ export const THUMBNAIL_BANDS = [64, 128, 256, 512] as const;
 /** One of {@link THUMBNAIL_BANDS}. */
 export type ThumbnailBand = (typeof THUMBNAIL_BANDS)[number];
 
-/** The bytes all cached thumbnails may add up to: 64 MB. */
+/** The bytes the cached thumbnails of the bands past {@link PREVIEW_BAND} may add up to: 64 MB. */
 export const THUMBNAIL_CACHE_BYTES = 64 * 1024 * 1024;
+
+/**
+ * The largest band kept with the previews: drawn in less than half the time of the 512 band, and
+ * still showing a 32 × 32 maze's walls (decisions.md).
+ */
+export const PREVIEW_BAND = 128;
+
+/**
+ * The bytes the cached thumbnails up to {@link PREVIEW_BAND} may add up to: 40 MB, a square
+ * preview of 64 KB for each of 640 mazes, more than the repository holds.
+ */
+export const PREVIEW_CACHE_BYTES = 40 * 1024 * 1024;
 
 /** The size of a thumbnail's bitmap, in device pixels. */
 export interface ThumbnailSize {
@@ -150,18 +163,26 @@ export function drawThumbnail(maze: Maze, band: ThumbnailBand, diff?: MazeDiff):
   return canvas;
 }
 
-/** Thumbnails by key and band, drawn on first use and kept in an LRU bounded by bytes. */
+/**
+ * Thumbnails by key and band, drawn on first use and kept in two LRUs bounded by bytes, so the
+ * large bitmaps never push out the previews.
+ */
 export class ThumbnailCache {
-  readonly #cache: LruCache<OffscreenCanvas>;
+  readonly #large: LruCache<OffscreenCanvas>;
+  readonly #small: LruCache<OffscreenCanvas>;
 
-  /** @param capacity The bytes the bitmaps may add up to; 64 MB by default. */
-  constructor(capacity = THUMBNAIL_CACHE_BYTES) {
-    this.#cache = new LruCache(capacity);
+  /**
+   * @param capacity The bytes the bitmaps past {@link PREVIEW_BAND} may add up to; 64 MB by default.
+   * @param previewCapacity The bytes the others may add up to; 40 MB by default.
+   */
+  constructor(capacity = THUMBNAIL_CACHE_BYTES, previewCapacity = PREVIEW_CACHE_BYTES) {
+    this.#large = new LruCache(capacity);
+    this.#small = new LruCache(previewCapacity);
   }
 
   /** The bytes the cached bitmaps add up to. */
   get bytes(): number {
-    return this.#cache.bytes;
+    return this.#large.bytes + this.#small.bytes;
   }
 
   /**
@@ -173,7 +194,7 @@ export class ThumbnailCache {
    */
   thumbnail(key: string, maze: Maze, pixels: number): OffscreenCanvas {
     const band = thumbnailBand(pixels);
-    return this.#cached(`${band}:${key}`, () => drawThumbnail(maze, band));
+    return this.#cached(band, `${band}:${key}`, () => drawThumbnail(maze, band));
   }
 
   /**
@@ -192,7 +213,9 @@ export class ThumbnailCache {
     diff: MazeDiff
   ): OffscreenCanvas {
     const band = thumbnailBand(pixels);
-    return this.#cached(`${band}:${key}:diff:${diffKey}`, () => drawThumbnail(maze, band, diff));
+    return this.#cached(band, `${band}:${key}:diff:${diffKey}`, () =>
+      drawThumbnail(maze, band, diff)
+    );
   }
 
   /**
@@ -201,18 +224,24 @@ export class ThumbnailCache {
    * later.
    */
   cached(key: string, pixels: number): OffscreenCanvas | undefined {
-    return this.#cache.get(`${thumbnailBand(pixels)}:${key}`);
+    const band = thumbnailBand(pixels);
+    return this.#cacheOf(band).get(`${band}:${key}`);
   }
 
-  #cached(bandKey: string, draw: () => OffscreenCanvas): OffscreenCanvas {
-    const cached = this.#cache.get(bandKey);
+  #cacheOf(band: ThumbnailBand): LruCache<OffscreenCanvas> {
+    return band > PREVIEW_BAND ? this.#large : this.#small;
+  }
+
+  #cached(band: ThumbnailBand, bandKey: string, draw: () => OffscreenCanvas): OffscreenCanvas {
+    const cache = this.#cacheOf(band);
+    const cached = cache.get(bandKey);
 
     if (cached !== undefined) {
       return cached;
     }
 
     const canvas = draw();
-    this.#cache.set(bandKey, canvas, thumbnailBytes(canvas));
+    cache.set(bandKey, canvas, thumbnailBytes(canvas));
     return canvas;
   }
 }

@@ -1,17 +1,20 @@
 import { describe, expect, test, vi } from 'vitest';
 import { render } from 'vitest-browser-react';
 
-import { diffMazes, encodeMazeCode, setStart, toggleWall } from '@/maze';
+import { diffMazes, encodeMazeCode, setStart, toggleWall, type Maze } from '@/maze';
 import {
   boardGeometry,
   drawThumbnail,
+  PREVIEW_BAND,
   THUMBNAIL_BANDS,
+  THUMBNAIL_CACHE_BYTES,
   ThumbnailCache,
   thumbnailBand,
   thumbnailBytes,
 } from '@/render';
 import { thumbnailCache } from '@/ui/board/thumbnail-cache';
 import { ThumbnailCanvas } from '@/ui/board/thumbnail-canvas';
+import { paintThumbnailSkeletons } from '@/ui/board/thumbnail-skeleton';
 import { REPO_MAZES, repoMaze } from '@tests/support/ui/repo-mazes';
 
 function pixel(canvas: OffscreenCanvas | HTMLCanvasElement, x: number, y: number): number[] {
@@ -166,16 +169,52 @@ describe('ThumbnailCache', () => {
 
   test('drops the least recently used bitmap once past its capacity', async () => {
     const maze = await repoMaze(REPO_MAZES.classic);
-    const cache = new ThumbnailCache(2 * thumbnailBytes({ width: 64, height: 64 }));
-    const first = cache.thumbnail('a', maze, 64);
-    cache.thumbnail('b', maze, 64);
-    cache.thumbnail('a', maze, 64);
-    cache.thumbnail('c', maze, 64);
+    const cache = new ThumbnailCache(2 * thumbnailBytes({ width: 256, height: 256 }));
+    const first = cache.thumbnail('a', maze, 256);
+    cache.thumbnail('b', maze, 256);
+    cache.thumbnail('a', maze, 256);
+    cache.thumbnail('c', maze, 256);
 
-    expect(cache.thumbnail('a', maze, 64)).toBe(first);
-    expect(cache.bytes).toBe(2 * thumbnailBytes({ width: 64, height: 64 }));
+    expect(cache.thumbnail('a', maze, 256)).toBe(first);
+    expect(cache.bytes).toBe(2 * thumbnailBytes({ width: 256, height: 256 }));
+  });
+
+  test('keeps the previews apart, so large bitmaps never push them out', async () => {
+    const maze = await repoMaze(REPO_MAZES.classic);
+    const cache = new ThumbnailCache(
+      thumbnailBytes({ width: 512, height: 512 }),
+      2 * thumbnailBytes({ width: PREVIEW_BAND, height: PREVIEW_BAND })
+    );
+    const preview = cache.thumbnail('a', maze, PREVIEW_BAND);
+    cache.thumbnail('a', maze, 512);
+    cache.thumbnail('b', maze, 512);
+
+    expect(cache.cached('a', 512)).toBeUndefined();
+    expect(cache.cached('a', PREVIEW_BAND)).toBe(preview);
+
+    cache.thumbnail('b', maze, PREVIEW_BAND);
+    cache.thumbnail('c', maze, PREVIEW_BAND);
+
+    expect(cache.cached('a', PREVIEW_BAND)).toBeUndefined();
   });
 });
+
+let evictions = 0;
+
+/** Fills the cache of large bitmaps with new ones, so none drawn before is left. */
+function evictSharpThumbnails(maze: Maze): void {
+  evictions++;
+
+  for (let index = 0; index * 512 * 512 * 4 <= THUMBNAIL_CACHE_BYTES; index++) {
+    thumbnailCache.thumbnail(`evicts ${evictions}.${index}`, maze, 512);
+  }
+}
+
+function skeleton(size: number): string {
+  return getComputedStyle(document.documentElement).getPropertyValue(
+    `--thumbnail-skeleton-${size}`
+  );
+}
 
 describe('ThumbnailCanvas', () => {
   test('paints a live maze without leaving a bitmap in the shared cache', async () => {
@@ -220,6 +259,96 @@ describe('ThumbnailCanvas', () => {
 
       matchMedia.mockRestore();
     }
+  });
+
+  test('shows the preview of a remounted flung thumbnail at once, though its sharp bitmap left the cache', async () => {
+    const maze = await repoMaze(REPO_MAZES.taiwan);
+    const sharp = thumbnailBand(200 * window.devicePixelRatio);
+    let moving = true;
+    const flung = (): boolean => moving;
+    const first = await render(
+      <ThumbnailCanvas eachFrame flung={flung} height={200} maze={maze} width={200} />
+    );
+    await expect.poll(() => document.querySelector('canvas')?.width).toBe(PREVIEW_BAND);
+    moving = false;
+    await expect.poll(() => document.querySelector('canvas')?.width).toBe(sharp);
+    await first.unmount();
+    evictSharpThumbnails(maze);
+    moving = true;
+
+    await render(<ThumbnailCanvas eachFrame flung={flung} height={200} maze={maze} width={200} />);
+    const canvas = document.querySelector('canvas');
+
+    expect(canvas?.hasAttribute('data-painted')).toBe(true);
+    expect(canvas?.width).toBe(PREVIEW_BAND);
+    moving = false;
+    await expect.poll(() => canvas?.width).toBe(sharp);
+  });
+
+  test('turns the thumbnails on screen sharp first once a fling stops', async () => {
+    const [offScreen, onScreen] = await Promise.all([
+      repoMaze(REPO_MAZES.classic),
+      repoMaze(REPO_MAZES.halfsize),
+    ]);
+    evictSharpThumbnails(onScreen);
+    const sharp = thumbnailBand(200 * window.devicePixelRatio);
+    let moving = true;
+    const flung = (): boolean => moving;
+    const sharpened: string[] = [];
+    const observer = new MutationObserver((records) =>
+      records.forEach(({ target }) => {
+        if (target instanceof HTMLCanvasElement && target.width === sharp) {
+          sharpened.push(target.parentElement?.id ?? '');
+        }
+      })
+    );
+    observer.observe(document.body, { attributeFilter: ['width'], subtree: true });
+
+    await render(
+      <>
+        <div id="off" style={{ position: 'absolute', top: 5000 }}>
+          <ThumbnailCanvas eachFrame flung={flung} height={200} maze={offScreen} width={200} />
+        </div>
+        <div id="on">
+          <ThumbnailCanvas eachFrame flung={flung} height={200} maze={onScreen} width={200} />
+        </div>
+      </>
+    );
+    await expect
+      .poll(() => [...document.querySelectorAll('canvas')].map((canvas) => canvas.width))
+      .toEqual([PREVIEW_BAND, PREVIEW_BAND]);
+    moving = false;
+
+    await expect.poll(() => sharpened).toHaveLength(2);
+    observer.disconnect();
+    expect(sharpened).toEqual(['on', 'off']);
+  });
+
+  test('paints a library thumbnail at rest sharp at once, never its preview first', async () => {
+    const maze = await repoMaze(REPO_MAZES.halfsize);
+    thumbnailCache.thumbnail(encodeMazeCode(maze), maze, PREVIEW_BAND);
+    evictSharpThumbnails(maze);
+    const widths: string[] = [];
+    const observer = new MutationObserver((records) =>
+      records.forEach((record) => widths.push(record.target.nodeName))
+    );
+    observer.observe(document.body, { attributeFilter: ['width'], subtree: true });
+
+    await render(
+      <ThumbnailCanvas eachFrame flung={() => false} height={200} maze={maze} width={200} />
+    );
+    const canvas = document.querySelector('canvas');
+    await expect.poll(() => canvas?.hasAttribute('data-painted')).toBe(true);
+    observer.disconnect();
+    expect(widths).toEqual(['CANVAS']);
+    expect(canvas?.width).toBe(thumbnailBand(200 * window.devicePixelRatio));
+  });
+
+  test("gives the library the generator's skeleton, still, as an image to show under its thumbnails", async () => {
+    paintThumbnailSkeletons();
+
+    await expect.poll(() => skeleton(16)).toMatch(/^url\(blob:/);
+    await expect.poll(() => skeleton(32)).toMatch(/^url\(blob:/);
   });
 
   test('shows a cached thumbnail at its CSS size with the bitmap of its band behind it', async () => {

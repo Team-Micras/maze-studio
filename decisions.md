@@ -87,11 +87,30 @@ reached, and the measurements of the day, are in the git history of this file.
   is `diffThumbnail`, keyed by the diff too. Walls and posts are at least 1 device pixel and the outer ones end inside
   the bitmap, in every band.
 - **Thumbnails paint in idle time** (`paint-queue.ts`), in idle periods with at least 8 ms left. The library's
-  artboards also paint one at the next animation frame when that comes first, as all through a fling on a phone,
-  which leaves almost no idle time (issue #16); the quick list's rows do not, as one a frame cost it a dropped
-  frame while ↓ is held. Without `requestIdleCallback` only the frames paint, one thumbnail a frame for the whole
-  app. A cached bitmap shows at once; until a paint the canvas keeps its previous bitmap, scaled, or its floor
-  colour.
+  artboards also paint at the next animation frame when that comes first, as all through a fling on a phone,
+  which leaves almost no idle time (issue #16): a frame paints one thumbnail, then starts previews only, for 5 ms
+  more, so it never starts a second 6 ms paint; the quick list's rows do not paint in frames, as one a frame cost it a
+  dropped frame while ↓ is held. Without `requestIdleCallback` only the frames paint, for the whole app, the
+  library's previews first. A cached bitmap shows at once; until a paint the canvas keeps its
+  previous bitmap, scaled, or shows what is under it.
+- **The library shows a preview while flung** (owner, 30/10, issue #16). A fling on a phone outran the one paint a
+  frame, and scrolling back over the same artboards found them blank again: the 64 MB cache holds about 64 bitmaps of
+  the 512 band, fewer than one 9000 px fling passes. While the grid scrolls faster than 2 px a millisecond (33 px a
+  frame; `libraryFlung`, which counts it stopped 50 ms after its last scroll event), a blank artboard shows its 128
+  band, painted in the frame, and its sharp band waits for the stop, then paints one a frame, the artboards on
+  screen first (a paint that waits returns `false` and takes no room in the frame). At rest, as on a load,
+  a filter change or after a stop, it paints the sharp band at once, one a frame, as before: showing the preview first
+  there swapped every card from soft to sharp a moment after a load. The 128 band takes 2.5 ms against 6 ms for the
+  512 one at four times throttling (most of a paint is building the paths, whatever the size), so a frame paints two;
+  the 64 band saves nothing more and loses a 32 × 32 maze's walls. Bands up to 128 sit in an LRU of their own, 40 MB,
+  a preview of every maze of the repository (583 mazes, 36.4 MB): the app may now hold 104 MB of bitmaps instead of 64. Until its preview, an artboard shows the generator's skeleton, still, as a CSS background drawn once per size,
+  queued behind the thumbnails the grid mounts with, so neither a load nor a fling pays for it. Measured at 200 px a
+  frame, 390 × 844 at three times, four times throttling: blank artboards went from 86 % to 17 % on the first pass
+  and from about 25 % to 0–0.5 % on later ones, frames over 25 ms from 35 % to 2.2 %, and from 34 % to 1.5–2.6 %
+  without `requestIdleCallback`. After a stop the ten artboards on screen are sharp in 217–233 ms, against 183–217 ms
+  of blank cards before; a load is sharp as fast as before (desktop 234 ms against 231, phone 488 against 489,
+  medians). The skeleton's drawing brings `src/render/loading.ts` into the first screen's chunk, which stays within
+  the budget (214.8 of 250 KB).
 - **Live mazes are painted, not cached.** The minimap paints the maze being edited straight onto its canvas.
 - **Artboards carry a crisp shadow**, a hairline ring and a 2 px drop: the slab's blurred shadow on every mounted
   artboard broke the frame budget. The editor's board keeps the slab, which scales with the camera.
