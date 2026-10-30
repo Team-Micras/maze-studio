@@ -105,7 +105,6 @@ function Credit({
             'flex flex-none items-center gap-1.5 hover:text-foreground',
             phone && 'w-8 justify-center px-0'
           )}
-          data-repository=""
           href={REPOSITORY}
           rel="noreferrer"
           target="_blank"

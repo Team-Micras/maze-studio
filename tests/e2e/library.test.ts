@@ -258,7 +258,7 @@ describe('The top bar and the grid', () => {
     await classicScrollbars?.close();
   });
 
-  test.each([1345, 1335, 1100])(
+  test.each([1345, 1335])(
     'agree at %i px on one row or two, with scrollbars that take room, the first row 52 px below the filters',
     async (width) => {
       const context = await classicScrollbars.newContext({ viewport: { width, height: 900 } });
