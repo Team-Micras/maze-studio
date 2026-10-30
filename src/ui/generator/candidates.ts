@@ -8,7 +8,7 @@
 
 import { CHOICE, CHOICE_SHORT, features, measure, tags, TEXT, type Measured } from '@/generator';
 import { horizontalEdgeIndex, verticalEdgeIndex, type Maze, type Profile } from '@/maze';
-import type { LoadingTrack } from '@/render/loading';
+import { trackAt, type LoadingTrack } from '@/render/loading';
 import type { NewMazeRequest } from '@/ui/new-maze';
 
 import type { BatchState, Item } from './batch-run';
@@ -77,23 +77,33 @@ export function itemFeatures(item: ReadyItem): string[] {
     : lines;
 }
 
-/** The line under the settings: the run's progress, or the seeds the batch shows. */
-export function statusLine(state: BatchState): string {
+/**
+ * The line above the gallery: the run's progress, or the mazes of the batch, as the last batch
+ * when the dialog opened on it, else by their seeds while they are one run.
+ */
+export function statusLine(state: BatchState, last = false): string {
   const { progress, seeds } = state;
 
   if (progress !== null) {
     return `Building ${progress.done} of ${progress.total}…`;
   }
 
-  const count = state.items.filter((item) => item.origin === 'seed').length;
+  const count = state.items.length;
+  const mazes = `${count} ${count === 1 ? 'maze' : 'mazes'}`;
 
   if (count === 0) {
     return '';
   }
 
+  if (last) {
+    return `Last batch · ${mazes}`;
+  }
+
   return seeds === null || seeds === undefined
-    ? `${count} mazes`
-    : `Seeds ${seeds.first}–${seeds.last}`;
+    ? mazes
+    : seeds.first === seeds.last
+      ? `Seed ${seeds.first}`
+      : `Seeds ${seeds.first}–${seeds.last}`;
 }
 
 /** What the dialog says when a worker failed. */
@@ -115,11 +125,11 @@ export function itemOrigin(item: ReadyItem): string {
     .join(' · ');
 }
 
-/** The name a card has for a screen reader: number, cells to the goal, tags and what it missed. */
-export function cardLabel(item: ReadyItem, place: number): string {
+/** The name a card has for a screen reader: number, in use, cells to the goal, tags and what it missed. */
+export function cardLabel(item: ReadyItem, place: number, used = false): string {
   const has = itemTags(item);
   const warning = itemWarning(item);
-  return `#${place}, ${measureItem(item).analysis.shortest} cells${has.length > 0 ? `, ${has.join(', ')}` : ''}${warning === undefined ? '' : `. ${warning}`}`;
+  return `#${place}${used ? ', in use' : ''}, ${measureItem(item).analysis.shortest} cells${has.length > 0 ? `, ${has.join(', ')}` : ''}${warning === undefined ? '' : `. ${warning}`}`;
 }
 
 /** The rules a generated maze is checked by: the competition's for its size, or free. */
@@ -227,8 +237,9 @@ export function elapsedText(track: LoadingTrack, now: number): string {
   return elapsed < SHOW_ELAPSED ? '' : `${Math.floor(elapsed / 1000)} s`;
 }
 
-/** What a maze still building is at, in the title line of the maze opened. */
-export function phaseText({ phase, attempt }: LoadingTrack): string {
+/** What a maze still building is at by `now`, in the title line of the maze opened. */
+export function phaseText(track: LoadingTrack, now: number): string {
+  const { phase, attempt } = trackAt(track, now);
   switch (phase) {
     case 'routes':
       return attempt > 1 ? `Trying routes · attempt ${attempt}` : 'Trying routes';

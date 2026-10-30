@@ -1,7 +1,6 @@
 /**
- * The keys that name a maze across the app, `<kind>:<value>`: `repo:<path>`, `mine:<id>`,
- * `folder:<file>` and `link:<code>`, which a route can name, and `file:<n>` and `new:<n>`, which
- * it cannot.
+ * The keys that name a maze across the app, `<kind>:<value>`: `repo:<path>`, `mine:<id>` and
+ * `link:<code>`, which a route can name, and `file:<n>` and `new:<n>`, which it cannot.
  *
  * @module
  */
@@ -10,7 +9,6 @@
 export type MazeRef =
   | { readonly kind: 'repo'; readonly path: string }
   | { readonly kind: 'mine'; readonly id: string }
-  | { readonly kind: 'folder'; readonly file: string }
   | { readonly kind: 'link'; readonly code: string };
 
 /** The key of the maze `ref` names. */
@@ -20,8 +18,6 @@ export function keyOf(ref: MazeRef): string {
       return `repo:${ref.path}`;
     case 'mine':
       return `mine:${ref.id}`;
-    case 'folder':
-      return `folder:${ref.file}`;
     default:
       return `link:${ref.code}`;
   }
@@ -37,7 +33,7 @@ export function looseKey(kind: 'file' | 'new', id: number): string {
   return `${kind}:${id}`;
 }
 
-const KINDS = ['repo', 'mine', 'folder', 'link', 'file', 'new'] as const;
+const KINDS = ['repo', 'mine', 'link', 'file', 'new'] as const;
 
 /** The kind of maze `key` names, `file` and `new` included. */
 export function kindOf(key: string | undefined): MazeRef['kind'] | 'file' | 'new' | undefined {
@@ -54,8 +50,6 @@ export function refOf(key: string | undefined): MazeRef | undefined {
       return { kind: 'repo', path: value };
     case 'mine':
       return { kind: 'mine', id: value };
-    case 'folder':
-      return { kind: 'folder', file: value };
     case 'link':
       return { kind: 'link', code: value };
     default:
@@ -67,10 +61,4 @@ export function refOf(key: string | undefined): MazeRef | undefined {
 export function mineIdOf(key: string | undefined): string | undefined {
   const ref = refOf(key);
   return ref?.kind === 'mine' ? ref.id : undefined;
-}
-
-/** The file of the opened folder `key` names, if it names one. */
-export function folderFileOf(key: string | undefined): string | undefined {
-  const ref = refOf(key);
-  return ref?.kind === 'folder' ? ref.file : undefined;
 }

@@ -35,7 +35,7 @@ import { EditControls } from '@/ui/editor/edit-controls';
 import { MoreActions } from '@/ui/editor/more-actions';
 import { RenameDialog } from '@/ui/editor/rename-dialog';
 import { ShortcutHelp } from '@/ui/editor/shortcut-help';
-import { CopyLinkButton, TitleActions } from '@/ui/editor/title-actions';
+import { CopyLinkButton } from '@/ui/editor/title-actions';
 import type { MazeEditor } from '@/ui/editor/use-maze-editor';
 import { useWriting } from '@/ui/editor/use-writing';
 import { useCoarsePointer, usePhoneLayout } from '@/ui/hooks/use-media-query';
@@ -70,7 +70,7 @@ export interface StudioProps {
   /** The library, or `undefined` while it loads or when it could not be read. */
   readonly library: Library | undefined;
   /** Whether the library could not be read, which it then says in place of the mazes. */
-  readonly libraryFailed?: boolean;
+  readonly libraryFailed: boolean;
   /** The maze the route or an opened file puts on screen, if any, as edited. */
   readonly opened: OpenMaze | undefined;
   /** The editing of the maze on screen. */
@@ -85,8 +85,6 @@ export interface StudioProps {
   readonly mineNames: readonly string[];
   /** Discards an item of Changes: deletes a copy or puts back a maze of My mazes. */
   readonly onDiscard: (item: ChangeItem) => void;
-  /** Writes `text` over the opened folder's `fileName`. */
-  readonly onSaveToFolder: (fileName: string, text: string) => void;
   /** Deletes the mazes of My mazes `ids` and opens the library on My mazes. */
   readonly onDelete: (ids: readonly string[]) => void;
   /** What the library's "My mazes and files" menu does. */
@@ -146,7 +144,7 @@ function stillLimits(viewport: ViewportSize): CameraLimits {
  */
 export function Studio({
   library,
-  libraryFailed = false,
+  libraryFailed,
   opened,
   editor,
   filter,
@@ -155,7 +153,6 @@ export function Studio({
   onNew,
   mineNames,
   onDiscard,
-  onSaveToFolder,
   onDelete,
   files,
   updateNote,
@@ -280,7 +277,6 @@ export function Studio({
     screen,
     editor,
     phone,
-    onSaveToFolder,
     onDelete,
     mineNames,
   });
@@ -521,7 +517,6 @@ export function Studio({
             )
           }
           cursor={editing.cursor}
-          titleActions={<TitleActions {...actions.title} />}
           onRename={
             actions.rename === undefined || previewed !== undefined
               ? undefined
@@ -562,9 +557,13 @@ export function Studio({
         onOpenChange={(next) => setGenerateFor(next ? editingKey : undefined)}
         onPreview={phone ? undefined : setGeneratorPreview}
         onReplace={(generated) => {
-          if (editor.replace(generated)) {
+          const replaced = editor.replace(generated);
+
+          if (replaced) {
             showToast(REPLACED);
           }
+
+          return replaced;
         }}
         onUse={onNew}
         open={generateFor !== undefined}

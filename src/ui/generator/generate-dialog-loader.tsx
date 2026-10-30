@@ -29,7 +29,7 @@ const GenerateDialog = lazy<ComponentType<GenerateDialogProps>>(() =>
 
 /**
  * The Generate dialog in its own chunk: nothing is loaded until it first opens, and it stays
- * mounted after that, so its batch is still there the next time.
+ * mounted after that.
  */
 export function GenerateDialogLoader(props: GenerateDialogProps) {
   const [mounted, setMounted] = useState(false);

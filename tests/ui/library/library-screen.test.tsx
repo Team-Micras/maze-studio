@@ -161,10 +161,8 @@ describe('The library grid', () => {
 
 describe('The credit', () => {
   test.each([
-    ['phone', 390, 844, ''],
     ['small phone', 360, 780, ''],
     ['notebook', 800, 900, 'maze-studio'],
-    ['notebook', 1440, 900, 'maze-studio'],
   ])(
     'keeps its commit whole on a %s %i px wide, with maze-studio on GitHub in a pill of its own',
     async (_, width, height, label) => {

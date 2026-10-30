@@ -72,9 +72,11 @@ reached, and the measurements of the day, are in the git history of this file.
   profile, the creation time, the origin. Export says which items it left out and why. Import names each maze
   uniquely in My mazes (a clash becomes "<name> 2"), reports what it added, renamed and skipped, and turns the library
   to My mazes when it added anything. Imported mazes are not session Changes: nothing was edited.
-- **The folder's handle is kept only where storage is persistent.** A private window never reads a handle back.
-  Playwright's off-the-record contexts crash on reload over the origin's private file system the tests use, so the
-  folder's e2e tests run in a persistent context.
+- **No local folder** (owner, 30/10, #32). Open folder, the Folder source and Save to folder are gone: Import… takes
+  several `.txt` files or a `.zip`, Download .txt writes one out, and nobody in the team kept mazes in a folder on disk.
+  On load the app deletes the folder handle an older version kept in `settings`; mazes copied from a folder stay in My
+  mazes. The way back is a working folder that also writes new mazes into it (a name field, Close folder, desktop
+  Chrome and Edge only), for the Micras simulation's maze folder; the design is in #32.
 
 ## Drawing
 
@@ -84,9 +86,12 @@ reached, and the measurements of the day, are in the git history of this file.
 - **Thumbnails are keyed by the caller** (a string, such as the compact code, plus the band). A thumbnail with a diff
   is `diffThumbnail`, keyed by the diff too. Walls and posts are at least 1 device pixel and the outer ones end inside
   the bitmap, in every band.
-- **Thumbnails paint in idle time** (`paint-queue.ts`), in idle periods with at least 8 ms left; without
-  `requestIdleCallback` a turn every 16 ms paints exactly one. A cached bitmap shows at once; until a paint the canvas
-  keeps its previous bitmap, scaled, or its floor colour.
+- **Thumbnails paint in idle time** (`paint-queue.ts`), in idle periods with at least 8 ms left. The library's
+  artboards also paint one at the next animation frame when that comes first, as all through a fling on a phone,
+  which leaves almost no idle time (issue #16); the quick list's rows do not, as one a frame cost it a dropped
+  frame while ↓ is held. Without `requestIdleCallback` only the frames paint, one thumbnail a frame for the whole
+  app. A cached bitmap shows at once; until a paint the canvas keeps its previous bitmap, scaled, or its floor
+  colour.
 - **Live mazes are painted, not cached.** The minimap paints the maze being edited straight onto its canvas.
 - **Artboards carry a crisp shadow**, a hairline ring and a 2 px drop: the slab's blurred shadow on every mounted
   artboard broke the frame budget. The editor's board keeps the slab, which scales with the camera.
@@ -166,8 +171,7 @@ reached, and the measurements of the day, are in the git history of this file.
 
 - **Copy link** puts `#/m/<code>` on the clipboard, falling back to `execCommand('copy')` and then the address bar; a
   toast says when the text after the grid is left out. Share… uses Web Share where the browser has it.
-- **Save to folder** rereads the file first and asks before writing over a change on disk. Reading the folder skips a
-  file that cannot be read or is over 1 MiB, and counts it. Opened `.txt` files are refused over 1 MiB.
+- **Opened `.txt` files are refused over 1 MiB.**
 - **Several mazes of My mazes are deleted by selecting** (owner, 14/10): a press held 500 ms starts it, only on My
   mazes; the bar's Delete goes through the same delete as the ⋯ menu's, for a list of ids.
 - **Rename** refuses a name already in My mazes, without case. Menus close without an exit animation, and downloads
@@ -198,7 +202,7 @@ reached, and the measurements of the day, are in the git history of this file.
   the wheel and a finger over it scroll the host page. The host sizes the frame, and the link opens the maze in the
   app for a closer look. The board is `role="img"`, named as its artboard is: name, competition when the name tells
   it, and size.
-- **Only the repository and links.** My mazes and the folder live in the visitor's own browser, so a page of
+- **Only the repository and links.** My mazes live in the visitor's own browser, so a page of
   another site naming one would show whatever that visitor keeps, or nothing; the embed refuses them, and the
   library, with a sentence. A repository maze comes from the built-in snapshot; one the snapshot lacks, such as a maze
   added to mazefiles after this build, is read from GitHub with one request to `raw.githubusercontent.com` (path
@@ -263,8 +267,13 @@ reached, and the measurements of the day, are in the git history of this file.
   warning that names what it missed, worked out in the worker from the generator's `report` and `choiceMisses`
   against its seed's targets, which only the worker has. A new run, closing the panel and leaving the editor (which
   closes it) terminate the workers; there is no Cancel (owner, 25/10): a batch of 8 takes seconds, and Generate
-  asked again during a run starts over, while 8 more and › wait for the run to end. The dialog stays mounted once
-  opened, so its batch is there the next time.
+  asked again during a run starts over, while 8 more and › wait for the run to end.
+- **One last batch for the app, for the session** (owner, 30/10, #30). Every Generate dialog, the library's and the
+  editor's, shows the same batch, held in memory only: a reload forgets it. Opening on it shows the gallery, its status
+  row reading "Last batch · 16 mazes" beside New batch, which builds a fresh batch with the settings now; the maze last
+  picked with Use this is tagged In use on its card and in its view, and the tag moves with the next one picked. More
+  goes on with the batch's own settings. Rebuild from a recipe starts a batch of its own: the rebuilt maze is #1,
+  opened at once, and › past it builds the next seeds with the recipe's settings.
 - **The board previews the candidate on a notebook** (owner, 24/10), as the mockup's editor did: from the editor
   the panel docks on the right without a modal backdrop, so the board stays in reach to pan and zoom, and the studio
   shows the candidate picked (or the last one built before it while it is on its way) on the board as a preview,
@@ -304,7 +313,7 @@ reached, and the measurements of the day, are in the git history of this file.
   maze of the board's size puts it on the board as one step of undo, under the same name, through the editor's own
   path, so a repository maze is copied to My mazes as by any edit; a maze of another size opens as a new maze. The
   hint "Replaces the maze on the board. Undo brings it back." is left out on a blank board.
-- **The settings are kept per device in the `settings` store** of IndexedDB, as the folder's handle is, instead of the
+- **The settings are kept per device in the `settings` store** of IndexedDB, instead of the
   mockup's `localStorage`: the preset and the settings of the last valid change, checked with `isSettings` when read
   back. Another tab's change is not followed while the dialog is open.
 - **Loading is grey, ready is red** (owner, 28/10, the mockup's `loading/flow.html`). A card waiting for its maze shows

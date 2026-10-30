@@ -249,4 +249,52 @@ describe('Generate in the editor (beta)', () => {
     const replaced = await expectSaved(page, (content) => content.maze.width === 16);
     expect(replaced.recipe).toMatchObject({ seed: 4 });
   });
+
+  test('reopens on the last batch with the maze used marked, and rebuilds a recipe as a batch of its own', async () => {
+    const page = await openPage(browser, contexts, app, `#/repo/${CLASSIC}`);
+    await page.context().grantPermissions(['clipboard-read', 'clipboard-write']);
+    await waitForMode(page, 'editor');
+    await openGenerate(page, 'More actions');
+    await generateAndPick(page, 2);
+
+    await openGenerate(page, 'More actions');
+    const dialog = page.getByRole('dialog', { name: 'Generate' });
+    await dialog
+      .getByText(/^Last batch · \d mazes$/)
+      .first()
+      .waitFor();
+    await dialog.getByRole('button', { name: /^#2, in use,/ }).waitFor();
+    await builtCard(dialog, 5).click();
+    await dialog.getByRole('button', { name: 'Copy recipe' }).click();
+    const recipe = await page.evaluate(() => navigator.clipboard.readText());
+    const { seed } = readRecipe(recipe);
+
+    await dialog.getByRole('button', { name: 'Settings' }).click();
+    await dialog.getByText('Rebuild from a recipe').click();
+    await dialog.getByRole('textbox', { name: 'Recipe' }).fill(recipe);
+    await dialog.getByRole('button', { name: 'Rebuild' }).click();
+    await dialog
+      .getByRole('heading', { name: new RegExp(`^#1 of 1 · from a recipe · seed ${seed} `) })
+      .waitFor(GENERATION);
+    await dialog.getByRole('button', { name: /^Next maze/ }).click();
+    await dialog
+      .getByRole('heading', { name: new RegExp(`^#2 of 9 · seed ${seed + 1} `) })
+      .waitFor(GENERATION);
+    await dialog.getByRole('button', { name: 'Back to the mazes' }).click();
+    await dialog
+      .getByText(`Seeds ${seed}–${seed + 8}`)
+      .first()
+      .waitFor(GENERATION);
+    expect(await dialog.locator('ol[aria-label="Mazes generated"] > li').count()).toBe(9);
+    expect(await dialog.getByText('In use').count()).toBe(0);
+
+    await dialog.getByRole('button', { name: 'Close' }).click();
+    await openGenerate(page, 'More actions');
+    await dialog.getByRole('button', { name: 'New batch' }).click();
+    await dialog
+      .getByText(`Seeds ${seed + 9}–${seed + 16}`)
+      .first()
+      .waitFor(GENERATION);
+    expect(await dialog.locator('ol[aria-label="Mazes generated"] > li').count()).toBe(8);
+  });
 });

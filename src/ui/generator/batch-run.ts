@@ -2,7 +2,7 @@
  * Batches of generated mazes for the Generate dialog (the mockup's `batch.js`): each batch builds
  * {@link BATCH} seeds in a row, in up to four workers sharing a queue, each maze shown in its seed's
  * card as soon as it is built, and each pending maze's progress kept as a {@link LoadingTrack} for
- * the board's animation; a pasted recipe rebuilds its maze. One run at a time: the workers stop
+ * the board's animation; a pasted recipe rebuilds its maze as a batch of its own. One run at a time: the workers stop
  * on a new run or when the panel closes, and the mazes still pending are dropped.
  *
  * @module
@@ -75,6 +75,10 @@ export interface BatchState {
   readonly nextSeed: number;
   /** Whether a worker failed in the last run, leaving some mazes out. */
   readonly stopped: boolean;
+  /** The settings the batch was made with, which More goes on with. */
+  readonly settings?: Settings;
+  /** The maze last picked with Use this, by its `n`. */
+  readonly used?: number;
 }
 
 /** A worker as the batch drives it. */
@@ -236,6 +240,11 @@ export class Batch {
     });
   }
 
+  /** Marks the maze numbered `n` as the one picked with Use this. */
+  use(n: number): void {
+    this.#set({ used: n });
+  }
+
   /** Whether {@link MAX_ITEMS} leaves room for another {@link generate} that keeps the mazes so far. */
   get roomForMore(): boolean {
     return this.#state.items.length + this.#size <= MAX_ITEMS;
@@ -264,6 +273,7 @@ export class Batch {
     );
     this.#set({
       items: [...kept, ...items],
+      ...(fresh ? { settings, used: undefined } : {}),
       nextSeed: first + this.#size > this.maxSeed ? 0 : first + this.#size,
       seeds:
         shown === null
@@ -280,16 +290,27 @@ export class Batch {
   }
 
   /**
-   * The maze of a recipe read by `readRecipe`. A recipe of this generator rebuilds from its own
+   * The maze of a recipe read by `readRecipe`, as a batch of its own that More goes on with from
+   * the next seed and the recipe's settings. A recipe of this generator rebuilds from its own
    * settings alone; one without a version is of version 1. A recipe of an older generator opens
    * the walls it saved; one without them is rebuilt with `settings` filling the switches it lacks,
    * and marked `older`, as the maze differs.
    */
   rebuild(recipe: SavedRecipe, settings: Settings): Item {
     this.cancel();
+    this.#tracks.clear();
     const version: number | undefined = recipe.version;
     const older = version === GENERATOR_VERSION ? undefined : (version ?? 1);
+    const own = older === undefined ? recipe.settings : olderSettings(recipe.settings, settings);
     const n = this.#number();
+    const batch = (item: Item): Partial<BatchState> => ({
+      items: [item],
+      settings: own,
+      used: undefined,
+      stopped: false,
+      seeds: { first: recipe.seed, last: recipe.seed },
+      nextSeed: recipe.seed + 1 > this.maxSeed ? 0 : recipe.seed + 1,
+    });
 
     if (older !== undefined && recipe.walls !== undefined) {
       const item: Item = {
@@ -304,13 +325,12 @@ export class Batch {
         saved: true,
         grid: savedGrid({ ...recipe, walls: recipe.walls }),
       };
-      this.#set({ items: [...this.#state.items, item] });
+      this.#set(batch(item));
       return item;
     }
 
-    const own = older === undefined ? recipe.settings : olderSettings(recipe.settings, settings);
     const item: Item = { ...pending(n, 'loaded', own.size), older, hash: recipe.hash };
-    this.#set({ items: [...this.#state.items, item] });
+    this.#set(batch(item));
     this.#start(
       [
         recipe.base === undefined

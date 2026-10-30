@@ -1,6 +1,7 @@
 import { Plus, Ruler, Shuffle, X } from '@/ui/icons';
 import { useId, useRef, useState, type FormEvent, type ReactNode } from 'react';
 
+import { isProfile } from '@/library';
 import type { Profile } from '@/maze';
 import { GenerateDialogLoader } from '@/ui/generator/generate-dialog-loader';
 import { useCoarsePointer } from '@/ui/hooks/use-media-query';
@@ -100,10 +101,6 @@ function SideField({ label, value, onChange }: SideFieldProps) {
       )}
     </div>
   );
-}
-
-function isProfile(value: string): value is Profile {
-  return PROFILE_NAMES.some(([profile]) => profile === value);
 }
 
 /** The props of {@link CustomSizeDialog}. */
@@ -251,8 +248,8 @@ export interface NewMazeDialogsProps {
 }
 
 /**
- * A menu with the New maze items, and the Custom size and Generate dialogs they open. The Generate
- * dialog stays mounted once opened, so its batch is still there the next time.
+ * A menu with the New maze items, and the Custom size and Generate dialogs they open. Every
+ * Generate dialog shows the app's one batch.
  */
 export function NewMazeDialogs({ defaultName, onNew, onGenerate, children }: NewMazeDialogsProps) {
   const [custom, setCustom] = useState(false);
