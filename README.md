@@ -140,9 +140,9 @@ To understand the code, start with [`ARCHITECTURE.md`](ARCHITECTURE.md).
 ## Contributing
 
 The repository follows gitflow. Start a `feature/<name>` branch from `develop` and open a pull
-request back to `develop`; `bun run check` must pass, and CI runs it on every pull request. A
-release is a pull request from `develop` to `main`, which publishes the site; a `hotfix/<name>`
-starts from `main`.
+request back to `develop`; `bun run check` must pass, and CI runs its steps as parallel jobs on
+every pull request. A release is a pull request from `develop` to `main`, which publishes the
+site; a `hotfix/<name>` starts from `main`.
 
 Every pull request from a branch of this repository gets a preview at
 `https://pr-<number>.maze-studio-8ol.pages.dev/`, linked in a comment and updated on every push. A
