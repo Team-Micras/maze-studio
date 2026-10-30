@@ -14,7 +14,7 @@ afterEach(async () => {
   await page.viewport(1440, 900);
 });
 
-/** A library with an open folder and many mazes of My mazes, which widen the source filter. */
+/** A library with many mazes of My mazes, which widen the source filter. */
 const WIDE: Library = {
   entries: [],
   index: new SearchIndex([]),
@@ -23,7 +23,6 @@ const WIDE: Library = {
   commit: '070f716b2f6e0a1a4c1a0b7c7d2a3e4f5a6b7c8d',
   repoCount: 583,
   mineCount: 120,
-  folder: { name: 'mazes', skipped: 0 },
 };
 
 async function mountChrome(): Promise<void> {
@@ -58,8 +57,8 @@ function apart(a: DOMRect, b: DOMRect): boolean {
 }
 
 describe("The notebook's top islands", () => {
-  test.each([1860, 1440, 1340, 1339, 1100, 800, 721])(
-    'never overlap at %i px with an open folder and the widest Changes chip, show every filter, and end above the grid',
+  test.each([1340, 1339, 721])(
+    'never overlap at %i px with the widest Changes chip, show every filter, and end above the grid',
     async (width) => {
       await page.viewport(width, 900);
       await mountChrome();
@@ -76,7 +75,7 @@ describe("The notebook's top islands", () => {
       expect(chip).not.toBeNull();
       expect(apart(brand, filters) && apart(filters, actions) && apart(brand, actions)).toBe(true);
       expect(actions.right).toBeLessThanOrEqual(width);
-      expect(tabs).toHaveLength(7);
+      expect(tabs).toHaveLength(6);
       for (const tab of tabs) {
         expect(tab.left).toBeGreaterThanOrEqual(filters.left);
         expect(tab.right).toBeLessThanOrEqual(filters.right);

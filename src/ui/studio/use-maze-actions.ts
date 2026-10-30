@@ -28,15 +28,13 @@ function canShare(): boolean {
  * The actions on the open maze (PLAN.md 3.4, DESIGN.md 6.1 and 12): Copy link, which says when
  * the notes after the grid stay out of the link and, without a clipboard, puts the link in the
  * address bar; Share… with Web Share; Download .txt under a stem that passes the name rule; Save
- * to My mazes and Save to folder; Rename and Delete for a maze of My mazes; Copy recipe for a
- * generated maze.
+ * to My mazes; Rename and Delete for a maze of My mazes; Copy recipe for a generated maze.
  */
 export function useMazeActions({
   store,
   screen,
   editor,
   phone,
-  onSaveToFolder,
   onDelete,
   mineNames,
 }: {
@@ -44,8 +42,6 @@ export function useMazeActions({
   readonly screen: StudioScreen;
   readonly editor: MazeEditor;
   readonly phone: boolean;
-  /** Writes `text` over the folder's `fileName`. */
-  readonly onSaveToFolder: (fileName: string, text: string) => void;
   /** Deletes the mazes of My mazes `ids` and opens the library on My mazes. */
   readonly onDelete: (ids: readonly string[]) => void;
   /** Every name in My mazes, with this maze's own. */
@@ -70,8 +66,6 @@ export function useMazeActions({
       }
     });
   };
-
-  const { folderFile } = editor;
 
   const rename: RenameDialogProps | undefined =
     open === undefined || (mineId === undefined && open.document.created !== true)
@@ -130,10 +124,6 @@ export function useMazeActions({
             onDelete: () => onDelete([mineId]),
           }),
     },
-    title:
-      folderFile === undefined || open === undefined
-        ? {}
-        : { folderFile, onSaveToFolder: () => onSaveToFolder(folderFile, mazeFileText(open)) },
     copyLink: phone ? undefined : { onCopy: copyLink },
     rename,
   };

@@ -9,7 +9,6 @@ import { decodeMazeCode, type Profile } from '@/maze';
 
 import { keyOf, mineKey } from './maze-key';
 import { mazeOrigin } from './maze-names';
-import type { FolderFile } from './folder';
 import type { MineMaze } from './mine';
 import type { RepoFile } from './snapshot';
 
@@ -17,7 +16,7 @@ import type { RepoFile } from './snapshot';
 export interface CatalogEntry {
   /** Unique across the origins, as `maze-key.ts` makes it. */
   readonly key: string;
-  readonly origin: 'repo' | 'mine' | 'folder';
+  readonly origin: 'repo' | 'mine';
   /** The file name without folder and `.txt` for the repository; the name given for My mazes. */
   readonly name: string;
   /** The repository folder, or the profile of an item of My mazes. */
@@ -26,10 +25,7 @@ export interface CatalogEntry {
   readonly height: number;
   readonly competition?: string;
   readonly year?: number;
-  /**
-   * The path in the repository, for a repository maze, or the one an item of My mazes came from; the
-   * file's name for a maze of the opened folder.
-   */
+  /** The path in the repository, for a repository maze, or the one an item of My mazes came from. */
   readonly path?: string;
   /** The id of an item of My mazes. */
   readonly id?: string;
@@ -85,17 +81,4 @@ export function mineCatalog(items: readonly MineMaze[]): CatalogEntry[] {
         ]
       : [];
   });
-}
-
-/** The entries of an opened folder's mazes, in the order given, under the file's stem. */
-export function folderCatalog(files: readonly FolderFile[]): CatalogEntry[] {
-  return files.map((file) => ({
-    key: keyOf({ kind: 'folder', file: file.fileName }),
-    origin: 'folder',
-    name: file.fileName.replace(/\.txt$/i, ''),
-    category: 'free',
-    width: file.text.maze.width,
-    height: file.text.maze.height,
-    path: file.fileName,
-  }));
 }

@@ -21,29 +21,14 @@ import {
   type Grid,
   type Range,
   type Settings,
+  type Trace,
 } from '@/generator';
 import { expOf, logOf } from '@/generator/generator';
 import { isOpen, neighbour } from '@/generator/grid';
 import { followerReaches } from '@/generator/search';
+import { GOLDEN } from '@tests/generator/golden';
 
 const GENERATOR = join(import.meta.dirname, '..', '..', 'src', 'generator');
-
-/**
- * Seed to walls at this generator version, the hashes of the mockup the generator was ported
- * from. A change that moves one bumps `GENERATOR_VERSION` and records new hashes beside these,
- * never over them.
- */
-const GOLDEN: { readonly version: number; readonly hashes: Record<string, readonly string[]> } = {
-  version: 7,
-  hashes: {
-    recommended: ['0d1689f7', '8abe0a3b', '226953ce'],
-    japan: ['56637c02', '08b42645', '130a203e'],
-    'japan-half': ['cf2e04d1', '6edb60b7'],
-    apec: ['777aeb39', '6168ca7c', '2da70780'],
-    uk: ['4c3c097b', 'cfae0b19', '4e5ebf18'],
-    single: ['bb7acde6', '7b099120', '78dab16b'],
-  },
-};
 
 const within = (v: number, [lo, hi]: Range) => v >= lo && v <= hi;
 
@@ -151,25 +136,58 @@ describe('the generator', () => {
     }
   }, 60_000);
 
-  test('shows each route it draws to the trace and builds the same walls', () => {
-    const [first] = golden.get('recommended') ?? [];
+  test('shows each route it draws to the trace and builds the same walls on every path', () => {
+    const recommended = PRESETS[0].settings;
+    const [first, repaired] = golden.get('recommended') ?? [];
+    const runs: [Candidate, (trace: Trace) => Candidate, string][] = [
+      [first, (trace) => generate(recommended, first.seed, { trace }), 'candidate'],
+      [repaired, (trace) => generate(recommended, repaired.seed, { trace }), 'repair'],
+      [
+        generate(recommended, 1, { style: 'annealed' }),
+        (trace) => generate(recommended, 1, { style: 'annealed', trace }),
+        'fallback',
+      ],
+      [
+        vary(recommended, 11, first.grid.walls, 0.2),
+        (trace) => vary(recommended, 11, first.grid.walls, 0.2, { trace }),
+        'tune',
+      ],
+    ];
     const candidates: Readonly<Record<string, unknown>>[] = [];
-    const traced = generate(first.recipe.settings, first.recipe.seed, {
-      trace: (stage, _walls, info) => {
+    for (const [plain, run, path] of runs) {
+      const stages = new Set<string>();
+      const traced = run((stage, _walls, info) => {
+        stages.add(stage);
         if (stage === 'candidate' && info) {
           candidates.push(info);
         }
-      },
-    });
-    expect(traced.grid.walls).toEqual(first.grid.walls);
-    expect(traced.recipe).toEqual(first.recipe);
-    expect(traced.energy).toBe(first.energy);
-    expect(traced.analysis).toEqual(first.analysis);
+      });
+      expect(traced.grid.walls).toEqual(plain.grid.walls);
+      expect(traced.recipe).toEqual(plain.recipe);
+      expect(traced.energy).toBe(plain.energy);
+      expect(traced.analysis).toEqual(plain.analysis);
+      expect(stages).toContain(path);
+    }
     expect(candidates.length).toBeGreaterThan(0);
     for (const { route, kind } of candidates) {
       expect(Array.isArray(route)).toBe(true);
       expect(['racing', 'careful']).toContain(kind);
     }
+  }, 60_000);
+
+  test('leaves the hash out of a recipe that an effort override made, even one forcing the style the seed draws anyway', () => {
+    const recommended = PRESETS[0].settings;
+    const [first] = golden.get('recommended') ?? [];
+    const forced = generate(recommended, first.seed, { style: first.style });
+
+    expect(forced.grid.walls).toEqual(first.grid.walls);
+    expect(forced.recipe).not.toHaveProperty('hash');
+    expect(vary(recommended, 11, first.grid.walls, 0.2, { steps: 50 }).recipe).not.toHaveProperty(
+      'hash'
+    );
+    expect(generate(recommended, first.seed, { steps: undefined }).recipe.hash).toBe(
+      first.recipe.hash
+    );
   });
 
   test('builds other walls from other seeds', () => {
@@ -239,7 +257,7 @@ describe('the arithmetic of the generator', () => {
     const files = readdirSync(GENERATOR).filter((f) => f.endsWith('.ts'));
     expect(files.length).toBeGreaterThan(10);
     const approximated =
-      /Math\.(pow|exp|expm1|log|log2|log10|log1p|hypot|atan2?|asin|acos|sinh?|cosh?|tanh?|cbrt)\b|\*\*/;
+      /\bMath\b(?!\.(abs|ceil|floor|imul|max|min|round|sign|sqrt|trunc|[A-Z][A-Z0-9_]*)\b)|\*\*/;
     const offenders = files.filter((file) =>
       approximated.test(
         readFileSync(join(GENERATOR, file), 'utf8').replaceAll(/\/\*\*[\s\S]*?\*\//g, '')

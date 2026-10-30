@@ -72,9 +72,11 @@ reached, and the measurements of the day, are in the git history of this file.
   profile, the creation time, the origin. Export says which items it left out and why. Import names each maze
   uniquely in My mazes (a clash becomes "<name> 2"), reports what it added, renamed and skipped, and turns the library
   to My mazes when it added anything. Imported mazes are not session Changes: nothing was edited.
-- **The folder's handle is kept only where storage is persistent.** A private window never reads a handle back.
-  Playwright's off-the-record contexts crash on reload over the origin's private file system the tests use, so the
-  folder's e2e tests run in a persistent context.
+- **No local folder** (owner, 30/10, #32). Open folder, the Folder source and Save to folder are gone: Import… takes
+  several `.txt` files or a `.zip`, Download .txt writes one out, and nobody in the team kept mazes in a folder on disk.
+  On load the app deletes the folder handle an older version kept in `settings`; mazes copied from a folder stay in My
+  mazes. The way back is a working folder that also writes new mazes into it (a name field, Close folder, desktop
+  Chrome and Edge only), for the Micras simulation's maze folder; the design is in #32.
 
 ## Drawing
 
@@ -168,8 +170,7 @@ reached, and the measurements of the day, are in the git history of this file.
 
 - **Copy link** puts `#/m/<code>` on the clipboard, falling back to `execCommand('copy')` and then the address bar; a
   toast says when the text after the grid is left out. Share… uses Web Share where the browser has it.
-- **Save to folder** rereads the file first and asks before writing over a change on disk. Reading the folder skips a
-  file that cannot be read or is over 1 MiB, and counts it. Opened `.txt` files are refused over 1 MiB.
+- **Opened `.txt` files are refused over 1 MiB.**
 - **Several mazes of My mazes are deleted by selecting** (owner, 14/10): a press held 500 ms starts it, only on My
   mazes; the bar's Delete goes through the same delete as the ⋯ menu's, for a list of ids.
 - **Rename** refuses a name already in My mazes, without case. Menus close without an exit animation, and downloads
@@ -200,7 +201,7 @@ reached, and the measurements of the day, are in the git history of this file.
   the wheel and a finger over it scroll the host page. The host sizes the frame, and the link opens the maze in the
   app for a closer look. The board is `role="img"`, named as its artboard is: name, competition when the name tells
   it, and size.
-- **Only the repository and links.** My mazes and the folder live in the visitor's own browser, so a page of
+- **Only the repository and links.** My mazes live in the visitor's own browser, so a page of
   another site naming one would show whatever that visitor keeps, or nothing; the embed refuses them, and the
   library, with a sentence. A repository maze comes from the built-in snapshot; one the snapshot lacks, such as a maze
   added to mazefiles after this build, is read from GitHub with one request to `raw.githubusercontent.com` (path
@@ -306,7 +307,7 @@ reached, and the measurements of the day, are in the git history of this file.
   maze of the board's size puts it on the board as one step of undo, under the same name, through the editor's own
   path, so a repository maze is copied to My mazes as by any edit; a maze of another size opens as a new maze. The
   hint "Replaces the maze on the board. Undo brings it back." is left out on a blank board.
-- **The settings are kept per device in the `settings` store** of IndexedDB, as the folder's handle is, instead of the
+- **The settings are kept per device in the `settings` store** of IndexedDB, instead of the
   mockup's `localStorage`: the preset and the settings of the last valid change, checked with `isSettings` when read
   back. Another tab's change is not followed while the dialog is open.
 - **Loading is grey, ready is red** (owner, 28/10, the mockup's `loading/flow.html`). A card waiting for its maze shows

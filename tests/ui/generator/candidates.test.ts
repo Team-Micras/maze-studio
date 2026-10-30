@@ -2,7 +2,7 @@ import { describe, expect, test } from 'vitest';
 
 import { generate, PRESETS, withMaze } from '@/generator';
 import { borderedMaze, presetMaze, toggleWall } from '@/maze';
-import { WAITING } from '@/render/loading';
+import { followTrack, PHASE_HOLD, WAITING } from '@/render/loading';
 import type { Item } from '@/ui/generator/batch-run';
 import {
   generatesFor,
@@ -96,16 +96,27 @@ describe('Generate from the editor', () => {
   });
 });
 
+/** A snapshot of an empty 16 × 16 board at `stage`. */
+const snapshot = (stage: string) => ({ walls: new Uint8Array(256), tried: [], stage });
+
 describe('phaseText', () => {
   test('names what a maze building is at, the attempt from the second board on, and the seconds from the third', () => {
     const started = { ...WAITING, started: true, startedAt: 1000 };
 
-    expect(phaseText(WAITING)).toBe('Building');
-    expect(phaseText({ ...started, phase: 'routes', attempt: 1 })).toBe('Trying routes');
-    expect(phaseText({ ...started, phase: 'routes', attempt: 12 })).toBe(
+    expect(phaseText(WAITING, 0)).toBe('Building');
+    expect(phaseText({ ...started, phase: 'routes', attempt: 1 }, 1000)).toBe('Trying routes');
+    expect(phaseText({ ...started, phase: 'routes', attempt: 12 }, 1000)).toBe(
       'Trying routes · attempt 12'
     );
     expect(elapsedText(started, 1000 + SHOW_ELAPSED - 1)).toBe('');
     expect(elapsedText(started, 1000 + SHOW_ELAPSED + 1200)).toBe('4 s');
+  });
+
+  test('names a stage that arrived during the hold once the hold ends, with no snapshot after it', () => {
+    const routes = followTrack(WAITING, snapshot('board'), 16, 0);
+    const held = followTrack(routes, snapshot('filler'), 16, PHASE_HOLD - 1);
+
+    expect(phaseText(held, PHASE_HOLD - 1)).toBe('Trying routes');
+    expect(phaseText(held, PHASE_HOLD)).toBe('Growing the maze around the routes');
   });
 });

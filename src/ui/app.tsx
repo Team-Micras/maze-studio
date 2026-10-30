@@ -5,7 +5,6 @@ import { DEFAULT_FILTER, keyOf, looseKey, mineIdOf, type LibraryFilter } from '@
 import { parseMazeText, type Maze, type Profile } from '@/maze';
 
 import { CANVAS_ID } from './canvas-id';
-import { ConfirmDialog } from './confirm-dialog';
 import { discardChange } from './changes/discard';
 import { changeOf, differs, sessionChanges, withoutChange } from './changes/session-changes';
 import { openNewMaze } from './new-maze';
@@ -13,18 +12,11 @@ import { useMazeEditor } from './editor/use-maze-editor';
 import { useRoute } from './hooks/use-route';
 import { ReportDialog } from './library/report-dialog';
 import { updateNote } from './library/update-note';
-import { useLocalFolder } from './library/use-local-folder';
 import { reloadLibrary, useLibrary } from './library/use-library';
 import { useMineBackup } from './library/use-mine-backup';
 import { useRepoUpdates } from './library/use-repo-updates';
 import { libraryBelow, pushRoute, replaceRoute } from './navigation';
-import {
-  looseDocument,
-  MAX_FILE_BYTES,
-  NO_FOLDER_ACCESS,
-  openingOf,
-  type OpenMaze,
-} from './open-maze';
+import { looseDocument, MAX_FILE_BYTES, openingOf, type OpenMaze } from './open-maze';
 import { TooltipProvider } from './primitives/tooltip';
 import { LIBRARY_ROUTE, routeHash, type LibraryRoute } from './routes';
 import { Studio } from './studio/studio';
@@ -81,14 +73,12 @@ function focusContent(): void {
  */
 export function App() {
   const route = useRoute();
-  const folder = useLocalFolder();
-  const { library, failed: libraryFailed } = useLibrary(folder.contents);
+  const { library, failed: libraryFailed } = useLibrary();
   const backup = useMineBackup();
   const updates = useRepoUpdates();
   const hash = routeHash(route);
   const [loose, setLoose] = useState<LooseMaze | undefined>(undefined);
-  const [onDisk, setOnDisk] = useState<{ fileName: string; text: string } | undefined>(undefined);
-  const opening = openingOf(route, library, folder.restoring);
+  const opening = openingOf(route, library);
   const shownLoose = loose?.at === hash ? loose.open : undefined;
 
   if (loose !== undefined && loose.at !== hash) {
@@ -159,18 +149,6 @@ export function App() {
     }
   };
 
-  const saveToFolder = async (fileName: string, text: string, overwrite = false): Promise<void> => {
-    const saved = await folder.save(fileName, text, overwrite);
-
-    if (saved.ok) {
-      showToast(`Saved to ${fileName}`, { verbatim: fileName });
-    } else if (saved.changed === true) {
-      setOnDisk({ fileName, text });
-    } else {
-      showToast(`Could not save to ${fileName} (${saved.reason})`, { verbatim: fileName });
-    }
-  };
-
   const deleteMine = async (ids: readonly string[]): Promise<void> => {
     sessionChanges.setState((before) => ids.reduce(withoutChange, before));
 
@@ -185,17 +163,6 @@ export function App() {
     }
 
     reloadLibrary();
-  };
-
-  const openFolder = async (): Promise<void> => {
-    try {
-      await folder.open();
-      replaceRoute({ kind: 'library', filter: { ...DEFAULT_FILTER, source: 'folder' } });
-    } catch (error) {
-      if (!(error instanceof DOMException && error.name === 'AbortError')) {
-        showToast(NO_FOLDER_ACCESS);
-      }
-    }
   };
 
   const importFiles = async (files: readonly File[]): Promise<void> => {
@@ -271,34 +238,15 @@ export function App() {
           })
         }
         onDelete={(ids) => void deleteMine(ids)}
-        onSaveToFolder={(fileName, text) => void saveToFolder(fileName, text)}
         files={{
           onExportAll: () => void backup.exportAll(),
           onImport: (files) => void importFiles(files),
           onCheckUpdates: updates.checkNow,
-          onOpenFolder: folder.supported ? () => void openFolder() : undefined,
         }}
         updateNote={library === undefined ? undefined : updateNote(updates.status, library.commit)}
         onPin={replaceRoute}
         editor={editor}
         opened={editor.shown ?? opened}
-      />
-      <ConfirmDialog
-        confirm="Save anyway"
-        description="It changed since the app read it. Saving replaces what is in it now."
-        onConfirm={() => {
-          if (onDisk !== undefined) {
-            void saveToFolder(onDisk.fileName, onDisk.text, true);
-          }
-        }}
-        onOpenChange={(open) => {
-          if (!open) {
-            setOnDisk(undefined);
-          }
-        }}
-        open={onDisk !== undefined}
-        title={`${onDisk?.fileName ?? ''} changed on disk`}
-        verbatim={onDisk?.fileName}
       />
       <ReportDialog onClose={backup.closeReport} report={backup.report} />
       <Toaster />

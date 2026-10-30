@@ -1,7 +1,7 @@
 /**
- * Which maze the embed shows for a route: a maze of the built-in snapshot or of a link. My mazes and
- * the folder live in the visitor's own browser, which a page of another site has no business
- * showing, so the embed refuses them, and the library with them.
+ * Which maze the embed shows for a route: a maze of the built-in snapshot or of a link. My mazes
+ * live in the visitor's own browser, which a page of another site has no business showing, so the
+ * embed refuses them, and the library with them.
  *
  * @module
  */
