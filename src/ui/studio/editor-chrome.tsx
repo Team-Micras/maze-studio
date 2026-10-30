@@ -50,8 +50,6 @@ export interface EditorChromeProps {
   readonly children?: ReactNode;
   /** The checks and the menu, in the island at the top right. */
   readonly actions?: ReactNode;
-  /** Save to folder, after the title. */
-  readonly titleActions?: ReactNode;
   /** Opens Rename from the title, for a maze of My mazes or a new maze; without it the title is plain. */
   readonly onRename?: (() => void) | undefined;
 }
@@ -75,7 +73,6 @@ export function EditorChrome({
   cursor,
   children,
   actions,
-  titleActions,
   onRename,
 }: EditorChromeProps) {
   const settled = useDeferredValue(landed, false) && landed;
@@ -129,7 +126,6 @@ export function EditorChrome({
               {open.detail}
             </p>
           </div>
-          {settled ? titleActions : null}
         </Island>
         {!settled || actions === undefined || actions === null ? null : (
           <Island className="fixed top-safe-4 right-safe-4 h-11 transition-opacity duration-200 ease-(--ease) starting:opacity-0 max-[720px]:pointer-events-auto max-[720px]:static max-[720px]:ml-auto max-[720px]:shrink-0">

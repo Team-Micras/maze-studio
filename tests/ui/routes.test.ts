@@ -37,7 +37,6 @@ describe('The routes of a maze', () => {
       '#/mine/6f1c0b2e-1d7a-4c35-9f43-8a0f2b51e9aa',
       { kind: 'mine', id: '6f1c0b2e-1d7a-4c35-9f43-8a0f2b51e9aa' },
     ],
-    ['#/folder/my%20maze.txt', { kind: 'folder', file: 'my maze.txt' }],
     ['#/m/ARAQAAAEAHcA', { kind: 'link', code: 'ARAQAAAEAHcA' }],
   ])('%s', (hash, route) => {
     expect(parseRoute(hash)).toEqual(route);

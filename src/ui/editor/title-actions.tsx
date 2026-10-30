@@ -1,27 +1,5 @@
-import { FloppyDisk, LinkSimple } from '@/ui/icons';
+import { LinkSimple } from '@/ui/icons';
 import { Hint, IslandButton } from '@/ui/islands/island';
-
-/** The props of {@link TitleActions}. */
-export interface TitleActionsProps {
-  /** Writes the copy back to its file in the folder, named; absent until the first edit. */
-  readonly folderFile?: string;
-  readonly onSaveToFolder?: () => void;
-}
-
-/**
- * The button of the title island (DESIGN.md 6.1): Save to folder for a folder maze once its first
- * edit has made the copy.
- */
-export function TitleActions({ folderFile, onSaveToFolder }: TitleActionsProps) {
-  return folderFile === undefined || onSaveToFolder === undefined ? null : (
-    <Hint label={`Save to ${folderFile}`} side="bottom" verbatim={folderFile}>
-      <IslandButton onClick={onSaveToFolder}>
-        <FloppyDisk aria-hidden size={16} />
-        Save to folder
-      </IslandButton>
-    </Hint>
-  );
-}
 
 /** The props of {@link CopyLinkButton}. */
 export interface CopyLinkButtonProps {

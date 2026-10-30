@@ -245,25 +245,20 @@ describe('the repository cache', () => {
 });
 
 describe('the settings', () => {
-  test('keep the handle of a local folder, and forget it (a stand-in: Chromium crashes reading a real one back in a test context)', async () => {
-    const settings = new Settings<{ kind: string; name: string }>(await freshDatabase());
-    const folder = { kind: 'directory', name: 'mazes' };
+  test('forget the handle of the local folder that older versions kept', async () => {
+    const database = await freshDatabase();
+    await database.put('settings', { kind: 'directory', name: 'mazes' }, 'folder-handle');
+    await new Settings(database).forgetFolder();
 
-    expect(await settings.folder()).toBeUndefined();
-    await settings.saveFolder(folder);
-    expect(await settings.folder()).toEqual({ kind: 'directory', name: 'mazes' });
-    await settings.saveFolder(undefined);
-    expect(await settings.folder()).toBeUndefined();
+    expect(await database.get('settings', 'folder-handle')).toBeUndefined();
   });
 
-  test("keep the generator's last settings and preset, beside the folder", async () => {
-    const settings = new Settings<{ kind: string; name: string }>(await freshDatabase());
+  test("keep the generator's last settings and preset", async () => {
+    const settings = new Settings(await freshDatabase());
     const saved = { preset: 'japan', settings: { size: 16, path: [57, 99] } };
 
     expect(await settings.generator()).toBeUndefined();
-    await settings.saveFolder({ kind: 'directory', name: 'mazes' });
     await settings.saveGenerator(saved);
     expect(await settings.generator()).toEqual(saved);
-    expect(await settings.folder()).toEqual({ kind: 'directory', name: 'mazes' });
   });
 });

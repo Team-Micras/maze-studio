@@ -130,7 +130,6 @@ describe('The maze of the embed', () => {
   test.each([
     ['the library', { kind: 'library', filter: DEFAULT_FILTER }],
     ['My mazes', { kind: 'mine', id: '6f1c0b2e-1d7a-4c35-9f43-8a0f2b51e9aa' }],
-    ['the folder', { kind: 'folder', file: 'maze.txt' }],
   ] as const)('of %s is refused', async (_where, route) => {
     expect(embedMaze(route, await loadSnapshot())).toEqual({
       status: 'missing',

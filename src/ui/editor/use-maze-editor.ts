@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 
-import { folderFileOf, refOf } from '@/library';
+import { refOf } from '@/library';
 import {
   beginGesture,
   canRedo,
@@ -87,8 +87,6 @@ export interface MazeEditor {
   readonly setProfile: (profile: Profile) => void;
   /** Whether the maze is not yet in My mazes and Save to My mazes copies it there; not a blank new maze. */
   readonly canSaveToMine: boolean;
-  /** The file of the opened folder the maze came from, once its copy is in My mazes. */
-  readonly folderFile: string | undefined;
   /** Copies the maze to My mazes, edited or not, and moves the editor to the copy. */
   readonly saveToMine: () => void;
   /**
@@ -281,7 +279,6 @@ export function useMazeEditor(input: MazeEditorInput): MazeEditor {
     redo: () => edit(redo),
     setProfile: (profile) => update((before) => withProfile(before, profile)),
     canSaveToMine: session !== undefined && canSaveToMine(session),
-    folderFile: session?.mine === undefined ? undefined : folderFileOf(session.opened.key),
     saveToMine: () => {
       const now = latest.current;
 
