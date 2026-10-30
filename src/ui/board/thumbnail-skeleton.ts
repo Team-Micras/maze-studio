@@ -43,8 +43,8 @@ function paintSkeleton(size: number): void {
 
 /**
  * Sets `--thumbnail-skeleton-16` and `--thumbnail-skeleton-32` on the document to the skeletons
- * of 16 × 16 and 32 × 32, each painted once in idle time; until then an artboard shows its floor
- * colour.
+ * of 16 × 16 and 32 × 32, each painted once, one a frame, after the paints already queued, so the
+ * thumbnails a grid mounts with come first; until then an artboard shows its floor colour.
  */
 export function paintThumbnailSkeletons(): void {
   if (scheduled) {
@@ -52,6 +52,6 @@ export function paintThumbnailSkeletons(): void {
   }
 
   scheduled = true;
-  schedulePaint(() => paintSkeleton(16));
-  schedulePaint(() => paintSkeleton(32));
+  schedulePaint(() => paintSkeleton(16), true);
+  schedulePaint(() => paintSkeleton(32), true);
 }

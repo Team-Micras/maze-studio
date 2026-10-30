@@ -8,6 +8,8 @@ import { Check } from '@/ui/icons';
 import { artboardLabel } from '@/ui/labels';
 import { cn } from '@/ui/primitives/utils';
 import { pushRoute } from '@/ui/navigation';
+
+import { libraryFlung } from './library-scroller';
 import { routeHash, routeOfEntry } from '@/ui/routes';
 
 /** The props of {@link Artboard}. */
@@ -246,6 +248,7 @@ export const Artboard = memo(function Artboard({
           selected && 'outline-2 outline-offset-[3px] outline-solid'
         )}
         eachFrame
+        flung={libraryFlung}
         height={height}
         maze={maze}
         resolution={band}

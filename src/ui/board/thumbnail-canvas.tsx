@@ -37,11 +37,16 @@ export interface ThumbnailCanvasProps {
    */
   readonly diff?: ThumbnailDiff;
   /**
-   * Whether a missing bitmap first shows its preview, in {@link PREVIEW_BAND}, painted at the next
-   * frame when no idle time comes first, and the sharp one in idle time, as through a fling of the
-   * library's grid, which leaves almost no idle time on a phone; off by default.
+   * Whether a missing bitmap paints at the next frame when no idle time comes first, as through a
+   * fling of the library's grid, which leaves almost no idle time on a phone; off by default.
    */
   readonly eachFrame?: boolean;
+  /**
+   * Whether what holds it moves too fast for one sharp paint a frame, read as it mounts and as it
+   * paints: while it does, a blank canvas shows its preview, in {@link PREVIEW_BAND}, before the
+   * sharp bitmap. At rest the sharp bitmap comes first, so a load never swaps a soft one for it.
+   */
+  readonly flung?: () => boolean;
   readonly className?: string;
 }
 
@@ -61,8 +66,9 @@ function showBitmap(canvas: HTMLCanvasElement, bitmap: OffscreenCanvas): void {
 /**
  * Shows the cached thumbnail of `maze` in `band`: at once when the canvas shows nothing yet and
  * the bitmap is ready, in idle time otherwise, so switching every artboard to a new band never
- * lands in one frame. With `eachFrame`, a blank canvas shows the preview first: at once when it is
- * ready, at the next frame otherwise.
+ * lands in one frame. While `flung`, a blank canvas shows the preview first: at once when it is
+ * ready, as its first paint otherwise, unless the motion stopped by then; the sharp bitmap follows
+ * once the motion stops.
  */
 function paintCached(
   canvas: HTMLCanvasElement,
@@ -70,7 +76,8 @@ function paintCached(
   band: ThumbnailBand,
   blank: boolean,
   diff: ThumbnailDiff | undefined,
-  eachFrame: boolean
+  eachFrame: boolean,
+  flung: (() => boolean) | undefined
 ): () => void {
   const key = encodeMazeCode(maze);
 
@@ -89,25 +96,37 @@ function paintCached(
 
   const sharp = (): void => showBitmap(canvas, thumbnailCache.thumbnail(key, maze, band));
 
-  if (!eachFrame || !blank || band <= PREVIEW_BAND) {
+  if (flung === undefined || !flung() || !blank || band <= PREVIEW_BAND) {
     return schedulePaint(sharp, eachFrame);
   }
 
   const preview = thumbnailCache.cached(key, PREVIEW_BAND);
+  const upgrade = (): void => {
+    if (flung()) {
+      cancel = schedulePaint(upgrade, eachFrame);
+    } else {
+      sharp();
+    }
+  };
+  let cancel: () => void;
 
-  if (preview !== undefined) {
+  if (preview === undefined) {
+    cancel = schedulePaint(
+      () => {
+        if (flung()) {
+          showBitmap(canvas, thumbnailCache.thumbnail(key, maze, PREVIEW_BAND));
+        }
+
+        cancel = schedulePaint(upgrade, eachFrame);
+      },
+      eachFrame,
+      true
+    );
+  } else {
     showBitmap(canvas, preview);
-    return schedulePaint(sharp);
+    cancel = schedulePaint(upgrade, eachFrame);
   }
 
-  let cancel = schedulePaint(
-    () => {
-      showBitmap(canvas, thumbnailCache.thumbnail(key, maze, PREVIEW_BAND));
-      cancel = schedulePaint(sharp);
-    },
-    true,
-    true
-  );
   return () => cancel();
 }
 
@@ -136,7 +155,7 @@ function paintLive(
  * A maze's thumbnail on a canvas. Cached, the bitmap comes from {@link thumbnailCache} in the
  * band that covers the resolution, so a camera zooming over it repaints only when the band
  * changes. The first bitmap of a canvas shows at once when it is already drawn; any other is
- * shown in idle time, the previous one staying until then; with `eachFrame` the preview comes
+ * shown in idle time, the previous one staying until then; while `flung` the preview comes
  * first. Live, it is painted straight on a canvas of the exact size. It paints again when the
  * device pixel ratio changes. Decorative: what it shows is named next to it.
  */
@@ -148,6 +167,7 @@ export function ThumbnailCanvas({
   cached = true,
   diff,
   eachFrame = false,
+  flung,
   className,
 }: ThumbnailCanvasProps) {
   const canvas = useRef<HTMLCanvasElement>(null);
@@ -168,13 +188,14 @@ export function ThumbnailCanvas({
         band,
         element.dataset.painted === undefined,
         diff,
-        eachFrame
+        eachFrame,
+        flung
       );
     }
 
     paintLive(element, maze, { width: width * ratio, height: height * ratio });
     return undefined;
-  }, [maze, width, height, ratio, cached, band, diff, eachFrame]);
+  }, [maze, width, height, ratio, cached, band, diff, eachFrame, flung]);
 
   return (
     <canvas aria-hidden className={cn('block', className)} ref={canvas} style={{ width, height }} />

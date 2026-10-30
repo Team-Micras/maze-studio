@@ -18,7 +18,7 @@ import { Island, IslandButton } from '@/ui/islands/island';
 import { cn } from '@/ui/primitives/utils';
 
 import { Artboard } from './artboard';
-import { libraryKind, scrolledInsets } from './library-scroller';
+import { libraryKind, noteLibraryScroll, scrolledInsets } from './library-scroller';
 import type { Library } from './use-library';
 
 /** The props of {@link LibraryGrid}. */
@@ -145,7 +145,12 @@ export function LibraryGrid({
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, [selecting]);
-  useEffect(paintThumbnailSkeletons, []);
+  const laidOut = view.width > 0;
+  useEffect(() => {
+    if (laidOut) {
+      paintThumbnailSkeletons();
+    }
+  }, [laidOut]);
   const ratio = useDevicePixelRatio();
   const count = entries.length;
   const kind = libraryKind(phone, useOneRowTopBar());
@@ -168,14 +173,18 @@ export function LibraryGrid({
         })
       );
     };
+    const onScroll = (): void => {
+      noteLibraryScroll(scroller.scrollTop);
+      update();
+    };
     const observer = new ResizeObserver(update);
     observer.observe(scroller);
-    scroller.addEventListener('scroll', update, { passive: true });
+    scroller.addEventListener('scroll', onScroll, { passive: true });
     update();
     return () => {
       cancelAnimationFrame(frame);
       observer.disconnect();
-      scroller.removeEventListener('scroll', update);
+      scroller.removeEventListener('scroll', onScroll);
     };
   }, [scroller, kind, count]);
 
