@@ -26,25 +26,9 @@ import {
 import { expOf, logOf } from '@/generator/generator';
 import { isOpen, neighbour } from '@/generator/grid';
 import { followerReaches } from '@/generator/search';
+import { GOLDEN } from '@tests/generator/golden';
 
 const GENERATOR = join(import.meta.dirname, '..', '..', 'src', 'generator');
-
-/**
- * Seed to walls at this generator version, the hashes of the mockup the generator was ported
- * from. A change that moves one bumps `GENERATOR_VERSION` and records new hashes beside these,
- * never over them.
- */
-const GOLDEN: { readonly version: number; readonly hashes: Record<string, readonly string[]> } = {
-  version: 7,
-  hashes: {
-    recommended: ['0d1689f7', '8abe0a3b', '226953ce'],
-    japan: ['56637c02', '08b42645', '130a203e'],
-    'japan-half': ['cf2e04d1', '6edb60b7'],
-    apec: ['777aeb39', '6168ca7c', '2da70780'],
-    uk: ['4c3c097b', 'cfae0b19', '4e5ebf18'],
-    single: ['bb7acde6', '7b099120', '78dab16b'],
-  },
-};
 
 const within = (v: number, [lo, hi]: Range) => v >= lo && v <= hi;
 
@@ -256,7 +240,7 @@ describe('the arithmetic of the generator', () => {
     const files = readdirSync(GENERATOR).filter((f) => f.endsWith('.ts'));
     expect(files.length).toBeGreaterThan(10);
     const approximated =
-      /Math\.(pow|exp|expm1|log|log2|log10|log1p|hypot|atan2?|asin|acos|sinh?|cosh?|tanh?|cbrt)\b|\*\*/;
+      /\bMath\b(?!\.(abs|ceil|floor|imul|max|min|round|sign|sqrt|trunc|[A-Z][A-Z0-9_]*)\b)|\*\*/;
     const offenders = files.filter((file) =>
       approximated.test(
         readFileSync(join(GENERATOR, file), 'utf8').replaceAll(/\/\*\*[\s\S]*?\*\//g, '')
