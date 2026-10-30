@@ -142,7 +142,7 @@ describe('Empty and error states (DESIGN.md 12)', () => {
 
     await expectToast(page, 'Exported 2, skipped 1');
     await page.getByRole('button', { name: 'Details' }).click();
-    const dialog = page.getByRole('dialog', { name: 'Skipped in the export' });
+    const dialog = page.getByRole('dialog', { name: 'Left out of the export' });
     await dialog.waitFor();
     const rows = await dialog.getByRole('listitem').allTextContents();
     expect(rows).toHaveLength(2);

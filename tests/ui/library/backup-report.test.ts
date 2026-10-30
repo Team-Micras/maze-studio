@@ -27,7 +27,7 @@ describe('exportReport', () => {
         [{ id: 'c', name: 'C', message: 'left out its malformed recipe' }]
       )
     ).toEqual({
-      title: 'Skipped in the export',
+      title: 'Left out of the export',
       sections: [
         {
           title: 'Skipped',

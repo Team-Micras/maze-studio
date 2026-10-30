@@ -71,7 +71,7 @@ export function useMineBackup(): MineBackup {
       showToast(note, {
         action: {
           label: 'Details',
-          altText: 'Show the skipped mazes',
+          altText: 'Show details',
           run: () => setReport(exportReport(skipped, partial)),
         },
       });

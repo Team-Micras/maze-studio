@@ -43,7 +43,7 @@ export function exportReport(
   partial: readonly SkippedExport[]
 ): Report {
   return {
-    title: 'Skipped in the export',
+    title: 'Left out of the export',
     sections: [
       { title: 'Skipped', rows: skipped.map(row) },
       { title: 'Exported without a field', rows: partial.map(row) },

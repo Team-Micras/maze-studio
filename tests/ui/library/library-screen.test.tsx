@@ -180,6 +180,7 @@ describe('The credit', () => {
       expect(credit?.contains(link.element())).toBe(false);
       expect(credit?.textContent).toMatch(/at [0-9a-f]{7}$/);
       expect(credit?.scrollWidth).toBeLessThanOrEqual(credit?.clientWidth ?? 0);
+      expect(box.height).toBe(32);
       expect(pill.height).toBe(32);
       expect(pill.left).toBeGreaterThanOrEqual(box.right + 4);
       expect(pill.top).toBe(box.top);
