@@ -14,7 +14,7 @@ import { boardGeometry, type BoardGeometry } from './geometry';
 import { LruCache } from './lru-cache';
 import { diffLayers, overlayStrokes } from './overlay-layers';
 import { TRACK_COLORS, TRACK_OPACITY } from './track-colors';
-import { trackLayers } from './track-layers';
+import { trackPaint } from './track-layers';
 
 /** The sizes a thumbnail is drawn at, in device pixels on its longest side. */
 export const THUMBNAIL_BANDS = [64, 128, 256, 512] as const;
@@ -97,16 +97,6 @@ function stroke(
   context.setLineDash([]);
 }
 
-function paintPosts(context: Canvas2D, path: string, color: string, geometry: BoardGeometry): void {
-  fill(context, path, color);
-
-  if (path !== '' && geometry.postOutline > 0) {
-    context.strokeStyle = TRACK_COLORS.floor;
-    context.lineWidth = geometry.postOutline;
-    context.stroke(new Path2D(path));
-  }
-}
-
 /**
  * Paints the track of `maze` drawn with `geometry` on `context`, in board units, and the diff on
  * top when one is given.
@@ -117,25 +107,26 @@ export function paintTrack(
   geometry: BoardGeometry,
   diff?: MazeDiff
 ): void {
-  const layers = trackLayers(maze, geometry);
-  fill(context, layers.floor, TRACK_COLORS.floor);
-  fill(context, layers.rails, TRACK_COLORS.rail);
-  fill(context, layers.goal, TRACK_COLORS.goal, TRACK_OPACITY.goal);
+  for (const layer of trackPaint(maze, geometry)) {
+    const shape = new Path2D(layer.d);
 
-  if (layers.start !== '') {
-    context.globalAlpha = TRACK_OPACITY.start;
-    context.strokeStyle = TRACK_COLORS.bare;
-    context.lineWidth = geometry.startStroke;
-    context.lineCap = 'round';
-    context.lineJoin = 'round';
-    context.stroke(new Path2D(layers.start));
+    if (layer.fill !== 'none') {
+      context.globalAlpha = layer.fillOpacity ?? 1;
+      context.fillStyle = layer.fill;
+      context.fill(shape);
+    }
+
+    if (layer.stroke !== undefined && layer.strokeWidth !== undefined && layer.strokeWidth > 0) {
+      context.globalAlpha = layer.strokeOpacity ?? 1;
+      context.strokeStyle = layer.stroke;
+      context.lineWidth = layer.strokeWidth;
+      context.lineCap = layer.strokeLinecap ?? 'butt';
+      context.lineJoin = layer.strokeLinejoin ?? 'miter';
+      context.stroke(shape);
+    }
+
     context.globalAlpha = 1;
   }
-
-  fill(context, layers.redWalls, TRACK_COLORS.wall);
-  fill(context, layers.bareWalls, TRACK_COLORS.bare);
-  paintPosts(context, layers.redPosts, TRACK_COLORS.post, geometry);
-  paintPosts(context, layers.barePosts, TRACK_COLORS.bare, geometry);
 
   if (diff !== undefined) {
     const paths = diffLayers(geometry, diff);

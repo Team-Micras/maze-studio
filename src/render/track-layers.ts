@@ -99,15 +99,20 @@ function edgeOn(direction: Edge['direction'], line: number, step: number): Edge 
     : { direction, x: line, y: step };
 }
 
-function spanRect(first: BoardRect, last: BoardRect): BoardRect {
-  const x = Math.min(first.x, last.x);
-  const y = Math.min(first.y, last.y);
-  return {
-    x,
-    y,
-    width: Math.max(first.x + first.width, last.x + last.width) - x,
-    height: Math.max(first.y + first.height, last.y + last.height) - y,
-  };
+function runRect(
+  geometry: BoardGeometry,
+  direction: Edge['direction'],
+  line: number,
+  from: number,
+  length: number
+): BoardRect {
+  const span = length * geometry.pitch;
+
+  if (direction === 'horizontal') {
+    return { ...wallRect(geometry, edgeOn(direction, line, from)), width: span };
+  }
+
+  return { ...wallRect(geometry, edgeOn(direction, line, from + length - 1)), height: span };
 }
 
 /**
@@ -128,19 +133,22 @@ function wallRuns(
     for (let line = 0; line < lines; line++) {
       let from: number | undefined;
       let fromBare = false;
+      const flush = (to: number): void => {
+        if (from !== undefined) {
+          (fromBare ? runs.bare : runs.red).push(
+            rectPath(runRect(geometry, direction, line, from, to - from))
+          );
+          from = undefined;
+        }
+      };
 
-      for (let step = 0; step <= steps; step++) {
-        const edge = step < steps ? edgeOn(direction, line, step) : undefined;
-        const walled = edge !== undefined && hasWall(maze, edge);
+      for (let step = 0; step < steps; step++) {
+        const edge = edgeOn(direction, line, step);
+        const walled = hasWall(maze, edge);
         const bare = walled && touchesMark(edge, marked);
 
-        if (from !== undefined && (!walled || bare !== fromBare)) {
-          const rect = spanRect(
-            wallRect(geometry, edgeOn(direction, line, from)),
-            wallRect(geometry, edgeOn(direction, line, step - 1))
-          );
-          (fromBare ? runs.bare : runs.red).push(rectPath(rect));
-          from = undefined;
+        if (!walled || bare !== fromBare) {
+          flush(step);
         }
 
         if (walled && from === undefined) {
@@ -148,6 +156,8 @@ function wallRuns(
           fromBare = bare;
         }
       }
+
+      flush(steps);
     }
   }
 
