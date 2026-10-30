@@ -5,13 +5,16 @@ import { diffMazes, encodeMazeCode, setStart, toggleWall } from '@/maze';
 import {
   boardGeometry,
   drawThumbnail,
+  PREVIEW_BAND,
   THUMBNAIL_BANDS,
+  THUMBNAIL_CACHE_BYTES,
   ThumbnailCache,
   thumbnailBand,
   thumbnailBytes,
 } from '@/render';
 import { thumbnailCache } from '@/ui/board/thumbnail-cache';
 import { ThumbnailCanvas } from '@/ui/board/thumbnail-canvas';
+import { paintThumbnailSkeletons } from '@/ui/board/thumbnail-skeleton';
 import { REPO_MAZES, repoMaze } from '@tests/support/ui/repo-mazes';
 
 function pixel(canvas: OffscreenCanvas | HTMLCanvasElement, x: number, y: number): number[] {
@@ -166,16 +169,41 @@ describe('ThumbnailCache', () => {
 
   test('drops the least recently used bitmap once past its capacity', async () => {
     const maze = await repoMaze(REPO_MAZES.classic);
-    const cache = new ThumbnailCache(2 * thumbnailBytes({ width: 64, height: 64 }));
-    const first = cache.thumbnail('a', maze, 64);
-    cache.thumbnail('b', maze, 64);
-    cache.thumbnail('a', maze, 64);
-    cache.thumbnail('c', maze, 64);
+    const cache = new ThumbnailCache(2 * thumbnailBytes({ width: 256, height: 256 }));
+    const first = cache.thumbnail('a', maze, 256);
+    cache.thumbnail('b', maze, 256);
+    cache.thumbnail('a', maze, 256);
+    cache.thumbnail('c', maze, 256);
 
-    expect(cache.thumbnail('a', maze, 64)).toBe(first);
-    expect(cache.bytes).toBe(2 * thumbnailBytes({ width: 64, height: 64 }));
+    expect(cache.thumbnail('a', maze, 256)).toBe(first);
+    expect(cache.bytes).toBe(2 * thumbnailBytes({ width: 256, height: 256 }));
+  });
+
+  test('keeps the previews apart, so large bitmaps never push them out', async () => {
+    const maze = await repoMaze(REPO_MAZES.classic);
+    const cache = new ThumbnailCache(
+      thumbnailBytes({ width: 512, height: 512 }),
+      2 * thumbnailBytes({ width: PREVIEW_BAND, height: PREVIEW_BAND })
+    );
+    const preview = cache.thumbnail('a', maze, PREVIEW_BAND);
+    cache.thumbnail('a', maze, 512);
+    cache.thumbnail('b', maze, 512);
+
+    expect(cache.cached('a', 512)).toBeUndefined();
+    expect(cache.cached('a', PREVIEW_BAND)).toBe(preview);
+
+    cache.thumbnail('b', maze, PREVIEW_BAND);
+    cache.thumbnail('c', maze, PREVIEW_BAND);
+
+    expect(cache.cached('a', PREVIEW_BAND)).toBeUndefined();
   });
 });
+
+function skeleton(size: number): string {
+  return getComputedStyle(document.documentElement).getPropertyValue(
+    `--thumbnail-skeleton-${size}`
+  );
+}
 
 describe('ThumbnailCanvas', () => {
   test('paints a live maze without leaving a bitmap in the shared cache', async () => {
@@ -220,6 +248,33 @@ describe('ThumbnailCanvas', () => {
 
       matchMedia.mockRestore();
     }
+  });
+
+  test('shows the preview of a remounted library thumbnail at once, though its sharp bitmap left the cache', async () => {
+    const maze = await repoMaze(REPO_MAZES.taiwan);
+    const first = await render(<ThumbnailCanvas eachFrame height={200} maze={maze} width={200} />);
+    await expect
+      .poll(() => document.querySelector('canvas')?.width)
+      .toBe(thumbnailBand(200 * window.devicePixelRatio));
+    await first.unmount();
+
+    for (let index = 0; index * 512 * 512 * 4 <= THUMBNAIL_CACHE_BYTES; index++) {
+      thumbnailCache.thumbnail(`evicts ${index}`, maze, 512);
+    }
+
+    await render(<ThumbnailCanvas eachFrame height={200} maze={maze} width={200} />);
+    const canvas = document.querySelector('canvas');
+
+    expect(canvas?.hasAttribute('data-painted')).toBe(true);
+    expect(canvas?.width).toBe(PREVIEW_BAND);
+    await expect.poll(() => canvas?.width).toBe(thumbnailBand(200 * window.devicePixelRatio));
+  });
+
+  test("gives the library the generator's skeleton, still, as an image to show under its thumbnails", async () => {
+    paintThumbnailSkeletons();
+
+    await expect.poll(() => skeleton(16)).toMatch(/^url\(blob:/);
+    await expect.poll(() => skeleton(32)).toMatch(/^url\(blob:/);
   });
 
   test('shows a cached thumbnail at its CSS size with the bitmap of its band behind it', async () => {

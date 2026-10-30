@@ -1,7 +1,13 @@
 import { useEffect, useRef } from 'react';
 
 import { encodeMazeCode, type Maze, type MazeDiff } from '@/maze';
-import { boardGeometry, paintTrack, thumbnailBand, type ThumbnailBand } from '@/render';
+import {
+  boardGeometry,
+  paintTrack,
+  PREVIEW_BAND,
+  thumbnailBand,
+  type ThumbnailBand,
+} from '@/render';
 import { cn } from '@/ui/primitives/utils';
 
 import { schedulePaint } from './paint-queue';
@@ -31,8 +37,9 @@ export interface ThumbnailCanvasProps {
    */
   readonly diff?: ThumbnailDiff;
   /**
-   * Whether a missing bitmap paints at the next frame when no idle time comes first, as through a
-   * fling of the library's grid, which leaves almost no idle time on a phone; off by default.
+   * Whether a missing bitmap first shows its preview, in {@link PREVIEW_BAND}, painted at the next
+   * frame when no idle time comes first, and the sharp one in idle time, as through a fling of the
+   * library's grid, which leaves almost no idle time on a phone; off by default.
    */
   readonly eachFrame?: boolean;
   readonly className?: string;
@@ -54,7 +61,8 @@ function showBitmap(canvas: HTMLCanvasElement, bitmap: OffscreenCanvas): void {
 /**
  * Shows the cached thumbnail of `maze` in `band`: at once when the canvas shows nothing yet and
  * the bitmap is ready, in idle time otherwise, so switching every artboard to a new band never
- * lands in one frame.
+ * lands in one frame. With `eachFrame`, a blank canvas shows the preview first: at once when it is
+ * ready, at the next frame otherwise.
  */
 function paintCached(
   canvas: HTMLCanvasElement,
@@ -79,10 +87,24 @@ function paintCached(
     return () => undefined;
   }
 
-  return schedulePaint(
-    () => showBitmap(canvas, thumbnailCache.thumbnail(key, maze, band)),
-    eachFrame
-  );
+  const sharp = (): void => showBitmap(canvas, thumbnailCache.thumbnail(key, maze, band));
+
+  if (!eachFrame || !blank || band <= PREVIEW_BAND) {
+    return schedulePaint(sharp, eachFrame);
+  }
+
+  const preview = thumbnailCache.cached(key, PREVIEW_BAND);
+
+  if (preview !== undefined) {
+    showBitmap(canvas, preview);
+    return schedulePaint(sharp);
+  }
+
+  let cancel = schedulePaint(() => {
+    showBitmap(canvas, thumbnailCache.thumbnail(key, maze, PREVIEW_BAND));
+    cancel = schedulePaint(sharp);
+  }, true);
+  return () => cancel();
 }
 
 function paintLive(
@@ -110,7 +132,8 @@ function paintLive(
  * A maze's thumbnail on a canvas. Cached, the bitmap comes from {@link thumbnailCache} in the
  * band that covers the resolution, so a camera zooming over it repaints only when the band
  * changes. The first bitmap of a canvas shows at once when it is already drawn; any other is
- * shown in idle time, the previous one staying until then. Live, it is painted straight on a canvas of the exact size. It paints again when the
+ * shown in idle time, the previous one staying until then; with `eachFrame` the preview comes
+ * first. Live, it is painted straight on a canvas of the exact size. It paints again when the
  * device pixel ratio changes. Decorative: what it shows is named next to it.
  */
 export function ThumbnailCanvas({

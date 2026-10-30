@@ -11,6 +11,7 @@ import {
   type LibraryLayout,
   type RowRange,
 } from '@/render';
+import { paintThumbnailSkeletons } from '@/ui/board/thumbnail-skeleton';
 import { useDevicePixelRatio } from '@/ui/board/use-device-pixel-ratio';
 import { useOneRowTopBar } from '@/ui/hooks/use-media-query';
 import { Island, IslandButton } from '@/ui/islands/island';
@@ -144,6 +145,7 @@ export function LibraryGrid({
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, [selecting]);
+  useEffect(paintThumbnailSkeletons, []);
   const ratio = useDevicePixelRatio();
   const count = entries.length;
   const kind = libraryKind(phone, useOneRowTopBar());

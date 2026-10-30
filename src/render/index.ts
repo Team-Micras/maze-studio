@@ -121,6 +121,8 @@ export {
   drawThumbnail,
   paintTrack,
   THUMBNAIL_BANDS,
+  PREVIEW_BAND,
+  PREVIEW_CACHE_BYTES,
   THUMBNAIL_CACHE_BYTES,
   ThumbnailCache,
   thumbnailBand,

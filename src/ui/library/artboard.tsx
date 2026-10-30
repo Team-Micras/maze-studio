@@ -59,12 +59,13 @@ function artboardStyle(
 }
 
 /**
- * One maze of the library's grid (DESIGN.md 7): a link that opens it, its thumbnail, and its name
- * and size above. Hover and keyboard focus ring it. A new place slides there, so a reflow moves the
- * artboards that stay mounted. A plain click pushes the route at once, so the maze opens in the
- * next frame; a modified one opens a new tab. The link is not draggable, and a finger held on it
- * opens no menu and selects nothing: held, it stays put; lifted without moving, even after a long
- * press, it opens the maze; moved, it scrolls the grid.
+ * One maze of the library's grid (DESIGN.md 7): a link that opens it, its thumbnail, the
+ * generator's skeleton until that is painted, and its name and size above. Hover and keyboard focus
+ * ring it. A new place slides there, so a reflow moves the artboards that stay mounted. A plain
+ * click pushes the route at once, so the maze opens in the next frame; a modified one opens a new
+ * tab. The link is not draggable, and a finger held on it opens no menu and selects nothing: held,
+ * it stays put; lifted without moving, even after a long press, it opens the maze; moved, it
+ * scrolls the grid.
  */
 export const Artboard = memo(function Artboard({
   entry,
@@ -238,7 +239,10 @@ export const Artboard = memo(function Artboard({
       </span>
       <ThumbnailCanvas
         className={cn(
-          'rounded-[4px] bg-[oklch(0.17_0_0)] shadow-artboard outline-ring group-hover:outline-2 group-hover:outline-offset-[3px] group-hover:outline-solid group-focus-visible:outline-2 group-focus-visible:outline-offset-[3px] group-focus-visible:outline-solid',
+          'rounded-[4px] bg-[oklch(0.17_0_0)] bg-[length:100%_100%] shadow-artboard outline-ring group-hover:outline-2 group-hover:outline-offset-[3px] group-hover:outline-solid group-focus-visible:outline-2 group-focus-visible:outline-offset-[3px] group-focus-visible:outline-solid',
+          entry.width > 16
+            ? 'bg-(image:--thumbnail-skeleton-32)'
+            : 'bg-(image:--thumbnail-skeleton-16)',
           selected && 'outline-2 outline-offset-[3px] outline-solid'
         )}
         eachFrame
