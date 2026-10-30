@@ -20,7 +20,6 @@ test('paints a thumbnail the cache lacks in a browser without requestIdleCallbac
   await render(<ThumbnailCanvas height={200} maze={maze} width={200} />);
   const canvas = document.querySelector('canvas');
 
-  expect(canvas?.hasAttribute('data-painted')).toBe(false);
   await expect.poll(() => canvas?.hasAttribute('data-painted'), { timeout: 2000 }).toBe(true);
   expect(canvas?.width).toBe(256);
 });

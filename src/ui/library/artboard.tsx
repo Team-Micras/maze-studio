@@ -241,6 +241,7 @@ export const Artboard = memo(function Artboard({
           'rounded-[4px] bg-[oklch(0.17_0_0)] shadow-artboard outline-ring group-hover:outline-2 group-hover:outline-offset-[3px] group-hover:outline-solid group-focus-visible:outline-2 group-focus-visible:outline-offset-[3px] group-focus-visible:outline-solid',
           selected && 'outline-2 outline-offset-[3px] outline-solid'
         )}
+        eachFrame
         height={height}
         maze={maze}
         resolution={band}

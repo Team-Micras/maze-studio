@@ -1,7 +1,8 @@
 /**
- * Painting thumbnails a few at a time, in the browser's idle time, so a zoom that crosses a band
- * or a scroll that mounts a row never paints in a busy frame. Until then a thumbnail keeps its
- * previous bitmap, scaled, or shows its floor colour (DESIGN.md 12).
+ * Painting thumbnails a few at a time, in the browser's idle time, and for the library's grid one
+ * a frame too, so a zoom that crosses a band or a scroll that mounts a row never paints many in
+ * one frame. Until then a thumbnail keeps its previous bitmap, scaled, or shows its floor colour
+ * (DESIGN.md 12).
  *
  * @module
  */
@@ -28,9 +29,6 @@ export interface PaintQueue {
  * to paint on a phone-class CPU, measured at four times throttling.
  */
 export const MIN_IDLE_MS = 8;
-
-/** The frame a browser without idle callbacks leaves between two turns. */
-export const FALLBACK_FRAME_MS = 16;
 
 /** A queue that paints in the periods `whenIdle` gives it, at least one paint when it must. */
 export function createPaintQueue(whenIdle: IdleScheduler): PaintQueue {
@@ -73,26 +71,50 @@ export function createPaintQueue(whenIdle: IdleScheduler): PaintQueue {
 }
 
 /**
- * The browser's idle periods: `requestIdleCallback` where there is one; elsewhere, as in Safari, a
- * turn every 16 ms that knows nothing of idle time and so paints exactly one thumbnail.
+ * The browser's idle periods; with `eachFrame`, raced against the next animation frame, which
+ * paints exactly one thumbnail, since a fling leaves almost no idle time on a phone. Without
+ * `requestIdleCallback`, as in Safari, only the frames paint.
  */
-export function browserIdleScheduler(): IdleScheduler {
-  if (typeof window.requestIdleCallback === 'function') {
-    return (run) =>
-      window.requestIdleCallback((deadline) =>
-        run({ timeRemaining: () => deadline.timeRemaining(), mustProgress: false })
-      );
-  }
-
+export function browserIdleScheduler(eachFrame: boolean): IdleScheduler {
   return (run) => {
-    window.setTimeout(() => run({ timeRemaining: () => 0, mustProgress: true }), FALLBACK_FRAME_MS);
+    const nextFrame = (): void => run({ timeRemaining: () => 0, mustProgress: true });
+
+    if (typeof window.requestIdleCallback !== 'function') {
+      requestAnimationFrame(nextFrame);
+      return;
+    }
+
+    const idle = window.requestIdleCallback((deadline) => {
+      if (frame !== undefined) {
+        cancelAnimationFrame(frame);
+      }
+
+      run({ timeRemaining: () => deadline.timeRemaining(), mustProgress: false });
+    });
+    const frame = eachFrame
+      ? requestAnimationFrame(() => {
+          window.cancelIdleCallback(idle);
+          nextFrame();
+        })
+      : undefined;
   };
 }
 
-let shared: PaintQueue | undefined;
+const shared = new Map<boolean, PaintQueue>();
 
-/** Runs `paint` in a coming idle period of the app's one queue; the function returned takes it back. */
-export function schedulePaint(paint: () => void): () => void {
-  shared ??= createPaintQueue(browserIdleScheduler());
-  return shared.schedule(paint);
+/**
+ * Runs `paint` in a coming idle period of one of the app's two queues, the one that with
+ * `eachFrame` also paints one a frame; the function returned takes it back. Without
+ * `requestIdleCallback` both are one queue, so a frame paints one thumbnail, not two.
+ */
+export function schedulePaint(paint: () => void, eachFrame = false): () => void {
+  const kind = eachFrame && typeof window.requestIdleCallback === 'function';
+  let queue = shared.get(kind);
+
+  if (queue === undefined) {
+    queue = createPaintQueue(browserIdleScheduler(kind));
+    shared.set(kind, queue);
+  }
+
+  return queue.schedule(paint);
 }
