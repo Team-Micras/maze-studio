@@ -10,6 +10,7 @@ import {
   openPassages,
   ROUTE_FADE,
   STILL_SHADE,
+  trackAt,
   WAITING,
   wallLines,
   waveScene,
@@ -154,6 +155,17 @@ describe('followTrack', () => {
     expect([routes.phase, routes.attempt]).toEqual(['routes', 1]);
     expect([soon.phase, soon.attempt]).toEqual(['routes', 2]);
     expect([later.phase, later.phaseSince]).toEqual(['forest', PHASE_HOLD]);
+  });
+
+  test('shows a phase named during the hold once the hold ends, with no snapshot after it', () => {
+    const soon = at(at(WAITING, 'board', 1, 0), 'filler', 1, PHASE_HOLD - 1);
+
+    expect(trackAt(soon, PHASE_HOLD - 1).phase).toBe('routes');
+    expect(trackAt(soon, PHASE_HOLD)).toMatchObject({ phase: 'forest', phaseSince: PHASE_HOLD });
+    expect(at(soon, 'loop', 1, PHASE_HOLD + 10)).toMatchObject({
+      phase: 'forest',
+      pending: 'loops',
+    });
   });
 
   test('keeps trying another way through every attempt of the fallback', () => {

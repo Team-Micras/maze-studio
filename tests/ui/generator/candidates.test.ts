@@ -100,9 +100,9 @@ describe('phaseText', () => {
   test('names what a maze building is at, the attempt from the second board on, and the seconds from the third', () => {
     const started = { ...WAITING, started: true, startedAt: 1000 };
 
-    expect(phaseText(WAITING)).toBe('Building');
-    expect(phaseText({ ...started, phase: 'routes', attempt: 1 })).toBe('Trying routes');
-    expect(phaseText({ ...started, phase: 'routes', attempt: 12 })).toBe(
+    expect(phaseText(WAITING, 0)).toBe('Building');
+    expect(phaseText({ ...started, phase: 'routes', attempt: 1 }, 1000)).toBe('Trying routes');
+    expect(phaseText({ ...started, phase: 'routes', attempt: 12 }, 1000)).toBe(
       'Trying routes · attempt 12'
     );
     expect(elapsedText(started, 1000 + SHOW_ELAPSED - 1)).toBe('');

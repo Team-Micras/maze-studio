@@ -55,6 +55,8 @@ export interface LoadingTrack {
   readonly phase: LoadingPhase | null;
   /** When {@link phase} last changed. */
   readonly phaseSince: number;
+  /** The phase named since, shown once {@link phase} has held {@link PHASE_HOLD} ({@link trackAt}). */
+  readonly pending: LoadingPhase | null;
   /** How many boards the generator has started on. */
   readonly attempt: number;
   /** When the first snapshot came. */
@@ -97,6 +99,7 @@ export const WAITING: LoadingTrack = {
   trail: [],
   phase: null,
   phaseSince: 0,
+  pending: null,
   attempt: 0,
   startedAt: 0,
 };
@@ -281,12 +284,19 @@ export function looksLikeMaze(walls: ArrayLike<number>, size: number): boolean {
   return openPassages(walls, size) >= (size * size - 1) / 2;
 }
 
+/** `track` as it reads at `now`: its pending phase shows once the one named has held {@link PHASE_HOLD}. */
+export function trackAt(track: LoadingTrack, now: number): LoadingTrack {
+  return track.pending === null || now - track.phaseSince < PHASE_HOLD
+    ? track
+    : { ...track, phase: track.pending, phaseSince: track.phaseSince + PHASE_HOLD, pending: null };
+}
+
 /**
  * The track after a snapshot arrived at `now`: its routes tried join the trail, and its walls
  * replace the ones shown if they read as a maze; a restart that brings the grid back keeps the
- * last good walls. Its stage moves the phase only once the one named has shown
- * {@link PHASE_HOLD}, and never off `another`: the fallback is the generator's last way, though its
- * attempts go through every stage.
+ * last good walls. Its stage moves the phase once the one named has shown {@link PHASE_HOLD},
+ * waiting as pending until then, and never off `another`: the fallback is the generator's last
+ * way, though its attempts go through every stage.
  */
 export function followTrack(
   track: LoadingTrack,
@@ -299,14 +309,19 @@ export function followTrack(
   size: number,
   now: number
 ): LoadingTrack {
-  const named = (snapshot.stage === undefined ? undefined : PHASES[snapshot.stage]) ?? track.phase;
-  const next = track.phase === 'another' ? 'another' : named;
+  const shown = trackAt(track, now);
+  const named =
+    (snapshot.stage === undefined ? undefined : PHASES[snapshot.stage]) ??
+    shown.pending ??
+    shown.phase;
+  const next = shown.phase === 'another' || shown.pending === 'another' ? 'another' : named;
   const moves =
-    next !== track.phase && (track.phase === null || now - track.phaseSince >= PHASE_HOLD);
+    next !== shown.phase && (shown.phase === null || now - shown.phaseSince >= PHASE_HOLD);
 
   return {
-    phase: moves ? next : track.phase,
-    phaseSince: moves ? now : track.phaseSince,
+    phase: moves ? next : shown.phase,
+    phaseSince: moves ? now : shown.phaseSince,
+    pending: moves || next === shown.phase ? null : next,
     attempt: snapshot.attempt ?? track.attempt,
     startedAt: track.started ? track.startedAt : now,
     started: true,
