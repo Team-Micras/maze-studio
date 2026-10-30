@@ -49,12 +49,12 @@ export interface MoreActionsProps {
   readonly onSaveToMine?: () => void;
   /** Downloads the maze as a `.txt`. */
   readonly onDownload: () => void;
+  /** Copies the text Download mazefile (.txt) saves. */
+  readonly onCopyText: () => void;
   /** Downloads the board as an `.svg`. */
   readonly onDownloadSvg: () => void;
   /** Copies the board's SVG as text. */
   readonly onCopySvg: () => void;
-  /** Copies Markdown that shows the downloaded SVG and links to the maze. */
-  readonly onCopyMarkdown: () => void;
   /** Copies the link, here on a phone, where the island has no link button. */
   readonly onCopyLink?: () => void;
   /** Shares the link with Web Share, where the browser has it. */
@@ -103,7 +103,7 @@ function ExportItems({
 
 /**
  * The editor's ⋯ menu (DESIGN.md 6, 6.1 and 9.2): Save to My mazes for a maze not in it yet;
- * Export, with Download mazefile (.txt), Download SVG, Copy SVG and Copy Markdown in a submenu, or
+ * Export, with Download mazefile (.txt), Copy mazefile (.txt), Download SVG and Copy SVG in a submenu, or
  * on a phone in a group under it that a tap on Export opens and closes; Copy
  * link and Share… on a phone; Copy recipe for a generated maze; Generate… (beta), Close outer
  * walls, Changes, Rename and Delete for a maze of My mazes; Fit, the theme and the shortcut help.
@@ -116,9 +116,9 @@ export function MoreActions({
   onChanges,
   onSaveToMine,
   onDownload,
+  onCopyText,
   onDownloadSvg,
   onCopySvg,
-  onCopyMarkdown,
   onCopyLink,
   onShare,
   onCopyRecipe,
@@ -139,9 +139,9 @@ export function MoreActions({
   };
   const exports: readonly ExportItem[] = [
     { label: 'Download mazefile (.txt)', Icon: DownloadSimple, onSelect: later(onDownload) },
+    { label: 'Copy mazefile (.txt)', Icon: Copy, onSelect: onCopyText },
     { label: 'Download SVG', Icon: DownloadSimple, onSelect: later(onDownloadSvg) },
     { label: 'Copy SVG', Icon: Copy, onSelect: onCopySvg },
-    { label: 'Copy Markdown', Icon: Copy, onSelect: onCopyMarkdown },
   ];
 
   return (

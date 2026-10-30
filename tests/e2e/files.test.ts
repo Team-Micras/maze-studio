@@ -247,42 +247,17 @@ describe('Copy SVG and Download SVG', () => {
   });
 });
 
-describe('Copy Markdown', () => {
-  test('links a repository maze by its route, under the name Download SVG saves', async () => {
+describe('Copy mazefile (.txt)', () => {
+  test('copies the text Download mazefile (.txt) saves', async () => {
     const page = await openMaze(`#/repo/${CLASSIC}`);
     await page.context().grantPermissions(['clipboard-read', 'clipboard-write']);
-    await exportMenu(page, 'Copy Markdown');
-    await expectToast(page, 'Markdown copied');
+    await exportMenu(page, 'Copy mazefile (.txt)');
+    await expectToast(page, 'Mazefile copied');
+    const copied = await page.evaluate(() => navigator.clipboard.readText());
+    const [, text] = await downloaded(page, () => exportMenu(page, 'Download mazefile (.txt)'));
 
-    expect(await page.evaluate(() => navigator.clipboard.readText())).toBe(
-      `[![AAMC15Maze](AAMC15Maze.svg)](<${new URL(`#/repo/${CLASSIC}`, app).href}>)`
-    );
-  });
-
-  test('links a maze of My mazes by the link Copy link copies, which opens it', async () => {
-    const { maze } = await repoContent(CLASSIC);
-    const page = await openMaze(`#/repo/${CLASSIC}`);
-    await page.context().grantPermissions(['clipboard-read', 'clipboard-write']);
-    await clickEdge(page, maze, EDGE);
-    await expectSaved(page, sameMaze(toggleWall(maze, EDGE)));
-    await exportMenu(page, 'Copy Markdown');
-    await expectToast(page, 'Markdown copied');
-    const markdown = await page.evaluate(() => navigator.clipboard.readText());
-    const [, alt, image, link = ''] = /^\[!\[(.*)\]\((.*)\)\]\(<(.*)>\)$/.exec(markdown) ?? [];
-    const [svgName] = await downloaded(page, () => exportMenu(page, 'Download SVG'));
-
-    expect([alt, image]).toEqual(['AAMC15Maze (edited)', svgName]);
-    expect(link).toMatch(/#\/m\//);
-    const decoded = decodeMazeCode(decodeURIComponent(new URL(link).hash.replace('#/m/', '')));
-
-    expect(decoded.ok && mazesEqual(decoded.value.maze, toggleWall(maze, EDGE))).toBe(true);
-    const context = await browser.newContext({ viewport: { width: 1440, height: 900 } });
-    contexts.push(context);
-    const other = await context.newPage();
-    await other.goto(link);
-    await waitForMode(other, 'editor');
-
-    expect(await other.locator('h1').textContent()).toBe('AAMC15Maze (edited)');
+    expect(copied).toBe(text);
+    expect(copied).toBe(repoText(CLASSIC));
   });
 });
 
@@ -323,7 +298,7 @@ describe('The Export menu', () => {
       await page.getByRole('button', { name: 'More actions' }).tap();
       const exportItem = page.getByRole('menuitem', { name: 'Export' });
       const items = page.getByRole('menuitem', {
-        name: /^(Download|Copy) (mazefile|SVG|Markdown)/,
+        name: /^(Download|Copy) (mazefile|SVG)/,
       });
       await exportItem.tap();
       await items.nth(3).waitFor();
@@ -346,8 +321,8 @@ describe('The Export menu', () => {
       expect(await exportItem.getAttribute('aria-expanded')).toBe('false');
       expect(await page.getByRole('menu').count()).toBe(1);
       await exportItem.tap();
-      await page.getByRole('menuitem', { name: 'Copy Markdown' }).tap();
-      await expectToast(page, 'Markdown copied');
+      await page.getByRole('menuitem', { name: 'Copy mazefile (.txt)' }).tap();
+      await expectToast(page, 'Mazefile copied');
     }
   );
 });

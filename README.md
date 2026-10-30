@@ -18,8 +18,7 @@ the browser on a laptop or a phone, installs, and works offline at a competition
   repository maze makes a copy in **My mazes**, kept in the browser and saved as you go; the
   Changes chip lists what changed in the session, to discard or keep.
 - **Sharing and files.** Copy link (the maze in the URL), Share… on a phone, and Export (a submenu, or a group that opens in place on a phone):
-  Download mazefile (.txt), Download SVG, Copy SVG and Copy Markdown (the board as an image for a README or a pull
-  request, linked to the maze); Open a `.txt`, and Export all and Import of My mazes as a zip.
+  Download mazefile (.txt), Copy mazefile (.txt), Download SVG and Copy SVG (the board as an image for a README or a pull request); Open a `.txt`, and Export all and Import of My mazes as a zip.
 - **Offline and installable.** After the first visit the app opens, searches, edits and saves with
   no network; it installs as an app, says "New version." with Reload when there is one, and checks
   GitHub for newer mazes once a day and on Check for updates.
