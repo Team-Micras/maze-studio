@@ -70,7 +70,7 @@ describe('The paint queue', () => {
     expect(scheduler.turn({ timeRemaining: () => 0, mustProgress: true })).toBe(false);
   });
 
-  test('runs the paints scheduled first before the others', () => {
+  test('runs the previews before the other paints', () => {
     const scheduler = manualScheduler();
     const queue = createPaintQueue(scheduler.whenIdle);
     const painted: string[] = [];
@@ -81,6 +81,26 @@ describe('The paint queue', () => {
     scheduler.turn({ timeRemaining: () => 0, mustProgress: true });
 
     expect(painted).toEqual(['preview']);
+  });
+
+  test('adds only previews after the first paint of a period that must progress', () => {
+    const scheduler = manualScheduler();
+    const queue = createPaintQueue(scheduler.whenIdle);
+    const painted: string[] = [];
+    queue.schedule(() => painted.push('sharp a'));
+    queue.schedule(() => painted.push('sharp b'));
+    queue.schedule(() => painted.push('preview a'), true);
+    queue.schedule(() => painted.push('preview b'), true);
+    const frame = { timeRemaining: () => 50, mustProgress: true };
+
+    scheduler.turn(frame);
+    expect(painted).toEqual(['preview a', 'preview b']);
+
+    scheduler.turn(frame);
+    expect(painted).toEqual(['preview a', 'preview b', 'sharp a']);
+
+    scheduler.turn({ timeRemaining: () => 50, mustProgress: false });
+    expect(painted).toEqual(['preview a', 'preview b', 'sharp a', 'sharp b']);
   });
 
   test('forgets a paint taken back before it runs', () => {

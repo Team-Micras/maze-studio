@@ -88,9 +88,10 @@ reached, and the measurements of the day, are in the git history of this file.
   the bitmap, in every band.
 - **Thumbnails paint in idle time** (`paint-queue.ts`), in idle periods with at least 8 ms left. The library's
   artboards also paint at the next animation frame when that comes first, as all through a fling on a phone,
-  which leaves almost no idle time (issue #16): a frame paints for 5 ms and at least once; the quick list's rows do
-  not, as one a frame cost it a dropped frame while ↓ is held. Without `requestIdleCallback` only the frames paint,
-  for the whole app, the library's previews first. A cached bitmap shows at once; until a paint the canvas keeps its
+  which leaves almost no idle time (issue #16): a frame paints one thumbnail, then starts previews only, for 5 ms
+  more, so it never starts a second 6 ms paint; the quick list's rows do not paint in frames, as one a frame cost it a
+  dropped frame while ↓ is held. Without `requestIdleCallback` only the frames paint, for the whole app, the
+  library's previews first. A cached bitmap shows at once; until a paint the canvas keeps its
   previous bitmap, scaled, or shows what is under it.
 - **The library shows a preview first** (owner, 30/10, issue #16). A fling on a phone outran the one paint a frame,
   and scrolling back over the same artboards found them blank again: the 64 MB cache holds about 64 bitmaps of the
@@ -101,7 +102,11 @@ reached, and the measurements of the day, are in the git history of this file.
   every maze of the repository (583 mazes, 36.4 MB): the app may now hold 104 MB of bitmaps instead of 64. Until
   its preview, an artboard shows the generator's skeleton, still, as a CSS background drawn once per size, so a fling
   pays nothing for it. Measured at 200 px a frame, 390 × 844 at three times, four times throttling: blank artboards
-  went from 86 % to 17 % on the first pass and from about 25 % to 0–0.5 % on later ones.
+  went from 86 % to 17 % on the first pass and from about 25 % to 0–0.5 % on later ones, and frames over 25 ms from
+  35 % to 1.5 %. Without `requestIdleCallback` the blanks fall alike (84 % to 18 %, 25 % to 0–5 %), but frames over
+  25 ms stay where they were, 34 % before and 38 % after: the sharp upgrades still take a frame each during the fling.
+  The skeleton's drawing brings `src/render/loading.ts` into the first screen's chunk, which stays within the budget
+  (214.6 of 250 KB).
 - **Live mazes are painted, not cached.** The minimap paints the maze being edited straight onto its canvas.
 - **Artboards carry a crisp shadow**, a hairline ring and a 2 px drop: the slab's blurred shadow on every mounted
   artboard broke the frame budget. The editor's board keeps the slab, which scales with the camera.

@@ -100,10 +100,14 @@ function paintCached(
     return schedulePaint(sharp);
   }
 
-  let cancel = schedulePaint(() => {
-    showBitmap(canvas, thumbnailCache.thumbnail(key, maze, PREVIEW_BAND));
-    cancel = schedulePaint(sharp);
-  }, true);
+  let cancel = schedulePaint(
+    () => {
+      showBitmap(canvas, thumbnailCache.thumbnail(key, maze, PREVIEW_BAND));
+      cancel = schedulePaint(sharp);
+    },
+    true,
+    true
+  );
   return () => cancel();
 }
 
