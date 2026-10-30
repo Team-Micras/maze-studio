@@ -11,6 +11,7 @@ const ROOT = join(import.meta.dirname, '..', '..');
 const app = inject('appUrl');
 const BOTTOM_INSET = 72;
 const TOP_INSET = 112;
+const HOME_INDICATOR = 34;
 const FILE = `o---o---o---o
 |           |
 o   o---o   o
@@ -223,6 +224,116 @@ function selection(page: Page) {
   return page.getByRole('toolbar', { name: 'Selection' });
 }
 
+/** A page of the library at `hash` above a 34 px home indicator. */
+async function aboveHomeIndicator(width: number, height: number, hash: string): Promise<Page> {
+  const context = await browser.newContext({ viewport: { width, height }, hasTouch: width < 720 });
+  contexts.push(context);
+  const page = await context.newPage();
+  const session = await context.newCDPSession(page);
+  await session.send('Emulation.setSafeAreaInsetsOverride', { insets: { bottom: HOME_INDICATOR } });
+  await page.goto(`${app}${hash}`);
+  await page.locator('a[data-artboard]').first().waitFor();
+  return page;
+}
+
+/** Scrolls the grid to its end and gives the bottom of its lowest artboard. */
+async function lowestAtTheEnd(page: Page): Promise<number> {
+  await page
+    .locator('[data-library-scroller]')
+    .evaluate((scroller) => scroller.scrollTo({ top: scroller.scrollHeight, behavior: 'instant' }));
+  await page.waitForTimeout(300);
+  return page
+    .locator('a[data-artboard]')
+    .evaluateAll((links) => Math.max(...links.map((link) => link.getBoundingClientRect().bottom)));
+}
+
+describe('The top bar and the grid', () => {
+  let classicScrollbars: Browser;
+
+  beforeAll(async () => {
+    classicScrollbars = await chromium.launch({ ignoreDefaultArgs: ['--hide-scrollbars'] });
+  });
+
+  afterAll(async () => {
+    await classicScrollbars?.close();
+  });
+
+  test.each([1345, 1335, 1100])(
+    'agree at %i px on one row or two, with scrollbars that take room, the first row 52 px below the filters',
+    async (width) => {
+      const context = await classicScrollbars.newContext({ viewport: { width, height: 900 } });
+      contexts.push(context);
+      const page = await context.newPage();
+      await page.goto(`${app}#/?cat=training`);
+      await page.locator('a[data-artboard]').first().waitFor();
+      const gap = await page.evaluate(() => {
+        const scroller = document.querySelector<HTMLElement>('[data-library-scroller]');
+        const filters = document.querySelector('search > div')?.getBoundingClientRect();
+        const first = document.querySelector('a[data-artboard]')?.getBoundingClientRect();
+        return {
+          scrollbar: window.innerWidth - (scroller?.clientWidth ?? 0),
+          below: Math.round((first?.top ?? 0) - (filters?.bottom ?? 0)),
+        };
+      });
+
+      expect(gap.scrollbar).toBeGreaterThan(0);
+      expect(gap.below).toBe(52);
+    }
+  );
+});
+
+describe('The library above a home indicator', () => {
+  test.each([
+    ['phone', 390, 844, 12],
+    ['notebook', 1440, 900, 18],
+  ])(
+    'ends its grid above the credit on a %s, so the last row shows whole',
+    async (_, width, height, gap) => {
+      const page = await aboveHomeIndicator(width, height, '#/?cat=training');
+      const lowest = await lowestAtTheEnd(page);
+      const credit = await page.locator('footer p').first().boundingBox();
+
+      expect(credit?.y).toBeCloseTo(height - HOME_INDICATOR - gap - 32, 0);
+      expect(lowest).toBeLessThanOrEqual(credit?.y ?? 0);
+    }
+  );
+
+  test('ends its grid above the update note a phone stacks over the credit', async () => {
+    const page = await aboveHomeIndicator(390, 844, '#/?cat=training');
+    await page.route('https://api.github.com/**', () => undefined);
+    await page.getByRole('button', { name: 'New maze and more' }).tap();
+    await page.getByRole('menuitem', { name: 'Check for updates' }).tap();
+    const note = page.locator('[data-update-note]');
+    await note.getByText('Checking for updates…').waitFor();
+    const lowest = await lowestAtTheEnd(page);
+
+    expect(lowest).toBeLessThanOrEqual((await note.boundingBox())?.y ?? 0);
+  });
+
+  test('Tab onto an artboard below the screen brings it above the credit', async () => {
+    const page = await aboveHomeIndicator(1440, 900, '#/');
+    const target = await page.evaluate(() => {
+      const boards = [...document.querySelectorAll<HTMLAnchorElement>('a[data-artboard]')];
+      const index = boards.findIndex(
+        (board) => board.getBoundingClientRect().top > window.innerHeight
+      );
+      boards[index - 1]?.focus();
+      return boards[index]?.dataset.artboard;
+    });
+    await page.keyboard.press('Tab');
+    await page.waitForFunction(
+      (key) => document.activeElement?.getAttribute('data-artboard') === key,
+      target
+    );
+    await page.waitForTimeout(100);
+    const box = await page.locator(`a[data-artboard="${target}"]`).boundingBox();
+
+    expect((box?.y ?? 0) + (box?.height ?? 0)).toBeLessThanOrEqual(
+      900 - BOTTOM_INSET - HOME_INDICATOR + 1
+    );
+  });
+});
+
 describe('Selecting in My mazes', () => {
   test('on a phone: a held finger selects, a tap toggles, Delete takes two taps, Cancel and Esc leave', async () => {
     const page = await mineLibrary(true);
@@ -257,6 +368,25 @@ describe('Selecting in My mazes', () => {
     await expect.poll(() => page.locator('a[data-artboard^="mine:"]').count()).toBe(1);
     expect(await artboard(page, 'three').count()).toBe(1);
     expect(await selection(page).count()).toBe(0);
+  });
+
+  test('on a phone, the bar keeps its count on one line and the credit gives way to it', async () => {
+    const page = await mineLibrary(true);
+    const credit = page.locator('footer p').first();
+    await holdFinger(page, 'a[data-artboard="mine:one"]', 700);
+    await selection(page).waitFor();
+
+    const count = await selection(page)
+      .getByText('1 selected')
+      .evaluate((span) => ({
+        height: span.getBoundingClientRect().height,
+        line: Number.parseFloat(getComputedStyle(span).lineHeight),
+      }));
+    expect(count.height).toBeLessThan(count.line * 1.5);
+    expect(await credit.isVisible()).toBe(false);
+
+    await selection(page).getByRole('button', { name: 'Cancel' }).tap();
+    await expect.poll(() => credit.isVisible()).toBe(true);
   });
 
   test('on a phone, a held finger in the repo selects nothing', async () => {

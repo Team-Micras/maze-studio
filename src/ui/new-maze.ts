@@ -2,7 +2,8 @@
  * New mazes from the New maze menu (PLAN.md 3.4, DESIGN.md 9.2): a preset, a custom size or a
  * generated maze, named "Untitled maze" (or as the generator names it) through `uniqueName` unless
  * named in the dialog, open in the editor without a route of their own, and written to My mazes
- * only by their first edit, under their own name and with the generator's recipe.
+ * under their own name and with the generator's recipe by their first edit, or at once for a
+ * generated maze.
  *
  * @module
  */

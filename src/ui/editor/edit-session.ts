@@ -130,9 +130,31 @@ export function withProfile(session: EditSession, profile: Profile): EditSession
   return profile === session.profile ? session : { ...session, profile };
 }
 
-/** Whether the maze has changed and has no item of My mazes to keep the change in yet. */
+/** Whether the generator made the maze that opened as a new maze, as Use this opens it. */
+function isGeneratedNew({ document }: OpenMaze): boolean {
+  return document.created === true && document.recipe !== undefined;
+}
+
+/**
+ * Whether the maze has no item of My mazes yet and needs one: it has changed, or the generator made
+ * it as a new maze, which Use this keeps at once.
+ */
 export function needsCopy(session: EditSession): boolean {
-  return session.mine === undefined && !mazesEqual(session.history.present, session.opened.maze);
+  return (
+    session.mine === undefined &&
+    (isGeneratedNew(session.opened) || !mazesEqual(session.history.present, session.opened.maze))
+  );
+}
+
+/**
+ * Whether Save to My mazes can copy the maze there unedited: any maze not in My mazes yet but a
+ * blank new one, which has nothing to keep until its first edit.
+ */
+export function canSaveToMine(session: EditSession): boolean {
+  return (
+    session.mine === undefined &&
+    (session.opened.document.created !== true || isGeneratedNew(session.opened))
+  );
 }
 
 /** The session with its item of My mazes, made or saved at `version`. */

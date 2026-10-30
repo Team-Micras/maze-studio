@@ -1,7 +1,10 @@
-import { afterEach, describe, expect, test } from 'vitest';
+import { afterEach, describe, expect, test, vi } from 'vitest';
 import { page, userEvent } from 'vitest/browser';
+import { render } from 'vitest-browser-react';
 
 import { loadSnapshot, repoCatalog } from '@/library';
+import { App } from '@/ui/app';
+import { appStorage } from '@/ui/storage';
 import '@/ui/styles.css';
 import { axeViolations } from '@tests/support/axe-check';
 import { settled } from '@tests/support/ui/animations';
@@ -11,6 +14,7 @@ const COLUMNS_AT_1440 = 5;
 const INSETS = { top: 112, bottom: 72 };
 
 afterEach(async () => {
+  vi.restoreAllMocks();
   document.documentElement.classList.remove('dark');
   await page.viewport(1440, 900);
   scroller()?.scrollTo({ top: 0, behavior: 'instant' });
@@ -155,6 +159,39 @@ describe('The library grid', () => {
   });
 });
 
+describe('The credit', () => {
+  test.each([
+    ['phone', 390, 844, ''],
+    ['small phone', 360, 780, ''],
+    ['notebook', 800, 900, 'maze-studio'],
+    ['notebook', 1440, 900, 'maze-studio'],
+  ])(
+    'keeps its commit whole on a %s %i px wide, with maze-studio on GitHub in a pill of its own',
+    async (_, width, height, label) => {
+      await page.viewport(width, height);
+      await mountApp();
+      const link = page.getByRole('link', { name: 'maze-studio on GitHub' });
+      const credit = document.querySelector('footer p');
+      const pill = link.element().getBoundingClientRect();
+      const box = credit?.getBoundingClientRect() ?? new DOMRect();
+
+      await expect
+        .element(link)
+        .toHaveAttribute('href', 'https://github.com/Team-Micras/maze-studio');
+      await expect.element(link).toHaveTextContent(label === '' ? /^$/ : label);
+      expect(credit?.contains(link.element())).toBe(false);
+      expect(credit?.textContent).toMatch(/at [0-9a-f]{7}$/);
+      expect(credit?.scrollWidth).toBeLessThanOrEqual(credit?.clientWidth ?? 0);
+      expect(box.height).toBe(32);
+      expect(pill.height).toBe(32);
+      expect(pill.left).toBeGreaterThanOrEqual(box.right + 4);
+      expect(pill.top).toBe(box.top);
+      expect(box.left).toBeGreaterThanOrEqual(0);
+      expect(pill.right).toBeLessThanOrEqual(window.innerWidth);
+    }
+  );
+});
+
 describe('Search and filters', () => {
   test('21 shows every 21×21 maze', async () => {
     const expected = repoCatalog((await loadSnapshot()).files).filter(
@@ -224,6 +261,65 @@ describe('Search and filters', () => {
     await expect.element(page.getByRole('heading', { name: 'No mazes match' })).toBeVisible();
     const none = page.getByRole('heading', { name: 'No mazes match' }).element().parentElement;
     expect(none?.querySelector('button')).toBeNull();
+  });
+
+  test('says when the library cannot be read, logs why, and offers to reload', async () => {
+    const storage = await appStorage();
+
+    if (storage === undefined) {
+      throw new Error('the test browser has no IndexedDB');
+    }
+
+    const failure = new Error('IndexedDB could not be read');
+    vi.spyOn(storage.mine, 'list').mockRejectedValue(failure);
+    const logged = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    window.history.replaceState(null, '', `${window.location.pathname}#/`);
+    await render(<App />);
+
+    const heading = page.getByRole('heading', { name: 'The library could not be read' });
+    await expect.element(heading).toBeVisible();
+    expect(heading.element().parentElement?.querySelector('button')?.textContent).toBe('Reload');
+    expect(artboards()).toHaveLength(0);
+    expect(logged).toHaveBeenCalledWith('The library could not be read', failure);
+  });
+
+  test('says so when the library never finishes loading, instead of staying blank', async () => {
+    const storage = await appStorage();
+
+    if (storage === undefined) {
+      throw new Error('the test browser has no IndexedDB');
+    }
+
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+    vi.spyOn(storage.mine, 'list').mockReturnValue(new Promise(() => undefined));
+    vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    window.history.replaceState(null, '', `${window.location.pathname}#/`);
+
+    try {
+      await render(<App />);
+      await vi.advanceTimersByTimeAsync(10_000);
+    } finally {
+      vi.useRealTimers();
+    }
+
+    await expect
+      .element(page.getByRole('heading', { name: 'The library could not be read' }))
+      .toBeVisible();
+  });
+
+  test('logs no slow load once the library has loaded', async () => {
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+    const logged = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+
+    try {
+      await mountApp();
+      await expect.poll(() => artboards().length).toBeGreaterThan(0);
+      await vi.advanceTimersByTimeAsync(10_000);
+    } finally {
+      vi.useRealTimers();
+    }
+
+    expect(logged).not.toHaveBeenCalledWith('The library took too long to load');
   });
 
   test('/ focuses the search from the canvas and never types itself', async () => {

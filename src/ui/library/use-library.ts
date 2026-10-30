@@ -20,6 +20,9 @@ import { appStorage } from '@/ui/storage';
 /** Fired on `window` when this tab writes to My mazes, which other tabs learn through My mazes itself. */
 const MINE_WRITTEN = 'maze-studio:mine-written';
 
+/** How long the first load may take before the library says it failed; a late load still replaces that. */
+const LOAD_TIMEOUT_MS = 10_000;
+
 /** Has every library of this tab load again, after this tab wrote to My mazes. */
 export function reloadLibrary(): void {
   window.dispatchEvent(new Event(MINE_WRITTEN));
@@ -148,23 +151,53 @@ async function loadLibrary(): Promise<Loaded> {
   return { commit: copy.commit, files: copy.files, mine };
 }
 
+/** The library as {@link useLibrary} gives it. */
+export interface LibraryLoad {
+  /** The library, or `undefined` while it loads or when it failed to. */
+  readonly library: Library | undefined;
+  /** Whether the library could not be read; a later failure keeps the library already shown. */
+  readonly failed: boolean;
+}
+
 /**
- * The library, or `undefined` while it loads, with the mazes of `folder` when one is open. It loads
- * again when another tab writes to My mazes, or when this one says it did with {@link reloadLibrary}.
+ * The library, with the mazes of `folder` when one is open. It loads again when another tab writes
+ * to My mazes, or when this one says it did with {@link reloadLibrary}. A load that fails, or that
+ * is still pending after {@link LOAD_TIMEOUT_MS}, is logged with `console.error`.
  */
-export function useLibrary(folder?: FolderContents): Library | undefined {
-  const [loaded, setLoaded] = useState<Loaded | undefined>(undefined);
+export function useLibrary(folder?: FolderContents): LibraryLoad {
+  const [loaded, setLoaded] = useState<Loaded | 'failed' | undefined>(undefined);
 
   useEffect(() => {
     let current = true;
     let unsubscribe: (() => void) | undefined;
+    let started = 0;
+    let shown = 0;
     const load = (): void => {
-      void loadLibrary().then((next) => {
-        if (current) {
-          setLoaded(next);
+      const order = ++started;
+      loadLibrary().then(
+        (next) => {
+          clearTimeout(slow);
+
+          if (current && order > shown) {
+            shown = order;
+            setLoaded(next);
+          }
+        },
+        (error: unknown) => {
+          clearTimeout(slow);
+          console.error('The library could not be read', error);
+
+          if (current) {
+            setLoaded((previous) => previous ?? 'failed');
+          }
         }
-      });
+      );
     };
+
+    const slow = setTimeout(() => {
+      console.error('The library took too long to load');
+      setLoaded((previous) => previous ?? 'failed');
+    }, LOAD_TIMEOUT_MS);
 
     load();
     window.addEventListener(MINE_WRITTEN, load);
@@ -176,13 +209,17 @@ export function useLibrary(folder?: FolderContents): Library | undefined {
 
     return () => {
       current = false;
+      clearTimeout(slow);
       window.removeEventListener(MINE_WRITTEN, load);
       unsubscribe?.();
     };
   }, []);
 
   return useMemo(
-    () => (loaded === undefined ? undefined : library(loaded, folder)),
+    () => ({
+      library: loaded === undefined || loaded === 'failed' ? undefined : library(loaded, folder),
+      failed: loaded === 'failed',
+    }),
     [loaded, folder]
   );
 }

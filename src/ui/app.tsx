@@ -82,7 +82,7 @@ function focusContent(): void {
 export function App() {
   const route = useRoute();
   const folder = useLocalFolder();
-  const library = useLibrary(folder.contents);
+  const { library, failed: libraryFailed } = useLibrary(folder.contents);
   const backup = useMineBackup();
   const updates = useRepoUpdates();
   const hash = routeHash(route);
@@ -258,6 +258,7 @@ export function App() {
       <Studio
         filter={route.kind === 'library' ? (landing ?? route.filter) : lastLibrary.filter}
         library={library}
+        libraryFailed={libraryFailed}
         onFilter={(filter: LibraryFilter) => replaceRoute({ kind: 'library', filter })}
         onLibrary={toLibrary}
         mineNames={mineNames}

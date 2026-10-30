@@ -7,6 +7,7 @@ import { afterAll, beforeAll, describe, expect, inject, test } from 'vitest';
 import { loadSnapshot } from '@/library/snapshot';
 import { readZip } from '@/library/zip';
 import { encodeMazeCode, toggleWall, type Edge } from '@/maze';
+import { UP_TO_DATE_MS } from '@/ui/library/update-note';
 import {
   edgeMiddle,
   expectSaved,
@@ -21,6 +22,8 @@ import { expectToast, openPage, waitForMode } from '@tests/support/e2e/studio-pa
 const app = inject('appUrl');
 const ROOT = join(import.meta.dirname, '..', '..');
 const CLASSIC = 'classic/AAMC15Maze.txt';
+
+const OTHER = 'classic/AAMC16Maze.txt';
 const EDGE: Edge = { direction: 'vertical', x: 6, y: 9 };
 const API = 'https://api.github.com/repos/micromouseonline/mazefiles';
 const NEWER = 'f'.repeat(40);
@@ -98,6 +101,12 @@ describe('Empty and error states (DESIGN.md 12)', () => {
     await expectToast(page, 'This browser may clear My mazes. Export a backup from the menu.');
     await page.mouse.click(point.x, point.y);
     await expectSaved(page, sameMaze(maze));
+    await page.goto(`${app}#/repo/${OTHER}`);
+    await waitForMode(page, 'editor');
+    const other = await repoContent(OTHER);
+    const otherPoint = await pagePoint(page, other.maze, edgeMiddle(EDGE));
+    await page.mouse.click(otherPoint.x, otherPoint.y);
+    await expectSaved(page, sameMaze(toggleWall(other.maze, EDGE)));
     await expect
       .poll(() =>
         page
@@ -108,12 +117,13 @@ describe('Empty and error states (DESIGN.md 12)', () => {
       .toBeLessThanOrEqual(1);
   });
 
-  test('Export all downloads the readable mazes and details the skipped one with its reason', async () => {
+  test('Export all downloads the readable mazes and details the skipped ones with their reason', async () => {
     const page = await openPage(browser, contexts, app);
     const { maze } = await repoContent(CLASSIC);
     await storeMine(page, [
       { id: 'good', name: 'Good maze', code: encodeMazeCode(maze) },
       { id: 'bad', name: 'Broken maze', code: 'not a maze code' },
+      { id: 'odd', name: 'Odd maze', code: encodeMazeCode(maze), recipe: { seed: 'x' } },
     ]);
     const [download] = await Promise.all([
       page.waitForEvent('download'),
@@ -129,12 +139,14 @@ describe('Empty and error states (DESIGN.md 12)', () => {
       'maze-studio-backup.json',
     ]);
 
-    await expectToast(page, 'Exported 1, skipped 1');
+    await expectToast(page, 'Exported 1, skipped 2');
     await page.getByRole('button', { name: 'Details' }).click();
     const dialog = page.getByRole('dialog', { name: 'Skipped in the export' });
     await dialog.waitFor();
-    expect(await dialog.getByRole('listitem').count()).toBe(1);
-    expect(await dialog.getByRole('listitem').textContent()).toContain('Broken maze');
+    const rows = await dialog.getByRole('listitem').allTextContents();
+    expect(rows).toHaveLength(2);
+    expect(rows.join('\n')).toContain('Broken maze');
+    expect(rows.join('\n')).toContain('Odd mazethe stored record is malformed');
   });
 
   test('Import adds, renames on a clash and skips with the reason, then shows My mazes', async () => {
@@ -200,7 +212,7 @@ describe('Check for updates', () => {
     expect(await page.locator('footer').textContent()).toContain(`at ${NEWER.slice(0, 7)}`);
   });
 
-  test('the same commit leaves the library as it is and says it is up to date', async () => {
+  test('the same commit leaves the library as it is and says it is up to date for a moment', async () => {
     const page = await openPage(browser, contexts, app);
     const { commit, files } = await loadSnapshot();
     await page.route(`${API}/branches/master`, (route) => json(route, { commit: { sha: commit } }));
@@ -210,5 +222,8 @@ describe('Check for updates', () => {
     expect(await page.locator('footer').textContent()).toContain(
       `${files.length} mazes from micromouseonline/mazefiles at ${commit.slice(0, 7)}`
     );
+    await page.waitForTimeout(UP_TO_DATE_MS - 1000);
+    expect(await creditNote(page)).toBe('Up to date');
+    await expect.poll(() => creditNote(page), { timeout: 3000 }).toBe('');
   });
 });

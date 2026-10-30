@@ -16,7 +16,7 @@ import {
   type UpdateFailure,
   type UpdateResult,
 } from './github-updater';
-import type { RepoFile, Snapshot } from './snapshot';
+import { isRepoFile, type Snapshot } from './snapshot';
 
 const META = 'repo-meta';
 
@@ -73,26 +73,18 @@ export class RepoCache {
     return (await this.#database.get<RepoMeta>('settings', META)) ?? {};
   }
 
-  /** The files the library shows: those of the last update, or the built-in snapshot's. */
+  /**
+   * The files the library shows: those of the last update, or the built-in snapshot's. A stored
+   * file that cannot be read is left out and reported.
+   */
   async current(): Promise<RepoCopy> {
-    const [snapshot, meta] = await Promise.all([this.#snapshot(), this.meta()]);
-
-    if (meta.commit !== undefined && meta.snapshotCommit === snapshot.commit) {
-      const files = await this.#database.getAll<RepoFile>('repo-files');
-      return {
-        source: 'github',
-        commit: meta.commit,
-        files,
-        etag: meta.etag,
-      };
-    }
-
-    return { source: 'snapshot', commit: snapshot.commit, files: snapshot.files };
+    return (await this.#read()).copy;
   }
 
   /**
    * Asks GitHub for a newer commit and keeps what it brings; on failure, keeps what there is and
-   * remembers why.
+   * remembers why. When a stored file could not be read, it asks for the whole tree again, even at
+   * the same commit, so the file comes back.
    *
    * @param force Check even if the last check was less than a day ago, as the update button does.
    */
@@ -104,8 +96,11 @@ export class RepoCache {
       return { status: 'not-due' };
     }
 
-    const [copy, snapshot] = await Promise.all([this.current(), this.#snapshot()]);
-    const result = await updateFromGitHub(copy, this.#fetch);
+    const [{ copy, complete }, snapshot] = await Promise.all([this.#read(), this.#snapshot()]);
+    const result = await updateFromGitHub(
+      complete ? copy : { ...copy, commit: '', etag: undefined },
+      this.#fetch
+    );
     const checked: RepoMeta = {
       ...(copy.source === 'github' ? { commit: copy.commit, snapshotCommit: snapshot.commit } : {}),
       skipped: meta.skipped,
@@ -140,6 +135,23 @@ export class RepoCache {
     }
 
     return result;
+  }
+
+  async #read(): Promise<{ copy: RepoCopy; complete: boolean }> {
+    const [snapshot, meta] = await Promise.all([this.#snapshot(), this.meta()]);
+
+    if (meta.commit === undefined || meta.snapshotCommit !== snapshot.commit) {
+      return {
+        copy: { source: 'snapshot', commit: snapshot.commit, files: snapshot.files },
+        complete: true,
+      };
+    }
+
+    const { values, skipped } = await this.#database.readable('repo-files', isRepoFile);
+    return {
+      copy: { source: 'github', commit: meta.commit, files: values, etag: meta.etag },
+      complete: skipped.length === 0,
+    };
   }
 
   #save(meta: RepoMeta): Promise<void> {

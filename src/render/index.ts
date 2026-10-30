@@ -79,6 +79,7 @@ export {
   SLOT_GAP_X,
   SLOT_GAP_Y,
   libraryRect,
+  type LibraryKind,
   type LibraryLayout,
   type MazeSize,
   type RowRange,

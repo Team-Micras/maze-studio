@@ -72,7 +72,7 @@ export function itemFeatures(item: ReadyItem): string[] {
   return item.relaxed === true
     ? [
         ...lines,
-        `Route choice relaxed: amber keeps off white for ${CHOICE_SHORT.detour} % of its moves and ${CHOICE_SHORT.apart} cells apart, not ${CHOICE.detour} % and ${CHOICE.apart}`,
+        `Route choice relaxed: the diagonal route (amber) keeps off the route without diagonals (white) for ${CHOICE_SHORT.detour} % of its moves and ${CHOICE_SHORT.apart} cells apart, not ${CHOICE.detour} % and ${CHOICE.apart}`,
       ]
     : lines;
 }
@@ -176,7 +176,7 @@ export function replacesBoard(item: ReadyItem, board: Maze | undefined): boolean
 /** The line above Use this: what it does with the maze picked, from the library or the editor. */
 export function pickHint(item: Item | undefined, board: Maze | undefined): string | undefined {
   if (board === undefined || !isReady(item)) {
-    return 'Opens as a new maze; the first edit saves it in My mazes.';
+    return 'Opens as a new maze, saved in My mazes.';
   }
 
   if (replacesBoard(item, board)) {

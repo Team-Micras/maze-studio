@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 
-import { folderFileOf, kindOf, refOf } from '@/library';
+import { folderFileOf, refOf } from '@/library';
 import {
   beginGesture,
   canRedo,
@@ -30,6 +30,7 @@ import { appStorage } from '@/ui/storage';
 import { showToast } from '@/ui/toasts';
 
 import {
+  canSaveToMine,
   cancelEdit,
   followRoute,
   openSession,
@@ -84,13 +85,16 @@ export interface MazeEditor {
   readonly redo: () => void;
   /** Checks the maze by `profile` from now on, saved with it once it is in My mazes. */
   readonly setProfile: (profile: Profile) => void;
-  /** Whether the maze is a link or a file not yet in My mazes, which Save to My mazes copies there. */
+  /** Whether the maze is not yet in My mazes and Save to My mazes copies it there; not a blank new maze. */
   readonly canSaveToMine: boolean;
   /** The file of the opened folder the maze came from, once its copy is in My mazes. */
   readonly folderFile: string | undefined;
-  /** Copies a link or a file to My mazes under its own name, edited or not. */
+  /** Copies the maze to My mazes, edited or not, and moves the editor to the copy. */
   readonly saveToMine: () => void;
-  /** Renames the maze's item of My mazes; `false` when My mazes refused it. */
+  /**
+   * Renames the maze: its item of My mazes once the copy on its way, if any, has landed, or else the
+   * maze on screen until it is saved; `false` when My mazes refused it.
+   */
   readonly rename: (name: string) => Promise<boolean>;
   /** The version of item `id` of My mazes this tab saved last, if it saved one. */
   readonly savedVersion: (id: string) => number | undefined;
@@ -102,6 +106,9 @@ export interface MazeEditor {
 export const NEWER_ELSEWHERE = 'Opened in another tab. Reload to edit.';
 
 const MAY_BE_CLEARED = 'This browser may clear My mazes. Export a backup from the menu.';
+
+/** Whether this page already warned that the browser may clear My mazes: once is enough. */
+let warnedMayBeCleared = false;
 
 function sessionFor(
   session: EditSession | undefined,
@@ -172,7 +179,8 @@ export function useMazeEditor(input: MazeEditorInput): MazeEditor {
 
         reloadLibrary();
         void appStorage().then((storage) => {
-          if (storage?.mine.persistence === 'best-effort') {
+          if (storage?.mine.persistence === 'best-effort' && !warnedMayBeCleared) {
+            warnedMayBeCleared = true;
             showToast(MAY_BE_CLEARED);
           }
         });
@@ -272,8 +280,7 @@ export function useMazeEditor(input: MazeEditorInput): MazeEditor {
     undo: () => edit(undo),
     redo: () => edit(redo),
     setProfile: (profile) => update((before) => withProfile(before, profile)),
-    canSaveToMine:
-      session?.mine === undefined && ['link', 'file'].includes(kindOf(session?.opened.key) ?? ''),
+    canSaveToMine: session !== undefined && canSaveToMine(session),
     folderFile: session?.mine === undefined ? undefined : folderFileOf(session.opened.key),
     saveToMine: () => {
       const now = latest.current;
@@ -286,15 +293,30 @@ export function useMazeEditor(input: MazeEditorInput): MazeEditor {
     },
     rename: async (name) => {
       const now = latest.current;
-      const done = now === undefined ? false : await writer.current?.rename(now, name);
+      const mineWriter = writer.current;
 
-      if (done === true && now?.mine !== undefined) {
-        const renamed = { ...now.mine, name };
+      if (now === undefined || mineWriter === undefined) {
+        return false;
+      }
+
+      await mineWriter.idle();
+
+      if (mineWriter.copyOf(now) === undefined) {
+        const next = openSession({ ...sessionView(now), name });
+        latest.current = next;
+        setStored(next);
+        return true;
+      }
+
+      const done = await mineWriter.rename(now, name);
+      const renamed = mineWriter.copyOf(now);
+
+      if (done && renamed !== undefined) {
         setStored((before) => (before?.opened === now.opened ? withMine(before, renamed) : before));
         sessionChanges.setState((changes) => renameChange(changes, renamed.id, name));
       }
 
-      return done === true;
+      return done;
     },
     savedVersion: (id) => writer.current?.savedVersion(id),
     reopen: (open) => {

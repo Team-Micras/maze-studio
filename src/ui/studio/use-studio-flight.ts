@@ -14,7 +14,13 @@ import {
   type WorldRect,
 } from '@/render';
 import { prefersReducedMotion, type CanvasCamera } from '@/ui/board/use-canvas-camera';
-import { focusArtboard, libraryScroller } from '@/ui/library/library-scroller';
+import { ONE_ROW_TOP_BAR_QUERY } from '@/ui/hooks/use-media-query';
+import {
+  focusArtboard,
+  libraryKind,
+  libraryScroller,
+  scrolledInsets,
+} from '@/ui/library/library-scroller';
 import type { OpenMaze } from '@/ui/open-maze';
 
 import {
@@ -143,14 +149,23 @@ function flyOut(now: FlightInput, previous: Shown): void {
   const layout =
     scroller === null
       ? undefined
-      : libraryLayout(scroller.clientWidth, now.phone ? 'phone' : 'notebook', now.shown.length);
+      : libraryLayout(
+          scroller.clientWidth,
+          libraryKind(now.phone, window.matchMedia(ONE_ROW_TOP_BAR_QUERY).matches),
+          now.shown.length
+        );
   const page =
     index < 0 || leaving === undefined || layout === undefined
       ? undefined
       : libraryRect(layout, index, leaving.maze);
 
   if (page !== undefined && scroller !== null && layout !== undefined) {
-    const top = revealScroll(page, scroller.scrollTop, scroller.clientHeight, layout.insets);
+    const top = revealScroll(
+      page,
+      scroller.scrollTop,
+      scroller.clientHeight,
+      scrolledInsets(scroller, layout.insets)
+    );
 
     if (top !== scroller.scrollTop) {
       scroller.scrollTo({ top, behavior: 'instant' });

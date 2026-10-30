@@ -12,10 +12,12 @@ import {
   type RowRange,
 } from '@/render';
 import { useDevicePixelRatio } from '@/ui/board/use-device-pixel-ratio';
+import { useOneRowTopBar } from '@/ui/hooks/use-media-query';
 import { Island, IslandButton } from '@/ui/islands/island';
 import { cn } from '@/ui/primitives/utils';
 
 import { Artboard } from './artboard';
+import { libraryKind, scrolledInsets } from './library-scroller';
 import type { Library } from './use-library';
 
 /** The props of {@link LibraryGrid}. */
@@ -144,7 +146,8 @@ export function LibraryGrid({
   }, [selecting]);
   const ratio = useDevicePixelRatio();
   const count = entries.length;
-  const layout = libraryLayout(view.width, phone ? 'phone' : 'notebook', count);
+  const kind = libraryKind(phone, useOneRowTopBar());
+  const layout = libraryLayout(view.width, kind, count);
   const band = thumbnailBand(layout.side * ratio);
 
   useEffect(() => {
@@ -153,8 +156,7 @@ export function LibraryGrid({
     }
 
     let frame = 0;
-    const layoutFor = (width: number): LibraryLayout =>
-      libraryLayout(width, phone ? 'phone' : 'notebook', count);
+    const layoutFor = (width: number): LibraryLayout => libraryLayout(width, kind, count);
     const update = (): void => {
       cancelAnimationFrame(frame);
       frame = requestAnimationFrame(() =>
@@ -173,7 +175,7 @@ export function LibraryGrid({
       observer.disconnect();
       scroller.removeEventListener('scroll', update);
     };
-  }, [scroller, phone, count]);
+  }, [scroller, kind, count]);
 
   useEffect(() => {
     if (scroller === null || hidden) {
@@ -217,7 +219,7 @@ export function LibraryGrid({
         { y: box.top + scroller.scrollTop, height: box.height },
         scroller.scrollTop,
         scroller.clientHeight,
-        layout.insets
+        scrolledInsets(scroller, layout.insets)
       );
 
       if (top !== scroller.scrollTop) {
@@ -257,7 +259,11 @@ export function LibraryGrid({
       >
         <section
           aria-label="Maze library"
-          className="relative"
+          className={cn(
+            'relative box-content pb-[env(safe-area-inset-bottom)]',
+            phone &&
+              '[:root:has([data-update-note]:not(:empty))_&]:pb-[calc(env(safe-area-inset-bottom)+40px)]'
+          )}
           data-library-grid=""
           style={{ height: layout.height }}
         >
@@ -306,9 +312,10 @@ export function LibraryGrid({
         <Island
           aria-label="Selection"
           className="fixed bottom-safe-6 left-1/2 z-20 h-11 -translate-x-1/2 gap-1 pl-3 text-[13px]"
+          data-selection-bar=""
           role="toolbar"
         >
-          <span aria-hidden className="pr-2 tabular-nums">
+          <span aria-hidden className="pr-2 whitespace-nowrap tabular-nums">
             {picked.length} selected
           </span>
           <IslandButton

@@ -1,5 +1,6 @@
 import type { ComponentProps, ReactNode } from 'react';
 
+import { useCoarsePointer } from '@/ui/hooks/use-media-query';
 import { Button } from '@/ui/primitives/button';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/ui/primitives/tooltip';
 import { cn } from '@/ui/primitives/utils';
@@ -59,8 +60,17 @@ export interface HintProps {
   readonly children: ReactNode;
 }
 
-/** A tooltip with a control's name and its key (DESIGN.md 6). */
+/**
+ * A tooltip with a control's name and its key (DESIGN.md 6); none on a coarse pointer, where a tap
+ * would focus the control and leave it open.
+ */
 export function Hint({ label, verbatim, shortcut, side = 'top', children }: HintProps) {
+  const coarse = useCoarsePointer();
+
+  if (coarse) {
+    return children;
+  }
+
   return (
     <Tooltip>
       <TooltipTrigger asChild>{children}</TooltipTrigger>
