@@ -54,6 +54,7 @@ export { mazeOrigin, type MazeOrigin } from './maze-names';
 export { MAZEFILES, type MazeRepository } from './mazefiles';
 export {
   isMineRecipe,
+  isProfile,
   MINE_CHANNEL,
   mineContent,
   MineLibrary,

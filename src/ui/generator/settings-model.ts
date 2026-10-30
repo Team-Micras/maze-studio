@@ -213,12 +213,7 @@ interface Field {
 }
 
 const FIELDS: Readonly<Record<FieldKey, Field>> = {
-  path: {
-    get: (s) => s.path,
-    min: 1,
-    max: () => 999,
-    set: (s, v) => ({ ...s, path: pairOf(v) }),
-  },
+  path: { get: (s) => s.path, min: 1, max: () => 999, set: (s, v) => ({ ...s, path: pairOf(v) }) },
   straights: {
     get: (s) => levelRange(s, 'straights'),
     min: 1,
@@ -708,11 +703,7 @@ export const COPY = {
     ],
     goal: ['3 × 3 goal off the centre', 'Placed anew on every maze, as in the half-size finals'],
   } satisfies Record<RuleKey | 'goal', readonly [string, string]>,
-  modes: {
-    always: 'Always',
-    mix: 'Mix',
-    none: 'Don’t require',
-  } satisfies Record<Mode, string>,
+  modes: { always: 'Always', mix: 'Mix', none: 'Don’t require' } satisfies Record<Mode, string>,
   modeTitle: {
     choice: 'Route choice',
     trap: 'Search traps',

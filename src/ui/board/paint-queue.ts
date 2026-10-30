@@ -100,7 +100,8 @@ export function browserIdleScheduler(eachFrame: boolean): IdleScheduler {
   };
 }
 
-const shared = new Map<boolean, PaintQueue>();
+let idleQueue: PaintQueue | undefined;
+let frameQueue: PaintQueue | undefined;
 
 /**
  * Runs `paint` in a coming idle period of one of the app's two queues, the one that with
@@ -108,13 +109,9 @@ const shared = new Map<boolean, PaintQueue>();
  * `requestIdleCallback` both are one queue, so a frame paints one thumbnail, not two.
  */
 export function schedulePaint(paint: () => void, eachFrame = false): () => void {
-  const kind = eachFrame && typeof window.requestIdleCallback === 'function';
-  let queue = shared.get(kind);
-
-  if (queue === undefined) {
-    queue = createPaintQueue(browserIdleScheduler(kind));
-    shared.set(kind, queue);
-  }
-
+  const queue =
+    eachFrame && typeof window.requestIdleCallback === 'function'
+      ? (frameQueue ??= createPaintQueue(browserIdleScheduler(true)))
+      : (idleQueue ??= createPaintQueue(browserIdleScheduler(false)));
   return queue.schedule(paint);
 }

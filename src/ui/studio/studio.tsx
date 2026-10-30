@@ -70,7 +70,7 @@ export interface StudioProps {
   /** The library, or `undefined` while it loads or when it could not be read. */
   readonly library: Library | undefined;
   /** Whether the library could not be read, which it then says in place of the mazes. */
-  readonly libraryFailed?: boolean;
+  readonly libraryFailed: boolean;
   /** The maze the route or an opened file puts on screen, if any, as edited. */
   readonly opened: OpenMaze | undefined;
   /** The editing of the maze on screen. */
@@ -144,7 +144,7 @@ function stillLimits(viewport: ViewportSize): CameraLimits {
  */
 export function Studio({
   library,
-  libraryFailed = false,
+  libraryFailed,
   opened,
   editor,
   filter,
