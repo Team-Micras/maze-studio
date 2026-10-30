@@ -18,6 +18,9 @@ export interface IdlePeriod {
 /** Calls `run` in the next idle period. */
 export type IdleScheduler = (run: (period: IdlePeriod) => void) => void;
 
+/** A paint; one that returns `false` painted nothing, and takes no room in its period. */
+export type Paint = () => boolean | void;
+
 /** A queue of paints. */
 export interface PaintQueue {
   /**
@@ -25,7 +28,7 @@ export interface PaintQueue {
    * `preview` runs before the other paints, and is the only kind a period that must progress adds
    * after its first paint.
    */
-  schedule(paint: () => void, preview?: boolean): () => void;
+  schedule(paint: Paint, preview?: boolean): () => void;
 }
 
 /**
@@ -45,8 +48,8 @@ export const FRAME_PAINT_MS = 5;
  * then only previews.
  */
 export function createPaintQueue(whenIdle: IdleScheduler): PaintQueue {
-  const previews = new Set<() => void>();
-  const jobs = new Set<() => void>();
+  const previews = new Set<Paint>();
+  const jobs = new Set<Paint>();
   let scheduled = false;
 
   const schedule = (): void => {
@@ -75,8 +78,9 @@ export function createPaintQueue(whenIdle: IdleScheduler): PaintQueue {
 
       previews.delete(job);
       jobs.delete(job);
-      job();
-      painted++;
+      if (job() !== false) {
+        painted++;
+      }
     }
 
     schedule();
@@ -138,7 +142,7 @@ let frameQueue: PaintQueue | undefined;
  * {@link FRAME_PAINT_MS}. Without `requestIdleCallback` both are one queue, so a frame starts one
  * paint that is not a preview at most.
  */
-export function schedulePaint(paint: () => void, eachFrame = false, preview = false): () => void {
+export function schedulePaint(paint: Paint, eachFrame = false, preview = false): () => void {
   const queue =
     eachFrame && typeof window.requestIdleCallback === 'function'
       ? (frameQueue ??= createPaintQueue(browserIdleScheduler(true)))

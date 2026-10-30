@@ -285,6 +285,45 @@ describe('ThumbnailCanvas', () => {
     await expect.poll(() => canvas?.width).toBe(sharp);
   });
 
+  test('turns the thumbnails on screen sharp first once a fling stops', async () => {
+    const [offScreen, onScreen] = await Promise.all([
+      repoMaze(REPO_MAZES.classic),
+      repoMaze(REPO_MAZES.halfsize),
+    ]);
+    evictSharpThumbnails(onScreen);
+    const sharp = thumbnailBand(200 * window.devicePixelRatio);
+    let moving = true;
+    const flung = (): boolean => moving;
+    const sharpened: string[] = [];
+    const observer = new MutationObserver((records) =>
+      records.forEach(({ target }) => {
+        if (target instanceof HTMLCanvasElement && target.width === sharp) {
+          sharpened.push(target.parentElement?.id ?? '');
+        }
+      })
+    );
+    observer.observe(document.body, { attributeFilter: ['width'], subtree: true });
+
+    await render(
+      <>
+        <div id="off" style={{ position: 'absolute', top: 5000 }}>
+          <ThumbnailCanvas eachFrame flung={flung} height={200} maze={offScreen} width={200} />
+        </div>
+        <div id="on">
+          <ThumbnailCanvas eachFrame flung={flung} height={200} maze={onScreen} width={200} />
+        </div>
+      </>
+    );
+    await expect
+      .poll(() => [...document.querySelectorAll('canvas')].map((canvas) => canvas.width))
+      .toEqual([PREVIEW_BAND, PREVIEW_BAND]);
+    moving = false;
+
+    await expect.poll(() => sharpened).toHaveLength(2);
+    observer.disconnect();
+    expect(sharpened).toEqual(['on', 'off']);
+  });
+
   test('paints a library thumbnail at rest sharp at once, never its preview first', async () => {
     const maze = await repoMaze(REPO_MAZES.halfsize);
     thumbnailCache.thumbnail(encodeMazeCode(maze), maze, PREVIEW_BAND);

@@ -44,7 +44,9 @@ describe('The paint queue', () => {
     const queue = createPaintQueue(scheduler.whenIdle);
     const painted = { count: 0 };
     for (let index = 0; index < 5; index++) {
-      queue.schedule(() => painted.count++);
+      queue.schedule(() => {
+        painted.count++;
+      });
     }
 
     scheduler.turn(shrinkingPeriod(MIN_IDLE_MS + 6, false, painted));
@@ -59,7 +61,9 @@ describe('The paint queue', () => {
     const queue = createPaintQueue(scheduler.whenIdle);
     const painted = { count: 0 };
     for (let index = 0; index < 3; index++) {
-      queue.schedule(() => painted.count++);
+      queue.schedule(() => {
+        painted.count++;
+      });
     }
 
     for (let turn = 1; turn <= 3; turn++) {
@@ -74,9 +78,15 @@ describe('The paint queue', () => {
     const scheduler = manualScheduler();
     const queue = createPaintQueue(scheduler.whenIdle);
     const painted: string[] = [];
-    queue.schedule(() => painted.push('sharp'));
-    queue.schedule(() => painted.push('preview'), true);
-    const takeBack = queue.schedule(() => painted.push('taken back'), true);
+    queue.schedule(() => {
+      painted.push('sharp');
+    });
+    queue.schedule(() => {
+      painted.push('preview');
+    }, true);
+    const takeBack = queue.schedule(() => {
+      painted.push('taken back');
+    }, true);
     takeBack();
     scheduler.turn({ timeRemaining: () => 0, mustProgress: true });
 
@@ -87,10 +97,18 @@ describe('The paint queue', () => {
     const scheduler = manualScheduler();
     const queue = createPaintQueue(scheduler.whenIdle);
     const painted: string[] = [];
-    queue.schedule(() => painted.push('sharp a'));
-    queue.schedule(() => painted.push('sharp b'));
-    queue.schedule(() => painted.push('preview a'), true);
-    queue.schedule(() => painted.push('preview b'), true);
+    queue.schedule(() => {
+      painted.push('sharp a');
+    });
+    queue.schedule(() => {
+      painted.push('sharp b');
+    });
+    queue.schedule(() => {
+      painted.push('preview a');
+    }, true);
+    queue.schedule(() => {
+      painted.push('preview b');
+    }, true);
     const frame = { timeRemaining: () => 50, mustProgress: true };
 
     scheduler.turn(frame);
@@ -103,12 +121,29 @@ describe('The paint queue', () => {
     expect(painted).toEqual(['preview a', 'preview b', 'sharp a', 'sharp b']);
   });
 
+  test('lets a paint that painted nothing take no room in a frame', () => {
+    const scheduler = manualScheduler();
+    const queue = createPaintQueue(scheduler.whenIdle);
+    const painted: string[] = [];
+    queue.schedule(() => false);
+    queue.schedule(() => {
+      painted.push('sharp');
+    });
+    scheduler.turn({ timeRemaining: () => 0, mustProgress: true });
+
+    expect(painted).toEqual(['sharp']);
+  });
+
   test('forgets a paint taken back before it runs', () => {
     const scheduler = manualScheduler();
     const queue = createPaintQueue(scheduler.whenIdle);
     const painted: string[] = [];
-    queue.schedule(() => painted.push('kept'));
-    const takeBack = queue.schedule(() => painted.push('taken back'));
+    queue.schedule(() => {
+      painted.push('kept');
+    });
+    const takeBack = queue.schedule(() => {
+      painted.push('taken back');
+    });
     takeBack();
     scheduler.turn({ timeRemaining: () => 50, mustProgress: false });
 

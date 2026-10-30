@@ -97,7 +97,8 @@ reached, and the measurements of the day, are in the git history of this file.
   frame, and scrolling back over the same artboards found them blank again: the 64 MB cache holds about 64 bitmaps of
   the 512 band, fewer than one 9000 px fling passes. While the grid scrolls faster than 2 px a millisecond (33 px a
   frame; `libraryFlung`, which counts it stopped 50 ms after its last scroll event), a blank artboard shows its 128
-  band, painted in the frame, and its sharp band waits for the stop, then paints one a frame. At rest, as on a load,
+  band, painted in the frame, and its sharp band waits for the stop, then paints one a frame, the artboards on
+  screen first (a paint that waits returns `false` and takes no room in the frame). At rest, as on a load,
   a filter change or after a stop, it paints the sharp band at once, one a frame, as before: showing the preview first
   there swapped every card from soft to sharp a moment after a load. The 128 band takes 2.5 ms against 6 ms for the
   512 one at four times throttling (most of a paint is building the paths, whatever the size), so a frame paints two;
@@ -105,11 +106,11 @@ reached, and the measurements of the day, are in the git history of this file.
   a preview of every maze of the repository (583 mazes, 36.4 MB): the app may now hold 104 MB of bitmaps instead of 64. Until its preview, an artboard shows the generator's skeleton, still, as a CSS background drawn once per size,
   queued behind the thumbnails the grid mounts with, so neither a load nor a fling pays for it. Measured at 200 px a
   frame, 390 × 844 at three times, four times throttling: blank artboards went from 86 % to 17 % on the first pass
-  and from about 25 % to 0–0.5 % on later ones, frames over 25 ms from 35 % to 1.5–3.3 %, and from 34 % to 2.6–5.2 %
-  without `requestIdleCallback`. After a stop the ten artboards on screen are sharp in about 330 ms, against 200 ms
-  of blank cards before; a load is sharp as fast as before (desktop 234 ms against 230, phone 493 against 502,
+  and from about 25 % to 0–0.5 % on later ones, frames over 25 ms from 35 % to 2.2 %, and from 34 % to 1.5–2.6 %
+  without `requestIdleCallback`. After a stop the ten artboards on screen are sharp in 217–233 ms, against 183–217 ms
+  of blank cards before; a load is sharp as fast as before (desktop 234 ms against 231, phone 488 against 489,
   medians). The skeleton's drawing brings `src/render/loading.ts` into the first screen's chunk, which stays within
-  the budget (214.6 of 250 KB).
+  the budget (214.8 of 250 KB).
 - **Live mazes are painted, not cached.** The minimap paints the maze being edited straight onto its canvas.
 - **Artboards carry a crisp shadow**, a hairline ring and a 2 px drop: the slab's blurred shadow on every mounted
   artboard broke the frame budget. The editor's board keeps the slab, which scales with the camera.

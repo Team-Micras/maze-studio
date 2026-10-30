@@ -68,7 +68,7 @@ function showBitmap(canvas: HTMLCanvasElement, bitmap: OffscreenCanvas): void {
  * the bitmap is ready, in idle time otherwise, so switching every artboard to a new band never
  * lands in one frame. While `flung`, a blank canvas shows the preview first: at once when it is
  * ready, as its first paint otherwise, unless the motion stopped by then; the sharp bitmap follows
- * once the motion stops.
+ * once the motion stops, after those of the canvases on screen when it is off screen.
  */
 function paintCached(
   canvas: HTMLCanvasElement,
@@ -101,12 +101,16 @@ function paintCached(
   }
 
   const preview = thumbnailCache.cached(key, PREVIEW_BAND);
-  const upgrade = (): void => {
-    if (flung()) {
-      cancel = schedulePaint(upgrade, eachFrame);
-    } else {
+  let waited = false;
+  const upgrade = (): boolean => {
+    if (!flung() && (waited || onScreen(canvas))) {
       sharp();
+      return true;
     }
+
+    waited = !flung();
+    cancel = schedulePaint(upgrade, eachFrame);
+    return false;
   };
   let cancel: () => void;
 
@@ -128,6 +132,11 @@ function paintCached(
   }
 
   return () => cancel();
+}
+
+function onScreen(canvas: HTMLCanvasElement): boolean {
+  const box = canvas.getBoundingClientRect();
+  return box.bottom > 0 && box.top < window.innerHeight;
 }
 
 function paintLive(
