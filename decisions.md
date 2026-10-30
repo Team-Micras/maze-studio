@@ -264,8 +264,13 @@ reached, and the measurements of the day, are in the git history of this file.
   warning that names what it missed, worked out in the worker from the generator's `report` and `choiceMisses`
   against its seed's targets, which only the worker has. A new run, closing the panel and leaving the editor (which
   closes it) terminate the workers; there is no Cancel (owner, 25/10): a batch of 8 takes seconds, and Generate
-  asked again during a run starts over, while 8 more and › wait for the run to end. The dialog stays mounted once
-  opened, so its batch is there the next time.
+  asked again during a run starts over, while 8 more and › wait for the run to end.
+- **One last batch for the app, for the session** (owner, 30/10, #30). Every Generate dialog, the library's and the
+  editor's, shows the same batch, held in memory only: a reload forgets it. Opening on it shows the gallery, its status
+  row reading "Last batch · 16 mazes" beside New batch, which builds a fresh batch with the settings now; the maze last
+  picked with Use this is tagged In use on its card and in its view, and the tag moves with the next one picked. More
+  goes on with the batch's own settings. Rebuild from a recipe starts a batch of its own: the rebuilt maze is #1,
+  opened at once, and › past it builds the next seeds with the recipe's settings.
 - **The board previews the candidate on a notebook** (owner, 24/10), as the mockup's editor did: from the editor
   the panel docks on the right without a modal backdrop, so the board stays in reach to pan and zoom, and the studio
   shows the candidate picked (or the last one built before it while it is on its way) on the board as a preview,

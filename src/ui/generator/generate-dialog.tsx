@@ -95,6 +95,9 @@ function fitted(choice: GeneratorChoice, board: Maze | undefined): GeneratorChoi
     : choice;
 }
 
+/** The batch every Generate dialog of the app shows, kept in memory for the session. */
+const appBatch = new Batch();
+
 /** The props of {@link GenerateDialog}. */
 export interface GenerateDialogProps {
   readonly open: boolean;
@@ -106,8 +109,10 @@ export interface GenerateDialogProps {
   /**
    * Puts the maze picked on the board in place of the open one, as one step of undo; only for a
    * maze of the board's size.
+   *
+   * @returns Whether the board took it, which a read-only board does not.
    */
-  readonly onReplace?: (generated: Generated) => void;
+  readonly onReplace?: (generated: Generated) => boolean;
   /**
    * Whether the open maze is a new maze not yet edited, which the maze picked takes the place of as
    * a new maze of its own, with its name and recipe.
@@ -118,6 +123,8 @@ export interface GenerateDialogProps {
    * open, and nothing once it closes. With it the panel is not modal: the board stays in reach.
    */
   readonly onPreview?: (preview: GeneratorPreview | undefined) => void;
+  /** The batch it shows and builds; the one the whole app shares by default. */
+  readonly batch?: Batch;
 }
 
 /**
@@ -182,6 +189,7 @@ function Card({
   item,
   place,
   marked,
+  used,
   onPick,
   onHover,
 }: {
@@ -189,6 +197,8 @@ function Card({
   place: number;
   /** Whether it is the card last opened, which the gallery marks on the way back. */
   marked: boolean;
+  /** Whether it is the maze picked with Use this. */
+  used: boolean;
   onPick: () => void;
   /** Called with `true` as the pointer comes over the card, and `false` as it leaves. */
   onHover: (over: boolean) => void;
@@ -237,7 +247,7 @@ function Card({
   return (
     <li>
       <button
-        aria-label={cardLabel(item, place)}
+        aria-label={cardLabel(item, place, used)}
         data-card={item.n}
         onMouseEnter={() => onHover(true)}
         onMouseLeave={() => onHover(false)}
@@ -257,6 +267,7 @@ function Card({
           )}
           <b className="font-semibold">#{place}</b> ·{' '}
           <span className="font-mono">{measureItem(item).analysis.shortest}</span> cells
+          {used ? <InUse /> : null}
         </span>
         {tags.length === 0 ? null : (
           <span className="flex flex-wrap gap-1">
@@ -273,6 +284,11 @@ function Card({
       </button>
     </li>
   );
+}
+
+/** The tag of the maze picked with Use this. */
+function InUse() {
+  return <Badge className="ml-1 px-1.5 py-0.5 text-[11px] leading-none">In use</Badge>;
 }
 
 function CopyRecipe({ item }: { item: ReadyItem }) {
@@ -375,12 +391,14 @@ function Details({
   item,
   place,
   total,
+  used,
   headingRef,
   track,
 }: {
   item: Item;
   place: number;
   total: number;
+  used: boolean;
   headingRef?: Ref<HTMLHeadingElement>;
   track: () => LoadingTrack;
 }) {
@@ -392,6 +410,7 @@ function Details({
     <section aria-labelledby={`maze-${item.n}`} className="flex flex-col gap-1.5">
       <div className="flex min-h-7 items-center gap-2">
         <MazeTitle headingRef={headingRef} item={item} place={place} total={total} track={track} />
+        {used ? <InUse /> : null}
         {ready ? (
           <CopyRecipe item={item} />
         ) : item.status === 'pending' ? (
@@ -427,6 +446,8 @@ function Details({
 interface DetailViewProps {
   readonly items: readonly Item[];
   readonly index: number;
+  /** The `n` of the maze picked with Use this. */
+  readonly used: number | undefined;
   /** Draws the maze large; not beside the editor, whose own board shows it. */
   readonly withBoard: boolean;
   readonly headingRef: Ref<HTMLHeadingElement>;
@@ -440,7 +461,15 @@ interface DetailViewProps {
  * The maze opened from the gallery, a view pushed over it: drawn large unless the editor's board
  * shows it, then its title line with Copy recipe, its tags and its sentences. A swipe steps.
  */
-function DetailView({ items, index, withBoard, headingRef, track, onSwipe }: DetailViewProps) {
+function DetailView({
+  items,
+  index,
+  used,
+  withBoard,
+  headingRef,
+  track,
+  onSwipe,
+}: DetailViewProps) {
   const start = useRef<{ x: number; y: number } | undefined>(undefined);
   const item = items[index];
 
@@ -502,6 +531,7 @@ function DetailView({ items, index, withBoard, headingRef, track, onSwipe }: Det
         place={index + 1}
         total={items.length}
         track={() => track(item.n)}
+        used={item.n === used}
       />
     </div>
   );
@@ -513,8 +543,9 @@ function DetailView({ items, index, withBoard, headingRef, track, onSwipe }: Det
  * of their own behind the gear; the gallery of the batch's mazes, which fill in as they are built,
  * under a status row, and 8 more at its end, up to 64; and the maze a card opens, in a
  * view pushed over the gallery with a footer of ‹ Use this ›, where › past the last maze builds 8
- * more. A docked panel on a notebook, the whole screen on a phone. Closing keeps the batch for the
- * next time and stops the run on its way.
+ * more. A docked panel on a notebook, the whole screen on a phone. Closing stops the run on its
+ * way; the batch stays for the session, and opening on it shows the gallery as the last batch, with
+ * New batch, and the maze used marked In use. A rebuilt recipe starts a batch of its own.
  */
 export default function GenerateDialog({
   open,
@@ -524,6 +555,7 @@ export default function GenerateDialog({
   onReplace,
   fresh: freshMaze = false,
   onPreview,
+  batch = appBatch,
 }: GenerateDialogProps) {
   const id = useId();
   const phone = usePhoneLayout();
@@ -532,11 +564,11 @@ export default function GenerateDialog({
   const generateButton = useRef<HTMLButtonElement>(null);
   const body = useRef<HTMLDivElement>(null);
   const status = useRef<HTMLParagraphElement>(null);
-  const [batch] = useState(() => new Batch());
   const state = useSyncExternalStore(batch.subscribe, batch.getState);
   const [choice, setChoice] = useState<GeneratorChoice>(() => startingSettings(undefined));
   const [touched, setTouched] = useState(false);
   const [wasOpen, setWasOpen] = useState(false);
+  const [openedOn, setOpenedOn] = useState<readonly Item[] | undefined>(undefined);
   const boardNow = useRef(board);
 
   useLayoutEffect(() => {
@@ -559,6 +591,7 @@ export default function GenerateDialog({
   const current = items.find((item) => item.n === selected) ?? items[0];
   const index = current === undefined ? 0 : items.indexOf(current);
   const running = state.progress !== null;
+  const last = !running && items.length > 0 && items === openedOn;
   const hint = pickHint(current, freshMaze ? undefined : board);
 
   const docked = onPreview !== undefined && board !== undefined;
@@ -606,19 +639,19 @@ export default function GenerateDialog({
   if (open !== wasOpen) {
     setWasOpen(open);
     setHovered(undefined);
+    setOpenedOn(open ? items : undefined);
 
     if (open) {
       setChoice(fitted(choice, board));
     }
+
+    if (open && items.length > 0) {
+      setSettingsOpen(false);
+      setDetail(false);
+    }
   }
 
-  useEffect(() => {
-    if (!open) {
-      batch.cancel();
-    }
-  }, [open, batch]);
-
-  useEffect(() => () => batch.cancel(), [batch]);
+  useEffect(() => (open ? () => batch.cancel() : undefined), [open, batch]);
 
   const changeSettings = (next: GeneratorChoice): void => {
     setTouched(true);
@@ -632,12 +665,11 @@ export default function GenerateDialog({
 
   const forward = stepTo(items, index, 1);
   const backward = stepTo(items, index, -1);
-  const canMore =
-    !running && !invalid && items.length > 0 && index === items.length - 1 && batch.roomForMore;
+  const canMore = !running && items.length > 0 && index === items.length - 1 && batch.roomForMore;
   const full = !running && items.length > 0 && !batch.roomForMore;
 
   const more = (): void => {
-    const [first] = batch.generate(structuredClone(choice.settings), false);
+    const [first] = batch.generate(structuredClone(state.settings ?? choice.settings), false);
     setSelected(first?.n);
   };
 
@@ -733,7 +765,10 @@ export default function GenerateDialog({
     try {
       const item = batch.rebuild(readRecipe(recipeText), choice.settings);
       setRecipeError(undefined);
-      showResults(item.n);
+      setSettingsOpen(false);
+      setInvalid(false);
+      body.current?.scrollTo({ top: 0 });
+      openDetail(item.n);
     } catch {
       setRecipeError(NOT_A_RECIPE);
     }
@@ -744,10 +779,13 @@ export default function GenerateDialog({
       onOpenChange(false);
 
       if (onReplace !== undefined && !freshMaze && replacesBoard(current, board)) {
-        onReplace({ maze: measureItem(current).maze, recipe: current.recipe });
+        if (onReplace({ maze: measureItem(current).maze, recipe: current.recipe })) {
+          batch.use(current.n);
+        }
         return;
       }
 
+      batch.use(current.n);
       onUse(requestOf(current));
     }
   };
@@ -866,14 +904,26 @@ export default function GenerateDialog({
           tabIndex={-1}
           title={state.stopped ? STOPPED : undefined}
         >
-          {statusLine(state)}
+          {statusLine(state, last)}
           {state.stopped && !running ? ' · some not made' : ''}
         </p>
         <p aria-live="polite" className="sr-only">
           {running
             ? 'Building mazes…'
-            : `${statusLine(state)}${state.stopped ? `. ${STOPPED}` : ''}`}
+            : `${statusLine(state, last)}${state.stopped ? `. ${STOPPED}` : ''}`}
         </p>
+        {last ? (
+          <Button
+            className="rounded-[10px]"
+            disabled={invalid}
+            onClick={generate}
+            size="sm"
+            type="button"
+          >
+            <Shuffle aria-hidden />
+            New batch
+          </Button>
+        ) : null}
       </div>
       {items.length === 0 ? null : (
         <ol aria-label="Mazes generated" className="grid grid-cols-2 gap-2">
@@ -881,6 +931,7 @@ export default function GenerateDialog({
             <Card
               marked={item.n === lastOpened}
               item={item}
+              used={item.n === state.used}
               key={item.n}
               onHover={(over) => setHovered(over ? item.n : undefined)}
               onPick={() => openDetail(item.n)}
@@ -895,7 +946,7 @@ export default function GenerateDialog({
       {items.length === 0 || !batch.roomForMore ? null : (
         <Button
           className="self-start rounded-[10px]"
-          disabled={invalid || running}
+          disabled={running}
           onClick={more}
           type="button"
           variant="outline"
@@ -914,6 +965,7 @@ export default function GenerateDialog({
       items={items}
       onSwipe={step}
       track={batch.track}
+      used={state.used}
       withBoard={!docked}
     />
   );

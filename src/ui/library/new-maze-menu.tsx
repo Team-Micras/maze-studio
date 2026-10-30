@@ -251,8 +251,8 @@ export interface NewMazeDialogsProps {
 }
 
 /**
- * A menu with the New maze items, and the Custom size and Generate dialogs they open. The Generate
- * dialog stays mounted once opened, so its batch is still there the next time.
+ * A menu with the New maze items, and the Custom size and Generate dialogs they open. Every
+ * Generate dialog shows the app's one batch.
  */
 export function NewMazeDialogs({ defaultName, onNew, onGenerate, children }: NewMazeDialogsProps) {
   const [custom, setCustom] = useState(false);
