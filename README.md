@@ -7,7 +7,7 @@ the browser on a laptop or a phone, installs, and works offline at a competition
 ## What it does
 
 - **Library.** Every maze of the mazefiles repository on one canvas, with thumbnails, search, and
-  filters by source (Repo, My mazes, and a local Folder where the browser can open one) and category.
+  filters by source (Repo or My mazes) and category.
   Pan with a drag, zoom with the wheel, a pinch or `+`/`-`.
 - **Viewer.** Opening a maze flies into it and draws it like the real track: walls, posts, start and
   goal, with checks against the classic rules ("Passes", or what is wrong and where).
@@ -18,12 +18,12 @@ the browser on a laptop or a phone, installs, and works offline at a competition
   repository maze makes a copy in **My mazes**, kept in the browser and saved as you go; the
   Changes chip lists what changed in the session, to discard or keep.
 - **Sharing and files.** Copy link (the maze in the URL), Share… on a phone, Download .txt, Open a
-  `.txt`, Save to folder, and Export all and Import of My mazes as a zip.
+  `.txt`, and Export all and Import of My mazes as a zip.
 - **Offline and installable.** After the first visit the app opens, searches, edits and saves with
   no network; it installs as an app, says "New version." with Reload when there is one, and checks
   GitHub for newer mazes once a day and on Check for updates.
 
-Service worker, installation and Open folder need a secure context: `https://` or `localhost`.
+Service worker and installation need a secure context: `https://` or `localhost`.
 
 ## Embedding
 
@@ -46,8 +46,8 @@ usual.
 - `theme=light` or `theme=dark` sets the theme. Without it the frame follows the visitor's system
   theme, also when it changes.
 - The hash picks the maze: `#/repo/<path>` for a maze of the repository, as maze-studio has it
-  built in, or `#/m/<code>` for a link made by Copy link. My mazes and an opened folder live in the
-  visitor's own browser, so the embed does not show them, and says so.
+  built in, or `#/m/<code>` for a link made by Copy link. My mazes live in the visitor's own browser,
+  so the embed does not show them, and says so.
 
 The page around the frame can set its theme without reloading it, for example when the page has a
 theme switch of its own. The frame posts `{ type: 'maze-studio:ready' }` to the page once it

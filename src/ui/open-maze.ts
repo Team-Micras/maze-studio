@@ -67,15 +67,8 @@ export type Opening =
 
 const WAITING: Opening = { status: 'waiting' };
 
-/** What the app says when a folder's maze is asked for without access to the folder. */
-export const NO_FOLDER_ACCESS = 'No access to the folder. Open it again to allow.';
-
 /** The maze `route` opens; a route of the library opens none. */
-export function openingOf(
-  route: Route,
-  library: Library | undefined,
-  folderRestoring = false
-): Opening {
+export function openingOf(route: Route, library: Library | undefined): Opening {
   switch (route.kind) {
     case 'library':
       return { status: 'missing', message: '' };
@@ -97,16 +90,6 @@ export function openingOf(
             message: `That link does not hold a maze (${decoded.error.message})`,
           };
     }
-    case 'folder':
-      if (library === undefined || folderRestoring) {
-        return WAITING;
-      }
-
-      if (library.folder === undefined) {
-        return { status: 'missing', message: NO_FOLDER_ACCESS };
-      }
-
-      break;
     default:
       break;
   }
@@ -128,16 +111,10 @@ export function openingOf(
       };
     }
 
-    return route.kind === 'folder'
-      ? {
-          status: 'missing',
-          message: `No maze at ${route.file} in the folder. Pick one from the library`,
-          verbatim: route.file,
-        }
-      : {
-          status: 'missing',
-          message: 'That maze is no longer in My mazes. Pick one from the library',
-        };
+    return {
+      status: 'missing',
+      message: 'That maze is no longer in My mazes. Pick one from the library',
+    };
   }
 
   return { status: 'open', open };
@@ -162,9 +139,7 @@ export function openEntry(entry: CatalogEntry, library: Library): OpenMaze | und
     detail:
       entry.origin === 'mine'
         ? 'Saved in My mazes'
-        : entry.origin === 'folder'
-          ? `In the folder ${library.folder?.name ?? ''}`
-          : `${categoryLabel(entry.category)}, ${sizeLabel(entry.width, entry.height)}`,
+        : `${categoryLabel(entry.category)}, ${sizeLabel(entry.width, entry.height)}`,
     document,
   };
 }

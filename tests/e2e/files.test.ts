@@ -9,7 +9,6 @@ import {
   encodeMazeCode,
   mazesEqual,
   parseMazeText,
-  serializeMazeText,
   toggleWall,
   type Edge,
   type Maze,
@@ -36,8 +35,6 @@ const EDGE: Edge = { direction: 'vertical', x: 6, y: 9 };
 
 declare global {
   interface Window {
-    permissionAsks?: boolean[];
-    refuseRead?: boolean;
     modesSeen?: string[];
     shared?: string;
   }
@@ -82,53 +79,7 @@ async function downloaded(page: Page, act: () => Promise<void>): Promise<[string
   return [download.suggestedFilename(), readFileSync(path, 'utf8')];
 }
 
-/**
- * A persistent context, where a folder handle can go in and out of IndexedDB, whose picker gives a
- * folder `mazes` of the origin's private file system and whose permissions are recorded: whether
- * each request came with a user's gesture, and, when `refuseRead` is set, no read access.
- */
-async function folderContext(): Promise<BrowserContext> {
-  const context = await chromium.launchPersistentContext(scratch('profile-'), {
-    viewport: { width: 1440, height: 900 },
-  });
-  contexts.push(context);
-  await context.addInitScript(() => {
-    window.permissionAsks = [];
-    Object.assign(navigator.storage, { persisted: () => Promise.resolve(true) });
-    Object.assign(window, {
-      showDirectoryPicker: async () =>
-        (await navigator.storage.getDirectory()).getDirectoryHandle('mazes', { create: true }),
-    });
-    Object.assign(FileSystemHandle.prototype, {
-      queryPermission: (descriptor: { mode: string }) =>
-        Promise.resolve(
-          descriptor.mode === 'readwrite' || window.refuseRead === true ? 'prompt' : 'granted'
-        ),
-      requestPermission: () => {
-        window.permissionAsks?.push(navigator.userActivation.isActive);
-        return Promise.resolve('granted');
-      },
-    });
-  });
-  return context;
-}
-
-/** Writes `files` into the private folder `mazes` of the page's origin. */
-async function fillFolder(page: Page, files: Record<string, string>): Promise<void> {
-  await page.evaluate(async (entries) => {
-    const folder = await (
-      await navigator.storage.getDirectory()
-    ).getDirectoryHandle('mazes', { create: true });
-
-    for (const [name, text] of Object.entries(entries)) {
-      const writable = await (await folder.getFileHandle(name, { create: true })).createWritable();
-      await writable.write(text);
-      await writable.close();
-    }
-  }, files);
-}
-
-/** The keys of the settings store, where the folder's handle is kept. */
+/** The keys of the settings store. */
 function settingsKeys(page: Page): Promise<string[]> {
   return page.evaluate(
     (database) =>
@@ -141,13 +92,6 @@ function settingsKeys(page: Page): Promise<string[]> {
       }),
     DATABASE_NAME
   );
-}
-
-function folderText(page: Page, name: string): Promise<string> {
-  return page.evaluate(async (file) => {
-    const folder = await (await navigator.storage.getDirectory()).getDirectoryHandle('mazes');
-    return (await (await folder.getFileHandle(file)).getFile()).text();
-  }, name);
 }
 
 beforeAll(async () => {
@@ -483,163 +427,23 @@ describe('Rename and Delete', () => {
   });
 });
 
-describe('A local folder', () => {
-  test('shows its mazes as the Folder source, skipping and counting what does not parse', async () => {
-    const context = await folderContext();
-    const page = await context.newPage();
-    await page.goto(app);
-    await fillFolder(page, {
-      'a.txt': repoText(CLASSIC),
-      'b.txt': repoText(CLASSIC),
-      'bad.txt': 'no',
-    });
-    await page.getByRole('button', { name: 'My mazes and files' }).click();
-    await page.getByRole('menuitem', { name: 'Open folder…' }).click();
-
-    await page.waitForFunction(() => window.location.hash === '#/?src=folder');
-    await expect.poll(() => page.locator('a[data-artboard^="folder:"]').count()).toBe(2);
-    await page.locator('[data-folder]').hover();
-    await page.getByRole('tooltip').getByText('mazes, 1 file skipped').waitFor();
-    const stored = await page.evaluate(
+describe('A local folder kept by an older version', () => {
+  test('is forgotten on load', async () => {
+    const page = await openPage(browser, contexts, app);
+    await page.evaluate(
       (database) =>
-        new Promise<string>((resolve) => {
+        new Promise((resolve) => {
           const request = indexedDB.open(database);
           request.addEventListener('success', () => {
-            const get = request.result
-              .transaction('settings')
-              .objectStore('settings')
-              .get('folder-handle');
-            get.addEventListener('success', () => resolve(String(get.result?.kind)));
+            const transaction = request.result.transaction('settings', 'readwrite');
+            transaction.objectStore('settings').put({ kind: 'directory' }, 'folder-handle');
+            transaction.addEventListener('complete', resolve);
           });
         }),
       DATABASE_NAME
     );
-    expect(stored).toBe('directory');
-  });
-
-  test('a folder maze edits into a copy, and Save to folder writes it back, asking in the click and before writing over a change on disk', async () => {
-    const { maze } = await repoContent(CLASSIC);
-    const context = await folderContext();
-    const page = await context.newPage();
-    await page.goto(app);
-    await fillFolder(page, { 'a.txt': repoText(CLASSIC) });
-    await page.getByRole('button', { name: 'My mazes and files' }).click();
-    await page.getByRole('menuitem', { name: 'Open folder…' }).click();
-    await page.locator('a[data-artboard="folder:a.txt"]').click();
-    await waitForMode(page, 'editor');
-
-    expect(new URL(page.url()).hash).toBe('#/folder/a.txt');
-    expect(await page.getByRole('button', { name: 'Save to folder' }).count()).toBe(0);
-    await clickEdge(page, maze, EDGE);
-    await expectSaved(page, sameMaze(toggleWall(maze, EDGE)));
-    const elsewhere = `${repoText(CLASSIC)}Written elsewhere\n`;
-    await fillFolder(page, { 'a.txt': elsewhere });
-    await page.getByRole('button', { name: 'Save to folder' }).click();
-    await page.getByRole('dialog', { name: 'a.txt changed on disk' }).waitFor();
-    await page.getByRole('button', { name: 'Cancel' }).click();
-
-    expect(await folderText(page, 'a.txt')).toBe(elsewhere);
-    expect(await page.evaluate(() => window.permissionAsks)).toEqual([]);
-    await page.getByRole('button', { name: 'Save to folder' }).click();
-    await page.getByRole('button', { name: 'Save anyway' }).click();
-    await expectToast(page, 'Saved to a.txt');
-
-    expect(await folderText(page, 'a.txt')).toBe(
-      serializeMazeText({ maze: toggleWall(maze, EDGE), trailer: '' })
-    );
-    expect(await page.evaluate(() => window.permissionAsks)).toEqual([true]);
-    expect(await mineCount(page)).toBe(1);
-    await page.goto(`${app}#/folder/a.txt`);
-    await waitForMode(page, 'editor');
-    await expect.poll(() => page.locator('h1').textContent()).toBe('a');
-  });
-
-  test('a failed Save to folder says why and keeps the copy in My mazes', async () => {
-    const { maze } = await repoContent(CLASSIC);
-    const context = await folderContext();
-    const page = await context.newPage();
-    await page.goto(app);
-    await fillFolder(page, { 'a.txt': repoText(CLASSIC) });
-    await page.getByRole('button', { name: 'My mazes and files' }).click();
-    await page.getByRole('menuitem', { name: 'Open folder…' }).click();
-    await page.locator('a[data-artboard="folder:a.txt"]').click();
-    await waitForMode(page, 'editor');
-    await clickEdge(page, maze, EDGE);
-    const saved = await expectSaved(page, sameMaze(toggleWall(maze, EDGE)));
-    await page.evaluate(() => {
-      Object.assign(FileSystemFileHandle.prototype, {
-        createWritable: () =>
-          Promise.reject(new DOMException('The disk is full', 'QuotaExceededError')),
-      });
-    });
-    await page.getByRole('button', { name: 'Save to folder' }).click();
-
-    await expectToast(page, /^Could not save to a\.txt \(.+\)$/);
-    expect(await folderText(page, 'a.txt')).toBe(repoText(CLASSIC));
-    expect((await storedMine(page, saved.id))?.code).toBe(saved.code);
-  });
-
-  test('#/folder/<file> opens again after a reload, and without access goes to the library', async () => {
-    const context = await folderContext();
-    const page = await context.newPage();
-    await page.goto(app);
-    await fillFolder(page, { 'a.txt': repoText(CLASSIC) });
-    await page.getByRole('button', { name: 'My mazes and files' }).click();
-    await page.getByRole('menuitem', { name: 'Open folder…' }).click();
-    await page.locator('a[data-artboard="folder:a.txt"]').click();
-    await waitForMode(page, 'editor');
-    await page.reload();
-    await waitForMode(page, 'editor');
-
-    expect(await page.locator('h1').textContent()).toBe('a');
-    await page.evaluate(() => {
-      window.refuseRead = true;
-    });
-    await page.addInitScript(() => {
-      window.refuseRead = true;
-    });
     await page.reload();
 
-    await expectToast(page, 'No access to the folder. Open it again to allow.');
-    await waitForMode(page, 'library');
-  });
-
-  test('is not kept where the storage is not persistent', async () => {
-    const context = await browser.newContext({ viewport: { width: 1440, height: 900 } });
-    contexts.push(context);
-    await context.addInitScript(() => {
-      Object.assign(navigator.storage, {
-        persisted: () => Promise.resolve(false),
-        persist: () => Promise.resolve(false),
-      });
-      Object.assign(window, {
-        showDirectoryPicker: async () =>
-          (await navigator.storage.getDirectory()).getDirectoryHandle('mazes', { create: true }),
-      });
-    });
-    const page = await context.newPage();
-    await page.goto(app);
-    await fillFolder(page, { 'a.txt': repoText(CLASSIC) });
-    await page.getByRole('button', { name: 'My mazes and files' }).click();
-    await page.getByRole('menuitem', { name: 'Open folder…' }).click();
-    await expect.poll(() => page.locator('a[data-artboard^="folder:"]').count()).toBe(1);
-
-    expect(await settingsKeys(page)).not.toContain('folder-handle');
-  });
-
-  test('is not offered where the browser cannot open a folder', async () => {
-    const context = await browser.newContext({ viewport: { width: 1440, height: 900 } });
-    contexts.push(context);
-    await context.addInitScript(() => {
-      Reflect.deleteProperty(window, 'showDirectoryPicker');
-    });
-    const page = await context.newPage();
-    await page.goto(app);
-    await page.locator('a[data-artboard]').first().waitFor();
-
-    await page.getByRole('button', { name: 'My mazes and files' }).click();
-    await page.getByRole('menuitem', { name: 'Check for updates' }).waitFor();
-
-    expect(await page.getByRole('menuitem', { name: 'Open folder…' }).count()).toBe(0);
+    await expect.poll(() => settingsKeys(page)).not.toContain('folder-handle');
   });
 });

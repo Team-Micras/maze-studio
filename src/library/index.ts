@@ -17,27 +17,8 @@ export {
   type SkippedImport,
 } from './backup';
 export { gitBlobSha } from './blob-sha';
-export { folderCatalog, mineCatalog, repoCatalog, type CatalogEntry } from './catalog';
-export {
-  folderFileOf,
-  keyOf,
-  kindOf,
-  mineKey,
-  looseKey,
-  mineIdOf,
-  refOf,
-  type MazeRef,
-} from './maze-key';
-export {
-  folderPermission,
-  isFolderHandle,
-  readFolder,
-  readFolderFile,
-  writeFolderFile,
-  type FolderContents,
-  type FolderFile,
-  type FolderHandle,
-} from './folder';
+export { mineCatalog, repoCatalog, type CatalogEntry } from './catalog';
+export { keyOf, kindOf, mineKey, looseKey, mineIdOf, refOf, type MazeRef } from './maze-key';
 export {
   Database,
   DATABASE_NAME,

@@ -3,8 +3,7 @@
  *
  * - `repo-files`: the repository's maze files fetched from GitHub, by path;
  * - `mine`: the user's own mazes, by id;
- * - `settings`: single values by key, such as the cached repository's commit and the handle of a
- *   local folder.
+ * - `settings`: single values by key, such as the cached repository's commit.
  *
  * @module
  */
