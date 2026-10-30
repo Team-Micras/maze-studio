@@ -7,7 +7,7 @@ import { afterAll, beforeAll, describe, expect, inject, test } from 'vitest';
 import { loadSnapshot } from '@/library/snapshot';
 import { readZip } from '@/library/zip';
 import { encodeMazeCode, toggleWall, type Edge } from '@/maze';
-import { UP_TO_DATE_MS } from '@/ui/library/update-note';
+import { PASSING_NOTE_MS } from '@/ui/library/update-note';
 import {
   edgeMiddle,
   expectSaved,
@@ -191,7 +191,7 @@ describe('Empty and error states (DESIGN.md 12)', () => {
 });
 
 describe('Check for updates', () => {
-  test('a newer commit updates the library and the credit says so', async () => {
+  test('a newer commit updates the library and the credit says so for a moment', async () => {
     const page = await openPage(browser, contexts, app);
     const snapshot = await loadSnapshot();
     const kept = snapshot.files.slice(1);
@@ -208,6 +208,7 @@ describe('Check for updates', () => {
     await expect
       .poll(() => page.locator('footer').textContent())
       .toContain(`${kept.length} mazes from micromouseonline/mazefiles at ${NEWER.slice(0, 7)}`);
+    await expect.poll(() => creditNote(page), { timeout: PASSING_NOTE_MS + 2000 }).toBe('');
     await page.reload();
     await page.locator('a[data-artboard]').first().waitFor();
     expect(await page.locator('footer').textContent()).toContain(`at ${NEWER.slice(0, 7)}`);
@@ -223,7 +224,7 @@ describe('Check for updates', () => {
     expect(await page.locator('footer').textContent()).toContain(
       `${files.length} mazes from micromouseonline/mazefiles at ${commit.slice(0, 7)}`
     );
-    await page.waitForTimeout(UP_TO_DATE_MS - 1000);
+    await page.waitForTimeout(PASSING_NOTE_MS - 1000);
     expect(await creditNote(page)).toBe('Up to date');
     await expect.poll(() => creditNote(page), { timeout: 3000 }).toBe('');
   });

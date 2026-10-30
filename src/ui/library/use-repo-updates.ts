@@ -3,7 +3,7 @@ import { useCallback, useEffect, useState } from 'react';
 import type { CheckResult } from '@/library';
 import { appStorage } from '@/ui/storage';
 
-import { UP_TO_DATE_MS, type UpdateStatus } from './update-note';
+import { PASSING_NOTE_MS, type UpdateStatus } from './update-note';
 import { reloadLibrary } from './use-library';
 
 /** The updates from GitHub, and the button's check. */
@@ -59,8 +59,8 @@ async function runCheck(force: boolean): Promise<UpdateStatus> {
  * The updates of the repository's mazes (PLAN.md 3.2): asked of GitHub at most once a day when the
  * app opens, in production, and at once by Check for updates; a newer commit, or stored files
  * fetched again because they could not be read, reload the library.
- * A failure the last check left stays on the credit until a check succeeds; "Up to date" goes
- * after {@link UP_TO_DATE_MS}.
+ * A failure the last check left stays on the credit until a check succeeds; "Updated" and "Up to
+ * date" go after {@link PASSING_NOTE_MS}.
  */
 export function useRepoUpdates(): RepoUpdates {
   const [status, setStatus] = useState<UpdateStatus>({ kind: 'quiet' });
@@ -87,11 +87,11 @@ export function useRepoUpdates(): RepoUpdates {
   }, []);
 
   useEffect(() => {
-    if (status.kind !== 'up-to-date') {
+    if (status.kind !== 'updated' && status.kind !== 'up-to-date') {
       return undefined;
     }
 
-    const timer = window.setTimeout(() => setStatus({ kind: 'quiet' }), UP_TO_DATE_MS);
+    const timer = window.setTimeout(() => setStatus({ kind: 'quiet' }), PASSING_NOTE_MS);
     return () => window.clearTimeout(timer);
   }, [status]);
 
