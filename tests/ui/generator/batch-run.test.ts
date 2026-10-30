@@ -148,7 +148,7 @@ describe('a batch of generated mazes', () => {
     expect(batch.getState().nextSeed).toBe(3);
   }, 60_000);
 
-  test('says so when a worker fails, and leaves the mazes it did not make failed', async () => {
+  test('says so when a worker fails, leaves the mazes it did not make failed, and forgets it with a new batch', async () => {
     const { spawn } = workers({ fail: () => true });
     const batch = new Batch({ spawn, workers: 2, size: 2, firstSeed: 1 });
     batch.generate(SETTINGS, true);
@@ -156,6 +156,13 @@ describe('a batch of generated mazes', () => {
 
     expect(batch.getState().stopped).toBe(true);
     expect(batch.getState().items.map((item) => item.status)).toEqual(['failed', 'failed']);
+
+    const candidate = generate(SETTINGS, 1);
+    batch.rebuild(
+      { ...withMaze(candidate.recipe, candidate.grid), version: GENERATOR_VERSION - 1 },
+      SETTINGS
+    );
+    expect(batch.getState().stopped).toBe(false);
   });
 
   test('shows what the other workers made when one fails', async () => {
@@ -229,6 +236,51 @@ describe('a batch of generated mazes', () => {
       `Made by an older generator (version ${GENERATOR_VERSION - 1}): shown as it was saved`
     );
   });
+
+  test('rebuilds a recipe as a batch of its own, which More goes on with from its next seed and settings', async () => {
+    const own = { ...SETTINGS, competition: !SETTINGS.competition };
+    const candidate = generate(own, 41);
+    const batch = new Batch({ spawn: workers().spawn, workers: 1, size: 2, firstSeed: 1 });
+    const [first] = batch.generate(SETTINGS, true);
+    await settled(batch);
+    batch.use(first?.n ?? 0);
+    const item = batch.rebuild(withMaze(candidate.recipe, candidate.grid), SETTINGS);
+    const state = batch.getState();
+
+    expect(state.items).toEqual([item]);
+    expect(state).toMatchObject({ used: undefined, nextSeed: 42, seeds: { first: 41, last: 41 } });
+    expect(state.settings).toEqual(own);
+    expect(statusLine(state)).toBe('Building 0 of 1…');
+    await settled(batch);
+    expect(statusLine(batch.getState())).toBe('Seed 41');
+
+    batch.generate(batch.getState().settings ?? SETTINGS, false);
+    await settled(batch);
+    const items = batch.getState().items;
+    expect(items.map((each) => each.seed)).toEqual([41, 42, 43]);
+    expect(items.map((each) => each.recipe?.settings.competition)).toEqual([
+      own.competition,
+      own.competition,
+      own.competition,
+    ]);
+    expect(statusLine(batch.getState())).toBe('Seeds 41–43');
+  }, 60_000);
+
+  test('marks the maze used until a new batch, and names the batch the dialog opened on as the last one', async () => {
+    const batch = new Batch({ spawn: workers().spawn, workers: 1, size: 2, firstSeed: 1 });
+    const [, second] = batch.generate(SETTINGS, true);
+    await settled(batch);
+    batch.use(second?.n ?? 0);
+
+    expect(batch.getState().used).toBe(second?.n);
+    expect(statusLine(batch.getState(), true)).toBe('Last batch · 2 mazes');
+    batch.generate(SETTINGS, false);
+    expect(batch.getState().used).toBe(second?.n);
+    expect(statusLine(batch.getState(), true)).toBe('Building 0 of 2…');
+    batch.generate(SETTINGS, true);
+    expect(batch.getState().used).toBeUndefined();
+    batch.cancel();
+  }, 60_000);
 
   test('runs one worker fewer than the cores, from one to four', () => {
     expect([undefined, 1, 2, 4, 16].map(workerCount)).toEqual([1, 1, 1, 3, 4]);
@@ -322,9 +374,11 @@ describe('a batch of generated mazes', () => {
     const numbers = batch.getState().items.map((item) => item.n);
 
     expect(new Set(numbers).size).toBe(numbers.length);
-    batch.rebuild(withMaze(generate(SETTINGS, 1).recipe, generate(SETTINGS, 1).grid), SETTINGS);
-    const after = batch.getState().items.map((item) => item.n);
-    expect(new Set(after).size).toBe(after.length);
+    const rebuilt = batch.rebuild(
+      withMaze(generate(SETTINGS, 1).recipe, generate(SETTINGS, 1).grid),
+      SETTINGS
+    );
+    expect(numbers).not.toContain(rebuilt.n);
     batch.cancel();
   }, 60_000);
 

@@ -5,6 +5,7 @@ import { render } from 'vitest-browser-react';
 import { readRecipe } from '@/generator';
 import { borderedMaze, toggleWall } from '@/maze';
 import type { Generated } from '@/ui/editor/edit-session';
+import { Batch } from '@/ui/generator/batch-run';
 import GenerateDialog, { type GeneratorPreview } from '@/ui/generator/generate-dialog';
 import type { NewMazeRequest } from '@/ui/new-maze';
 import '@/ui/styles.css';
@@ -15,7 +16,12 @@ const GENERATION = { timeout: 50_000 };
 async function mount(): Promise<NewMazeRequest[]> {
   const used: NewMazeRequest[] = [];
   await render(
-    <GenerateDialog onOpenChange={() => undefined} onUse={(request) => used.push(request)} open />
+    <GenerateDialog
+      batch={new Batch()}
+      onOpenChange={() => undefined}
+      onUse={(request) => used.push(request)}
+      open
+    />
   );
   return used;
 }
@@ -152,7 +158,12 @@ describe('The Generate dialog', () => {
   test('stops its workers when it unmounts in the middle of a run', async () => {
     const terminate = vi.spyOn(Worker.prototype, 'terminate');
     const screen = await render(
-      <GenerateDialog onOpenChange={() => undefined} onUse={() => undefined} open />
+      <GenerateDialog
+        batch={new Batch()}
+        onOpenChange={() => undefined}
+        onUse={() => undefined}
+        open
+      />
     );
     await generate();
     await expect.poll(building).toBe(true);
@@ -261,6 +272,7 @@ describe('The Generate dialog', () => {
     const previews: (GeneratorPreview | undefined)[] = [];
     const board = borderedMaze(16, 16);
     const props = {
+      batch: new Batch(),
       board,
       onOpenChange: () => undefined,
       onPreview: (preview: GeneratorPreview | undefined) => previews.push(preview),
@@ -293,6 +305,7 @@ describe('The Generate dialog', () => {
     const previews: (GeneratorPreview | undefined)[] = [];
     await render(
       <GenerateDialog
+        batch={new Batch()}
         board={borderedMaze(16, 16)}
         onOpenChange={() => undefined}
         onPreview={(preview) => previews.push(preview)}
@@ -316,6 +329,7 @@ describe('The Generate dialog', () => {
     const previews: (GeneratorPreview | undefined)[] = [];
     await render(
       <GenerateDialog
+        batch={new Batch()}
         board={borderedMaze(16, 16)}
         onOpenChange={() => undefined}
         onPreview={(preview) => previews.push(preview)}
@@ -340,7 +354,12 @@ describe('The Generate dialog', () => {
   test('goes back one view per Esc: settings, then the maze opened, then the gallery, which closes', async () => {
     const changes: boolean[] = [];
     await render(
-      <GenerateDialog onOpenChange={(next) => changes.push(next)} onUse={() => undefined} open />
+      <GenerateDialog
+        batch={new Batch()}
+        onOpenChange={(next) => changes.push(next)}
+        onUse={() => undefined}
+        open
+      />
     );
     await generate();
     await expect.poll(building, GENERATION).toBe(false);
@@ -358,7 +377,7 @@ describe('The Generate dialog', () => {
   });
 
   test('stops the run when the panel closes, dropping the mazes not yet built', async () => {
-    const props = { onOpenChange: () => undefined, onUse: () => undefined };
+    const props = { batch: new Batch(), onOpenChange: () => undefined, onUse: () => undefined };
     const screen = await render(<GenerateDialog {...props} open />);
     await generate();
     await expect.poll(building).toBe(true);
@@ -401,9 +420,8 @@ describe('The Generate dialog', () => {
       JSON.stringify({ ...recipe, hash: '00000000' })
     );
     await userEvent.click(page.getByRole('button', { name: 'Rebuild' }));
-    await expect.poll(building, GENERATION).toBe(false);
-    await userEvent.click(page.getByRole('button', { name: /rebuilt other walls/ }));
 
+    await expect.element(page.getByRole('heading', { name: /^#1 of 1 ·/ })).toHaveFocus();
     await expect
       .element(
         page.getByText(/^This generator rebuilt other walls than the recipe saved/),
@@ -411,8 +429,49 @@ describe('The Generate dialog', () => {
       )
       .toBeVisible();
     await expect
-      .element(page.getByRole('heading', { name: /· from a recipe · seed 1/ }))
+      .element(page.getByRole('heading', { name: /^#1 of 1 · from a recipe · seed 1/ }))
       .toBeVisible();
+    await userEvent.click(page.getByRole('button', { name: 'Back to the mazes' }));
+    await expect.element(page.getByText('Seed 1', { exact: true }).first()).toBeVisible();
+    expect(document.querySelectorAll('ol[aria-label="Mazes generated"] > li')).toHaveLength(1);
+  });
+
+  test('reopens on the last batch, from any Generate of the app, with New batch and the maze used marked', async () => {
+    const used: NewMazeRequest[] = [];
+    const props = {
+      onOpenChange: () => undefined,
+      onUse: (request: NewMazeRequest) => used.push(request),
+    };
+    const library = await render(<GenerateDialog {...props} open />);
+    await generate();
+    await expect.poll(building, GENERATION).toBe(false);
+    await open(3);
+    await userEvent.click(page.getByRole('button', { name: 'Use this' }));
+    await library.rerender(<GenerateDialog {...props} open={false} />);
+    await library.unmount();
+
+    const editor = await render(<GenerateDialog {...props} open />);
+    await expect.element(page.getByText('Last batch · 8 mazes').first()).toBeVisible();
+    await expect.element(page.getByRole('button', { name: /^#3, in use,/ })).toBeVisible();
+    expect(page.getByRole('button', { name: /in use/ }).all()).toHaveLength(1);
+    await open(4);
+    await userEvent.click(page.getByRole('button', { name: 'Use this' }));
+    await editor.rerender(<GenerateDialog {...props} open={false} />);
+    await editor.rerender(<GenerateDialog {...props} open />);
+    await expect.element(page.getByRole('button', { name: /^#4, in use,/ })).toBeVisible();
+    await open(4);
+    await expect.element(page.getByText('In use', { exact: true })).toBeVisible();
+    expect(used.map((request) => (request.kind === 'generated' ? request.recipe.seed : 0))).toEqual(
+      [3, 4]
+    );
+    await userEvent.click(page.getByRole('button', { name: 'Back to the mazes' }));
+
+    await userEvent.click(page.getByRole('button', { name: 'New batch' }));
+    await expect.poll(building).toBe(true);
+    expect(page.getByRole('button', { name: 'New batch' }).query()).toBeNull();
+    await expect.poll(building, GENERATION).toBe(false);
+    await expect.element(page.getByText('Seeds 9–16').first()).toBeVisible();
+    expect(page.getByText('In use').query()).toBeNull();
   });
 
   test("from the editor, takes the board's size and replaces the board with the maze picked", async () => {
@@ -420,6 +479,7 @@ describe('The Generate dialog', () => {
     const used: NewMazeRequest[] = [];
     await render(
       <GenerateDialog
+        batch={new Batch()}
         board={BOARD}
         onOpenChange={() => undefined}
         onReplace={(generated) => replaced.push(generated)}
@@ -449,6 +509,7 @@ describe('The Generate dialog', () => {
   test('from the editor of a board it cannot make, says so and opens the maze picked as a new one', async () => {
     await render(
       <GenerateDialog
+        batch={new Batch()}
         board={borderedMaze(8, 8)}
         onOpenChange={() => undefined}
         onReplace={() => undefined}
