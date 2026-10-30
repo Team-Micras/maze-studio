@@ -27,7 +27,8 @@ export interface MineBackup {
   readonly importFiles: (files: readonly File[]) => Promise<number>;
 }
 
-const NO_STORAGE = 'My mazes is not available in this browser. Use Download .txt instead';
+const NO_STORAGE =
+  'My mazes is not available in this browser. Use Download mazefile (.txt) instead';
 
 function reasonOf(error: unknown): string {
   return error instanceof Error ? error.message : String(error);

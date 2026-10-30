@@ -828,13 +828,13 @@ describe('The title of a .txt on a phone', () => {
       const { page } = whole;
       expect(await page.getByRole('button', { name: 'Save to My mazes' }).count()).toBe(0);
       await page.getByRole('button', { name: 'More actions' }).tap();
-      await page.getByRole('menuitem', { name: 'Download .txt' }).waitFor();
+      await page.getByRole('menuitem', { name: 'Export' }).waitFor();
       expect(await page.getByRole('menuitem', { name: 'Save to My mazes' }).count()).toBe(1);
       await page.keyboard.press('Escape');
       await page.getByRole('button', { name: 'Edit', exact: true }).tap();
       await page.getByRole('toolbar', { name: 'Tools' }).waitFor();
       await page.getByRole('button', { name: 'More actions' }).tap();
-      await page.getByRole('menuitem', { name: 'Download .txt' }).waitFor();
+      await page.getByRole('menuitem', { name: 'Export' }).waitFor();
       expect(await page.getByRole('menuitem', { name: 'Save to My mazes' }).count()).toBe(0);
     }
   );

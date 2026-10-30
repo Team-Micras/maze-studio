@@ -85,6 +85,7 @@ export {
   type RowRange,
 } from './library-layout';
 export { LruCache } from './lru-cache';
+export { mazeSvg } from './maze-svg';
 export { formatLength } from './path';
 export {
   MINIMAP_SIZE,
@@ -133,4 +134,4 @@ export {
   type ThumbnailSize,
 } from './thumbnails';
 export { TRACK_COLORS, TRACK_OPACITY } from './track-colors';
-export { trackLayers, type TrackLayers } from './track-layers';
+export { trackLayers, trackPaint, type TrackLayers, type TrackPaint } from './track-layers';

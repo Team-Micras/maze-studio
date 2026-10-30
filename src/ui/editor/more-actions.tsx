@@ -1,10 +1,12 @@
 import { useRef, useState } from 'react';
 
 import {
+  CaretDown,
   Copy,
   CornersOut,
   DotsThree,
   DownloadSimple,
+  Export,
   FloppyDisk,
   GitDiff,
   Keyboard,
@@ -16,15 +18,22 @@ import {
   Sun,
   Textbox,
   Trash,
+  type Icon,
 } from '@/ui/icons';
+import { usePhoneLayout } from '@/ui/hooks/use-media-query';
 import { IslandButton } from '@/ui/islands/island';
 import { Badge } from '@/ui/primitives/badge';
 import {
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuGroup,
   DropdownMenuItem,
+  DropdownMenuPortal,
   DropdownMenuSeparator,
   DropdownMenuShortcut,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from '@/ui/primitives/dropdown-menu';
 import { cn } from '@/ui/primitives/utils';
@@ -40,6 +49,12 @@ export interface MoreActionsProps {
   readonly onSaveToMine?: () => void;
   /** Downloads the maze as a `.txt`. */
   readonly onDownload: () => void;
+  /** Copies the text Download mazefile (.txt) saves. */
+  readonly onCopyText: () => void;
+  /** Downloads the board as an `.svg`. */
+  readonly onDownloadSvg: () => void;
+  /** Copies the board's SVG as text. */
+  readonly onCopySvg: () => void;
   /** Copies the link, here on a phone, where the island has no link button. */
   readonly onCopyLink?: () => void;
   /** Shares the link with Web Share, where the browser has it. */
@@ -63,12 +78,37 @@ export interface MoreActionsProps {
 
 const ITEM = 'rounded-[9px]';
 
+interface ExportItem {
+  readonly label: string;
+  readonly Icon: Icon;
+  readonly onSelect: () => void;
+}
+
+function ExportItems({
+  items,
+  className,
+  disabled,
+}: {
+  readonly items: readonly ExportItem[];
+  readonly className: string;
+  readonly disabled?: boolean;
+}) {
+  return items.map(({ label, Icon, onSelect }) => (
+    <DropdownMenuItem className={className} disabled={disabled} key={label} onSelect={onSelect}>
+      <Icon aria-hidden size={16} />
+      {label}
+    </DropdownMenuItem>
+  ));
+}
+
 /**
- * The editor's ⋯ menu (DESIGN.md 6, 6.1 and 9.2): Save to My mazes for a maze not in it yet, Download .txt, Copy link and Share… on a phone,
- * Copy recipe for a generated maze, Generate… (beta), Close outer walls, Changes, Rename and Delete for a maze of My mazes, Fit, the theme and the
- * shortcut help. Delete
- * takes two selects: the first keeps the menu open and turns it into "Confirm delete". A download
- * and Web Share start once the menu has closed.
+ * The editor's ⋯ menu (DESIGN.md 6, 6.1 and 9.2): Save to My mazes for a maze not in it yet;
+ * Export, with Download mazefile (.txt), Copy mazefile (.txt), Download SVG and Copy SVG in a submenu, or
+ * on a phone in a group under it that a tap on Export opens and closes; Copy
+ * link and Share… on a phone; Copy recipe for a generated maze; Generate… (beta), Close outer
+ * walls, Changes, Rename and Delete for a maze of My mazes; Fit, the theme and the shortcut help.
+ * Delete takes two selects: the first keeps the menu open and turns it into "Confirm delete". A
+ * download and Web Share start once the menu has closed.
  */
 export function MoreActions({
   editable,
@@ -76,6 +116,9 @@ export function MoreActions({
   onChanges,
   onSaveToMine,
   onDownload,
+  onCopyText,
+  onDownloadSvg,
+  onCopySvg,
   onCopyLink,
   onShare,
   onCopyRecipe,
@@ -87,11 +130,19 @@ export function MoreActions({
   onToggleTheme,
   onHelp,
 }: MoreActionsProps) {
+  const phone = usePhoneLayout();
   const [armed, setArmed] = useState(false);
+  const [exportOpen, setExportOpen] = useState(false);
   const afterClose = useRef<(() => void) | undefined>(undefined);
   const later = (action: () => void) => () => {
     afterClose.current = action;
   };
+  const exports: readonly ExportItem[] = [
+    { label: 'Download mazefile (.txt)', Icon: DownloadSimple, onSelect: later(onDownload) },
+    { label: 'Copy mazefile (.txt)', Icon: Copy, onSelect: onCopyText },
+    { label: 'Download SVG', Icon: DownloadSimple, onSelect: later(onDownloadSvg) },
+    { label: 'Copy SVG', Icon: Copy, onSelect: onCopySvg },
+  ];
 
   return (
     <DropdownMenu
@@ -99,6 +150,7 @@ export function MoreActions({
       onOpenChange={(open) => {
         if (!open) {
           setArmed(false);
+          setExportOpen(false);
         }
       }}
     >
@@ -122,10 +174,54 @@ export function MoreActions({
             Save to My mazes
           </DropdownMenuItem>
         )}
-        <DropdownMenuItem className={ITEM} onSelect={later(onDownload)}>
-          <DownloadSimple aria-hidden size={16} />
-          Download .txt
-        </DropdownMenuItem>
+        {phone ? (
+          <>
+            <DropdownMenuItem
+              aria-expanded={exportOpen}
+              className={ITEM}
+              onSelect={(event) => {
+                event.preventDefault();
+                setExportOpen(!exportOpen);
+              }}
+            >
+              <Export aria-hidden size={16} />
+              Export
+              <CaretDown
+                aria-hidden
+                className={cn('ml-auto transition-transform', exportOpen && 'rotate-180')}
+                size={16}
+              />
+            </DropdownMenuItem>
+            <DropdownMenuGroup
+              aria-hidden={!exportOpen}
+              className={cn(
+                'grid transition-[grid-template-rows] duration-200 ease-(--ease) motion-reduce:transition-none',
+                exportOpen ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]'
+              )}
+              inert={!exportOpen}
+            >
+              <div className="min-h-0 overflow-hidden">
+                <ExportItems
+                  className={cn(ITEM, 'pl-7 data-[disabled]:opacity-100')}
+                  disabled={!exportOpen}
+                  items={exports}
+                />
+              </div>
+            </DropdownMenuGroup>
+          </>
+        ) : (
+          <DropdownMenuSub>
+            <DropdownMenuSubTrigger className={ITEM}>
+              <Export aria-hidden size={16} />
+              Export
+            </DropdownMenuSubTrigger>
+            <DropdownMenuPortal>
+              <DropdownMenuSubContent className="z-20 min-w-52 rounded-[14px]">
+                <ExportItems className={ITEM} items={exports} />
+              </DropdownMenuSubContent>
+            </DropdownMenuPortal>
+          </DropdownMenuSub>
+        )}
         {onCopyLink === undefined ? null : (
           <DropdownMenuItem className={ITEM} onSelect={onCopyLink}>
             <LinkSimple aria-hidden size={16} />
