@@ -212,7 +212,8 @@ function PhoneMenu({ onOpenFile, files, onNew, newName }: MenuProps) {
  * and the credit; the zoom island is the studio's, since it changes with every move of the camera.
  * Its props do not, so a moving camera re-renders none of these. A phone stacks the search and the
  * filters at the top and keeps only the credit at the bottom. A notebook centres the search and
- * filters between the brand and the actions, or below them where one row would not hold all three.
+ * filters between the brand and the actions, or below them, as wide as the row above, where one row
+ * would not hold all three.
  */
 export function LibraryChrome({
   library,
@@ -231,7 +232,12 @@ export function LibraryChrome({
   const oneRow = useOneRowTopBar();
   const change = (next: Partial<LibraryFilter>): void => onFilter({ ...filter, ...next });
   const search = (
-    <SearchField enabled={visible} onChange={(query) => change({ query })} value={filter.query} />
+    <SearchField
+      className={cn(!phone && !oneRow && 'min-w-0 grow')}
+      enabled={visible}
+      onChange={(query) => change({ query })}
+      value={filter.query}
+    />
   );
   const source = (
     <SourceFilter
@@ -287,9 +293,7 @@ export function LibraryChrome({
             />
             {visible ? <h1>Maze Studio</h1> : 'Maze Studio'}
           </Island>
-          <search
-            className={cn('min-w-0', !oneRow && 'col-span-full row-start-2 justify-self-center')}
-          >
+          <search className={cn('min-w-0', !oneRow && 'col-span-full row-start-2')}>
             <Island className="h-11 overflow-x-auto overflow-y-hidden overscroll-x-contain [scrollbar-width:none]">
               {search}
               <IslandSeparator />
