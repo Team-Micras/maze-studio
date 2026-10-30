@@ -163,11 +163,7 @@ export function features(a: Analysis, g: Grid): Feature[] {
   const two = routes(a);
   const { maxStraight, maxDiagonal } = a.choice ? a.choice.racingShape : a;
   if (two) {
-    out.push({
-      id: 'routes',
-      text: TEXT.twoRoutes(two.white, two.amber),
-      weight: 100,
-    });
+    out.push({ id: 'routes', text: TEXT.twoRoutes(two.white, two.amber), weight: 100 });
     out.push({
       id: 'tradeOff',
       text: TEXT.tradeOff(two.gain, two.loss),
@@ -181,11 +177,7 @@ export function features(a: Analysis, g: Grid): Feature[] {
   }
   const mirror = symmetry(g);
   if (mirror >= 0.62) {
-    out.push({
-      id: 'symmetric',
-      text: TEXT.symmetric(mirror),
-      weight: 20 + 100 * (mirror - 0.62),
-    });
+    out.push({ id: 'symmetric', text: TEXT.symmetric(mirror), weight: 20 + 100 * (mirror - 0.62) });
   }
   let column = 0;
   while (column < g.height - 1 && isOpen(g, column * g.width, 0)) {
