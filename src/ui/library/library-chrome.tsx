@@ -287,10 +287,7 @@ export function LibraryChrome({
             className="h-11 gap-[9px] justify-self-start pr-3 whitespace-nowrap pl-2.5 text-[13px] font-semibold"
             translate="no"
           >
-            <i
-              aria-hidden
-              className="size-[11px] rounded-[2px] bg-[oklch(0.64_0.21_27)] shadow-[0_0_0_2px_oklch(0.17_0_0)]"
-            />
+            <img alt="" className="h-[18px] w-auto" src="/maze-studio-mark.svg" />
             {visible ? <h1>Maze Studio</h1> : 'Maze Studio'}
           </Island>
           <search className={cn('min-w-0', !oneRow && 'col-span-full row-start-2')}>

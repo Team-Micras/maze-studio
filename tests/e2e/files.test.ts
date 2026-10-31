@@ -274,9 +274,13 @@ describe('The Export menu', () => {
     }
 
     await page.locator('[role=menuitem][data-highlighted]', { hasText: 'Export' }).waitFor();
-    await page.keyboard.press('ArrowRight');
     await expect
-      .poll(() => page.evaluate(() => document.activeElement?.textContent))
+      .poll(async () => {
+        if ((await focused()) === 'Export') {
+          await page.keyboard.press('ArrowRight');
+        }
+        return focused();
+      })
       .toBe('Download mazefile (.txt)');
     const [name] = await downloaded(page, () => page.keyboard.press('Enter'));
 
