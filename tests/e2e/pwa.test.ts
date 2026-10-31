@@ -77,7 +77,7 @@ describe('the PWA built under a path', () => {
     await page.goto(app);
 
     await page.locator('a[data-artboard]').first().waitFor();
-    expect(await page.title()).toBe('maze-studio');
+    expect(await page.title()).toBe('Maze Studio');
     expect(
       await page.getByRole('link', { name: 'micromouseonline/mazefiles' }).getAttribute('href')
     ).toBe('https://github.com/micromouseonline/mazefiles');
@@ -97,7 +97,7 @@ describe('the PWA built under a path', () => {
       throw new Error('the manifest has no name or icons');
     }
 
-    expect(manifest.name).toBe('maze-studio');
+    expect(manifest.name).toBe('Maze Studio');
     expect(manifest.display).toBe('standalone');
     expect(manifest.start_url).toBe(BASE);
     expect(manifest.scope).toBe(BASE);

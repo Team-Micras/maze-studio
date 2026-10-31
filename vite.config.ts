@@ -108,8 +108,8 @@ export default defineConfig({
       includeAssets: ['maze-studio.svg', 'apple-touch-icon.png'],
       manifest: {
         id: base,
-        name: 'maze-studio',
-        short_name: 'maze-studio',
+        name: 'Maze Studio',
+        short_name: 'Maze Studio',
         description: 'Browse, view and edit micromouse mazes in the mazefiles format',
         display: 'standalone',
         orientation: 'any',
