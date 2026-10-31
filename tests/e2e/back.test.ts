@@ -60,48 +60,27 @@ function historyLength(page: Page): Promise<number> {
 }
 
 describe('Back on a phone without CloseWatcher', () => {
-  test('closes the open overlay on the same route, then goes back as before', async () => {
+  test('leaves the history alone as an overlay opens and closes', async () => {
     const page = await phone(() => {
       delete window.CloseWatcher;
     });
-    const library = await hash(page);
     const maze = await openMaze(page);
+    const entries = await historyLength(page);
+    const state = () => page.evaluate(() => JSON.stringify(window.history.state));
+    const before = await state();
+
     await openGenerate(page);
-
-    await page.goBack();
-    await page.getByRole('dialog', { name: 'Generate' }).waitFor({ state: 'detached' });
-    expect(await hash(page)).toBe(maze);
-    await waitForMode(page, 'editor');
-
-    await page.goBack();
-    await waitForMode(page, 'library');
-    expect(await hash(page)).toBe(library);
-
-    await page.getByRole('button', { name: 'New maze and more' }).click();
-    await page.getByRole('menu').waitFor();
-    await page.goBack();
-    await page.getByRole('menu').waitFor({ state: 'detached' });
-    expect(await hash(page)).toBe(library);
-  });
-
-  test('leaves no history entry behind an overlay closed with its X', async () => {
-    const page = await phone(() => {
-      delete window.CloseWatcher;
-    });
-    const library = await hash(page);
-    await openMaze(page);
-    await openGenerate(page);
+    expect(await historyLength(page)).toBe(entries);
+    expect(await state()).toBe(before);
     await page
       .getByRole('dialog', { name: 'Generate' })
       .getByRole('button', { name: 'Close' })
       .click();
-    await expect
-      .poll(() => page.evaluate(() => JSON.stringify(window.history.state)))
-      .not.toContain('overlay');
+    await page.getByRole('dialog', { name: 'Generate' }).waitFor({ state: 'detached' });
 
-    await page.goBack();
-    await waitForMode(page, 'library');
-    expect(await hash(page)).toBe(library);
+    expect(await hash(page)).toBe(maze);
+    expect(await historyLength(page)).toBe(entries);
+    expect(await state()).toBe(before);
   });
 });
 
