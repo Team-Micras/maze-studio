@@ -1,10 +1,12 @@
 import * as React from 'react';
 import { Dialog as DialogPrimitive } from 'radix-ui';
 
+import { useCloseOnBack } from '@/ui/hooks/use-close-on-back';
+
 import { cn } from './utils';
 
-function Dialog({ ...props }: React.ComponentProps<typeof DialogPrimitive.Root>) {
-  return <DialogPrimitive.Root data-slot="dialog" {...props} />;
+function Dialog(props: React.ComponentProps<typeof DialogPrimitive.Root>) {
+  return <DialogPrimitive.Root data-slot="dialog" {...props} {...useCloseOnBack(props)} />;
 }
 
 function DialogTitle({ className, ...props }: React.ComponentProps<typeof DialogPrimitive.Title>) {

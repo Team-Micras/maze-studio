@@ -4,10 +4,14 @@ import * as React from 'react';
 import { CaretRight, Check } from '@/ui/icons';
 import { DropdownMenu as DropdownMenuPrimitive } from 'radix-ui';
 
+import { useCloseOnBack } from '@/ui/hooks/use-close-on-back';
+
 import { cn } from './utils';
 
-function DropdownMenu({ ...props }: React.ComponentProps<typeof DropdownMenuPrimitive.Root>) {
-  return <DropdownMenuPrimitive.Root data-slot="dropdown-menu" {...props} />;
+function DropdownMenu(props: React.ComponentProps<typeof DropdownMenuPrimitive.Root>) {
+  return (
+    <DropdownMenuPrimitive.Root data-slot="dropdown-menu" {...props} {...useCloseOnBack(props)} />
+  );
 }
 
 function DropdownMenuPortal({
