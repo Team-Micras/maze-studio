@@ -1,9 +1,9 @@
 import { useEffect, useEffectEvent, useState } from 'react';
 
 import { DEFAULT_FILTER, type LibraryFilter } from '@/library';
-import { LIBRARY_ROUTE, routeHash } from '@/ui/routes';
 import { prefersReducedMotion } from '@/ui/board/use-canvas-camera';
 import { useCoarsePointer } from '@/ui/hooks/use-media-query';
+import { LIBRARY_ROUTE, routeHash } from '@/ui/routes';
 import { showToast, TOAST_DURATION_MS } from '@/ui/toasts';
 
 import { libraryScroller } from './library-scroller';
@@ -16,12 +16,12 @@ export const EXIT_HINT = 'Press Back again to exit';
 
 /**
  * Lets the system's Back step out of the library on a touch screen, one step per Back, beneath any
- * open overlay or selection: it clears the search and the filter together, then scrolls the grid to the top,
- * then goes back in the history when the app has an entry below, and otherwise shows
- * {@link EXIT_HINT}; Escape, which also closes watchers, stops before both and leaves the next Back to the system for the toast's lifetime, or
- * until the next tap. Takes the library's filter while the library is on screen, and keeps
- * one `CloseWatcher` meanwhile, created anew after each Back; a tap ends the wait at once so the
- * watcher is back before an overlay that tap opens, and stays beneath it.
+ * open overlay or selection. Back clears the search and the filter together, then scrolls the grid
+ * to the top, then goes back in the history when the app has an entry below, or else shows
+ * {@link EXIT_HINT} and leaves the next Back to the system for the toast's lifetime or until the
+ * next tap. Escape, which also closes watchers, takes the first two steps only. Takes the library's
+ * filter while the library is on screen, and keeps one `CloseWatcher` meanwhile, created anew after
+ * each Back; a tap ends the wait at once so the watcher is back before an overlay that tap opens.
  *
  * Chrome lets a watcher created without a user activation since the last one closed be skipped by
  * Back, which then leaves the app: steps taken without a tap between them may end early, never
@@ -65,7 +65,12 @@ export function useLibraryBack(
     let watcher: CloseWatcher;
     let byEscape = false;
     const noteKey = (event: KeyboardEvent): void => {
-      byEscape = event.type === 'keydown' && event.key === 'Escape';
+      if (event.key === 'Escape') {
+        byEscape = true;
+        window.setTimeout(() => {
+          byEscape = false;
+        });
+      }
     };
     const arm = (): void => {
       watcher = new Watcher();
@@ -77,11 +82,9 @@ export function useLibraryBack(
     };
     arm();
     window.addEventListener('keydown', noteKey, true);
-    window.addEventListener('keyup', noteKey, true);
     return () => {
       watcher.destroy();
       window.removeEventListener('keydown', noteKey, true);
-      window.removeEventListener('keyup', noteKey, true);
     };
   }, [shown, touch, leaving]);
 

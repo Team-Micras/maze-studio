@@ -2,7 +2,6 @@ import { chromium, type Browser, type BrowserContext, type Page } from 'playwrig
 import { afterAll, beforeAll, describe, expect, inject, test } from 'vitest';
 
 import { armed, pressBack, spyOnWatchers } from '@tests/support/e2e/close-watchers';
-import { EXIT_HINT } from '@/ui/library/use-library-back';
 import { expectToast, waitForMode } from '@tests/support/e2e/studio-page';
 
 const app = inject('appUrl');
@@ -197,16 +196,22 @@ describe('Back on the library', () => {
 
     await waitForMode(page, 'editor');
     expect(await hash(page)).toBe(maze);
-    expect(await page.getByText(EXIT_HINT).count()).toBe(0);
+    expect(await page.getByText('Press Back again to exit').count()).toBe(0);
   });
 
-  test('at the top, takes no step for Escape', async () => {
+  test('at the top, takes no step for Escape, even one still held', async () => {
     const page = await phone(spyOnWatchers);
 
     await page.keyboard.press('Escape');
 
     await page.waitForTimeout(300);
-    expect(await page.getByText(EXIT_HINT).count()).toBe(0);
+    expect(await page.getByText('Press Back again to exit').count()).toBe(0);
     expect(await armed(page)).toBe(1);
+
+    await page.keyboard.down('Escape');
+    await page.waitForTimeout(100);
+    await pressBack(page);
+
+    await expectToast(page, 'Press Back again to exit');
   });
 });
