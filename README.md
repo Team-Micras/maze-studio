@@ -1,35 +1,87 @@
-# maze-studio
+<!-- markdownlint-disable -->
+<!-- prettier-ignore-start -->
+<div align="center">
 
-A web app for the micromouse community to browse, view, edit and share mazes in the text format of
-[micromouseonline/mazefiles](https://github.com/micromouseonline/mazefiles). It is a PWA: it runs in
-the browser on a laptop or a phone, installs, and works offline at a competition.
+![MICRAS maze studio](docs/images/header.svg)
 
-## What it does
+Micromouse mazes in the browser: browse, edit, generate and share, also offline
 
-- **Library.** Every maze of the mazefiles repository on one canvas, with thumbnails, search, and
-  filters by source (Repo or My mazes) and category.
-  Pan with a drag, zoom with the wheel, a pinch or `+`/`-`.
-- **Viewer.** Opening a maze flies into it and draws it like the real track: walls, posts, start and
-  goal, with checks against the classic rules ("Passes", or what is wrong and where).
-- **Editor.** Walls by drag or click, rectangles, clear area, start and goal, with undo and redo,
-  a cell cursor on the keyboard, and New maze in the classic, half-size and training sizes or a
-  custom one, or generated (beta): a preset tuned on real finals, every target configurable, and a
-  batch of 8 candidates to pick from, whose recipe stays with the maze. The first edit of a
-  repository maze makes a copy in **My mazes**, kept in the browser and saved as you go; the
-  Changes chip lists what changed in the session, to discard or keep.
-- **Sharing and files.** Copy link (the maze in the URL), Share… on a phone, and Export (a submenu, or a group that opens in place on a phone):
-  Download mazefile (.txt), Copy mazefile (.txt), Download SVG and Copy SVG (the board as an image for a README or a pull request); Open a `.txt`, and Export all and Import of My mazes as a zip.
-- **Offline and installable.** After the first visit the app opens, searches, edits and saves with
-  no network; it installs as an app, says "New version." with Reload when there is one, and checks
-  GitHub for newer mazes once a day and on Check for updates.
+</div>
 
-Service worker and installation need a secure context: `https://` or `localhost`.
+<p align="center">
+  <a href="https://www.typescriptlang.org/"><img alt="Made with TypeScript" src="https://img.shields.io/badge/made_with-typescript-blue?style=for-the-badge&labelColor=3178c6&color=235a97" height="30"></a>
+  <a href="https://github.com/micromouseonline/mazefiles"><img alt="Uses mazefiles" src="https://img.shields.io/badge/uses-mazefiles-blue?style=for-the-badge&labelColor=38c1d0&color=45a4b8" height="30"></a>
+  <a href="https://en.wikipedia.org/wiki/Micromouse"><img alt="Built for micromouse" src="https://img.shields.io/badge/built_for-micromouse-blue?style=for-the-badge&labelColor=adec37&color=27a744" height="30"></a>
+</p>
+<!-- prettier-ignore-end -->
+<!-- markdownlint-restore -->
 
-## Embedding
+maze-studio is a web app for micromouse mazes in the text format of
+[micromouseonline/mazefiles](https://github.com/micromouseonline/mazefiles). Open it at
+[maze.micras.team](https://maze.micras.team) on a laptop or a phone, install it as an app, and take
+it to a competition with no network.
 
-Another site can show one maze in a frame: the maze alone, fitted to the frame, with a small link
-that opens it in maze-studio. The frame takes no wheel or touch, so the page around it scrolls as
-usual.
+<!-- markdownlint-disable -->
+<!-- prettier-ignore-start -->
+<div align="center">
+  <img src="docs/images/library.png" alt="The library: every maze of the mazefiles repository as a thumbnail, with search and filters" width="100%">
+</div>
+<!-- prettier-ignore-end -->
+<!-- markdownlint-restore -->
+
+## 📑 Summary
+
+- [📑 Summary](#-summary)
+- [🧩 Features](#-features)
+- [🔗 Embedding](#-embedding)
+- [📁 Folder structure](#-folder-structure)
+- [🚀 Running](#-running)
+- [🧪 Testing](#-testing)
+- [💄 Code style](#-code-style)
+- [🌐 Deploying](#-deploying)
+  - [🔄 Maze updates](#-maze-updates)
+  - [🔧 Set up](#-set-up)
+- [👥 Contributing](#-contributing)
+  - [💬 Git commit messages](#-git-commit-messages)
+  - [🔀 Git workflow](#-git-workflow)
+- [🙏 Credit and license](#-credit-and-license)
+- [✨ Contributors](#-contributors)
+
+## 🧩 Features
+
+- **Library**: every maze of the mazefiles repository on one canvas, with search and filters by
+  source (Repo or My mazes) and category. Drag to pan; zoom with the wheel, a pinch or `+`/`-`.
+- **Viewer**: walls, posts, start and goal drawn like the real track, checked against the classic
+  rules ("Passes", or what is wrong and where).
+- **Editor**: walls by drag or click, rectangles, clear area, start and goal, undo and redo, and a
+  keyboard cell cursor. New maze comes in classic, half-size, training or a custom size. Your first
+  edit of a repository maze copies it to **My mazes**, saved in the browser as you go. The Changes
+  chip lists the session's edits, to keep or discard.
+- **Generator (beta)**: New maze → Generate… builds a batch of 8 competition-style mazes from a
+  preset tuned on real finals, with every target configurable. The maze keeps the recipe that made
+  it.
+- **Sharing and files**: Copy link puts the maze in the URL; Share… opens the phone's share sheet.
+  Export downloads or copies the mazefile (`.txt`) or an SVG of the board. Open reads a `.txt`;
+  Export all and Import move My mazes as a zip.
+- **Offline**: after the first visit the app opens, searches, edits and saves with no network. It
+  shows "New version." with Reload when one is out, and checks GitHub for new mazes once a day and
+  on Check for updates.
+
+The service worker and installation need `https://` or `localhost`.
+
+<!-- markdownlint-disable -->
+<!-- prettier-ignore-start -->
+<div align="center">
+  <img src="docs/images/editor.png" alt="The editor with a classic 16 × 16 maze open, its checks passing" width="100%">
+  <img src="docs/images/generator.png" alt="The generator: a batch of 8 competition-style mazes to pick from" width="100%">
+</div>
+<!-- prettier-ignore-end -->
+<!-- markdownlint-restore -->
+
+## 🔗 Embedding
+
+Show one maze on another site with an iframe. The frame shows the maze alone with a link that opens
+it in maze-studio, and leaves wheel and touch to the page around it.
 
 ```html
 <iframe
@@ -40,18 +92,16 @@ usual.
 ></iframe>
 ```
 
-- `embed` in the query turns the embed on; its value does not matter. Inside any frame maze-studio
-  is always the embed, with or without it, so a frame made without `?embed` still works and no site
-  can frame the editor itself.
+- `?embed` turns the embed on, whatever its value. Inside any frame maze-studio shows the embed
+  anyway, so no site can frame the editor.
 - `theme=light` or `theme=dark` sets the theme. Without it the frame follows the visitor's system
-  theme, also when it changes.
-- The hash picks the maze: `#/repo/<path>` for a maze of the repository, as maze-studio has it
-  built in, or `#/m/<code>` for a link made by Copy link. My mazes live in the visitor's own browser,
-  so the embed does not show them, and says so.
+  theme.
+- The hash picks the maze: `#/repo/<path>` for a repository maze, or `#/m/<code>` for a Copy link.
+  The embed cannot show My mazes, since they live in the visitor's own browser, and says so.
 
-The page around the frame can set its theme without reloading it, for example when the page has a
-theme switch of its own. The frame posts `{ type: 'maze-studio:ready' }` to the page once it
-listens; send the theme on `maze-studio:ready` and whenever it changes:
+To switch the theme without a reload, wait for `{ type: 'maze-studio:ready' }` from the frame and
+post the theme on it and on every change. The frame takes the message only from its parent page,
+and stops following the system theme once it gets one.
 
 ```js
 const frame = document.querySelector('iframe');
@@ -64,107 +114,172 @@ window.addEventListener('message', (event) => {
 });
 ```
 
-The frame takes the theme message only from the page that holds it, with `theme` either `light` or
-`dark`. Once it has one, it no longer follows the system theme.
+A sandboxed frame needs
+`sandbox="allow-scripts allow-same-origin allow-popups allow-popups-to-escape-sandbox"` for "Open in
+maze-studio" to work.
 
-For a frame with a `sandbox` attribute, use
-`sandbox="allow-scripts allow-same-origin allow-popups allow-popups-to-escape-sandbox"`; the two
-popup flags let "Open in maze-studio" open.
+## 📁 Folder structure
 
-## Credit
+- **.github/** - CI, deploy and preview workflows, the mazefiles auto-merge and Dependabot.
+- **docs/** - Images for this README.
+- **public/** - Icons and static files.
+- **scripts/** - Bun scripts: the maze snapshot, the icons, the bundle size.
+- **src/** - The app: maze core, library, renderer, generator and React UI.
+- **sw/** - The service worker that serves the app offline.
+- **tests/** - Tests mirroring `src/`, with the end-to-end tests in `tests/e2e/`.
+- **vendor/mazefiles/** - The mazefiles repository as a submodule.
 
-The mazes come from [micromouseonline/mazefiles](https://github.com/micromouseonline/mazefiles),
-a collection of micromouse maze files gathered over many years from many sources by micromouseonline
-and its contributors. maze-studio pins it as the submodule `vendor/mazefiles` and builds its library from the commit
-pinned, which Dependabot moves forward every week; `git submodule status vendor/mazefiles` prints
-it. Corrections to a maze belong upstream, as an issue on that repository.
+[`ARCHITECTURE.md`](ARCHITECTURE.md) maps the layers of `src/`,
+[`decisions.md`](decisions.md) records why each choice was made, and [`AGENTS.md`](AGENTS.md) holds
+the working rules.
 
-## Requirements
+## 🚀 Running
 
-- [Bun](https://bun.sh) 1.4 (package manager and scripts)
-- Node.js 22.12 or later (Vite and Vitest run on it)
-- Playwright's Chromium for the browser tests: `bunx playwright install chromium`
-
-## Running it
+You need [Bun](https://bun.sh) 1.4 and Node.js 22.12 or later.
 
 ```sh
-git clone --recurse-submodules <this repository>
+git clone --recurse-submodules https://github.com/Team-Micras/maze-studio.git
+cd maze-studio
 bun install
 bun run dev
 ```
 
-In a clone made without `--recurse-submodules`, run `git submodule update --init` once.
+In a clone without `--recurse-submodules`, run `git submodule update --init` once.
 
-| Script                     | What it does                                                               |
-| -------------------------- | -------------------------------------------------------------------------- |
-| `bun run dev`              | Development server                                                         |
-| `bun run build`            | Typecheck and build into `dist/`; `BASE_PATH` sets a base other than `/`   |
-| `bun run preview`          | Serve the built app                                                        |
-| `bun run test`             | Unit tests (Node) and browser tests (Chromium)                             |
-| `bun run test:performance` | Frame-time tests in Chromium, one file at a time, outside the check        |
-| `bun run test:e2e`         | Builds the app and drives it in Chromium: PWA, offline, library, editor    |
-| `bun run size`             | Gzip size of the build, after `bun run build`                              |
-| `bun run snapshot`         | Write `src/library/snapshot.json` from `vendor/mazefiles`; runs on its own |
-| `bun run check`            | Lint, format, typecheck, tests, e2e, build and size: what CI runs          |
+| Script             | What it does                                                          |
+| ------------------ | --------------------------------------------------------------------- |
+| `bun run dev`      | Development server                                                    |
+| `bun run build`    | Typecheck and build into `dist/`; `BASE_PATH` sets a base besides `/` |
+| `bun run preview`  | Serve the build                                                       |
+| `bun run size`     | Gzip size of the build                                                |
+| `bun run snapshot` | Write `src/library/snapshot.json` from `vendor/mazefiles`             |
 
-`src/library/snapshot.json` is generated, not committed: `dev`, `build`, `lint`, `typecheck` and
-the test scripts write it from the submodule first, when it is missing or of another commit.
+The snapshot is generated, not committed: `dev`, `build`, `lint`, `typecheck` and the tests write it
+first when it is missing or stale.
 
-## Keeping the mazes up to date
+## 🧪 Testing
 
-Dependabot (`.github/dependabot.yml`) opens two pull requests every week that move
-`vendor/mazefiles` to the newest commit of `master`: one against `main`, so new mazes reach the site
-without a release, and the same one against `develop`. The workflow `mazefiles-auto-merge.yml` turns on auto-merge for a
-pull request of Dependabot's that changes nothing but the submodule, so it lands once CI passes,
-with no one involved. For that, the GitHub repository needs:
+The browser tests need Chromium: `bunx playwright install chromium`.
 
-- **Allow auto-merge**, in Settings, General, Pull Requests;
-- a rule for `main` and one for `develop` (branch protection or a ruleset) that require the
-  `check` job of CI to pass before merging.
+| Script                     | What it does                                                 |
+| -------------------------- | ------------------------------------------------------------ |
+| `bun run test`             | Unit tests (Node) and browser tests (Chromium)               |
+| `bun run test:unit`        | Unit tests only                                              |
+| `bun run test:browser`     | Browser tests only                                           |
+| `bun run test:performance` | Frame-time tests, one file at a time, outside the check      |
+| `bun run test:e2e`         | Build the app and drive it: PWA, offline, library, editor    |
+| `bun run check`            | Lint, format, typecheck, tests, e2e, build and size, like CI |
 
-The workflow also waits for those required checks itself and fails, merging nothing, when the base
-branch requires none. Without auto-merge, the pull request waits for a person. A merge made with
-the workflow's `GITHUB_TOKEN` starts no other workflow, so once a bump is merged on `main` the
-workflow starts `pages.yml` itself, by `workflow_dispatch`.
+CI runs the steps of `bun run check` as parallel jobs on every pull request; its `check` job passes
+when all of them do. Reference screenshots come from the pinned Playwright Docker image;
+[`AGENTS.md`](AGENTS.md) has the command to update them.
 
-The two bumps never get in the way of a release: a merge compares content, and the same gitlink on
-both sides is no conflict. The one case is `develop` a bump behind `main`, when one of the two pull
-requests failed; the release then conflicts on `vendor/mazefiles`, and the newer commit is the one
-to keep.
+## 💄 Code style
 
-`pages.yml` publishes `main` to <https://maze.micras.team> on every push to it and on demand from
-the Actions tab.
+[oxlint](https://oxc.rs/docs/guide/usage/linter) lints and
+[oxfmt](https://oxc.rs/docs/guide/usage/formatter) formats the code and the Markdown, configured in
+`.oxlintrc.json` and `.oxfmtrc.json`.
 
-To understand the code, start with [`ARCHITECTURE.md`](ARCHITECTURE.md).
+```sh
+bun run lint
+bun run format:check
+bun run format
+```
 
-## Contributing
+Write code and docs in English, with doc comments on exported APIs and no comments inside function
+bodies.
 
-The repository follows gitflow. Start a `feature/<name>` branch from `develop` and open a pull
-request back to `develop`; `bun run check` must pass, and CI runs its steps as parallel jobs on
-every pull request. A release is a pull request from `develop` to `main`, which publishes the
-site; a `hotfix/<name>` starts from `main`.
+## 🌐 Deploying
 
-Every pull request from a branch of this repository gets a preview at
-`https://pr-<number>.maze-studio-8ol.pages.dev/`, linked in a comment and updated on every push. A
-pull request from a fork gets CI but no preview: a preview publishes its code under the project's
-domain. The site and the previews are deployments of one Cloudflare Pages project, `maze-studio`:
-`main` is production, at `maze.micras.team`, and each pull request a branch `pr-<number>`.
-`preview-build.yml` builds the pull request with no write access and no secret, and
-`preview-deploy.yml`, which runs as it is on the default branch, uploads the built files and never
-runs them. Each preview is an origin of its own, so it keeps its own My mazes and service worker,
-and nothing of the site's.
+`pages.yml` publishes `main` to [maze.micras.team](https://maze.micras.team) on every push and on
+demand from the Actions tab. The site lives in the Cloudflare Pages project `maze-studio`.
 
-### Set up
+Each pull request from a branch of this repository gets a preview at
+`https://pr-<number>.maze-studio-8ol.pages.dev/`, linked in a comment and updated on every push.
+`preview-build.yml` builds it with no secrets, and `preview-deploy.yml`, from the default branch,
+uploads the files without running them. Pull requests from forks get CI but no preview. Each preview
+is its own origin, with its own My mazes and service worker.
 
-- **Cloudflare**, once: a Pages project `maze-studio` with production branch `main` and the custom
-  domain `maze.micras.team`, and a token with only Account, Cloudflare Pages, Edit, saved as the
-  secret `CLOUDFLARE_API_TOKEN` of an environment `cloudflare` that only `main` may deploy from. A
-  repository secret would reach the `pull_request` runs of every branch. The account id is in the
+### 🔄 Maze updates
+
+The submodule `vendor/mazefiles` pins a commit of
+[micromouseonline/mazefiles](https://github.com/micromouseonline/mazefiles), and the library comes
+from it (`git submodule status vendor/mazefiles` prints it). Every week Dependabot opens two pull
+requests that move it to the newest `master`: one to `main`, so new mazes reach the site without a
+release, and one to `develop`.
+
+`mazefiles-auto-merge.yml` turns on auto-merge for a Dependabot pull request that only changes the
+submodule, so it lands once CI passes. The workflow waits for the required checks and merges nothing
+if the base branch requires none. A merge by its `GITHUB_TOKEN` starts no other workflow, so after a
+bump lands on `main` it starts `pages.yml` itself.
+
+A release merges cleanly over the bumps, since both sides hold the same gitlink. If one of the two
+bumps failed and `develop` sits a commit behind `main`, the release conflicts on
+`vendor/mazefiles`: keep the newer commit.
+
+### 🔧 Set up
+
+- **Cloudflare**: a Pages project `maze-studio` with production branch `main` and the domain
+  `maze.micras.team`. Save a token with only Account, Cloudflare Pages, Edit as the secret
+  `CLOUDFLARE_API_TOKEN` of an environment `cloudflare` that only `main` can deploy from; a
+  repository secret would reach every branch's `pull_request` runs. The account id sits in the
   deploy workflows.
-- **Rules** for `main` and `develop` that require the `check` job of CI.
-- **Allow auto-merge**, for the weekly mazefiles bumps.
+- **Rules** for `main` and `develop` that require CI's `check` job.
+- **Allow auto-merge** (Settings, General, Pull Requests), for the mazefiles bumps.
 
-## License
+## 👥 Contributing
 
-The code is under the [MIT license](LICENSE). The mazes belong to the mazefiles repository and its
-contributors.
+Follow the guidelines below and the rules in [`AGENTS.md`](AGENTS.md).
+
+### 💬 Git commit messages
+
+- Write one line: a gitmoji and a short English sentence, with no body.
+- Use the present tense and the imperative mood ("Add the SVG export", not "Added the SVG export").
+- Pick the emoji that fits the change, for example:
+  - ✨ `:sparkles:` for new features.
+  - 🐛 `:bug:` for bug fixes.
+  - 🚑 `:ambulance:` for hotfixes.
+  - ♻️ `:recycle:` for refactors.
+  - ⚡ `:zap:` for performance.
+  - 💄 `:lipstick:` for the look of the UI.
+  - 📝 `:memo:` for documentation.
+  - 👷 `:construction_worker:` for CI.
+
+  For more examples, see [gitmoji.dev](https://gitmoji.dev/).
+
+### 🔀 Git workflow
+
+The project follows gitflow:
+
+- Branch `feature/<name>` off `develop` and open a pull request back to `develop`. `bun run check`
+  must pass, and the pull request gets its own preview.
+- A release is a pull request from `develop` to `main`; merging it publishes
+  [maze.micras.team](https://maze.micras.team).
+- Branch `hotfix/<name>` off `main`.
+
+## 🙏 Credit and license
+
+The mazes come from [micromouseonline/mazefiles](https://github.com/micromouseonline/mazefiles),
+gathered over many years by micromouseonline and its contributors, and belong to them. Report a
+wrong maze upstream, as an issue on that repository. The code is under the [MIT license](LICENSE).
+
+## ✨ Contributors
+
+Thanks goes to these wonderful people ([emoji key](https://allcontributors.org/docs/en/emoji-key)):
+
+<!-- ALL-CONTRIBUTORS-LIST:START - Do not remove or modify this section -->
+<!-- prettier-ignore-start -->
+<!-- markdownlint-disable -->
+<table>
+  <tr>
+    <td align="center"><a href="https://github.com/PedroDeSanti"><img src="https://avatars.githubusercontent.com/u/62271285?v=4" width="100px;" alt="Pedro de Santi"/><br/><sub><b>Pedro de Santi</b></sub></a><br/><a href="https://github.com/Team-Micras/maze-studio/commits?author=PedroDeSanti" title="Code">💻</a> <a href="https://github.com/Team-Micras/maze-studio/commits?author=PedroDeSanti" title="Documentation">📖</a> <a href="#design-PedroDeSanti" title="Design">🎨</a> <a href="https://github.com/Team-Micras/maze-studio/commits?author=PedroDeSanti" title="Tests">⚠️</a> <a href="#infra-PedroDeSanti" title="Infrastructure (Hosting, Build-Tools, etc)">🚇</a></td>
+    <td align="center"><a href="https://github.com/Eduardo-Barreto"><img src="https://avatars.githubusercontent.com/u/34964398?v=4" width="100px;" alt="Eduardo Barreto"/><br/><sub><b>Eduardo Barreto</b></sub></a><br/><a href="https://github.com/Team-Micras/maze-studio/commits?author=Eduardo-Barreto" title="Code">💻</a> <a href="https://github.com/Team-Micras/maze-studio/commits?author=Eduardo-Barreto" title="Documentation">📖</a></td>
+  </tr>
+</table>
+
+<!-- markdownlint-restore -->
+<!-- prettier-ignore-end -->
+
+<!-- ALL-CONTRIBUTORS-LIST:END -->
+
+This project follows the [all-contributors](https://github.com/all-contributors/all-contributors) specification. Contributions of any kind welcome!
