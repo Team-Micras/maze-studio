@@ -1,10 +1,12 @@
 import * as React from 'react';
 import { Dialog as SheetPrimitive } from 'radix-ui';
 
+import { useCloseOnBack } from '@/ui/hooks/use-close-on-back';
+
 import { cn } from './utils';
 
-function Sheet({ ...props }: React.ComponentProps<typeof SheetPrimitive.Root>) {
-  return <SheetPrimitive.Root data-slot="sheet" {...props} />;
+function Sheet(props: React.ComponentProps<typeof SheetPrimitive.Root>) {
+  return <SheetPrimitive.Root data-slot="sheet" {...props} {...useCloseOnBack(props)} />;
 }
 
 function SheetClose({ ...props }: React.ComponentProps<typeof SheetPrimitive.Close>) {

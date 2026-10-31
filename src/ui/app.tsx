@@ -9,10 +9,12 @@ import { discardChange } from './changes/discard';
 import { changeOf, differs, sessionChanges, withoutChange } from './changes/session-changes';
 import { openNewMaze } from './new-maze';
 import { useMazeEditor } from './editor/use-maze-editor';
+import { useCloseOnBack } from './hooks/use-close-on-back';
 import { useRoute } from './hooks/use-route';
 import { ReportDialog } from './library/report-dialog';
 import { updateNote } from './library/update-note';
 import { reloadLibrary, useLibrary } from './library/use-library';
+import { useLibraryBack } from './library/use-library-back';
 import { useMineBackup } from './library/use-mine-backup';
 import { useRepoUpdates } from './library/use-repo-updates';
 import { libraryBelow, pushRoute, replaceRoute } from './navigation';
@@ -44,6 +46,10 @@ interface RouteTrail {
 
 /** The library's filter after leaving a maze of My mazes changed in the session (PLAN.md 3.4). */
 const MINE_FILTER: LibraryFilter = { ...DEFAULT_FILTER, source: 'mine' };
+
+function filterLibrary(filter: LibraryFilter): void {
+  replaceRoute({ kind: 'library', filter });
+}
 
 /** A maze opened from a file or made new, shown while the URL stays where it was opened. */
 interface LooseMaze {
@@ -90,6 +96,18 @@ export function App() {
     setLastLibrary(route);
   }
 
+  useCloseOnBack({
+    open: shownLoose !== undefined,
+    onOpenChange: (open) => {
+      if (!open) {
+        setLoose(undefined);
+      }
+    },
+  });
+  useLibraryBack(
+    route.kind === 'library' && shownLoose === undefined ? route.filter : undefined,
+    filterLibrary
+  );
   const opened = shownLoose ?? (opening.status === 'open' ? opening.open : undefined);
   const routeKey = route.kind === 'library' ? undefined : keyOf(route);
   const editor = useMazeEditor({ opened, wanted: shownLoose?.key ?? routeKey });
@@ -226,7 +244,7 @@ export function App() {
         filter={route.kind === 'library' ? (landing ?? route.filter) : lastLibrary.filter}
         library={library}
         libraryFailed={libraryFailed}
-        onFilter={(filter: LibraryFilter) => replaceRoute({ kind: 'library', filter })}
+        onFilter={filterLibrary}
         onLibrary={toLibrary}
         mineNames={mineNames}
         onNew={(request) => openLoose((id) => openNewMaze(request, id, mineNames))}

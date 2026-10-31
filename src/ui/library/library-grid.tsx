@@ -13,6 +13,7 @@ import {
 } from '@/render';
 import { paintThumbnailSkeletons } from '@/ui/board/thumbnail-skeleton';
 import { useDevicePixelRatio } from '@/ui/board/use-device-pixel-ratio';
+import { useCloseOnBack } from '@/ui/hooks/use-close-on-back';
 import { useOneRowTopBar } from '@/ui/hooks/use-media-query';
 import { Island, IslandButton } from '@/ui/islands/island';
 import { cn } from '@/ui/primitives/utils';
@@ -126,10 +127,18 @@ export function LibraryGrid({
       return next;
     });
   }, []);
-  const stopSelecting = (): void => {
+  const stopSelecting = useCallback(() => {
     setSelected(undefined);
     setArmed(false);
-  };
+  }, []);
+  useCloseOnBack({
+    open: selecting,
+    onOpenChange: (open) => {
+      if (!open) {
+        stopSelecting();
+      }
+    },
+  });
 
   useEffect(() => {
     if (!selecting) {
@@ -138,13 +147,13 @@ export function LibraryGrid({
 
     const onKey = (event: KeyboardEvent): void => {
       if (event.key === 'Escape') {
-        setSelected(undefined);
-        setArmed(false);
+        event.preventDefault();
+        stopSelecting();
       }
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [selecting]);
+  }, [selecting, stopSelecting]);
   const laidOut = view.width > 0;
   useEffect(() => {
     if (laidOut) {
