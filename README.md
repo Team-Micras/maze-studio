@@ -2,6 +2,8 @@
 <!-- prettier-ignore-start -->
 <div align="center">
 
+<p><img src="public/maze-studio.svg" alt="maze-studio icon" width="112"></p>
+
 <img src="docs/images/header.svg" alt="MICRAS maze studio" width="586">
 
 Micromouse mazes in the browser: browse, edit, generate and share, also offline
@@ -9,10 +11,9 @@ Micromouse mazes in the browser: browse, edit, generate and share, also offline
 </div>
 
 <div align="center">
-  <a href="https://www.typescriptlang.org/"><img alt="Made with TypeScript" src="https://img.shields.io/badge/made_with-typescript-blue?style=for-the-badge&labelColor=262626&color=d4302e" height="30"></a>
-  <a href="https://react.dev/"><img alt="Built with React" src="https://img.shields.io/badge/built_with-react-blue?style=for-the-badge&labelColor=262626&color=8f1f1d" height="30"></a>
-  <a href="https://maze.micras.team"><img alt="Works offline as a PWA" src="https://img.shields.io/badge/works_offline-pwa-blue?style=for-the-badge&labelColor=262626&color=d4302e" height="30"></a>
-  <a href="https://pages.cloudflare.com/"><img alt="Hosted on Cloudflare Pages" src="https://img.shields.io/badge/hosted_on-cloudflare_pages-blue?style=for-the-badge&labelColor=262626&color=8f1f1d" height="30"></a>
+  <a href="https://www.typescriptlang.org/"><img alt="Made with TypeScript" src="https://img.shields.io/badge/made_with-typescript-blue?style=for-the-badge&labelColor=ef4041&color=c1282d" height="30"></a>
+  <a href="https://github.com/micromouseonline/mazefiles"><img alt="Uses the mazefiles format" src="https://img.shields.io/badge/uses-mazefiles_format-blue?style=for-the-badge&labelColor=38c1d0&color=45a4b8" height="30"></a>
+  <a href="https://en.wikipedia.org/wiki/Micromouse"><img alt="Built for micromouse" src="https://img.shields.io/badge/built_for-micromouse-blue?style=for-the-badge&labelColor=adec37&color=27a744" height="30"></a>
 </div>
 <!-- prettier-ignore-end -->
 <!-- markdownlint-restore -->
@@ -25,9 +26,7 @@ it to a competition with no network.
 <!-- markdownlint-disable -->
 <!-- prettier-ignore-start -->
 <div align="center">
-  <img src="docs/images/library.png" alt="The library: every maze of the mazefiles repository as a thumbnail, with search and filters" width="32%">
-  <img src="docs/images/editor.png" alt="The editor with a classic 16 × 16 maze open, its checks passing" width="32%">
-  <img src="docs/images/generator.png" alt="The generator: a batch of 8 competition-style mazes to pick from" width="32%">
+  <img src="docs/images/library.png" alt="The library: every maze of the mazefiles repository as a thumbnail, with search and filters" width="100%">
 </div>
 <!-- prettier-ignore-end -->
 <!-- markdownlint-restore -->
@@ -71,6 +70,15 @@ it to a competition with no network.
   on Check for updates.
 
 The service worker and installation need `https://` or `localhost`.
+
+<!-- markdownlint-disable -->
+<!-- prettier-ignore-start -->
+<div align="center">
+  <img src="docs/images/editor.png" alt="The editor with a classic 16 × 16 maze open, its checks passing" width="100%">
+  <img src="docs/images/generator.png" alt="The generator: a batch of 8 competition-style mazes to pick from" width="100%">
+</div>
+<!-- prettier-ignore-end -->
+<!-- markdownlint-restore -->
 
 ## 🔗 Embedding
 
