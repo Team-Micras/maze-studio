@@ -2,9 +2,9 @@
 <!-- prettier-ignore-start -->
 <div align="center">
 
-<p><img src="public/maze-studio.svg" alt="maze-studio icon" width="112"></p>
-
 <img src="docs/images/header.svg" alt="MICRAS maze studio" width="586">
+
+<p><img src="docs/images/logo.svg" alt="maze-studio logo" width="160"></p>
 
 Micromouse mazes in the browser: browse, edit, generate and share, also offline
 
