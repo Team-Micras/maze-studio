@@ -2,6 +2,7 @@ import { chromium, type Browser, type BrowserContext, type Page } from 'playwrig
 import { afterAll, beforeAll, describe, expect, inject, test } from 'vitest';
 
 import { armed, pressBack, spyOnWatchers } from '@tests/support/e2e/close-watchers';
+import { EXIT_HINT } from '@/ui/library/use-library-back';
 import { expectToast, waitForMode } from '@tests/support/e2e/studio-page';
 
 const app = inject('appUrl');
@@ -19,7 +20,7 @@ afterAll(async () => {
 });
 
 /** The owner's Android phone, with `prepare` run in the page before the app loads. */
-async function phone(prepare: () => void): Promise<Page> {
+async function phone(prepare: () => void, at = ''): Promise<Page> {
   const context = await browser.newContext({
     viewport: { width: 412, height: 892 },
     deviceScaleFactor: 2.625,
@@ -29,8 +30,8 @@ async function phone(prepare: () => void): Promise<Page> {
   contexts.push(context);
   await context.addInitScript(prepare);
   const page = await context.newPage();
-  await page.goto(app);
-  await page.locator('a[data-artboard]').first().waitFor();
+  await page.goto(`${app}${at}`);
+  await page.locator('a[data-artboard]').first().waitFor({ state: 'attached' });
   return page;
 }
 
@@ -182,6 +183,30 @@ describe('Back on the library', () => {
 
     await page.getByRole('menu').waitFor({ state: 'detached' });
     expect(await hash(page)).toBe('#/?q=japan');
+    expect(await armed(page)).toBe(1);
+  });
+
+  test('at the top, goes back to the maze the library was opened from, with no hint', async () => {
+    const maze = '#/repo/classic/001-anomaly-test.txt';
+    const page = await phone(spyOnWatchers, maze);
+    await waitForMode(page, 'editor');
+    await page.getByRole('button', { name: 'Back to the library' }).tap();
+    await waitForMode(page, 'library');
+
+    await pressBack(page);
+
+    await waitForMode(page, 'editor');
+    expect(await hash(page)).toBe(maze);
+    expect(await page.getByText(EXIT_HINT).count()).toBe(0);
+  });
+
+  test('at the top, takes no step for Escape', async () => {
+    const page = await phone(spyOnWatchers);
+
+    await page.keyboard.press('Escape');
+
+    await page.waitForTimeout(300);
+    expect(await page.getByText(EXIT_HINT).count()).toBe(0);
     expect(await armed(page)).toBe(1);
   });
 });

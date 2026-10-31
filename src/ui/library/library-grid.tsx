@@ -127,10 +127,10 @@ export function LibraryGrid({
       return next;
     });
   }, []);
-  const stopSelecting = (): void => {
+  const stopSelecting = useCallback(() => {
     setSelected(undefined);
     setArmed(false);
-  };
+  }, []);
   useCloseOnBack({
     open: selecting,
     onOpenChange: (open) => {
@@ -148,13 +148,12 @@ export function LibraryGrid({
     const onKey = (event: KeyboardEvent): void => {
       if (event.key === 'Escape') {
         event.preventDefault();
-        setSelected(undefined);
-        setArmed(false);
+        stopSelecting();
       }
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [selecting]);
+  }, [selecting, stopSelecting]);
   const laidOut = view.width > 0;
   useEffect(() => {
     if (laidOut) {

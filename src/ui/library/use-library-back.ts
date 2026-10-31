@@ -1,6 +1,7 @@
 import { useEffect, useEffectEvent, useState } from 'react';
 
 import { DEFAULT_FILTER, type LibraryFilter } from '@/library';
+import { LIBRARY_ROUTE, routeHash } from '@/ui/routes';
 import { prefersReducedMotion } from '@/ui/board/use-canvas-camera';
 import { useCoarsePointer } from '@/ui/hooks/use-media-query';
 import { showToast, TOAST_DURATION_MS } from '@/ui/toasts';
@@ -13,18 +14,11 @@ const SCROLLED_PX = 8;
 /** What the toast says when the next Back leaves the app. */
 export const EXIT_HINT = 'Press Back again to exit';
 
-function filtered(filter: LibraryFilter): boolean {
-  return (
-    filter.source !== DEFAULT_FILTER.source ||
-    filter.category !== DEFAULT_FILTER.category ||
-    filter.query !== DEFAULT_FILTER.query
-  );
-}
-
 /**
  * Lets the system's Back step out of the library on a touch screen, one step per Back, beneath any
  * open overlay or selection: it clears the search and the filter together, then scrolls the grid to the top,
- * then shows {@link EXIT_HINT} and leaves the next Back to the system for the toast's lifetime, or
+ * then goes back in the history when the app has an entry below, and otherwise shows
+ * {@link EXIT_HINT}; Escape, which also closes watchers, stops before both and leaves the next Back to the system for the toast's lifetime, or
  * until the next tap. Takes the library's filter while the library is on screen, and keeps
  * one `CloseWatcher` meanwhile, created anew after each Back; a tap ends the wait at once so the
  * watcher is back before an overlay that tap opens, and stays beneath it.
@@ -39,14 +33,19 @@ export function useLibraryBack(
 ): void {
   const touch = useCoarsePointer();
   const [leaving, setLeaving] = useState(false);
-  const back = useEffectEvent((): boolean => {
+  const back = useEffectEvent((byEscape: boolean): boolean => {
     const scroller = libraryScroller();
 
-    if (filter !== undefined && filtered(filter)) {
+    if (
+      filter !== undefined &&
+      routeHash({ kind: 'library', filter }) !== routeHash(LIBRARY_ROUTE)
+    ) {
       onFilter(DEFAULT_FILTER);
     } else if (scroller !== null && scroller.scrollTop > SCROLLED_PX) {
       scroller.scrollTo({ top: 0, behavior: prefersReducedMotion() ? 'instant' : 'smooth' });
-    } else {
+    } else if (navigation.canGoBack && !byEscape) {
+      window.history.back();
+    } else if (!byEscape) {
       showToast(EXIT_HINT);
       setLeaving(true);
       return false;
@@ -64,16 +63,26 @@ export function useLibraryBack(
     }
 
     let watcher: CloseWatcher;
+    let byEscape = false;
+    const noteKey = (event: KeyboardEvent): void => {
+      byEscape = event.type === 'keydown' && event.key === 'Escape';
+    };
     const arm = (): void => {
       watcher = new Watcher();
       watcher.addEventListener('close', () => {
-        if (back()) {
+        if (back(byEscape)) {
           arm();
         }
       });
     };
     arm();
-    return () => watcher.destroy();
+    window.addEventListener('keydown', noteKey, true);
+    window.addEventListener('keyup', noteKey, true);
+    return () => {
+      watcher.destroy();
+      window.removeEventListener('keydown', noteKey, true);
+      window.removeEventListener('keyup', noteKey, true);
+    };
   }, [shown, touch, leaving]);
 
   useEffect(() => {
