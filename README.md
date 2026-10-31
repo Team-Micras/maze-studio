@@ -9,8 +9,8 @@ Micromouse mazes in the browser: browse, edit, generate and share, also offline
 </div>
 
 <div align="center">
-  <a href="https://www.typescriptlang.org/"><img alt="Made with TypeScript" src="https://img.shields.io/badge/made_with-typescript-blue?style=for-the-badge&labelColor=ef4041&color=c1282d" height="30"></a>
-  <a href="https://github.com/micromouseonline/mazefiles"><img alt="Uses the mazefiles format" src="https://img.shields.io/badge/uses-mazefiles_format-blue?style=for-the-badge&labelColor=38c1d0&color=45a4b8" height="30"></a>
+  <a href="https://www.typescriptlang.org/"><img alt="Made with TypeScript" src="https://img.shields.io/badge/made_with-typescript-blue?style=for-the-badge&labelColor=3178c6&color=235a97" height="30"></a>
+  <a href="https://github.com/micromouseonline/mazefiles"><img alt="Uses mazefiles" src="https://img.shields.io/badge/uses-mazefiles-blue?style=for-the-badge&labelColor=38c1d0&color=45a4b8" height="30"></a>
   <a href="https://en.wikipedia.org/wiki/Micromouse"><img alt="Built for micromouse" src="https://img.shields.io/badge/built_for-micromouse-blue?style=for-the-badge&labelColor=adec37&color=27a744" height="30"></a>
 </div>
 <!-- prettier-ignore-end -->
