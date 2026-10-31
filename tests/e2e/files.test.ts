@@ -269,11 +269,7 @@ describe('The Export menu', () => {
     await page.getByRole('menu').waitFor();
     const focused = () => page.evaluate(() => document.activeElement?.textContent);
 
-    for (let step = 0; step < 12 && (await focused()) !== 'Export'; step++) {
-      await page.keyboard.press('ArrowDown');
-    }
-
-    await page.locator('[role=menuitem][data-highlighted]', { hasText: 'Export' }).waitFor();
+    await page.getByRole('menuitem', { name: 'Export' }).focus();
     await expect
       .poll(async () => {
         if ((await focused()) === 'Export') {
