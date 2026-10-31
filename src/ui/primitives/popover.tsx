@@ -1,10 +1,12 @@
 import * as React from 'react';
 import { Popover as PopoverPrimitive } from 'radix-ui';
 
+import { useCloseOnBack } from '@/ui/hooks/use-close-on-back';
+
 import { cn } from './utils';
 
-function Popover({ ...props }: React.ComponentProps<typeof PopoverPrimitive.Root>) {
-  return <PopoverPrimitive.Root data-slot="popover" {...props} />;
+function Popover(props: React.ComponentProps<typeof PopoverPrimitive.Root>) {
+  return <PopoverPrimitive.Root data-slot="popover" {...props} {...useCloseOnBack(props)} />;
 }
 
 function PopoverTrigger({ ...props }: React.ComponentProps<typeof PopoverPrimitive.Trigger>) {
