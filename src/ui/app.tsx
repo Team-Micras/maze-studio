@@ -9,6 +9,7 @@ import { discardChange } from './changes/discard';
 import { changeOf, differs, sessionChanges, withoutChange } from './changes/session-changes';
 import { openNewMaze } from './new-maze';
 import { useMazeEditor } from './editor/use-maze-editor';
+import { useCloseOnBack } from './hooks/use-close-on-back';
 import { useRoute } from './hooks/use-route';
 import { ReportDialog } from './library/report-dialog';
 import { updateNote } from './library/update-note';
@@ -90,6 +91,14 @@ export function App() {
     setLastLibrary(route);
   }
 
+  useCloseOnBack({
+    open: shownLoose !== undefined,
+    onOpenChange: (open) => {
+      if (!open) {
+        setLoose(undefined);
+      }
+    },
+  });
   const opened = shownLoose ?? (opening.status === 'open' ? opening.open : undefined);
   const routeKey = route.kind === 'library' ? undefined : keyOf(route);
   const editor = useMazeEditor({ opened, wanted: shownLoose?.key ?? routeKey });

@@ -84,26 +84,28 @@ describe('Back on a phone without CloseWatcher', () => {
   });
 });
 
+function spyOnWatchers(): void {
+  const Native = window.CloseWatcher;
+
+  if (Native !== undefined) {
+    window.watchers = [];
+    window.CloseWatcher = class extends Native {
+      constructor() {
+        super();
+        window.watchers?.push(this);
+      }
+
+      override destroy(): void {
+        window.watchers = window.watchers?.filter((watcher) => watcher !== this);
+        super.destroy();
+      }
+    };
+  }
+}
+
 describe('Back on a phone with CloseWatcher', () => {
   test('closes the open overlay through its watcher, pushing no history entry', async () => {
-    const page = await phone(() => {
-      const Native = window.CloseWatcher;
-
-      if (Native !== undefined) {
-        window.watchers = [];
-        window.CloseWatcher = class extends Native {
-          constructor() {
-            super();
-            window.watchers?.push(this);
-          }
-
-          override destroy(): void {
-            window.watchers = window.watchers?.filter((watcher) => watcher !== this);
-            super.destroy();
-          }
-        };
-      }
-    });
+    const page = await phone(spyOnWatchers);
     expect(await page.evaluate(() => window.watchers !== undefined)).toBe(true);
     const maze = await openMaze(page);
     const entries = await historyLength(page);
@@ -122,5 +124,20 @@ describe('Back on a phone with CloseWatcher', () => {
     expect(await hash(page)).toBe(maze);
     expect(await historyLength(page)).toBe(entries);
     expect(await page.evaluate(() => window.watchers?.length)).toBe(0);
+  });
+});
+
+describe('Back on a new maze not edited yet', () => {
+  test('returns to the library instead of leaving the app', async () => {
+    const page = await phone(spyOnWatchers);
+    const library = await hash(page);
+
+    await page.getByRole('button', { name: 'New maze and more' }).tap();
+    await page.getByRole('menuitem', { name: 'Classic, 16 × 16' }).tap();
+    await waitForMode(page, 'editor');
+    await page.evaluate(() => window.watchers?.at(-1)?.requestClose());
+
+    await waitForMode(page, 'library');
+    expect(await hash(page)).toBe(library);
   });
 });
