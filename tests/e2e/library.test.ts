@@ -6,6 +6,7 @@ import { afterAll, beforeAll, describe, expect, inject, test } from 'vitest';
 
 import { decodeMazeCode, encodeMazeCode, parseMazeText } from '@/maze';
 import { mineCount, storeMine } from '@tests/support/e2e/board-page';
+import { pressBack, spyOnWatchers } from '@tests/support/e2e/close-watchers';
 
 const ROOT = join(import.meta.dirname, '..', '..');
 const app = inject('appUrl');
@@ -167,6 +168,7 @@ async function mineLibrary(touch: boolean): Promise<Page> {
     hasTouch: touch,
   });
   contexts.push(context);
+  await context.addInitScript(spyOnWatchers);
   const page = await context.newPage();
   await page.goto(`${app}#/`);
   await page.locator('a[data-artboard]').first().waitFor();
@@ -335,7 +337,7 @@ describe('The library above a home indicator', () => {
 });
 
 describe('Selecting in My mazes', () => {
-  test('on a phone: a held finger selects, a tap toggles, Delete takes two taps, Cancel and Esc leave', async () => {
+  test('on a phone: a held finger selects, a tap toggles, Delete takes two taps, Cancel, Esc and Back leave', async () => {
     const page = await mineLibrary(true);
     await holdFinger(page, 'a[data-artboard="mine:one"]', 700);
 
@@ -354,6 +356,13 @@ describe('Selecting in My mazes', () => {
     await selection(page).waitFor();
     await page.keyboard.press('Escape');
     await expect.poll(() => selection(page).count()).toBe(0);
+    expect(new URL(page.url()).hash).toBe('#/?src=mine');
+
+    await holdFinger(page, 'a[data-artboard="mine:one"]', 700);
+    await selection(page).waitFor();
+    await pressBack(page);
+    await expect.poll(() => selection(page).count()).toBe(0);
+    expect(new URL(page.url()).hash).toBe('#/?src=mine');
 
     await holdFinger(page, 'a[data-artboard="mine:one"]', 700, 40);
     await page.waitForTimeout(200);

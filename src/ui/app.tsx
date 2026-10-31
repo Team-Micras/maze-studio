@@ -14,6 +14,7 @@ import { useRoute } from './hooks/use-route';
 import { ReportDialog } from './library/report-dialog';
 import { updateNote } from './library/update-note';
 import { reloadLibrary, useLibrary } from './library/use-library';
+import { useLibraryBack } from './library/use-library-back';
 import { useMineBackup } from './library/use-mine-backup';
 import { useRepoUpdates } from './library/use-repo-updates';
 import { libraryBelow, pushRoute, replaceRoute } from './navigation';
@@ -99,6 +100,10 @@ export function App() {
       }
     },
   });
+  useLibraryBack(
+    route.kind === 'library' && shownLoose === undefined ? route.filter : undefined,
+    (filter) => replaceRoute({ kind: 'library', filter })
+  );
   const opened = shownLoose ?? (opening.status === 'open' ? opening.open : undefined);
   const routeKey = route.kind === 'library' ? undefined : keyOf(route);
   const editor = useMazeEditor({ opened, wanted: shownLoose?.key ?? routeKey });
