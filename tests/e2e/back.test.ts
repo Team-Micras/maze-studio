@@ -164,6 +164,8 @@ describe('Back on the library', () => {
 
     await pressBack(page);
     expect(await armed(page)).toBe(0);
+    await page.touchscreen.tap(4, 600);
+    expect(await armed(page)).toBe(0);
     await page.getByRole('searchbox', { name: 'Search mazes' }).tap();
     await expect.poll(() => armed(page)).toBe(1);
   });

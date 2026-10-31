@@ -11,6 +11,12 @@ import { libraryScroller } from './library-scroller';
 /** How far down, in CSS pixels, the grid may be and still count as at the top for Back. */
 const SCROLLED_PX = 8;
 
+/**
+ * How wide, in CSS pixels, the strip along each side is where Android's back gesture starts: a
+ * touch there is the next Back on its way, not a tap, so it does not end the wait.
+ */
+const BACK_EDGE_PX = 32;
+
 /** What the toast says when the next Back leaves the app. */
 export const EXIT_HINT = 'Press Back again to exit';
 
@@ -21,7 +27,8 @@ export const EXIT_HINT = 'Press Back again to exit';
  * {@link EXIT_HINT} and leaves the next Back to the system for the toast's lifetime or until the
  * next tap. Escape, which also closes watchers, takes the first two steps only. Takes the library's
  * filter while the library is on screen, and keeps one `CloseWatcher` meanwhile, created anew after
- * each Back; a tap ends the wait at once so the watcher is back before an overlay that tap opens.
+ * each Back; a tap away from the side edges, where the back gesture starts, ends the wait at once
+ * so the watcher is back before an overlay that tap opens.
  *
  * Chrome lets a watcher created without a user activation since the last one closed be skipped by
  * Back, which then leaves the app: steps taken without a tap between them may end early, never
@@ -94,11 +101,16 @@ export function useLibraryBack(
     }
 
     const stay = (): void => setLeaving(false);
+    const tap = (event: PointerEvent): void => {
+      if (event.clientX > BACK_EDGE_PX && event.clientX < window.innerWidth - BACK_EDGE_PX) {
+        stay();
+      }
+    };
     const timer = window.setTimeout(stay, TOAST_DURATION_MS);
-    window.addEventListener('pointerdown', stay, true);
+    window.addEventListener('pointerdown', tap, true);
     return () => {
       window.clearTimeout(timer);
-      window.removeEventListener('pointerdown', stay, true);
+      window.removeEventListener('pointerdown', tap, true);
     };
   }, [leaving]);
 }
