@@ -197,6 +197,22 @@ describe('The routes of an open maze', () => {
   );
 });
 
+describe('The Routes panel', () => {
+  test('left open, stays closed on the next maze while its routes stay drawn', async () => {
+    await mountApp('#/repo/classic/AAMC15Maze.txt');
+    await expect.poll(mode).toBe('editor');
+    await userEvent.click(page.getByRole('button', { name: 'Routes' }));
+    await expect.element(page.getByRole('dialog', { name: 'Routes' })).toBeVisible();
+    await userEvent.click(page.getByRole('button', { name: 'Back to the library' }));
+    await expect.poll(mode).toBe('library');
+    await openMaze();
+    await expect.element(page.getByRole('button', { name: 'Routes' })).toBeVisible();
+
+    expect(document.querySelector('[role="dialog"]')).toBeNull();
+    expect(document.querySelectorAll('[data-open-board] [data-route]').length).toBe(2);
+  });
+});
+
 describe('The Changes panel of an open maze', () => {
   test.each([
     ['notebook', 'light', 1440, 900],

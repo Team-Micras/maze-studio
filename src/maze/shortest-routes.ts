@@ -9,7 +9,8 @@
  * orthogonal, from a centre to a wall middle or back, 0.5 cell long, only through an open wall;
  * diagonal, from the middle of one wall to the middle of a neighbouring wall of the same cell,
  * √2/2 cell long. A route starts at the start cell's centre and ends at the centre of the first goal
- * cell it reaches; reversing is not a move.
+ * cell it reaches; reversing is not a move. The robot starts facing north, so a first move another
+ * way counts as a turn when equal routes are told apart by their turns.
  *
  * @module
  */
@@ -41,6 +42,7 @@ export interface ShortestRoutes {
 const DX = [0, 1, 1, 1, 0, -1, -1, -1];
 const DY = [1, 1, 0, -1, -1, -1, 0, 1];
 const START = 8;
+const NORTH = 0;
 const TURN_TIE = 1e-6;
 
 const stepLength = (heading: number): number => (heading & 1 ? Math.SQRT1_2 : 0.5);
@@ -186,7 +188,7 @@ function search(maze: Maze, start: Cell, diagonals: boolean): Route | null {
       }
 
       const reached = neighbour * 9 + to;
-      const turned = heading !== START && heading !== to ? TURN_TIE : 0;
+      const turned = (heading === START ? NORTH : heading) === to ? 0 : TURN_TIE;
       const cost = distance + stepLength(to) + turned;
 
       if (cost < (best.get(reached) ?? Infinity)) {
@@ -224,9 +226,10 @@ function routesOf(maze: Maze): ShortestRoutes | null | undefined {
   }
 
   const withoutDiagonals = search(maze, start, false);
-  return withoutDiagonals === null
+  const withDiagonals = withoutDiagonals === null ? null : search(maze, start, true);
+  return withoutDiagonals === null || withDiagonals === null
     ? null
-    : { withoutDiagonals, withDiagonals: search(maze, start, true) ?? withoutDiagonals };
+    : { withoutDiagonals, withDiagonals };
 }
 
 /**

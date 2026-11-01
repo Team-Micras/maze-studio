@@ -83,6 +83,17 @@ describe('shortestRoutes', () => {
     expect(withDiagonals.length).toBeCloseTo(1 + 3 * Math.SQRT1_2, 9);
   });
 
+  test('leaves the start facing north, so among equal routes it turns least from there', () => {
+    const maze = createMaze({
+      width: 3,
+      height: 3,
+      start: { x: 0, y: 0 },
+      goals: [{ x: 2, y: 1 }],
+    });
+
+    expect(shortestRoutes(maze)?.withoutDiagonals.points[1]).toEqual({ u: 0.5, v: 1 });
+  });
+
   test('is undefined without a start or a goal', () => {
     expect(shortestRoutes(borderedMaze(16, 16))).toBeUndefined();
   });

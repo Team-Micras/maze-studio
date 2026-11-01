@@ -125,7 +125,11 @@ export function useStudioEditing({
       routesOpen: open,
       shownRoutes: open ? (now ?? ALL_ROUTES) : now,
     }));
-  const routes = maze === undefined || shownRoutes === undefined ? undefined : shortestRoutes(maze);
+  const routesNeeded =
+    state.routesOpen ||
+    shownRoutes?.withoutDiagonals === true ||
+    shownRoutes?.withDiagonals === true;
+  const routes = maze === undefined || !routesNeeded ? undefined : shortestRoutes(maze);
 
   useEditorShortcuts({
     list,
@@ -239,7 +243,7 @@ export function useStudioEditing({
             phone,
           } satisfies ChecksProps),
     routes:
-      onScreen === undefined
+      onScreen === undefined || maze === undefined
         ? undefined
         : ({
             routes,
