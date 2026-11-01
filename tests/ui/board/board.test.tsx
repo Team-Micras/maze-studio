@@ -2,8 +2,16 @@ import { afterEach, describe, expect, test } from 'vitest';
 import { page } from 'vitest/browser';
 import { render } from 'vitest-browser-react';
 
-import { diffMazes, setGoals, setStart, toggleWall, type Edge, type Maze } from '@/maze';
-import { ARTBOARD_SIZE, TRACK_COLORS, type BoardOverlays } from '@/render';
+import {
+  diffMazes,
+  setGoals,
+  setStart,
+  shortestRoutes,
+  toggleWall,
+  type Edge,
+  type Maze,
+} from '@/maze';
+import { ARTBOARD_SIZE, ROUTE_COLORS, TRACK_COLORS, type BoardOverlays } from '@/render';
 import { Board } from '@/ui/board/board';
 import '@/ui/styles.css';
 import { settled } from '@tests/support/ui/animations';
@@ -150,6 +158,20 @@ describe('The board', () => {
     expect(shapes('bare-posts')).toBe(bare + 4);
   });
 
+  test('draws the shortest routes in their colours, with diagonals on top', async () => {
+    const maze = await repoMaze(REPO_MAZES.classic);
+    await render(<Board maze={maze} overlays={{ routes: { ...shortestRoutes(maze) } }} />);
+    const routes = [...document.querySelectorAll('[data-route]')];
+
+    expect(routes.map((route) => route.getAttribute('data-route'))).toEqual([
+      'withoutDiagonals',
+      'withDiagonals',
+    ]);
+    expect(
+      routes.map((route) => route.querySelector('[data-layer="route"]')?.getAttribute('stroke'))
+    ).toEqual([ROUTE_COLORS.withoutDiagonals, ROUTE_COLORS.withDiagonals]);
+  });
+
   test('draws the preview of a wall taken away as a dashed outline over the floor', async () => {
     const maze = await repoMaze(REPO_MAZES.classic);
     await render(
@@ -189,5 +211,22 @@ describe('Screenshots of the board on its stage', () => {
     await settled();
 
     await expect.element(page.getByRole('application')).toMatchScreenshot(`${size}-${theme}`);
+  });
+
+  test('16x16 with both shortest routes', async () => {
+    const maze = await repoMaze(REPO_MAZES.classic);
+    await render(
+      <BoardHarness
+        insets={SCREENSHOT_INSETS}
+        maze={maze}
+        overlays={{ routes: { ...shortestRoutes(maze) } }}
+        size={SCREENSHOT_STAGE}
+        status={false}
+      />
+    );
+    await expect.poll(stillCamera).toBe(true);
+    await settled();
+
+    await expect.element(page.getByRole('application')).toMatchScreenshot('16x16-routes');
   });
 });

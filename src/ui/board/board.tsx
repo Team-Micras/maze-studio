@@ -7,6 +7,7 @@ import {
   formatLength,
   overlayLayers,
   overlayStrokes,
+  ROUTE_COLORS,
   TRACK_COLORS,
   TRACK_OPACITY,
   trackPaint,
@@ -29,6 +30,8 @@ export interface BoardProps {
 }
 
 const NO_OVERLAYS: BoardOverlays = {};
+
+const ROUND = { strokeLinecap: 'round', strokeLinejoin: 'round' } as const;
 
 interface LayerProps {
   readonly name: string;
@@ -110,6 +113,42 @@ function Overlays({
         strokeDasharray={strokes.diffDash}
         {...diff}
       />
+      {layers.routes.map((route) => {
+        const color = ROUTE_COLORS[route.name];
+        return (
+          <g data-route={route.name} key={route.name}>
+            <Layer
+              d={route.line}
+              name="route-casing"
+              stroke={TRACK_COLORS.floor}
+              strokeOpacity={TRACK_OPACITY.routeCasing}
+              strokeWidth={strokes.routeCasing}
+              {...ROUND}
+            />
+            <Layer
+              d={route.line}
+              name="route"
+              stroke={color}
+              strokeWidth={strokes.route}
+              {...ROUND}
+            />
+            <Layer
+              d={route.start}
+              fill={TRACK_COLORS.floor}
+              name="route-start"
+              stroke={color}
+              strokeWidth={strokes.routeStart}
+            />
+            <Layer
+              d={route.goal}
+              fill={color}
+              name="route-goal"
+              stroke={TRACK_COLORS.floor}
+              strokeWidth={strokes.routeGoal}
+            />
+          </g>
+        );
+      })}
       <Layer
         name="focus-outline"
         d={layers.focusOutline}

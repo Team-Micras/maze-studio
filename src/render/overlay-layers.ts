@@ -1,7 +1,8 @@
 /**
  * What the editor draws over the track, as path data, in the order it is painted (DESIGN.md
- * 2.3): the session diff, the selected finding, the selection, the edge preview and the keyboard
- * cursor. Every size is a fraction of the cell pitch, so the overlays scale with the board.
+ * 2.3): the session diff, the shortest routes, the selected finding, the selection, the edge
+ * preview and the keyboard cursor. Every size is a fraction of the cell pitch, so the overlays
+ * scale with the board.
  *
  * @module
  */
@@ -14,10 +15,19 @@ import {
   type Finding,
   type MazeDiff,
   type Post,
+  type Route,
+  type ShortestRoutes,
 } from '@/maze';
 
-import { cellRect, slotRect, toBoardPoint, type BoardGeometry, type BoardRect } from './geometry';
-import { circlePath, rectPath, roundedRectPath } from './path';
+import {
+  cellRect,
+  slotRect,
+  toBoardPoint,
+  type BoardGeometry,
+  type BoardPoint,
+  type BoardRect,
+} from './geometry';
+import { circlePath, formatLength, rectPath, roundedRectPath } from './path';
 
 /** The places a finding points at. */
 export type FindingFocus = Pick<Finding, 'cells' | 'edges' | 'posts'>;
@@ -31,6 +41,8 @@ export interface EdgePreview {
 /** What to draw over the track; anything left out is not drawn. */
 export interface BoardOverlays {
   readonly diff?: MazeDiff;
+  /** The shortest routes shown; a route left out is not drawn. */
+  readonly routes?: Partial<ShortestRoutes>;
   readonly focus?: FindingFocus;
   readonly selection?: CellArea;
   readonly preview?: EdgePreview;
@@ -47,9 +59,20 @@ export interface DiffLayers {
   readonly dashed: string;
 }
 
+/** Path data of a route: its line through the centres and wall middles, and its two ends. */
+export interface RouteLayers {
+  readonly line: string;
+  /** A ring on the start cell's centre. */
+  readonly start: string;
+  /** A dot on the goal cell's centre. */
+  readonly goal: string;
+}
+
 /** Path data of every overlay; an empty string draws nothing. */
 export interface OverlayLayers {
   readonly diff: DiffLayers;
+  /** The routes shown, in the order they are painted: with diagonals on top. */
+  readonly routes: readonly (RouteLayers & { readonly name: keyof ShortestRoutes })[];
   /** Cells of the finding, outlined, when it points at no edge and no post. */
   readonly focusOutline: string;
   /** Edges and posts of the finding, outlined and lightly filled. */
@@ -74,6 +97,11 @@ export interface OverlayStrokes {
   readonly preview: number;
   readonly previewRemoveDash: Dash;
   readonly cursor: number;
+  readonly route: number;
+  /** The floor-coloured casing under a route, wider than the route by this much. */
+  readonly routeCasing: number;
+  readonly routeStart: number;
+  readonly routeGoal: number;
 }
 
 const DIFF_PAD = 0.07;
@@ -86,6 +114,11 @@ const FOCUS_RADIUS = 0.08;
 const FOCUS_POST_RADIUS = 0.3;
 const CURSOR_GAP = 0.08;
 const CURSOR_RADIUS = 0.08;
+const ROUTE_WIDTH = 0.085;
+const ROUTE_CORNER = 0.1;
+const ROUTE_START_RADIUS = 0.085;
+const ROUTE_GOAL_RADIUS = 0.1;
+const ROUTE_ORDER = ['withoutDiagonals', 'withDiagonals'] as const;
 
 /** The line widths and dashes of the overlays drawn with `geometry`. */
 export function overlayStrokes(geometry: BoardGeometry): OverlayStrokes {
@@ -100,6 +133,10 @@ export function overlayStrokes(geometry: BoardGeometry): OverlayStrokes {
     preview: 0.025 * p,
     previewRemoveDash: dash(0.07, 0.05),
     cursor: 0.05 * p,
+    route: ROUTE_WIDTH * p,
+    routeCasing: (ROUTE_WIDTH + 0.06) * p,
+    routeStart: 0.045 * p,
+    routeGoal: 0.04 * p,
   };
 }
 
@@ -206,6 +243,46 @@ function cursorPath(geometry: BoardGeometry, cell: Cell | undefined): string {
   return roundedRectPath(inset(cellRect(geometry, cell), gap), CURSOR_RADIUS * geometry.pitch);
 }
 
+function turning(before: BoardPoint, at: BoardPoint, after: BoardPoint): boolean {
+  return (
+    Math.abs((at.x - before.x) * (after.y - at.y) - (at.y - before.y) * (after.x - at.x)) > 1e-6
+  );
+}
+
+/**
+ * The line of `route` drawn with `geometry`: straight runs and 45° diagonals between its nodes,
+ * each corner softened by a small fixed radius for looks only.
+ */
+function routeLayers(geometry: BoardGeometry, route: Route): RouteLayers {
+  const f = formatLength;
+  const all = route.points.map((point) => toBoardPoint(geometry, point));
+  const corners = all.filter(
+    (point, index) =>
+      index === 0 || index === all.length - 1 || turning(all[index - 1], point, all[index + 1])
+  );
+  const toward = (from: BoardPoint, to: BoardPoint, distance: number): string => {
+    const length = Math.hypot(to.x - from.x, to.y - from.y);
+    return `${f(from.x + ((to.x - from.x) * distance) / length)} ${f(from.y + ((to.y - from.y) * distance) / length)}`;
+  };
+  const bends = corners.slice(1, -1).map((corner, index) => {
+    const before = corners[index];
+    const after = corners[index + 2];
+    const radius = Math.min(
+      ROUTE_CORNER * geometry.pitch,
+      Math.hypot(corner.x - before.x, corner.y - before.y) / 2,
+      Math.hypot(after.x - corner.x, after.y - corner.y) / 2
+    );
+    return `L${toward(corner, before, radius)}Q${f(corner.x)} ${f(corner.y)} ${toward(corner, after, radius)}`;
+  });
+  const first = all[0];
+  const last = all[all.length - 1];
+  return {
+    line: `M${f(first.x)} ${f(first.y)}${bends.join('')}L${f(last.x)} ${f(last.y)}`,
+    start: circlePath(first.x, first.y, ROUTE_START_RADIUS * geometry.pitch),
+    goal: circlePath(last.x, last.y, ROUTE_GOAL_RADIUS * geometry.pitch),
+  };
+}
+
 /** The overlays drawn with `geometry`. */
 export function overlayLayers(geometry: BoardGeometry, overlays: BoardOverlays): OverlayLayers {
   const { preview } = overlays;
@@ -214,6 +291,10 @@ export function overlayLayers(geometry: BoardGeometry, overlays: BoardOverlays):
       overlays.diff === undefined
         ? { added: '', marked: '', dashed: '' }
         : diffLayers(geometry, overlays.diff),
+    routes: ROUTE_ORDER.flatMap((name) => {
+      const route = overlays.routes?.[name];
+      return route === undefined ? [] : [{ name, ...routeLayers(geometry, route) }];
+    }),
     ...focusLayers(geometry, overlays.focus),
     selection: selectionPath(geometry, overlays.selection),
     preview: preview === undefined ? '' : rectPath(slotRect(geometry, preview.edge)),

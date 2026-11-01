@@ -12,6 +12,7 @@ import {
   Keyboard,
   LinkSimple,
   Moon,
+  Path,
   ShareNetwork,
   Shuffle,
   Square,
@@ -45,6 +46,8 @@ export interface MoreActionsProps {
   readonly onCloseBorder: () => void;
   /** Opens the Changes panel, also with nothing in it. */
   readonly onChanges: () => void;
+  /** Opens the Routes panel, here on a phone, where the island has no Routes button. */
+  readonly onRoutes?: () => void;
   /** Copies the maze to My mazes as it is; absent once it is there, for a blank new maze, or while editing on a phone. */
   readonly onSaveToMine?: () => void;
   /** Downloads the maze as a `.txt`. */
@@ -106,7 +109,7 @@ function ExportItems({
  * Export, with Download mazefile (.txt), Copy mazefile (.txt), Download SVG and Copy SVG in a submenu, or
  * on a phone in a group under it that a tap on Export opens and closes; Copy
  * link and Share… on a phone; Copy recipe for a generated maze; Generate… (beta), Close outer
- * walls, Changes, Rename and Delete for a maze of My mazes; Fit, the theme and the shortcut help.
+ * walls, Changes, Routes on a phone, Rename and Delete for a maze of My mazes; Fit, the theme and the shortcut help.
  * Delete takes two selects: the first keeps the menu open and turns it into "Confirm delete". A
  * download and Web Share start once the menu has closed.
  */
@@ -114,6 +117,7 @@ export function MoreActions({
   editable,
   onCloseBorder,
   onChanges,
+  onRoutes,
   onSaveToMine,
   onDownload,
   onCopyText,
@@ -259,6 +263,12 @@ export function MoreActions({
           <GitDiff aria-hidden size={16} />
           Changes
         </DropdownMenuItem>
+        {onRoutes === undefined ? null : (
+          <DropdownMenuItem className={ITEM} onSelect={onRoutes}>
+            <Path aria-hidden size={16} />
+            Routes
+          </DropdownMenuItem>
+        )}
         {onRename === undefined ? null : (
           <DropdownMenuItem className={ITEM} disabled={!editable} onSelect={onRename}>
             <Textbox aria-hidden size={16} />

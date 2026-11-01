@@ -99,6 +99,7 @@ function flyIn(
     tool: 'wall',
     hint: undefined,
     finding: undefined,
+    routesOpen: false,
     leaving: undefined,
     preview: undefined,
     prepared: undefined,

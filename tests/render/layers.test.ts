@@ -1,6 +1,15 @@
 import { describe, expect, test } from 'vitest';
 
-import { createMaze, diffMazes, fillBorder, setGoals, setStart, setWall, type Maze } from '@/maze';
+import {
+  createMaze,
+  diffMazes,
+  fillBorder,
+  setGoals,
+  setStart,
+  setWall,
+  shortestRoutes,
+  type Maze,
+} from '@/maze';
 import {
   boardGeometry,
   formatLength,
@@ -102,6 +111,45 @@ describe('overlayLayers', () => {
         ''
       )
     ).toBe('');
+  });
+
+  test('draws the routes asked for, with diagonals last, in straight runs and 45° diagonals', () => {
+    const open = setGoals(setStart(createMaze({ width: 5, height: 5 }), { x: 0, y: 0 }), [
+      { x: 4, y: 3 },
+    ]);
+    const openGeometry = boardGeometry(open);
+    const routes = shortestRoutes(open);
+    const layers = overlayLayers(openGeometry, { routes: { ...routes } });
+    const only = overlayLayers(openGeometry, { routes: { withDiagonals: routes?.withDiagonals } });
+
+    expect(layers.routes.map((route) => route.name)).toEqual(['withoutDiagonals', 'withDiagonals']);
+    expect(only.routes.map((route) => route.name)).toEqual(['withDiagonals']);
+
+    for (const { line } of layers.routes) {
+      const points = [...line.matchAll(/(-?[\d.]+) (-?[\d.]+)/g)].map(([, x, y]) => [
+        Number(x),
+        Number(y),
+      ]);
+      const runs = line
+        .split(/(?=[LQ])/)
+        .map((part) => part[0])
+        .join('');
+
+      expect(runs).toMatch(/^M(LQ)*L$/);
+      expect(points[0]).toEqual([
+        Number(formatLength(openGeometry.margin + 0.5 * openGeometry.pitch)),
+        Number(formatLength(openGeometry.margin + 4.5 * openGeometry.pitch)),
+      ]);
+      for (let index = 1; index < points.length; index++) {
+        const [dx, dy] = [
+          points[index][0] - points[index - 1][0],
+          points[index][1] - points[index - 1][1],
+        ];
+        expect(
+          Math.min(Math.abs(dx), Math.abs(dy), Math.abs(Math.abs(dx) - Math.abs(dy)))
+        ).toBeLessThan(0.02);
+      }
+    }
   });
 
   test('outlines walls put, dashes walls taken and rings the marks that moved', () => {

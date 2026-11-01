@@ -6,6 +6,8 @@
  * @module
  */
 
+import type { ShortestRoutes } from '@/maze';
+
 /** The track palette. */
 export const TRACK_COLORS = {
   /** Cell floor. */
@@ -28,6 +30,14 @@ export const TRACK_COLORS = {
   diff: 'oklch(0.74 0.15 235)',
 } as const;
 
+/** The colour of each shortest route, on the board and in the Routes panel. */
+export const ROUTE_COLORS: Readonly<Record<keyof ShortestRoutes, string>> = {
+  /** #fafafa. */
+  withoutDiagonals: 'oklch(0.985 0 0)',
+  /** #f5b942. */
+  withDiagonals: 'oklch(0.82 0.147 80.7)',
+};
+
 /** The opacities the palette is painted at where it is not opaque. */
 export const TRACK_OPACITY = {
   goal: 0.14,
@@ -37,4 +47,5 @@ export const TRACK_OPACITY = {
   selectionFill: 0.07,
   previewFill: 0.5,
   previewOutline: 0.6,
+  routeCasing: 0.9,
 } as const;

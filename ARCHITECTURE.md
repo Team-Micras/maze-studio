@@ -7,7 +7,7 @@ server. The reasons behind the choices below are in [`decisions.md`](decisions.m
 
 | Folder             | What it holds                                                                                          |
 | ------------------ | ------------------------------------------------------------------------------------------------------ |
-| `src/maze/`        | The core: the model, the text format, the compact code, edits, history, diff and validation.           |
+| `src/maze/`        | The core: the model, the text format, the compact code, edits, history, diff, validation and routes.   |
 | `src/library/`     | The catalog, the built-in snapshot, updates from GitHub, My mazes, backup and IndexedDB.               |
 | `src/render/`      | Geometry, the camera as pure functions, SVG path data and canvas thumbnails.                           |
 | `src/generator/`   | The maze generator: settings, presets, styles, the time model, recipes, features and the batch pick.   |
@@ -27,7 +27,7 @@ has a second one, `loading.ts` (`@/render/loading`), which only the generator's 
   south-west corner. The text format reads into a `MazeText` of grid and trailer, reporting what the canonical text
   writes differently as irregularities. Edits are pure functions that return the same maze when nothing changes.
   `history.ts` makes one undo step per gesture. `validateMaze` returns findings, never throws. `diffMazes` compares
-  two mazes of one size.
+  two mazes of one size. `shortestRoutes` gives the shortest route without diagonals and with them, remembered per maze.
 - **`src/library`** reads the snapshot, the cache of a newer commit (`repo-cache.ts`, `github-updater.ts`), My mazes
   (`mine.ts`, a version per item and the generator's recipe of a generated one, writes announced to other tabs) and
   the backup zip. `catalog.ts` makes one entry per maze, under the key `maze-key.ts` gives it
