@@ -8,6 +8,7 @@ import {
   createMaze,
   parseMazeText,
   presetMaze,
+  routesShown,
   setWall,
   shortestRoutes,
   type Maze,
@@ -120,5 +121,22 @@ describe('shortestRoutes', () => {
     const maze = presetMaze('classic');
 
     expect(shortestRoutes(maze)).toBe(shortestRoutes(maze));
+  });
+});
+
+describe('routesShown', () => {
+  test('gives the routes switched on, and nothing with both off or no routes', () => {
+    const maze = presetMaze('classic');
+    const routes = shortestRoutes(maze);
+
+    expect(routesShown(maze, { withoutDiagonals: false, withDiagonals: true })).toEqual({
+      withoutDiagonals: undefined,
+      withDiagonals: routes?.withDiagonals,
+    });
+    expect(routesShown(maze, { withoutDiagonals: false, withDiagonals: false })).toBeUndefined();
+    expect(routesShown(maze, undefined)).toBeUndefined();
+    expect(
+      routesShown({ ...maze, start: undefined }, { withoutDiagonals: true, withDiagonals: true })
+    ).toBeUndefined();
   });
 });

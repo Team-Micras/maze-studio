@@ -111,6 +111,15 @@ reached, and the measurements of the day, are in the git history of this file.
   of blank cards before; a load is sharp as fast as before (desktop 234 ms against 231, phone 488 against 489,
   medians). The skeleton's drawing brings `src/render/loading.ts` into the first screen's chunk, which stays within
   the budget (214.8 of 250 KB).
+- **Routes on thumbnails are bitmaps of their own** (owner, 01/11): the library and the generator's cards draw the
+  routes the session shows into the thumbnail, keyed by which switches are on (`:routes:o`, `:routes:d`,
+  `:routes:od`), in the same two LRUs with the same caps, so memory stays bounded at 104 MB; with routes off the keys
+  and bitmaps are the ones of before. The routes of a maze are searched only when a thumbnail with routes paints,
+  once per maze (about 0.7 ms unthrottled on a notebook), and the line is twice as thick as on the board, never
+  thinner than a wall, so a 32 × 32 maze still reads on a phone. The preview LRU holds one set of 583 previews, not
+  two: after a pass with routes on, turning them off repaints the plain previews as the grid comes back into view.
+  One choice for the session (`route-switches.ts`) serves the editor, the generator and the library: the library's
+  Routes toggle is on while either switch is, and turns both on or both off.
 - **Live mazes are painted, not cached.** The minimap paints the maze being edited straight onto its canvas.
 - **Artboards carry a crisp shadow**, a hairline ring and a 2 px drop: the slab's blurred shadow on every mounted
   artboard broke the frame budget. The editor's board keeps the slab, which scales with the camera.

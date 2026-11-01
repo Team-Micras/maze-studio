@@ -17,7 +17,7 @@ import { cn } from '@/ui/primitives/utils';
 import { useTheme } from '@/ui/theme';
 import { Verbatim } from '@/ui/verbatim';
 
-import { CategoryFilter, SourceFilter } from './filter-toggles';
+import { CategoryFilter, RoutesToggle, SourceFilter } from './filter-toggles';
 import { MineAndFilesItems, type MineAndFilesActions } from './mine-and-files';
 import { NewMazeDialogs } from './new-maze-menu';
 import { NewMazeMenu } from './new-maze-button';
@@ -208,12 +208,12 @@ function PhoneMenu({ onOpenFile, files, onNew, newName }: MenuProps) {
 }
 
 /**
- * The library's islands (DESIGN.md 9.1): the brand, the search, source and category, the actions
- * and the credit; the zoom island is the studio's, since it changes with every move of the camera.
- * Its props do not, so a moving camera re-renders none of these. A phone stacks the search and the
- * filters at the top and keeps only the credit at the bottom. A notebook centres the search and
- * filters between the brand and the actions, or below them, as wide as the row above, where one row
- * would not hold all three.
+ * The library's islands (DESIGN.md 9.1): the brand, the search, source, category and Routes, the
+ * actions and the credit; the zoom island is the studio's, since it changes with every move of the
+ * camera. Its props do not, so a moving camera re-renders none of these. A phone stacks the search,
+ * Routes and the filters at the top and keeps only the credit at the bottom. A notebook centres the
+ * search and filters between the brand and the actions, or below them, as wide as the row above,
+ * where one row would not hold all three.
  */
 export function LibraryChrome({
   library,
@@ -267,6 +267,7 @@ export function LibraryChrome({
           <search>
             <Island className="fixed top-safe-2 right-safe-2 left-safe-2">
               {search}
+              <RoutesToggle iconOnly />
               <PhoneMenu files={files} newName={newName} onNew={onNew} onOpenFile={onOpenFile} />
             </Island>
           </search>
@@ -297,6 +298,8 @@ export function LibraryChrome({
               {source}
               <IslandSeparator />
               {category}
+              <IslandSeparator />
+              <RoutesToggle />
             </Island>
           </search>
           <Island className="h-11 justify-self-end">

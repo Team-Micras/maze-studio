@@ -11,7 +11,7 @@ import {
 } from 'react';
 
 import { BATCH, readRecipe, resize } from '@/generator';
-import type { Maze } from '@/maze';
+import { routesShown, type Maze } from '@/maze';
 import { SETTLE, type LoadingTrack } from '@/render/loading';
 import type { Generated } from '@/ui/editor/edit-session';
 import { ThumbnailCanvas } from '@/ui/board/thumbnail-canvas';
@@ -39,6 +39,7 @@ import { Input } from '@/ui/primitives/input';
 import { Sheet, SheetClose, SheetContent, SheetTitle } from '@/ui/primitives/sheet';
 import { cn } from '@/ui/primitives/utils';
 import { appStorage } from '@/ui/storage';
+import { useShownRoutes } from '@/ui/route-switches';
 import { showToast } from '@/ui/toasts';
 
 import { Batch, MAX_ITEMS, randomSeed, type Item } from './batch-run';
@@ -155,10 +156,11 @@ const FULL = `A batch holds ${MAX_ITEMS} mazes: start a new batch from the setti
 const NOT_A_RECIPE = 'This is not a recipe: copy it again with “Copy recipe”';
 
 /**
- * A ready card's thumbnail; the first time a maze shows after it was built, painted at once rather
- * than in idle time, under the skeleton that fades into it.
+ * A ready card's thumbnail, with the routes the session shows; the first time a maze shows after
+ * it was built, painted at once rather than in idle time, under the skeleton that fades into it.
  */
 function CardPicture({ item, place }: { item: ReadyItem; place: number }) {
+  const routes = useShownRoutes((now) => now.shown);
   const [settling] = useState(
     () => item.builtAt !== undefined && performance.now() - item.builtAt < SETTLE
   );
@@ -169,6 +171,7 @@ function CardPicture({ item, place }: { item: ReadyItem; place: number }) {
         cached={!settling}
         height={CARD_SIDE}
         maze={measureItem(item).maze}
+        routes={routes}
         width={CARD_SIDE}
       />
       {settling ? (
@@ -458,8 +461,9 @@ interface DetailViewProps {
 }
 
 /**
- * The maze opened from the gallery, a view pushed over it: drawn large unless the editor's board
- * shows it, then its title line with Copy recipe, its tags and its sentences. A swipe steps.
+ * The maze opened from the gallery, a view pushed over it: drawn large with the routes the session
+ * shows, unless the editor's board shows it, then its title line with Copy recipe, its tags and
+ * its sentences. A swipe steps.
  */
 function DetailView({
   items,
@@ -471,6 +475,7 @@ function DetailView({
   onSwipe,
 }: DetailViewProps) {
   const start = useRef<{ x: number; y: number } | undefined>(undefined);
+  const shownRoutes = useShownRoutes((now) => now.shown);
   const item = items[index];
 
   if (item === undefined) {
@@ -502,6 +507,7 @@ function DetailView({
             className="h-auto w-full"
             label={`Maze #${index + 1}, seed ${item.seed}`}
             maze={measureItem(item).maze}
+            overlays={{ routes: routesShown(measureItem(item).maze, shownRoutes) }}
           />
           {item.builtAt === undefined ? null : (
             <LoadingCanvas

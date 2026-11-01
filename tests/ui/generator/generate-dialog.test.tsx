@@ -1,4 +1,4 @@
-import { describe, expect, test, vi } from 'vitest';
+import { afterEach, describe, expect, test, vi } from 'vitest';
 import { page, userEvent } from 'vitest/browser';
 import { render } from 'vitest-browser-react';
 
@@ -8,8 +8,10 @@ import type { Generated } from '@/ui/editor/edit-session';
 import { Batch } from '@/ui/generator/batch-run';
 import GenerateDialog, { type GeneratorPreview } from '@/ui/generator/generate-dialog';
 import type { NewMazeRequest } from '@/ui/new-maze';
+import { showRoutes, useShownRoutes } from '@/ui/route-switches';
 import '@/ui/styles.css';
 import { axeViolations } from '@tests/support/axe-check';
+import { showsAmberRoute } from '@tests/support/ui/route-pixels';
 
 const GENERATION = { timeout: 50_000 };
 
@@ -44,6 +46,13 @@ async function generate(seed = '1'): Promise<void> {
 async function open(place: number): Promise<void> {
   await userEvent.click(page.getByRole('button', { name: new RegExp(`^#${place},`) }));
 }
+
+/** The thumbnail of the first card. */
+function firstCard(): HTMLCanvasElement | null {
+  return document.querySelector('[data-card="1"] canvas');
+}
+
+afterEach(() => useShownRoutes.setState({ shown: undefined }));
 
 describe('The Generate dialog', () => {
   test('shows its settings with every rule and fine tuning field, focuses Generate, and has no accessibility violations', async () => {
@@ -186,6 +195,21 @@ describe('The Generate dialog', () => {
     expect([statusHeight(), galleryTop()]).toEqual([height, top]);
     await expect.poll(building, GENERATION).toBe(false);
     expect([statusHeight(), galleryTop()]).toEqual([height, top]);
+  });
+
+  test('draws the routes the session shows on its cards and on the maze opened', async () => {
+    await mount();
+    await generate();
+    await expect.poll(building, GENERATION).toBe(false);
+
+    expect(showsAmberRoute(firstCard())).toBe(false);
+    showRoutes(true);
+    await expect.poll(() => showsAmberRoute(firstCard())).toBe(true);
+
+    await open(1);
+    await expect.poll(() => document.querySelectorAll('[data-detail] [data-route]').length).toBe(2);
+    showRoutes(false);
+    await expect.poll(() => document.querySelectorAll('[data-detail] [data-route]').length).toBe(0);
   });
 
   test('opens a maze drawn large in a view of its own, steps with ‹ › and the arrow keys, and goes back to the gallery where it was', async () => {

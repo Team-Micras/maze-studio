@@ -39,6 +39,9 @@ export interface ShortestRoutes {
   readonly withDiagonals: Route;
 }
 
+/** Whether each of the two routes is drawn. */
+export type RouteSwitches = Readonly<Record<keyof ShortestRoutes, boolean>>;
+
 const DX = [0, 1, 1, 1, 0, -1, -1, -1];
 const DY = [1, 1, 0, -1, -1, -1, 0, 1];
 const START = 8;
@@ -242,4 +245,25 @@ export function shortestRoutes(maze: Maze): ShortestRoutes | null | undefined {
   }
 
   return memo.get(maze);
+}
+
+/**
+ * The routes of `maze` that `switches` turn on, or `undefined` when none is on, which searches
+ * nothing, and when the maze has no routes.
+ */
+export function routesShown(
+  maze: Maze,
+  switches: RouteSwitches | undefined
+): Partial<ShortestRoutes> | undefined {
+  if (switches === undefined || (!switches.withoutDiagonals && !switches.withDiagonals)) {
+    return undefined;
+  }
+
+  const routes = shortestRoutes(maze) ?? undefined;
+  return (
+    routes && {
+      withoutDiagonals: switches.withoutDiagonals ? routes.withoutDiagonals : undefined,
+      withDiagonals: switches.withDiagonals ? routes.withDiagonals : undefined,
+    }
+  );
 }

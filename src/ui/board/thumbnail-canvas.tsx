@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react';
 
-import { encodeMazeCode, type Maze, type MazeDiff } from '@/maze';
+import { encodeMazeCode, routesShown, type Maze, type MazeDiff, type RouteSwitches } from '@/maze';
 import {
   boardGeometry,
   paintTrack,
@@ -36,6 +36,8 @@ export interface ThumbnailCanvasProps {
    * Changes panel's thumbnails.
    */
   readonly diff?: ThumbnailDiff;
+  /** The shortest routes drawn on top, unless a diff is; none by default. */
+  readonly routes?: RouteSwitches;
   /**
    * Whether a missing bitmap paints at the next frame when no idle time comes first, as through a
    * fling of the library's grid, which leaves almost no idle time on a phone; off by default.
@@ -76,6 +78,7 @@ function paintCached(
   band: ThumbnailBand,
   blank: boolean,
   diff: ThumbnailDiff | undefined,
+  routes: RouteSwitches | undefined,
   eachFrame: boolean,
   flung: (() => boolean) | undefined
 ): () => void {
@@ -87,20 +90,20 @@ function paintCached(
     );
   }
 
-  const ready = thumbnailCache.cached(key, band);
+  const ready = thumbnailCache.cached(key, band, routes);
 
   if (ready !== undefined && blank) {
     showBitmap(canvas, ready);
     return () => undefined;
   }
 
-  const sharp = (): void => showBitmap(canvas, thumbnailCache.thumbnail(key, maze, band));
+  const sharp = (): void => showBitmap(canvas, thumbnailCache.thumbnail(key, maze, band, routes));
 
   if (flung === undefined || !flung() || !blank || band <= PREVIEW_BAND) {
     return schedulePaint(sharp, eachFrame);
   }
 
-  const preview = thumbnailCache.cached(key, PREVIEW_BAND);
+  const preview = thumbnailCache.cached(key, PREVIEW_BAND, routes);
   let waited = false;
   const upgrade = (): boolean => {
     if (!flung() && (waited || onScreen(canvas))) {
@@ -118,7 +121,7 @@ function paintCached(
     cancel = schedulePaint(
       () => {
         if (flung()) {
-          showBitmap(canvas, thumbnailCache.thumbnail(key, maze, PREVIEW_BAND));
+          showBitmap(canvas, thumbnailCache.thumbnail(key, maze, PREVIEW_BAND, routes));
         }
 
         cancel = schedulePaint(upgrade, eachFrame);
@@ -142,7 +145,8 @@ function onScreen(canvas: HTMLCanvasElement): boolean {
 function paintLive(
   canvas: HTMLCanvasElement,
   maze: Maze,
-  pixels: { width: number; height: number }
+  pixels: { width: number; height: number },
+  routes: RouteSwitches | undefined
 ) {
   canvas.width = Math.max(1, Math.round(pixels.width));
   canvas.height = Math.max(1, Math.round(pixels.height));
@@ -157,7 +161,7 @@ function paintLive(
     size: Math.max(canvas.width, canvas.height),
   });
   context.scale(canvas.width / geometry.width, canvas.height / geometry.height);
-  paintTrack(context, maze, geometry);
+  paintTrack(context, maze, geometry, undefined, routesShown(maze, routes));
 }
 
 /**
@@ -175,6 +179,7 @@ export function ThumbnailCanvas({
   resolution,
   cached = true,
   diff,
+  routes,
   eachFrame = false,
   flung,
   className,
@@ -197,14 +202,15 @@ export function ThumbnailCanvas({
         band,
         element.dataset.painted === undefined,
         diff,
+        routes,
         eachFrame,
         flung
       );
     }
 
-    paintLive(element, maze, { width: width * ratio, height: height * ratio });
+    paintLive(element, maze, { width: width * ratio, height: height * ratio }, routes);
     return undefined;
-  }, [maze, width, height, ratio, cached, band, diff, eachFrame, flung]);
+  }, [maze, width, height, ratio, cached, band, diff, routes, eachFrame, flung]);
 
   return (
     <canvas aria-hidden className={cn('block', className)} ref={canvas} style={{ width, height }} />

@@ -3,17 +3,24 @@
  * fixed bands of 64, 128, 256 and 512 pixels on the longest side, and kept in caches bounded by
  * the bytes of the bitmaps (PLAN.md 3.3, DESIGN.md 7): one for the small bands, roomy enough for a
  * preview of every maze, and one for the large bands. The library, the minimap, the quick list
- * and the Changes panel, which draws the diff on top, all take them from here.
+ * and the Changes panel, which draws the diff on top, all take them from here; the library and the
+ * generator's gallery may draw the shortest routes on top, kept apart from the plain bitmap.
  *
  * @module
  */
 
-import type { Maze, MazeDiff } from '@/maze';
+import {
+  routesShown,
+  type Maze,
+  type MazeDiff,
+  type RouteSwitches,
+  type ShortestRoutes,
+} from '@/maze';
 
 import { boardGeometry, type BoardGeometry } from './geometry';
 import { LruCache } from './lru-cache';
-import { diffLayers, overlayStrokes } from './overlay-layers';
-import { TRACK_COLORS, TRACK_OPACITY } from './track-colors';
+import { diffLayers, overlayLayers, overlayStrokes } from './overlay-layers';
+import { ROUTE_COLORS, TRACK_COLORS, TRACK_OPACITY } from './track-colors';
 import { trackPaint } from './track-layers';
 
 /** The sizes a thumbnail is drawn at, in device pixels on its longest side. */
@@ -36,6 +43,12 @@ export const PREVIEW_BAND = 128;
  * preview of 64 KB for each of 640 mazes, more than the repository holds.
  */
 export const PREVIEW_CACHE_BYTES = 40 * 1024 * 1024;
+
+/**
+ * How many times thicker a route's line is on a thumbnail than on the board, to read that small;
+ * never thinner than a wall.
+ */
+const THUMBNAIL_ROUTE_SCALE = 2;
 
 /** The size of a thumbnail's bitmap, in device pixels. */
 export interface ThumbnailSize {
@@ -99,15 +112,40 @@ function stroke(
   context.setLineDash([]);
 }
 
+function paintRoutes(
+  context: Canvas2D,
+  geometry: BoardGeometry,
+  routes: Partial<ShortestRoutes>
+): void {
+  const strokes = overlayStrokes(geometry);
+  const width = Math.max(strokes.route * THUMBNAIL_ROUTE_SCALE, geometry.wall);
+  context.lineCap = 'round';
+  context.lineJoin = 'round';
+
+  for (const route of overlayLayers(geometry, { routes }).routes) {
+    const line = new Path2D(route.line);
+    context.globalAlpha = TRACK_OPACITY.routeCasing;
+    context.strokeStyle = TRACK_COLORS.floor;
+    context.lineWidth = width + strokes.routeCasing - strokes.route;
+    context.stroke(line);
+    context.globalAlpha = 1;
+    context.strokeStyle = ROUTE_COLORS[route.name];
+    context.lineWidth = width;
+    context.stroke(line);
+  }
+}
+
 /**
- * Paints the track of `maze` drawn with `geometry` on `context`, in board units, and the diff on
- * top when one is given.
+ * Paints the track of `maze` drawn with `geometry` on `context`, in board units, the diff on top
+ * when one is given, and the routes given on top of all, {@link THUMBNAIL_ROUTE_SCALE} times as
+ * thick as on the board.
  */
 export function paintTrack(
   context: Canvas2D,
   maze: Maze,
   geometry: BoardGeometry,
-  diff?: MazeDiff
+  diff?: MazeDiff,
+  routes?: Partial<ShortestRoutes>
 ): void {
   for (const layer of trackPaint(maze, geometry)) {
     const shape = new Path2D(layer.d);
@@ -138,10 +176,22 @@ export function paintTrack(
     stroke(context, paths.marked, strokes.diff);
     stroke(context, paths.dashed, strokes.diff, strokes.diffDash);
   }
+
+  if (routes !== undefined) {
+    paintRoutes(context, geometry, routes);
+  }
 }
 
-/** A new thumbnail of `maze` in `band`, with the diff on top when one is given. */
-export function drawThumbnail(maze: Maze, band: ThumbnailBand, diff?: MazeDiff): OffscreenCanvas {
+/**
+ * A new thumbnail of `maze` in `band`, with the diff on top when one is given and the routes
+ * `routes` turns on above it.
+ */
+export function drawThumbnail(
+  maze: Maze,
+  band: ThumbnailBand,
+  diff?: MazeDiff,
+  routes?: RouteSwitches
+): OffscreenCanvas {
   const size = thumbnailSize(maze, band);
   const canvas = new OffscreenCanvas(size.width, size.height);
   const context = canvas.getContext('2d');
@@ -152,8 +202,13 @@ export function drawThumbnail(maze: Maze, band: ThumbnailBand, diff?: MazeDiff):
 
   const geometry = boardGeometry(maze, { scale: 'thumbnail', size: band });
   context.scale(size.width / geometry.width, size.height / geometry.height);
-  paintTrack(context, maze, geometry, diff);
+  paintTrack(context, maze, geometry, diff, routesShown(maze, routes));
   return canvas;
+}
+
+function routesKey(routes: RouteSwitches | undefined): string {
+  const on = [routes?.withoutDiagonals && 'o', routes?.withDiagonals && 'd'].filter(Boolean);
+  return on.length === 0 ? '' : `:routes:${on.join('')}`;
 }
 
 /**
@@ -184,10 +239,13 @@ export class ThumbnailCache {
    *
    * @param key What identifies the maze: the same key must always mean the same maze, such as its
    *   compact code.
+   * @param routes The routes drawn on top, which a bitmap of its own keeps; none by default.
    */
-  thumbnail(key: string, maze: Maze, pixels: number): OffscreenCanvas {
+  thumbnail(key: string, maze: Maze, pixels: number, routes?: RouteSwitches): OffscreenCanvas {
     const band = thumbnailBand(pixels);
-    return this.#cached(band, `${band}:${key}`, () => drawThumbnail(maze, band));
+    return this.#cached(band, `${band}:${key}${routesKey(routes)}`, () =>
+      drawThumbnail(maze, band, undefined, routes)
+    );
   }
 
   /**
@@ -213,12 +271,12 @@ export class ThumbnailCache {
 
   /**
    * The thumbnail of the maze `key` names for a place `pixels` device pixels long, if it is
-   * already drawn; never draws, so a caller can show what is ready at once and draw the rest
-   * later.
+   * already drawn, with `routes` on top as for {@link ThumbnailCache.thumbnail}; never draws, so a
+   * caller can show what is ready at once and draw the rest later.
    */
-  cached(key: string, pixels: number): OffscreenCanvas | undefined {
+  cached(key: string, pixels: number, routes?: RouteSwitches): OffscreenCanvas | undefined {
     const band = thumbnailBand(pixels);
-    return this.#cacheOf(band).get(`${band}:${key}`);
+    return this.#cacheOf(band).get(`${band}:${key}${routesKey(routes)}`);
   }
 
   #cacheOf(band: ThumbnailBand): LruCache<OffscreenCanvas> {

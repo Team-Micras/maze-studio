@@ -7,7 +7,7 @@
 
 import { createStore, type StoreApi } from 'zustand/vanilla';
 
-import type { Maze, ShortestRoutes } from '@/maze';
+import type { Maze } from '@/maze';
 import { artboardIn, type WorldRect } from '@/render';
 
 import type { HintMessage } from '@/ui/editor/tool-hint';
@@ -61,12 +61,7 @@ export interface StudioState {
   readonly renameOpen: boolean;
   /** Whether the Routes panel is open. */
   readonly routesOpen: boolean;
-  /** Which shortest routes the board draws; none until Routes is first opened. */
-  readonly shownRoutes: RouteSwitches | undefined;
 }
-
-/** Whether each shortest route is drawn. */
-export type RouteSwitches = Readonly<Record<keyof ShortestRoutes, boolean>>;
 
 /** The studio's state at the start: the library. */
 export const INITIAL_STUDIO: StudioState = {
@@ -86,7 +81,6 @@ export const INITIAL_STUDIO: StudioState = {
   showDiff: false,
   renameOpen: false,
   routesOpen: false,
-  shownRoutes: undefined,
 };
 
 /** A new store of the studio's state. */

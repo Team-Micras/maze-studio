@@ -1,7 +1,14 @@
 import { useStore, type StoreApi } from 'zustand';
 import { useCallback, type FocusEvent, type KeyboardEvent } from 'react';
 
-import { fillBorder, shortestRoutes, validateMaze, type Finding, type MazeDiff } from '@/maze';
+import {
+  fillBorder,
+  routesShown,
+  shortestRoutes,
+  validateMaze,
+  type Finding,
+  type MazeDiff,
+} from '@/maze';
 import { areaInWorld, boardGeometry, focusArea, revealCamera, type Insets } from '@/render';
 import type { CanvasCamera } from '@/ui/board/use-canvas-camera';
 import type { ChecksProps } from '@/ui/editor/checks';
@@ -14,12 +21,11 @@ import { isCellTool, useCellDrawing } from '@/ui/editor/use-cell-drawing';
 import { useEditorShortcuts, type EditorShortcuts } from '@/ui/editor/use-editor-shortcuts';
 import type { MazeEditor } from '@/ui/editor/use-maze-editor';
 import { useWallDrawing } from '@/ui/editor/use-wall-drawing';
+import { ALL_ROUTES, revealRoutes, toggleRoute, useShownRoutes } from '@/ui/route-switches';
 
-import type { RouteSwitches, StudioScreen, StudioState } from './studio-store';
+import type { StudioScreen, StudioState } from './studio-store';
 
 const EDIT_HINT = 'Tap a slot to toggle. Drag to draw. Two fingers pan';
-
-const ALL_ROUTES: RouteSwitches = { withoutDiagonals: true, withDiagonals: true };
 
 /**
  * Editing the maze on screen in the studio (PLAN.md 3.4): the tool that draws with the pointer, the
@@ -119,17 +125,15 @@ export function useStudioEditing({
   const selected =
     onScreen !== undefined && state.finding?.maze === onScreen.key ? state.finding.key : undefined;
   const focused = findings.find((finding, index) => findingKey(finding, index) === selected);
-  const { shownRoutes } = state;
-  const setRoutesOpen = (open: boolean): void =>
-    store.setState(({ shownRoutes: now }) => ({
-      routesOpen: open,
-      shownRoutes: open ? (now ?? ALL_ROUTES) : now,
-    }));
-  const routesNeeded =
-    state.routesOpen ||
-    shownRoutes?.withoutDiagonals === true ||
-    shownRoutes?.withDiagonals === true;
-  const routes = maze === undefined || !routesNeeded ? undefined : shortestRoutes(maze);
+  const shownRoutes = useShownRoutes((now) => now.shown);
+  const setRoutesOpen = (open: boolean): void => {
+    if (open) {
+      revealRoutes();
+    }
+
+    store.setState({ routesOpen: open });
+  };
+  const routes = maze === undefined || !state.routesOpen ? undefined : shortestRoutes(maze);
 
   useEditorShortcuts({
     list,
@@ -193,13 +197,7 @@ export function useStudioEditing({
       selection: cells.selection ?? boardKeys.selection,
       focus: focused,
       diff,
-      routes:
-        routes && shownRoutes
-          ? {
-              withoutDiagonals: shownRoutes.withoutDiagonals ? routes.withoutDiagonals : undefined,
-              withDiagonals: shownRoutes.withDiagonals ? routes.withDiagonals : undefined,
-            }
-          : undefined,
+      routes: maze === undefined ? undefined : routesShown(maze, shownRoutes),
     },
     cursor: boardKeys.cursor,
     onCanvasKey,
@@ -251,10 +249,7 @@ export function useStudioEditing({
             shown: shownRoutes ?? ALL_ROUTES,
             open: state.routesOpen,
             onOpenChange: setRoutesOpen,
-            onToggle: (name) => {
-              const now = store.getState().shownRoutes ?? ALL_ROUTES;
-              store.setState({ shownRoutes: { ...now, [name]: !now[name] } });
-            },
+            onToggle: toggleRoute,
             phone,
           } satisfies RoutesProps),
     actions: {

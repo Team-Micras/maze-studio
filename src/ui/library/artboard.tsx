@@ -8,6 +8,7 @@ import { Check } from '@/ui/icons';
 import { artboardLabel } from '@/ui/labels';
 import { cn } from '@/ui/primitives/utils';
 import { pushRoute } from '@/ui/navigation';
+import { useShownRoutes } from '@/ui/route-switches';
 
 import { libraryFlung } from './library-scroller';
 import { routeHash, routeOfEntry } from '@/ui/routes';
@@ -61,13 +62,13 @@ function artboardStyle(
 }
 
 /**
- * One maze of the library's grid (DESIGN.md 7): a link that opens it, its thumbnail, the
- * generator's skeleton until that is painted, and its name and size above. Hover and keyboard focus
- * ring it. A new place slides there, so a reflow moves the artboards that stay mounted. A plain
- * click pushes the route at once, so the maze opens in the next frame; a modified one opens a new
- * tab. The link is not draggable, and a finger held on it opens no menu and selects nothing: held,
- * it stays put; lifted without moving, even after a long press, it opens the maze; moved, it
- * scrolls the grid.
+ * One maze of the library's grid (DESIGN.md 7): a link that opens it, its thumbnail with the routes
+ * the session shows, the generator's skeleton until that is painted, and its name and size above.
+ * Hover and keyboard focus ring it. A new place slides there, so a reflow moves the artboards that
+ * stay mounted. A plain click pushes the route at once, so the maze opens in the next frame; a
+ * modified one opens a new tab. The link is not draggable, and a finger held on it opens no menu
+ * and selects nothing: held, it stays put; lifted without moving, even after a long press, it opens
+ * the maze; moved, it scrolls the grid.
  */
 export const Artboard = memo(function Artboard({
   entry,
@@ -85,6 +86,7 @@ export const Artboard = memo(function Artboard({
   onToggle,
   onFocus,
 }: ArtboardProps) {
+  const routes = useShownRoutes((now) => now.shown);
   const press = useRef<{ readonly id: number; readonly x: number; readonly y: number } | undefined>(
     undefined
   );
@@ -252,6 +254,7 @@ export const Artboard = memo(function Artboard({
         height={height}
         maze={maze}
         resolution={band}
+        routes={routes}
         width={width}
       />
       {selected ? (
