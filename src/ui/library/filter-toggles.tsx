@@ -1,9 +1,6 @@
 import { isLibrarySource, type LibraryCategory, type LibrarySource } from '@/library';
-import { Path } from '@/ui/icons';
-import { Toggle } from '@/ui/primitives/toggle';
 import { ToggleGroup, ToggleGroupItem } from '@/ui/primitives/toggle-group';
 import { cn } from '@/ui/primitives/utils';
-import { anyRouteShown, showRoutes, useShownRoutes } from '@/ui/route-switches';
 
 const SEGMENT =
   'h-9 flex-none rounded-[10px] px-2.5 text-[13px] font-medium text-muted-foreground hover:bg-accent hover:text-foreground data-[state=on]:bg-accent data-[state=on]:text-foreground data-[state=on]:shadow-[inset_0_0_0_1px_var(--border)] aria-checked:bg-accent aria-checked:text-foreground aria-checked:shadow-[inset_0_0_0_1px_var(--border)] max-[720px]:h-10';
@@ -85,25 +82,5 @@ export function CategoryFilter({ value, onChange, withAll = true }: CategoryFilt
         </ToggleGroupItem>
       ))}
     </ToggleGroup>
-  );
-}
-
-/**
- * Routes: draws the shortest routes on every thumbnail, both of them, and takes them off again; on
- * while the editor's switches show either. A phone shows only its icon, so the row still fits.
- */
-export function RoutesToggle({ iconOnly = false }: { readonly iconOnly?: boolean }) {
-  const on = useShownRoutes((now) => anyRouteShown(now.shown));
-
-  return (
-    <Toggle
-      aria-label={iconOnly ? 'Routes' : undefined}
-      className={cn(SEGMENT, 'gap-1.5')}
-      onPressedChange={showRoutes}
-      pressed={on}
-    >
-      <Path aria-hidden size={16} />
-      {iconOnly ? null : 'Routes'}
-    </Toggle>
   );
 }

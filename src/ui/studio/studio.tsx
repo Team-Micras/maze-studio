@@ -13,6 +13,7 @@ import { flushSync } from 'react-dom';
 import { useStore } from 'zustand';
 
 import { filterCatalog, type LibraryFilter } from '@/library';
+import { routesShown } from '@/maze';
 import {
   boardLimits,
   EDITOR_INSETS,
@@ -51,6 +52,7 @@ import { LibraryChrome } from '@/ui/library/library-chrome';
 import type { Library } from '@/ui/library/use-library';
 import { openEntry, type OpenMaze } from '@/ui/open-maze';
 import { cn } from '@/ui/primitives/utils';
+import { useShownRoutes } from '@/ui/route-switches';
 import { useTheme } from '@/ui/theme';
 import { showToast } from '@/ui/toasts';
 import { newMazeName, type NewMazeRequest } from '@/ui/new-maze';
@@ -271,6 +273,7 @@ export function Studio({
   const writing = useWriting();
   const sessionChangesNow = useStore(sessionChanges);
   const theme = useTheme((current) => current.theme);
+  const shownRoutes = useShownRoutes((now) => now.shown);
   const toggleTheme = useTheme((current) => current.toggle);
   const changes = useStudioChanges({ store, screen, library, phone, onDiscard });
   const actions = useMazeActions({
@@ -438,13 +441,22 @@ export function Studio({
           {mode !== 'library' && onScreen !== undefined && board !== undefined ? (
             <OpenBoard
               maze={onScreen.maze}
-              overlays={mode === 'editor' ? editing.overlays : undefined}
+              overlays={
+                mode === 'editor'
+                  ? editing.overlays
+                  : { routes: routesShown(onScreen.maze, shownRoutes) }
+              }
               fadeIn={mode !== 'flying-out'}
               rect={board}
               shown
             />
           ) : preparedMaze === undefined ? null : (
-            <OpenBoard maze={preparedMaze} rect={boardOf(preparedMaze)} shown={false} />
+            <OpenBoard
+              maze={preparedMaze}
+              overlays={{ routes: routesShown(preparedMaze, shownRoutes) }}
+              rect={boardOf(preparedMaze)}
+              shown={false}
+            />
           )}
           {loading === undefined || board === undefined ? null : (
             <Suspense fallback={null}>
