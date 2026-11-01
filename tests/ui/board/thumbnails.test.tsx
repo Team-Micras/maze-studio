@@ -477,6 +477,32 @@ describe('ThumbnailCanvas', () => {
     expect(routesKnown(maze)).toBe(true);
   });
 
+  test('paints the routes of a flung thumbnail, once searched, as its preview first and sharp once it stops', async () => {
+    const maze = { ...(await repoMaze(REPO_MAZES.halfsize)) };
+    thumbnailCache.thumbnail(encodeMazeCode(maze), maze, PREVIEW_BAND);
+    evictSharpThumbnails(maze);
+    const sharp = thumbnailBand(200 * window.devicePixelRatio);
+    let moving = true;
+    await render(
+      <ThumbnailCanvas
+        eachFrame
+        flung={() => moving}
+        height={200}
+        maze={maze}
+        routes={{ withoutDiagonals: true, withDiagonals: true }}
+        width={200}
+      />
+    );
+    const canvas = document.querySelector('canvas');
+
+    expect(canvas?.width).toBe(PREVIEW_BAND);
+    await expect.poll(() => showsAmberRoute(canvas)).toBe(true);
+    expect(canvas?.width).toBe(PREVIEW_BAND);
+    moving = false;
+    await expect.poll(() => canvas?.width).toBe(sharp);
+    expect(showsAmberRoute(canvas)).toBe(true);
+  });
+
   test('paints a library thumbnail at rest sharp at once, never its preview first', async () => {
     const maze = await repoMaze(REPO_MAZES.halfsize);
     thumbnailCache.thumbnail(encodeMazeCode(maze), maze, PREVIEW_BAND);

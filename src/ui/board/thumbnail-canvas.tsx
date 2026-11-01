@@ -4,7 +4,6 @@ import {
   encodeMazeCode,
   routesKnown,
   routesShown,
-  shortestRoutes,
   type Maze,
   type MazeDiff,
   type RouteSwitches,
@@ -179,23 +178,31 @@ function paintLive(
 
 /**
  * Paints with the routes `switches` turn on, searched in idle time and never in a frame's paint:
- * until they are, a blank canvas paints without them, and a painted one keeps its bitmap.
+ * until they are, a blank canvas paints without them, and a painted one keeps its bitmap. Once
+ * searched, the routes paint as a blank canvas's first paint would, at once when ready and by the
+ * fling's rules otherwise; a maze without routes that already shows its plain bitmap stays as is.
  */
 function withRoutes(
   canvas: HTMLCanvasElement,
   maze: Maze,
   switches: RouteSwitches | undefined,
-  paint: (routes: Partial<ShortestRoutes> | undefined) => () => void
+  paint: (routes: Partial<ShortestRoutes> | undefined, blank?: boolean) => () => void
 ): () => void {
   if (!anyRouteShown(switches) || routesKnown(maze)) {
     return paint(routesShown(maze, switches));
   }
 
-  let cancel = canvas.dataset.painted === undefined ? paint(undefined) : () => undefined;
+  const blank = canvas.dataset.painted === undefined;
+  let cancel = blank ? paint(undefined) : () => undefined;
   const search = schedulePaint(() => {
-    shortestRoutes(maze);
+    const shown = routesShown(maze, switches);
+
+    if (shown === undefined && blank) {
+      return;
+    }
+
     cancel();
-    cancel = paint(routesShown(maze, switches));
+    cancel = paint(shown, true);
   });
   return () => {
     search();
@@ -234,18 +241,12 @@ export function ThumbnailCanvas({
       return undefined;
     }
 
-    const paint = (shown: Partial<ShortestRoutes> | undefined): (() => void) => {
+    const paint = (
+      shown: Partial<ShortestRoutes> | undefined,
+      blank = element.dataset.painted === undefined
+    ): (() => void) => {
       if (cached) {
-        return paintCached(
-          element,
-          maze,
-          band,
-          element.dataset.painted === undefined,
-          diff,
-          shown,
-          eachFrame,
-          flung
-        );
+        return paintCached(element, maze, band, blank, diff, shown, eachFrame, flung);
       }
 
       paintLive(element, maze, { width: width * ratio, height: height * ratio }, shown);
