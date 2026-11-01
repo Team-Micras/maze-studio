@@ -221,6 +221,14 @@ function thumbnail(): HTMLCanvasElement | null | undefined {
   return artboards()[6]?.querySelector('canvas');
 }
 
+/**
+ * The library's Routes toggle, found only while it is `pressed` or not: the only Routes button
+ * with a pressed state, as the editor's opens a panel.
+ */
+function libraryRoutes(pressed: boolean) {
+  return page.getByRole('button', { name: 'Routes', pressed });
+}
+
 /** How many routes the open board draws. */
 function drawn(): number {
   return document.querySelectorAll('[data-open-board] [data-route]').length;
@@ -229,12 +237,9 @@ function drawn(): number {
 describe('The routes the session shows', () => {
   test('turn on for every thumbnail from the library, and share their switches with the Routes panel', async () => {
     await mountApp();
-    const toggle = page.elementLocator(
-      document.querySelector('[data-chrome="library"] button[aria-pressed]') ?? document.body
-    );
 
     expect(showsAmberRoute(thumbnail())).toBe(false);
-    await userEvent.click(toggle);
+    await userEvent.click(libraryRoutes(false));
     await expect.poll(() => showsAmberRoute(thumbnail())).toBe(true);
 
     await openMaze();
@@ -245,10 +250,10 @@ describe('The routes the session shows', () => {
 
     await userEvent.click(page.getByRole('button', { name: 'Back to the library' }));
     await expect.poll(mode).toBe('library');
-    await expect.element(toggle).toHaveAttribute('aria-pressed', 'true');
+    await expect.element(libraryRoutes(true)).toBeVisible();
     await expect.poll(() => showsAmberRoute(thumbnail())).toBe(false);
-    await userEvent.click(toggle);
-    await expect.element(toggle).toHaveAttribute('aria-pressed', 'false');
+    await userEvent.click(libraryRoutes(true));
+    await expect.element(libraryRoutes(false)).toBeVisible();
 
     await openMaze();
     expect(drawn()).toBe(0);

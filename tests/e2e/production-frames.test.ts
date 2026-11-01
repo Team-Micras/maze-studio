@@ -66,11 +66,17 @@ function runScroll(page: Page): Promise<number[]> {
   );
 }
 
-async function measureScroll(): Promise<FrameReport> {
+/** The scroll runs of {@link runScroll}, with the shortest routes on every thumbnail when `routes`. */
+async function measureScroll(routes: boolean): Promise<FrameReport> {
   const context = await browser.newContext({ viewport: { width: 1440, height: 900 } });
   const page = await context.newPage();
   await page.goto(app);
   await page.locator('a[data-artboard]').first().waitFor();
+
+  if (routes) {
+    await page.getByRole('button', { name: 'Routes', pressed: false }).click();
+  }
+
   await page.waitForTimeout(500);
   const session = await context.newCDPSession(page);
   await session.send('Emulation.setCPUThrottlingRate', { rate: slowdown });
@@ -242,13 +248,19 @@ function gate(found: readonly string[]): void {
 }
 
 describe('The built library as slow as the reference notebook at 4× CPU throttling', () => {
-  test('scrolls through every maze within the frame budget of DESIGN.md 8', async () => {
-    const scroll = await measureScroll();
-    report(describeRun('scroll', scroll));
+  test.each([
+    ['without', false],
+    ['with', true],
+  ])(
+    'scrolls through every maze %s the routes within the frame budget of DESIGN.md 8',
+    async (name, routes) => {
+      const scroll = await measureScroll(routes);
+      report(describeRun(`scroll ${name} routes`, scroll));
 
-    expect(scroll.frames).toBe(STEPS);
-    gate(breaches('scroll', scroll));
-  });
+      expect(scroll.frames).toBe(STEPS);
+      gate(breaches(`scroll ${name} routes`, scroll));
+    }
+  );
 });
 
 describe('The built studio as slow as the reference notebook at 4× CPU throttling', () => {

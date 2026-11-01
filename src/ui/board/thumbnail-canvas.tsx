@@ -1,6 +1,15 @@
 import { useEffect, useRef } from 'react';
 
-import { encodeMazeCode, routesShown, type Maze, type MazeDiff, type RouteSwitches } from '@/maze';
+import {
+  encodeMazeCode,
+  routesKnown,
+  routesShown,
+  shortestRoutes,
+  type Maze,
+  type MazeDiff,
+  type RouteSwitches,
+  type ShortestRoutes,
+} from '@/maze';
 import {
   boardGeometry,
   paintTrack,
@@ -9,6 +18,7 @@ import {
   type ThumbnailBand,
 } from '@/render';
 import { cn } from '@/ui/primitives/utils';
+import { anyRouteShown } from '@/ui/route-switches';
 
 import { schedulePaint } from './paint-queue';
 import { thumbnailCache } from './thumbnail-cache';
@@ -36,7 +46,10 @@ export interface ThumbnailCanvasProps {
    * Changes panel's thumbnails.
    */
   readonly diff?: ThumbnailDiff;
-  /** The shortest routes drawn on top, unless a diff is; none by default. */
+  /**
+   * The shortest routes drawn on top, unless a diff is; none by default. A maze whose routes are
+   * not searched yet shows without them, and with them once idle time has searched them.
+   */
   readonly routes?: RouteSwitches;
   /**
    * Whether a missing bitmap paints at the next frame when no idle time comes first, as through a
@@ -78,7 +91,7 @@ function paintCached(
   band: ThumbnailBand,
   blank: boolean,
   diff: ThumbnailDiff | undefined,
-  routes: RouteSwitches | undefined,
+  routes: Partial<ShortestRoutes> | undefined,
   eachFrame: boolean,
   flung: (() => boolean) | undefined
 ): () => void {
@@ -146,7 +159,7 @@ function paintLive(
   canvas: HTMLCanvasElement,
   maze: Maze,
   pixels: { width: number; height: number },
-  routes: RouteSwitches | undefined
+  routes: Partial<ShortestRoutes> | undefined
 ) {
   canvas.width = Math.max(1, Math.round(pixels.width));
   canvas.height = Math.max(1, Math.round(pixels.height));
@@ -161,7 +174,33 @@ function paintLive(
     size: Math.max(canvas.width, canvas.height),
   });
   context.scale(canvas.width / geometry.width, canvas.height / geometry.height);
-  paintTrack(context, maze, geometry, undefined, routesShown(maze, routes));
+  paintTrack(context, maze, geometry, { routes });
+}
+
+/**
+ * Paints with the routes `switches` turn on, searched in idle time and never in a frame's paint:
+ * until they are, a blank canvas paints without them, and a painted one keeps its bitmap.
+ */
+function withRoutes(
+  canvas: HTMLCanvasElement,
+  maze: Maze,
+  switches: RouteSwitches | undefined,
+  paint: (routes: Partial<ShortestRoutes> | undefined) => () => void
+): () => void {
+  if (!anyRouteShown(switches) || routesKnown(maze)) {
+    return paint(routesShown(maze, switches));
+  }
+
+  let cancel = canvas.dataset.painted === undefined ? paint(undefined) : () => undefined;
+  const search = schedulePaint(() => {
+    shortestRoutes(maze);
+    cancel();
+    cancel = paint(routesShown(maze, switches));
+  });
+  return () => {
+    search();
+    cancel();
+  };
 }
 
 /**
@@ -195,21 +234,25 @@ export function ThumbnailCanvas({
       return undefined;
     }
 
-    if (cached) {
-      return paintCached(
-        element,
-        maze,
-        band,
-        element.dataset.painted === undefined,
-        diff,
-        routes,
-        eachFrame,
-        flung
-      );
-    }
+    const paint = (shown: Partial<ShortestRoutes> | undefined): (() => void) => {
+      if (cached) {
+        return paintCached(
+          element,
+          maze,
+          band,
+          element.dataset.painted === undefined,
+          diff,
+          shown,
+          eachFrame,
+          flung
+        );
+      }
 
-    paintLive(element, maze, { width: width * ratio, height: height * ratio }, routes);
-    return undefined;
+      paintLive(element, maze, { width: width * ratio, height: height * ratio }, shown);
+      return () => undefined;
+    };
+
+    return withRoutes(element, maze, diff === undefined ? routes : undefined, paint);
   }, [maze, width, height, ratio, cached, band, diff, routes, eachFrame, flung]);
 
   return (

@@ -6,6 +6,7 @@ import {
   diffMazes,
   encodeMazeCode,
   setStart,
+  routesKnown,
   shortestRoutes,
   toggleWall,
   type Maze,
@@ -27,6 +28,7 @@ import { thumbnailCache } from '@/ui/board/thumbnail-cache';
 import { ThumbnailCanvas } from '@/ui/board/thumbnail-canvas';
 import { paintThumbnailSkeletons } from '@/ui/board/thumbnail-skeleton';
 import { REPO_MAZES, repoMaze } from '@tests/support/ui/repo-mazes';
+import { showsAmberRoute } from '@tests/support/ui/route-pixels';
 
 function pixel(canvas: OffscreenCanvas | HTMLCanvasElement, x: number, y: number): number[] {
   const context = canvas.getContext('2d');
@@ -90,7 +92,7 @@ function strokeCaps(before: Maze): string[] {
     seen.push(context.lineCap);
     draw(path ?? new Path2D());
   });
-  paintTrack(context, after, geometry, diffMazes(before, after));
+  paintTrack(context, after, geometry, { diff: diffMazes(before, after) });
   return seen;
 }
 
@@ -136,7 +138,7 @@ describe('drawThumbnail', () => {
       y: 3,
     });
     const plain = drawThumbnail(after, 128);
-    const marked = drawThumbnail(after, 128, diffMazes(maze, after));
+    const marked = drawThumbnail(after, 128, { diff: diffMazes(maze, after) });
     const differs = (x: number, y: number) =>
       pixel(plain, x, y).join() !== pixel(marked, x, y).join();
     const { pitch: cell, margin } = boardGeometry(after, { scale: 'thumbnail', size: 128 });
@@ -145,17 +147,15 @@ describe('drawThumbnail', () => {
     expect(differs(margin + cell * 10.5, 128 - margin - cell * 10.5)).toBe(false);
   });
 
-  test('draws the routes switched on, the one with diagonals amber, twice as thick as on the board', async () => {
+  test('draws the routes given, the one with diagonals amber, twice as thick as on the board', async () => {
     const maze = await repoMaze(REPO_MAZES.classic);
     const routes = shortestRoutes(maze);
     const plain = drawThumbnail(maze, 512);
-    const withDiagonals = drawThumbnail(maze, 512, undefined, {
-      withoutDiagonals: false,
-      withDiagonals: true,
+    const withDiagonals = drawThumbnail(maze, 512, {
+      routes: { withDiagonals: routes?.withDiagonals },
     });
-    const withoutDiagonals = drawThumbnail(maze, 512, undefined, {
-      withoutDiagonals: true,
-      withDiagonals: false,
+    const withoutDiagonals = drawThumbnail(maze, 512, {
+      routes: { withoutDiagonals: routes?.withoutDiagonals },
     });
     const diagonal = routes?.withDiagonals.points ?? [];
     const straight = routes?.withoutDiagonals.points ?? [];
@@ -258,12 +258,13 @@ describe('ThumbnailCache', () => {
     expect(cache.thumbnail(key, maze, 128)).toBe(plain);
   });
 
-  test('keeps a thumbnail with routes apart from the plain one and from other switches', async () => {
+  test('keeps a thumbnail with routes apart from the plain one and from other routes, and none as plain', async () => {
     const maze = await repoMaze(REPO_MAZES.classic);
+    const routes = shortestRoutes(maze);
     const cache = new ThumbnailCache();
-    const both = { withoutDiagonals: true, withDiagonals: true };
-    const one = { withoutDiagonals: false, withDiagonals: true };
-    const none = { withoutDiagonals: false, withDiagonals: false };
+    const both = { ...routes };
+    const one = { withDiagonals: routes?.withDiagonals };
+    const none = { withoutDiagonals: undefined, withDiagonals: undefined };
     const plain = cache.thumbnail('a', maze, 128);
     const routed = cache.thumbnail('a', maze, 128, both);
 
@@ -450,6 +451,30 @@ describe('ThumbnailCanvas', () => {
     await expect.poll(() => sharpened).toHaveLength(2);
     observer.disconnect();
     expect(sharpened).toEqual(['on', 'off']);
+  });
+
+  test('searches the routes of a maze in idle time, never in its first paint, then shows them', async () => {
+    const maze = { ...(await repoMaze(REPO_MAZES.classic)) };
+    thumbnailCache.thumbnail(
+      encodeMazeCode(maze),
+      maze,
+      thumbnailBand(200 * window.devicePixelRatio)
+    );
+    await render(
+      <ThumbnailCanvas
+        height={200}
+        maze={maze}
+        routes={{ withoutDiagonals: true, withDiagonals: true }}
+        width={200}
+      />
+    );
+    const canvas = document.querySelector('canvas');
+
+    expect(canvas?.hasAttribute('data-painted')).toBe(true);
+    expect(routesKnown(maze)).toBe(false);
+    expect(showsAmberRoute(canvas)).toBe(false);
+    await expect.poll(() => showsAmberRoute(canvas)).toBe(true);
+    expect(routesKnown(maze)).toBe(true);
   });
 
   test('paints a library thumbnail at rest sharp at once, never its preview first', async () => {

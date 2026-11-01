@@ -112,10 +112,12 @@ reached, and the measurements of the day, are in the git history of this file.
   medians). The skeleton's drawing brings `src/render/loading.ts` into the first screen's chunk, which stays within
   the budget (214.8 of 250 KB).
 - **Routes on thumbnails are bitmaps of their own** (owner, 01/11): the library and the generator's cards draw the
-  routes the session shows into the thumbnail, keyed by which switches are on (`:routes:o`, `:routes:d`,
-  `:routes:od`), in the same two LRUs with the same caps, so memory stays bounded at 104 MB; with routes off the keys
-  and bitmaps are the ones of before. The routes of a maze are searched only when a thumbnail with routes paints,
-  once per maze (about 0.7 ms unthrottled on a notebook), and the line is twice as thick as on the board, never
+  routes the session shows into the thumbnail, keyed by the routes drawn (`:routes:o`, `:routes:d`, `:routes:od`), so a
+  maze without routes keeps its plain bitmap, in the same two LRUs with the same caps, so memory stays bounded at
+  104 MB; with routes off the keys and bitmaps are the ones of before. The routes of a maze are searched once, for a
+  thumbnail mounted with routes on, in idle time and never in a frame's paint (2.4 ms a maze at four times
+  throttling broke the scroll's budget): until then a blank thumbnail paints without them and a painted one keeps
+  its bitmap, and the routed bitmap follows as one more paint. The line is twice as thick as on the board, never
   thinner than a wall, so a 32 × 32 maze still reads on a phone. The preview LRU holds one set of 583 previews, not
   two: after a pass with routes on, turning them off repaints the plain previews as the grid comes back into view.
   One choice for the session (`route-switches.ts`) serves the editor, the generator and the library: the library's

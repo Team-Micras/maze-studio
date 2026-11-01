@@ -74,6 +74,7 @@ export { parseMazeText } from './parse-maze-text';
 export { failure, success, type Result } from './result';
 export { mazeGridText, serializeMazeText } from './serialize-maze-text';
 export {
+  routesKnown,
   routesShown,
   shortestRoutes,
   type Route,

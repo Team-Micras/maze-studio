@@ -247,6 +247,11 @@ export function shortestRoutes(maze: Maze): ShortestRoutes | null | undefined {
   return memo.get(maze);
 }
 
+/** Whether the routes of `maze` are searched already, so {@link shortestRoutes} returns at once. */
+export function routesKnown(maze: Maze): boolean {
+  return memo.has(maze);
+}
+
 /**
  * The routes of `maze` that `switches` turn on, or `undefined` when none is on, which searches
  * nothing, and when the maze has no routes.
