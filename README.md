@@ -55,7 +55,7 @@ it to a competition with no network.
   rules ("Passes", or what is wrong and where).
 - **Routes**: the shortest route from the start to the goal without diagonals and with them, drawn
   on the board with their cells and length, and redrawn as you edit. The same switches draw them
-  on the library's thumbnails (Routes, beside the filters) and on the generator's mazes.
+  on the library's thumbnails and on the generator's mazes, each with its own Routes button.
 - **Editor**: walls by drag or click, rectangles, clear area, start and goal, undo and redo, and a
   keyboard cell cursor. New maze comes in classic, half-size, training or a custom size. Your first
   edit of a repository maze copies it to **My mazes**, saved in the browser as you go. The Changes

@@ -133,7 +133,7 @@ describe('Routes', () => {
     const page = await openMaze(CLASSIC);
     const drawn = page.locator('[data-open-board] [data-route]');
     await expect.poll(() => drawn.count()).toBe(0);
-    await page.getByRole('button', { name: 'Routes', expanded: false }).click();
+    await page.locator('[data-chrome="editor"]').getByRole('button', { name: 'Routes' }).click();
     const plain = page.locator('[data-route-row="withoutDiagonals"]');
     const diagonal = page.locator('[data-route-row="withDiagonals"]');
     await expect.poll(() => drawn.count()).toBe(2);

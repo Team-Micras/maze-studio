@@ -74,7 +74,8 @@ async function measureScroll(routes: boolean): Promise<FrameReport> {
   await page.locator('a[data-artboard]').first().waitFor();
 
   if (routes) {
-    await page.getByRole('button', { name: 'Routes', pressed: false }).click();
+    await page.getByRole('button', { name: 'Routes' }).click();
+    await page.keyboard.press('Escape');
   }
 
   await page.waitForTimeout(500);

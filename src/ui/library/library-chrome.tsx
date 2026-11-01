@@ -3,6 +3,7 @@ import { useRef, type ReactNode } from 'react';
 
 import { MAZEFILES, type LibraryFilter } from '@/library';
 import { useOneRowTopBar } from '@/ui/hooks/use-media-query';
+import { RoutesButton } from '@/ui/editor/routes-panel';
 import { Island, IslandButton, IslandSeparator } from '@/ui/islands/island';
 import { ThemeButton } from '@/ui/islands/theme-button';
 import type { NewMazeRequest } from '@/ui/new-maze';
@@ -17,7 +18,7 @@ import { cn } from '@/ui/primitives/utils';
 import { useTheme } from '@/ui/theme';
 import { Verbatim } from '@/ui/verbatim';
 
-import { CategoryFilter, RoutesToggle, SourceFilter } from './filter-toggles';
+import { CategoryFilter, SourceFilter } from './filter-toggles';
 import { MineAndFilesItems, type MineAndFilesActions } from './mine-and-files';
 import { NewMazeDialogs } from './new-maze-menu';
 import { NewMazeMenu } from './new-maze-button';
@@ -267,7 +268,7 @@ export function LibraryChrome({
           <search>
             <Island className="fixed top-safe-2 right-safe-2 left-safe-2">
               {search}
-              <RoutesToggle iconOnly />
+              <RoutesButton iconOnly phone />
               <PhoneMenu files={files} newName={newName} onNew={onNew} onOpenFile={onOpenFile} />
             </Island>
           </search>
@@ -299,7 +300,7 @@ export function LibraryChrome({
               <IslandSeparator />
               {category}
               <IslandSeparator />
-              <RoutesToggle />
+              <RoutesButton phone={false} />
             </Island>
           </search>
           <Island className="h-11 justify-self-end">

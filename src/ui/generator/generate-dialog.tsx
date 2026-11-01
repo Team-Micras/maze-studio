@@ -15,6 +15,7 @@ import { routesShown, type Maze } from '@/maze';
 import { SETTLE, type LoadingTrack } from '@/render/loading';
 import type { Generated } from '@/ui/editor/edit-session';
 import { ThumbnailCanvas } from '@/ui/board/thumbnail-canvas';
+import { RoutesButton } from '@/ui/editor/routes-panel';
 import { copyText } from '@/ui/editor/share';
 import { useCoarsePointer, usePhoneLayout } from '@/ui/hooks/use-media-query';
 import { Board } from '@/ui/board/board';
@@ -1028,14 +1029,12 @@ export default function GenerateDialog({
             </button>
           ) : null}
           {settingsOpen ? null : (
-            <IslandButton
-              aria-label="Settings"
-              className="ml-auto"
-              onClick={() => openSettings(true)}
-              ref={gear}
-            >
-              <GearSix aria-hidden size={16} />
-            </IslandButton>
+            <span className="ml-auto flex items-center gap-2">
+              <RoutesButton iconOnly phone={phone} />
+              <IslandButton aria-label="Settings" onClick={() => openSettings(true)} ref={gear}>
+                <GearSix aria-hidden size={16} />
+              </IslandButton>
+            </span>
           )}
           <SheetClose asChild>
             <IslandButton aria-label="Close" className={settingsOpen ? 'ml-auto' : undefined}>

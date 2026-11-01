@@ -8,7 +8,7 @@ import type { Generated } from '@/ui/editor/edit-session';
 import { Batch } from '@/ui/generator/batch-run';
 import GenerateDialog, { type GeneratorPreview } from '@/ui/generator/generate-dialog';
 import type { NewMazeRequest } from '@/ui/new-maze';
-import { showRoutes, useShownRoutes } from '@/ui/route-switches';
+import { useShownRoutes } from '@/ui/route-switches';
 import '@/ui/styles.css';
 import { axeViolations } from '@tests/support/axe-check';
 import { showsAmberRoute } from '@tests/support/ui/route-pixels';
@@ -52,7 +52,15 @@ function firstCard(): HTMLCanvasElement | null {
   return document.querySelector('[data-card="1"] canvas');
 }
 
-afterEach(() => useShownRoutes.setState({ shown: undefined }));
+/** How many routes the maze opened in the detail view draws. */
+function routesOnMaze(): number {
+  return document.querySelectorAll('[data-detail] [data-route]').length;
+}
+
+afterEach(async () => {
+  useShownRoutes.setState({ shown: undefined });
+  await page.viewport(1440, 900);
+});
 
 describe('The Generate dialog', () => {
   test('shows its settings with every rule and fine tuning field, focuses Generate, and has no accessibility violations', async () => {
@@ -197,20 +205,29 @@ describe('The Generate dialog', () => {
     expect([statusHeight(), galleryTop()]).toEqual([height, top]);
   });
 
-  test('draws the routes the session shows on its cards and on the maze opened', async () => {
-    await mount();
-    await generate();
-    await expect.poll(building, GENERATION).toBe(false);
+  test.each([false, true])(
+    'shows and hides the routes from its own Routes, on its cards and the maze opened, phone %s',
+    async (phone) => {
+      await page.viewport(phone ? 390 : 1440, phone ? 844 : 900);
+      await mount();
+      await generate();
+      await expect.poll(building, GENERATION).toBe(false);
 
-    expect(showsAmberRoute(firstCard())).toBe(false);
-    showRoutes(true);
-    await expect.poll(() => showsAmberRoute(firstCard())).toBe(true);
+      expect(showsAmberRoute(firstCard())).toBe(false);
+      await userEvent.click(page.getByRole('button', { name: 'Routes' }));
+      await expect.element(page.getByRole('switch', { name: 'With diagonals' })).toBeChecked();
+      expect(await axeViolations()).toEqual([]);
+      await userEvent.click(page.getByRole('button', { name: 'Close routes' }));
+      await expect.poll(() => showsAmberRoute(firstCard())).toBe(true);
 
-    await open(1);
-    await expect.poll(() => document.querySelectorAll('[data-detail] [data-route]').length).toBe(2);
-    showRoutes(false);
-    await expect.poll(() => document.querySelectorAll('[data-detail] [data-route]').length).toBe(0);
-  });
+      await open(1);
+      await expect.poll(routesOnMaze).toBe(2);
+      await userEvent.click(page.getByRole('button', { name: 'Routes' }));
+      await userEvent.click(page.getByRole('switch', { name: 'With diagonals' }));
+      await userEvent.click(page.getByRole('switch', { name: 'Without diagonals' }));
+      await expect.poll(routesOnMaze).toBe(0);
+    }
+  );
 
   test('opens a maze drawn large in a view of its own, steps with ‹ › and the arrow keys, and goes back to the gallery where it was', async () => {
     const used = await mount();

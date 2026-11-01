@@ -120,8 +120,9 @@ reached, and the measurements of the day, are in the git history of this file.
   its bitmap, and the routed bitmap follows as one more paint. The line is twice as thick as on the board, never
   thinner than a wall, so a 32 × 32 maze still reads on a phone. The preview LRU holds one set of 583 previews, not
   two: after a pass with routes on, turning them off repaints the plain previews as the grid comes back into view.
-  One choice for the session (`route-switches.ts`) serves the editor, the generator and the library: the library's
-  Routes toggle is on while either switch is, and turns both on or both off.
+  One choice for the session (`route-switches.ts`) serves the editor, the generator and the library (owner, 01/11):
+  each has a Routes button that opens the same two rows (`RouteRows`), a popover on a notebook and a sheet on a phone,
+  and shows active while either route is drawn; the board of a flight draws them too.
 - **Live mazes are painted, not cached.** The minimap paints the maze being edited straight onto its canvas.
 - **Artboards carry a crisp shadow**, a hairline ring and a 2 px drop: the slab's blurred shadow on every mounted
   artboard broke the frame budget. The editor's board keeps the slab, which scales with the camera.

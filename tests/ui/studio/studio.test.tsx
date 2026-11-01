@@ -22,6 +22,14 @@ async function openMaze(index = 6): Promise<void> {
   await settled();
 }
 
+/**
+ * The editor's Routes button: the last of the two, as the library's, inert while a maze is open,
+ * comes first.
+ */
+function editorRoutes() {
+  return page.getByRole('button', { name: 'Routes' }).last();
+}
+
 async function openList(): Promise<void> {
   await userEvent.click(page.getByRole('button', { name: 'Maze list' }));
   await expect.element(page.getByPlaceholder('Filter mazes…')).toBeVisible();
@@ -186,7 +194,7 @@ describe('The routes of an open maze', () => {
         await userEvent.click(page.getByRole('button', { name: 'More actions' }));
         await userEvent.click(page.getByRole('menuitem', { name: 'Routes' }));
       } else {
-        await userEvent.click(page.getByRole('button', { name: 'Routes', expanded: false }));
+        await userEvent.click(editorRoutes());
       }
 
       await expect.element(page.getByRole('dialog', { name: 'Routes' })).toBeVisible();
@@ -202,14 +210,12 @@ describe('The Routes panel', () => {
   test('left open, stays closed on the next maze while its routes stay drawn', async () => {
     await mountApp('#/repo/classic/AAMC15Maze.txt');
     await expect.poll(mode).toBe('editor');
-    await userEvent.click(page.getByRole('button', { name: 'Routes', expanded: false }));
+    await userEvent.click(editorRoutes());
     await expect.element(page.getByRole('dialog', { name: 'Routes' })).toBeVisible();
     await userEvent.click(page.getByRole('button', { name: 'Back to the library' }));
     await expect.poll(mode).toBe('library');
     await openMaze();
-    await expect
-      .element(page.getByRole('button', { name: 'Routes', expanded: false }))
-      .toBeVisible();
+    await expect.element(editorRoutes()).toBeVisible();
 
     expect(document.querySelector('[role="dialog"]')).toBeNull();
     expect(document.querySelectorAll('[data-open-board] [data-route]').length).toBe(2);
@@ -221,12 +227,9 @@ function thumbnail(): HTMLCanvasElement | null | undefined {
   return artboards()[6]?.querySelector('canvas');
 }
 
-/**
- * The library's Routes toggle, found only while it is `pressed` or not: the only Routes button
- * with a pressed state, as the editor's opens a panel.
- */
-function libraryRoutes(pressed: boolean) {
-  return page.getByRole('button', { name: 'Routes', pressed });
+/** Whether the library's Routes button shows routes drawn. */
+function libraryActive(): boolean {
+  return document.querySelector('[data-chrome="library"] [data-active]') !== null;
 }
 
 /** How many routes the open board draws. */
@@ -234,29 +237,59 @@ function drawn(): number {
   return document.querySelectorAll('[data-open-board] [data-route]').length;
 }
 
+/** Opens the library's Routes, flips the switch named `flip` if any, and closes it. */
+async function libraryRoutes(flip?: RegExp): Promise<void> {
+  await userEvent.click(page.getByRole('button', { name: 'Routes' }));
+  await expect.element(page.getByRole('dialog', { name: 'Routes' })).toBeVisible();
+
+  if (flip !== undefined) {
+    await userEvent.click(page.getByRole('switch', { name: flip }));
+  }
+
+  await userEvent.keyboard('{Escape}');
+  await expect.poll(() => document.querySelector('[role="dialog"]')).toBeNull();
+}
+
 describe('The routes the session shows', () => {
-  test('turn on for every thumbnail from the library, and share their switches with the Routes panel', async () => {
+  test('are chosen from the library for every thumbnail, with the switches of the Routes panel', async () => {
     await mountApp();
 
     expect(showsAmberRoute(thumbnail())).toBe(false);
-    await userEvent.click(libraryRoutes(false));
+    expect(libraryActive()).toBe(false);
+    await libraryRoutes();
+    expect(libraryActive()).toBe(true);
     await expect.poll(() => showsAmberRoute(thumbnail())).toBe(true);
 
     await openMaze();
     expect(drawn()).toBe(2);
-    await userEvent.click(page.getByRole('button', { name: 'Routes', expanded: false }));
+    await userEvent.click(editorRoutes());
     await userEvent.click(page.getByRole('switch', { name: /With diagonals/ }));
     expect(drawn()).toBe(1);
 
     await userEvent.click(page.getByRole('button', { name: 'Back to the library' }));
     await expect.poll(mode).toBe('library');
-    await expect.element(libraryRoutes(true)).toBeVisible();
+    expect(libraryActive()).toBe(true);
     await expect.poll(() => showsAmberRoute(thumbnail())).toBe(false);
-    await userEvent.click(libraryRoutes(true));
-    await expect.element(libraryRoutes(false)).toBeVisible();
+    await libraryRoutes(/Without diagonals/);
+    expect(libraryActive()).toBe(false);
 
     await openMaze();
     expect(drawn()).toBe(0);
+  });
+
+  test('stay drawn on the board all through the flights in and back', async () => {
+    await mountApp();
+    await libraryRoutes();
+    await userEvent.click(artboards()[6] ?? document.body);
+    await expect.poll(mode).toBe('flying-in');
+
+    expect(drawn()).toBe(2);
+    await expect.poll(mode, { timeout: 3000 }).toBe('editor');
+    await settled();
+    await userEvent.click(page.getByRole('button', { name: 'Back to the library' }));
+    await expect.poll(mode).toBe('flying-out');
+
+    expect(drawn()).toBe(2);
   });
 });
 
