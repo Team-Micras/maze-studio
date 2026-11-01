@@ -3,7 +3,7 @@ import { useState, type ReactNode } from 'react';
 
 import { isProfile } from '@/library';
 import type { Finding, Profile, Severity } from '@/maze';
-import { CANVAS_ID } from '@/ui/canvas-id';
+import { insideCanvas } from '@/ui/canvas-id';
 import { IslandButton } from '@/ui/islands/island';
 import { Popover, PopoverContent, PopoverTrigger } from '@/ui/primitives/popover';
 import { Sheet, SheetContent, SheetDescription, SheetTitle } from '@/ui/primitives/sheet';
@@ -131,10 +131,6 @@ function Panel({ findings, profile, onProfile, selected, onSelect, onClose, head
       </ul>
     </>
   );
-}
-
-function insideCanvas(target: EventTarget | null): boolean {
-  return target instanceof Node && document.getElementById(CANVAS_ID)?.contains(target) === true;
 }
 
 /**

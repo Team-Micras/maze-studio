@@ -108,6 +108,7 @@ export {
   type FindingFocus,
   type OverlayLayers,
   type OverlayStrokes,
+  type RouteLayers,
 } from './overlay-layers';
 export {
   applyStroke,
@@ -133,5 +134,5 @@ export {
   type ThumbnailBand,
   type ThumbnailSize,
 } from './thumbnails';
-export { TRACK_COLORS, TRACK_OPACITY } from './track-colors';
+export { ROUTE_COLORS, TRACK_COLORS, TRACK_OPACITY } from './track-colors';
 export { trackLayers, trackPaint, type TrackLayers, type TrackPaint } from './track-layers';

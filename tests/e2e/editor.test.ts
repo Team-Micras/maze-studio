@@ -11,6 +11,7 @@ import {
   hasWall,
   paintWalls,
   serializeMazeText,
+  shortestRoutes,
   toggleWall,
   type Edge,
   type Maze,
@@ -118,6 +119,51 @@ beforeAll(async () => {
 afterAll(async () => {
   await Promise.all(contexts.map((context) => context.close()));
   await browser?.close();
+});
+
+/** What the Routes panel says of a route of `maze`. */
+function routeText(maze: Maze, name: 'withoutDiagonals' | 'withDiagonals'): string {
+  const route = shortestRoutes(maze)?.[name];
+  return route === undefined ? '' : `${route.cells} cells · ${(route.length * 0.18).toFixed(2)} m`;
+}
+
+describe('Routes', () => {
+  test('draw both routes from the panel, follow the walls, and stay after the panel closes', async () => {
+    const { maze } = await repoContent(CLASSIC);
+    const page = await openMaze(CLASSIC);
+    const drawn = page.locator('[data-open-board] [data-route]');
+    await expect.poll(() => drawn.count()).toBe(0);
+    await page.getByRole('button', { name: 'Routes' }).click();
+    const plain = page.locator('[data-route-row="withoutDiagonals"]');
+    const diagonal = page.locator('[data-route-row="withDiagonals"]');
+    await expect.poll(() => drawn.count()).toBe(2);
+    await expect.poll(() => plain.textContent()).toContain(routeText(maze, 'withoutDiagonals'));
+
+    const crossed = shortestRoutes(maze)?.withoutDiagonals.points.find(
+      ({ u, v }, index) => index > 4 && u < 8 && Number.isInteger(u) !== Number.isInteger(v)
+    );
+    const edge: Edge =
+      crossed === undefined || Number.isInteger(crossed.u)
+        ? { direction: 'vertical', x: crossed?.u ?? 0, y: Math.floor(crossed?.v ?? 0) }
+        : { direction: 'horizontal', x: Math.floor(crossed.u), y: crossed.v };
+    const blocked = toggleWall(maze, edge);
+    const point = await pagePoint(page, maze, edgeMiddle(edge));
+    await page.mouse.click(point.x, point.y);
+    await expectSaved(page, sameMaze(blocked));
+
+    expect(shortestRoutes(blocked)).toBeNull();
+    await expect.poll(() => drawn.count()).toBe(0);
+    await expect.poll(() => page.getByText(/^The goal can't be reached/).isVisible()).toBe(true);
+    await page.keyboard.press('Control+z');
+    await expect.poll(() => drawn.count()).toBe(2);
+    await expect.poll(() => diagonal.textContent()).toContain(routeText(maze, 'withDiagonals'));
+
+    await diagonal.click();
+    await expect.poll(() => drawn.count()).toBe(1);
+    await page.getByRole('button', { name: 'Close routes' }).click();
+    await expect.poll(() => plain.count()).toBe(0);
+    expect(await drawn.getAttribute('data-route')).toBe('withoutDiagonals');
+  });
 });
 
 describe('The wall tool', () => {

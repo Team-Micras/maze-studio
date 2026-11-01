@@ -169,6 +169,34 @@ describe('The checks of an open maze', () => {
   );
 });
 
+describe('The routes of an open maze', () => {
+  test.each([
+    ['notebook', 1440, 900],
+    ['phone', 390, 844],
+  ])(
+    'open from the island on a notebook and the menu on a phone, %s',
+    async (layout, width, height) => {
+      await page.viewport(width, height);
+      document.documentElement.classList.add('dark');
+      await mountApp('#/repo/classic/AAMC15Maze.txt');
+      await expect.poll(mode).toBe('editor');
+
+      if (layout === 'phone') {
+        await userEvent.click(page.getByRole('button', { name: 'More actions' }));
+        await userEvent.click(page.getByRole('menuitem', { name: 'Routes' }));
+      } else {
+        await userEvent.click(page.getByRole('button', { name: 'Routes' }));
+      }
+
+      await expect.element(page.getByRole('dialog', { name: 'Routes' })).toBeVisible();
+      await expect
+        .poll(() => document.querySelectorAll('[data-open-board] [data-route]').length)
+        .toBe(2);
+      expect(await axeViolations()).toEqual([]);
+    }
+  );
+});
+
 describe('The Changes panel of an open maze', () => {
   test.each([
     ['notebook', 'light', 1440, 900],

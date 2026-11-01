@@ -34,6 +34,7 @@ import { Checks } from '@/ui/editor/checks';
 import { EditControls } from '@/ui/editor/edit-controls';
 import { MoreActions } from '@/ui/editor/more-actions';
 import { RenameDialog } from '@/ui/editor/rename-dialog';
+import { Routes } from '@/ui/editor/routes-panel';
 import { ShortcutHelp } from '@/ui/editor/shortcut-help';
 import { CopyLinkButton } from '@/ui/editor/title-actions';
 import type { MazeEditor } from '@/ui/editor/use-maze-editor';
@@ -501,6 +502,7 @@ export function Studio({
               <>
                 <ChangesChip {...changes.chip} />
                 <Checks {...editing.checks} />
+                {editing.routes === undefined ? null : <Routes {...editing.routes} />}
                 <MoreActions
                   {...editing.actions}
                   {...actions.menu}

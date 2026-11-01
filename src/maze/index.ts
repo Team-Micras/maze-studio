@@ -1,6 +1,6 @@
 /**
  * The maze core: the model, its edits and their history, the diff between two mazes, the
- * mazefiles text format, the compact code and validation. Pure TypeScript, with
+ * mazefiles text format, the compact code, validation and the shortest routes. Pure TypeScript, with
  * no React, no browser API beyond text encoding, and no other module of maze-studio.
  *
  * @module
@@ -73,6 +73,12 @@ export {
 export { parseMazeText } from './parse-maze-text';
 export { failure, success, type Result } from './result';
 export { mazeGridText, serializeMazeText } from './serialize-maze-text';
+export {
+  shortestRoutes,
+  type Route,
+  type RoutePoint,
+  type ShortestRoutes,
+} from './shortest-routes';
 export {
   profileOfPath,
   RULE_SEVERITIES,
