@@ -69,7 +69,8 @@ has a second one, `loading.ts` (`@/render/loading`), which only the generator's 
     canvas of a maze still loading on a card or a board (`loading-canvas.tsx`), which the studio's board loads from
     the dialog's chunk.
   - `board/`: `Board` (the SVG), `CameraStage` (the canvas with wheel, pinch, pan and the drawing gesture),
-    `useCanvasCamera`, `Minimap`, `ThumbnailCanvas` and `paint-queue.ts`.
+    `useCanvasCamera`, `Minimap`, `ThumbnailCanvas`, `paint-queue.ts`, and the routes of thumbnails searched in a
+    worker (`route-search.ts`, `route-worker.ts`).
   - `embed/`: `Embed`, what `?embed` shows instead of the app, in its own chunk: the board of a repository or
     link route, still and fitted to the frame, its theme (`use-embed-theme.ts`, which takes the host page's
     `theme-message.ts` and tells it when it listens), and the link to the maze in the app (`embed-url.ts`).

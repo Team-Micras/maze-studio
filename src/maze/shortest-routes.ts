@@ -247,6 +247,11 @@ export function shortestRoutes(maze: Maze): ShortestRoutes | null | undefined {
   return memo.get(maze);
 }
 
+/** Remembers `routes` as those of `maze`, searched elsewhere, as in a worker. */
+export function rememberRoutes(maze: Maze, routes: ShortestRoutes | null | undefined): void {
+  memo.set(maze, routes);
+}
+
 /** Whether the routes of `maze` are searched already, so {@link shortestRoutes} returns at once. */
 export function routesKnown(maze: Maze): boolean {
   return memo.has(maze);

@@ -42,7 +42,7 @@ let slowdown = 1;
  * from where the last run stopped, and returns the intervals between the frames; the page's own
  * code, as built for production, does the work.
  */
-function runScroll(page: Page): Promise<number[]> {
+function runScroll(page: Page, count = STEPS): Promise<number[]> {
   return page.evaluate(
     (steps) =>
       new Promise<number[]>((resolve) => {
@@ -62,7 +62,7 @@ function runScroll(page: Page): Promise<number[]> {
         };
         requestAnimationFrame(frame);
       }),
-    STEPS
+    count
   );
 }
 
@@ -192,6 +192,99 @@ async function measureFlights(): Promise<{ inward: FrameReport; outward: FrameRe
   return { inward: flightReport(inward), outward: flightReport(outward) };
 }
 
+/** How long after a scroll stops the cards on screen may take to show their routes. */
+const ROUTES_SHOWN_MS = 300;
+
+declare global {
+  interface Window {
+    routeDraws?: [number, HTMLCanvasElement, OffscreenCanvas][];
+    showsRoutes?: (bitmap: OffscreenCanvas | HTMLCanvasElement) => boolean;
+  }
+}
+
+/**
+ * On a phone with routes on, jumps half way down the library and flings it 3600 px in a second at
+ * twice the calibrated throttle, as on a slow phone, where no route was searched yet, and returns, for each card on screen at
+ * the stop whose maze has routes, how long after the stop its canvas first showed them, within 6 s,
+ * negative when before;
+ * the bitmaps are read for the routes' amber once the throttle is off.
+ */
+async function measureRoutesShown(): Promise<number[]> {
+  const context = await browser.newContext({
+    viewport: { width: 390, height: 844 },
+    deviceScaleFactor: 3,
+    isMobile: true,
+    hasTouch: true,
+  });
+  const page = await context.newPage();
+  await page.addInitScript(() => {
+    const { prototype } = CanvasRenderingContext2D;
+    window.routeDraws = [];
+    window.showsRoutes = (bitmap) => {
+      const data = bitmap.getContext('2d')?.getImageData(0, 0, bitmap.width, bitmap.height).data;
+
+      for (let index = 0; index < (data?.length ?? 0); index += 4) {
+        if (
+          (data?.[index] ?? 0) > 200 &&
+          (data?.[index + 1] ?? 0) > 150 &&
+          (data?.[index + 2] ?? 255) < 120
+        ) {
+          return true;
+        }
+      }
+
+      return false;
+    };
+    prototype.drawImage = new Proxy(
+      Object.getOwnPropertyDescriptor(prototype, 'drawImage')?.value,
+      {
+        apply(draw, target: CanvasRenderingContext2D, args: unknown[]) {
+          if (args[0] instanceof OffscreenCanvas) {
+            window.routeDraws?.push([performance.now(), target.canvas, args[0]]);
+          }
+
+          return Reflect.apply(draw, target, args);
+        },
+      }
+    );
+  });
+  await page.goto(app);
+  await page.locator('a[data-artboard] canvas[data-painted]').first().waitFor();
+  await page.getByRole('button', { name: 'Routes' }).click();
+  await page.keyboard.press('Escape');
+  await page.waitForTimeout(500);
+  const session = await context.newCDPSession(page);
+  await session.send('Emulation.setCPUThrottlingRate', { rate: slowdown * 2 });
+
+  try {
+    await page.evaluate(() =>
+      document
+        .querySelector('[data-library-scroller]')
+        ?.scrollTo({ top: 30_000, behavior: 'instant' })
+    );
+    await runScroll(page, 60);
+    const stop = await page.evaluate(() => performance.now());
+    await page.waitForTimeout(6000);
+    await session.send('Emulation.setCPUThrottlingRate', { rate: 1 });
+    return await page.evaluate((stopped) => {
+      const shows = window.showsRoutes ?? (() => false);
+      return [...document.querySelectorAll<HTMLCanvasElement>('a[data-artboard] canvas')]
+        .filter((canvas) => {
+          const box = canvas.getBoundingClientRect();
+          return box.bottom > 0 && box.top < window.innerHeight && shows(canvas);
+        })
+        .map((canvas) => {
+          const shown = window.routeDraws?.find(
+            ([, target, bitmap]) => target === canvas && shows(bitmap)
+          );
+          return (shown?.[0] ?? Number.NaN) - stopped;
+        });
+    }, stop);
+  } finally {
+    await context.close();
+  }
+}
+
 function describeRun(name: string, run: FrameReport): string {
   return `production ${name}: p95 ${run.p95.toFixed(1)} ms, ${(run.slowShare * 100).toFixed(1)} % over 25 ms, worst ${run.worst.toFixed(1)} ms`;
 }
@@ -262,6 +355,19 @@ describe('The built library as slow as the reference notebook at 4× CPU throttl
       gate(breaches(`scroll ${name} routes`, scroll));
     }
   );
+});
+
+describe('The built library on a phone twice as slow as the reference notebook at 4× CPU throttling', () => {
+  test(`shows the routes on the cards in view within ${ROUTES_SHOWN_MS} ms of a scroll's stop`, async () => {
+    const shown = await measureRoutesShown();
+    const slowest = Math.max(...shown);
+    report(
+      `production routes shown after a scroll: ${shown.map((ms) => ms.toFixed(0)).join(', ')} ms`
+    );
+
+    expect(shown.length).toBeGreaterThan(3);
+    gate(slowest > ROUTES_SHOWN_MS ? [`routes shown ${slowest.toFixed(0)} ms after the stop`] : []);
+  });
 });
 
 describe('The built studio as slow as the reference notebook at 4× CPU throttling', () => {

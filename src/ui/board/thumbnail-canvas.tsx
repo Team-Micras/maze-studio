@@ -20,6 +20,7 @@ import { cn } from '@/ui/primitives/utils';
 import { anyRouteShown } from '@/ui/route-switches';
 
 import { schedulePaint } from './paint-queue';
+import { requestRoutes } from './route-search';
 import { thumbnailCache } from './thumbnail-cache';
 import { useDevicePixelRatio } from './use-device-pixel-ratio';
 
@@ -47,7 +48,7 @@ export interface ThumbnailCanvasProps {
   readonly diff?: ThumbnailDiff;
   /**
    * The shortest routes drawn on top, unless a diff is; none by default. A maze whose routes are
-   * not searched yet shows without them, and with them once idle time has searched them.
+   * not searched yet shows without them, and with them once a worker has searched them.
    */
   readonly routes?: RouteSwitches;
   /**
@@ -177,7 +178,7 @@ function paintLive(
 }
 
 /**
- * Paints with the routes `switches` turn on, searched in idle time and never in a frame's paint:
+ * Paints with the routes `switches` turn on, searched in a worker, first for a canvas on screen:
  * until they are, a blank canvas paints without them, and a painted one keeps its bitmap. Once
  * searched, the routes paint as a blank canvas's first paint would, at once when ready and by the
  * fling's rules otherwise; a maze without routes that already shows its plain bitmap stays as is.
@@ -194,7 +195,7 @@ function withRoutes(
 
   const blank = canvas.dataset.painted === undefined;
   let cancel = blank ? paint(undefined) : () => undefined;
-  const search = schedulePaint(() => {
+  const search = requestRoutes(maze, onScreen(canvas), () => {
     const shown = routesShown(maze, switches);
 
     if (shown === undefined && blank) {
