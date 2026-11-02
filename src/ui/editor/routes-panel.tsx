@@ -9,13 +9,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/ui/primitives/popover
 import { Sheet, SheetContent, SheetTitle } from '@/ui/primitives/sheet';
 import { Switch } from '@/ui/primitives/switch';
 import { cn } from '@/ui/primitives/utils';
-import {
-  ALL_ROUTES,
-  anyRouteShown,
-  revealRoutes,
-  toggleRoute,
-  useShownRoutes,
-} from '@/ui/route-switches';
+import { anyRouteShown, toggleRoute, useShownRoutes } from '@/ui/route-switches';
 
 /** The props of {@link Routes}. */
 export interface RoutesProps {
@@ -243,8 +237,7 @@ export interface RoutesButtonProps {
 
 /**
  * The Routes button of the library and the generator: the same rows and switches as the editor's
- * Routes panel, for the routes the whole session draws, without a maze's cells and length. Opening
- * it the first time turns both on, as the editor's does.
+ * Routes panel, for the routes the whole session draws, without a maze's cells and length.
  */
 export function RoutesButton({ phone, iconOnly = false }: RoutesButtonProps) {
   const [open, setOpen] = useState(false);
@@ -252,18 +245,12 @@ export function RoutesButton({ phone, iconOnly = false }: RoutesButtonProps) {
 
   return (
     <RoutesShell
-      onOpenChange={(next) => {
-        if (next) {
-          revealRoutes();
-        }
-
-        setOpen(next);
-      }}
+      onOpenChange={setOpen}
       open={open}
       phone={phone}
       trigger={iconOnly ? 'icon' : 'label'}
     >
-      <RouteRows onToggle={toggleRoute} shown={shown ?? ALL_ROUTES} />
+      <RouteRows onToggle={toggleRoute} shown={shown} />
     </RoutesShell>
   );
 }

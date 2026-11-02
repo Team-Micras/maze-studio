@@ -129,7 +129,9 @@ reached, and the measurements of the day, are in the git history of this file.
   them off repaints the plain previews as the grid comes back into view. One choice for the session
   (`route-switches.ts`) serves the editor, the generator and the library (owner, 01/11): each has a Routes button that
   opens the same two rows (`RouteRows`), a popover on a notebook and a sheet on a phone, and shows active while either
-  route is drawn; the board of a flight draws them too.
+  route is drawn; the board of a flight draws them too. Both start off and only a switch turns them on: opening a
+  Routes panel changes nothing (owner, 02/11). With the generator docked beside the editor, its Routes button is the
+  one on screen and the editor's island hides its own, so the routes change without closing the panel.
 - **Live mazes are painted, not cached.** The minimap paints the maze being edited straight onto its canvas.
 - **Artboards carry a crisp shadow**, a hairline ring and a 2 px drop: the slab's blurred shadow on every mounted
   artboard broke the frame budget. The editor's board keeps the slab, which scales with the camera.

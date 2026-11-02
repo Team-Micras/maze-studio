@@ -183,7 +183,7 @@ describe('The routes of an open maze', () => {
     ['notebook', 1440, 900],
     ['phone', 390, 844],
   ])(
-    'open from the island on a notebook and the menu on a phone, %s',
+    'open from the island on a notebook and the menu on a phone, both off until switched on, %s',
     async (layout, width, height) => {
       await page.viewport(width, height);
       document.documentElement.classList.add('dark');
@@ -198,9 +198,10 @@ describe('The routes of an open maze', () => {
       }
 
       await expect.element(page.getByRole('dialog', { name: 'Routes' })).toBeVisible();
-      await expect
-        .poll(() => document.querySelectorAll('[data-open-board] [data-route]').length)
-        .toBe(2);
+      expect(drawn()).toBe(0);
+      await userEvent.click(page.getByRole('switch', { name: /Without diagonals/ }));
+      await userEvent.click(page.getByRole('switch', { name: /With diagonals/ }));
+      await expect.poll(drawn).toBe(2);
       expect(await axeViolations()).toEqual([]);
     }
   );
@@ -212,6 +213,8 @@ describe('The Routes panel', () => {
     await expect.poll(mode).toBe('editor');
     await userEvent.click(editorRoutes());
     await expect.element(page.getByRole('dialog', { name: 'Routes' })).toBeVisible();
+    await userEvent.click(page.getByRole('switch', { name: /Without diagonals/ }));
+    await userEvent.click(page.getByRole('switch', { name: /With diagonals/ }));
     await userEvent.click(page.getByRole('button', { name: 'Back to the library' }));
     await expect.poll(mode).toBe('library');
     await openMaze();
@@ -237,14 +240,15 @@ function drawn(): number {
   return document.querySelectorAll('[data-open-board] [data-route]').length;
 }
 
-/** Opens the library's Routes, flips the switch named `flip` if any, and closes it. */
-async function libraryRoutes(flip?: RegExp): Promise<void> {
+/** Opens the library's Routes, flips the switches named, and closes it. */
+async function libraryRoutes(...flips: readonly RegExp[]): Promise<void> {
   await userEvent.click(page.getByRole('button', { name: 'Routes' }));
   await expect.element(page.getByRole('dialog', { name: 'Routes' })).toBeVisible();
 
-  if (flip !== undefined) {
-    await userEvent.click(page.getByRole('switch', { name: flip }));
-  }
+  await flips.reduce<Promise<void>>(
+    (done, name) => done.then(() => userEvent.click(page.getByRole('switch', { name }))),
+    Promise.resolve()
+  );
 
   await userEvent.keyboard('{Escape}');
   await expect.poll(() => document.querySelector('[role="dialog"]')).toBeNull();
@@ -257,6 +261,8 @@ describe('The routes the session shows', () => {
     expect(showsAmberRoute(thumbnail())).toBe(false);
     expect(libraryActive()).toBe(false);
     await libraryRoutes();
+    expect(libraryActive()).toBe(false);
+    await libraryRoutes(/Without diagonals/, /With diagonals/);
     expect(libraryActive()).toBe(true);
     await expect.poll(() => showsAmberRoute(thumbnail())).toBe(true);
 
@@ -279,7 +285,7 @@ describe('The routes the session shows', () => {
 
   test('stay drawn on the board all through the flights in and back', async () => {
     await mountApp();
-    await libraryRoutes();
+    await libraryRoutes(/Without diagonals/, /With diagonals/);
     await userEvent.click(artboards()[6] ?? document.body);
     await expect.poll(mode).toBe('flying-in');
 
@@ -317,6 +323,28 @@ describe('The Changes panel of an open maze', () => {
 });
 
 describe('Generate from the editor', () => {
+  test('docked, has the one Routes button on screen, which changes the routes without closing it', async () => {
+    await mountApp('#/repo/classic/AAMC15Maze.txt');
+    await expect.poll(mode).toBe('editor');
+    await userEvent.click(page.getByRole('button', { name: 'More actions' }));
+    await userEvent.click(page.getByRole('menuitem', { name: /^Generate…/ }));
+    const generate = page.getByRole('dialog', { name: 'Generate' });
+    await expect.element(generate).toBeVisible();
+
+    const outsideLibrary = [...document.querySelectorAll('button')].filter(
+      (button) =>
+        button.closest('[data-chrome="library"]') === null &&
+        (button.getAttribute('aria-label') ?? button.textContent) === 'Routes'
+    );
+
+    expect(outsideLibrary).toHaveLength(1);
+    await userEvent.click(generate.getByRole('button', { name: 'Routes' }));
+    await userEvent.click(page.getByRole('switch', { name: /With diagonals/ }));
+
+    await expect.poll(drawn).toBe(1);
+    await expect.element(generate).toBeVisible();
+  });
+
   test('stays closed on the next maze when the editor was left with it open', async () => {
     await mountApp();
     await openMaze();

@@ -1028,16 +1028,16 @@ export default function GenerateDialog({
               Back to the board
             </button>
           ) : null}
-          {settingsOpen ? null : (
-            <span className="ml-auto flex items-center gap-2">
-              {docked ? null : <RoutesButton iconOnly phone={phone} />}
+          <span className="ml-auto flex items-center gap-2">
+            <RoutesButton iconOnly phone={phone} />
+            {settingsOpen ? null : (
               <IslandButton aria-label="Settings" onClick={() => openSettings(true)} ref={gear}>
                 <GearSix aria-hidden size={16} />
               </IslandButton>
-            </span>
-          )}
+            )}
+          </span>
           <SheetClose asChild>
-            <IslandButton aria-label="Close" className={settingsOpen ? 'ml-auto' : undefined}>
+            <IslandButton aria-label="Close">
               <X aria-hidden size={16} />
             </IslandButton>
           </SheetClose>

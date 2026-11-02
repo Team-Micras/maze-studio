@@ -21,7 +21,7 @@ import { isCellTool, useCellDrawing } from '@/ui/editor/use-cell-drawing';
 import { useEditorShortcuts, type EditorShortcuts } from '@/ui/editor/use-editor-shortcuts';
 import type { MazeEditor } from '@/ui/editor/use-maze-editor';
 import { useWallDrawing } from '@/ui/editor/use-wall-drawing';
-import { ALL_ROUTES, revealRoutes, toggleRoute, useShownRoutes } from '@/ui/route-switches';
+import { toggleRoute, useShownRoutes } from '@/ui/route-switches';
 
 import type { StudioScreen, StudioState } from './studio-store';
 
@@ -126,13 +126,7 @@ export function useStudioEditing({
     onScreen !== undefined && state.finding?.maze === onScreen.key ? state.finding.key : undefined;
   const focused = findings.find((finding, index) => findingKey(finding, index) === selected);
   const shownRoutes = useShownRoutes((now) => now.shown);
-  const setRoutesOpen = (open: boolean): void => {
-    if (open) {
-      revealRoutes();
-    }
-
-    store.setState({ routesOpen: open });
-  };
+  const setRoutesOpen = (open: boolean): void => store.setState({ routesOpen: open });
   const routes = maze === undefined || !state.routesOpen ? undefined : shortestRoutes(maze);
 
   useEditorShortcuts({
@@ -246,7 +240,7 @@ export function useStudioEditing({
         : ({
             routes,
             cellSize: onScreen.document.profile === 'halfsize' ? 0.09 : 0.18,
-            shown: shownRoutes ?? ALL_ROUTES,
+            shown: shownRoutes,
             open: state.routesOpen,
             onOpenChange: setRoutesOpen,
             onToggle: toggleRoute,

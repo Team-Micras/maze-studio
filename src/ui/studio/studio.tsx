@@ -514,7 +514,7 @@ export function Studio({
               <>
                 <ChangesChip {...changes.chip} />
                 <Checks {...editing.checks} />
-                {editing.routes === undefined ? null : <Routes {...editing.routes} />}
+                {editing.routes === undefined || generating ? null : <Routes {...editing.routes} />}
                 <MoreActions
                   {...editing.actions}
                   {...actions.menu}

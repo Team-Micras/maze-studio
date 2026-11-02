@@ -8,7 +8,7 @@ import type { Generated } from '@/ui/editor/edit-session';
 import { Batch } from '@/ui/generator/batch-run';
 import GenerateDialog, { type GeneratorPreview } from '@/ui/generator/generate-dialog';
 import type { NewMazeRequest } from '@/ui/new-maze';
-import { useShownRoutes } from '@/ui/route-switches';
+import { NO_ROUTES, useShownRoutes } from '@/ui/route-switches';
 import '@/ui/styles.css';
 import { axeViolations } from '@tests/support/axe-check';
 import { showsAmberRoute } from '@tests/support/ui/route-pixels';
@@ -58,7 +58,7 @@ function routesOnMaze(): number {
 }
 
 afterEach(async () => {
-  useShownRoutes.setState({ shown: undefined });
+  useShownRoutes.setState({ shown: NO_ROUTES });
   await page.viewport(1440, 900);
 });
 
@@ -215,8 +215,10 @@ describe('The Generate dialog', () => {
 
       expect(showsAmberRoute(firstCard())).toBe(false);
       await userEvent.click(page.getByRole('button', { name: 'Routes' }));
-      await expect.element(page.getByRole('switch', { name: 'With diagonals' })).toBeChecked();
+      await expect.element(page.getByRole('switch', { name: 'With diagonals' })).not.toBeChecked();
       expect(await axeViolations()).toEqual([]);
+      await userEvent.click(page.getByRole('switch', { name: 'Without diagonals' }));
+      await userEvent.click(page.getByRole('switch', { name: 'With diagonals' }));
       await userEvent.click(page.getByRole('button', { name: 'Close routes' }));
       await expect.poll(() => showsAmberRoute(firstCard())).toBe(true);
 
@@ -321,7 +323,6 @@ describe('The Generate dialog', () => {
       onUse: () => undefined,
     };
     const screen = await render(<GenerateDialog {...props} open />);
-    expect(page.getByRole('button', { name: 'Routes' }).query()).toBeNull();
     await generate();
     await expect.poll(building, GENERATION).toBe(false);
     await expect.poll(() => previews.at(-1)?.seed).toBe(1);

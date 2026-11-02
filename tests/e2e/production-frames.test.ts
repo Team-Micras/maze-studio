@@ -66,6 +66,14 @@ function runScroll(page: Page, count = STEPS): Promise<number[]> {
   );
 }
 
+/** Switches both routes on from the library's Routes and closes it. */
+async function showBothRoutes(page: Page): Promise<void> {
+  await page.getByRole('button', { name: 'Routes' }).click();
+  await page.getByRole('switch', { name: 'Without diagonals' }).click();
+  await page.getByRole('switch', { name: 'With diagonals' }).click();
+  await page.keyboard.press('Escape');
+}
+
 /** The scroll runs of {@link runScroll}, with the shortest routes on every thumbnail when `routes`. */
 async function measureScroll(routes: boolean): Promise<FrameReport> {
   const context = await browser.newContext({ viewport: { width: 1440, height: 900 } });
@@ -74,8 +82,7 @@ async function measureScroll(routes: boolean): Promise<FrameReport> {
   await page.locator('a[data-artboard]').first().waitFor();
 
   if (routes) {
-    await page.getByRole('button', { name: 'Routes' }).click();
-    await page.keyboard.press('Escape');
+    await showBothRoutes(page);
   }
 
   await page.waitForTimeout(500);
@@ -250,8 +257,7 @@ async function measureRoutesShown(): Promise<number[]> {
   });
   await page.goto(app);
   await page.locator('a[data-artboard] canvas[data-painted]').first().waitFor();
-  await page.getByRole('button', { name: 'Routes' }).click();
-  await page.keyboard.press('Escape');
+  await showBothRoutes(page);
   await page.waitForTimeout(500);
   const session = await context.newCDPSession(page);
   await session.send('Emulation.setCPUThrottlingRate', { rate: slowdown * 2 });
