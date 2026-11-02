@@ -1,8 +1,9 @@
 /**
  * The shortest routes of thumbnails, searched in a worker (`route-worker.ts`), one maze at a
  * time: first the mazes of thumbnails on screen, then those of the others mounted, then the mazes
- * given to prefetch. Each answer fills the routes remembered per maze, which then paint without a
- * search. Without workers the search runs in idle time instead.
+ * given to prefetch, unless held, as while the library's grid is flung. Each answer fills the
+ * routes remembered per maze, which then paint without a search. Without workers the search runs
+ * in idle time instead.
  *
  * @module
  */
@@ -26,14 +27,18 @@ export interface RoutesFound {
 
 interface Request {
   readonly maze: Maze;
-  readonly code: string;
   urgent: boolean;
   readonly waiting: Set<() => void>;
 }
 
+/** How often, in milliseconds, a prefetch on hold checks whether it may go on. */
+const HOLD_RETRY_MS = 100;
+
 const queue = new Map<Maze, Request>();
-let searching: Request | undefined;
+let searching: { readonly request: Request; readonly code: string } | undefined;
 let prefetched: Iterator<Maze> | undefined;
+let held: () => boolean = () => false;
+let retry: number | undefined;
 let worker: Worker | undefined;
 
 function next(): Request | undefined {
@@ -41,6 +46,14 @@ function next(): Request | undefined {
     if (request.urgent) {
       return request;
     }
+  }
+
+  if (held()) {
+    retry ??= window.setTimeout(() => {
+      retry = undefined;
+      pump();
+    }, HOLD_RETRY_MS);
+    return undefined;
   }
 
   const first = queue.values().next();
@@ -51,12 +64,7 @@ function next(): Request | undefined {
 
   for (let step = prefetched?.next(); step !== undefined && !step.done; step = prefetched?.next()) {
     if (!routesKnown(step.value)) {
-      return {
-        maze: step.value,
-        code: encodeMazeCode(step.value),
-        urgent: false,
-        waiting: new Set(),
-      };
+      return { maze: step.value, urgent: false, waiting: new Set() };
     }
   }
 
@@ -69,9 +77,10 @@ function answer(found: RoutesFound): void {
   searching = undefined;
 
   if (done !== undefined && done.code === found.code) {
-    queue.delete(done.maze);
-    rememberRoutes(done.maze, found.routes);
-    done.waiting.forEach((resume) => resume());
+    const { maze, waiting } = done.request;
+    queue.delete(maze);
+    rememberRoutes(maze, found.routes);
+    waiting.forEach((resume) => resume());
   }
 
   pump();
@@ -82,9 +91,10 @@ function pump(): void {
     return;
   }
 
-  searching = next();
+  const request = next();
 
-  if (searching !== undefined) {
+  if (request !== undefined) {
+    searching = { request, code: encodeMazeCode(request.maze) };
     worker ??= startWorker();
     worker.postMessage(searching.code, []);
   }
@@ -108,16 +118,12 @@ export function requestRoutes(maze: Maze, urgent: boolean, found: () => void): (
     });
   }
 
-  const request = (searching?.maze === maze ? searching : queue.get(maze)) ?? {
-    maze,
-    code: encodeMazeCode(maze),
-    urgent,
-    waiting: new Set<() => void>(),
-  };
+  const inFlight = searching?.request.maze === maze ? searching.request : undefined;
+  const request = inFlight ?? queue.get(maze) ?? { maze, urgent, waiting: new Set<() => void>() };
   request.urgent ||= urgent;
   request.waiting.add(found);
 
-  if (request !== searching) {
+  if (inFlight === undefined) {
     queue.set(maze, request);
   }
 
@@ -125,7 +131,7 @@ export function requestRoutes(maze: Maze, urgent: boolean, found: () => void): (
   return () => {
     request.waiting.delete(found);
 
-    if (request.waiting.size === 0 && request !== searching) {
+    if (request.waiting.size === 0 && request !== searching?.request) {
       queue.delete(maze);
     }
   };
@@ -133,9 +139,14 @@ export function requestRoutes(maze: Maze, urgent: boolean, found: () => void): (
 
 /**
  * Searches the routes of `mazes` in the background, after every request, one at a time as the
- * worker is free, in place of the mazes given before; `undefined` stops it.
+ * worker is free and never while `hold` says so, as while the grid is flung, so that nothing of it
+ * takes the main thread's time then; in place of the mazes given before, and `undefined` stops it.
  */
-export function prefetchRoutes(mazes: Iterable<Maze> | undefined): void {
+export function prefetchRoutes(
+  mazes: Iterable<Maze> | undefined,
+  hold: () => boolean = () => false
+): void {
   prefetched = typeof Worker === 'function' ? mazes?.[Symbol.iterator]() : undefined;
+  held = hold;
   pump();
 }

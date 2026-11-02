@@ -22,7 +22,7 @@ import { cn } from '@/ui/primitives/utils';
 import { anyRouteShown, useShownRoutes } from '@/ui/route-switches';
 
 import { Artboard } from './artboard';
-import { libraryKind, noteLibraryScroll, scrolledInsets } from './library-scroller';
+import { libraryFlung, libraryKind, noteLibraryScroll, scrolledInsets } from './library-scroller';
 import type { Library } from './use-library';
 
 /** The mazes of `entries`, decoded one at a time as they are asked for. */
@@ -103,7 +103,8 @@ function sameView(left: View, right: View): boolean {
  * width. Only the rows on screen and one more above and below are mounted, and the artboard with
  * the keyboard's focus never leaves; Tab onto an artboard under an island scrolls it into the room
  * between them. While a maze is open the grid fades out, keeping where it was scrolled to. With
- * routes on, it has the routes of all its mazes searched in the background, in grid order.
+ * routes on, it has the routes of all its mazes searched in the background, in grid order, held
+ * while it is flung.
  */
 export function LibraryGrid({
   library,
@@ -132,7 +133,7 @@ export function LibraryGrid({
       return undefined;
     }
 
-    prefetchRoutes(mazesOf(library, entries));
+    prefetchRoutes(mazesOf(library, entries), libraryFlung);
     return () => prefetchRoutes(undefined);
   }, [routesOn, library, entries]);
 

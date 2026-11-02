@@ -39,4 +39,15 @@ describe('requestRoutes', () => {
     expect(found).toEqual([busy, asked]);
     expect(routesKnown(dropped)).toBe(false);
   });
+
+  test('holds the prefetch while it is told to, and goes on once it may', async () => {
+    const mazes = copies(await repoMaze(REPO_MAZES.taiwan), 4);
+    let holding = true;
+    prefetchRoutes(mazes, () => holding);
+    await new Promise((resolve) => setTimeout(resolve, 300));
+
+    expect(mazes.some(routesKnown)).toBe(false);
+    holding = false;
+    await expect.poll(() => mazes.every(routesKnown)).toBe(true);
+  });
 });
