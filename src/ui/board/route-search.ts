@@ -2,8 +2,8 @@
  * The shortest routes of thumbnails, searched in a worker (`route-worker.ts`), one maze at a
  * time: first the mazes of thumbnails on screen, then those of the others mounted, then the mazes
  * given to prefetch, unless held, as while the library's grid is flung. Each answer fills the
- * routes remembered per maze, which then paint without a search. Without workers the search runs
- * in idle time instead.
+ * routes remembered per maze, which then paint without a search. Without workers, or once the
+ * worker fails, as when its chunk is gone after an update, the search runs in idle time instead.
  *
  * @module
  */
@@ -19,10 +19,11 @@ import {
 
 import { schedulePaint } from './paint-queue';
 
-/** What the worker answers: the routes of the maze of `code`. */
+/** What the worker answers: the routes of the maze of `code`, or that its search `failed`. */
 export interface RoutesFound {
   readonly code: string;
   readonly routes: ShortestRoutes | null | undefined;
+  readonly failed?: true;
 }
 
 interface Request {
@@ -39,7 +40,8 @@ let searching: { readonly request: Request; readonly code: string } | undefined;
 let prefetched: Iterator<Maze> | undefined;
 let held: () => boolean = () => false;
 let retry: number | undefined;
-let worker: Worker | undefined;
+let post: ((code: string) => void) | undefined;
+let workerFailed = false;
 
 function next(): Request | undefined {
   for (const request of queue.values()) {
@@ -77,13 +79,48 @@ function answer(found: RoutesFound): void {
   searching = undefined;
 
   if (done !== undefined && done.code === found.code) {
-    const { maze, waiting } = done.request;
-    queue.delete(maze);
-    rememberRoutes(maze, found.routes);
-    waiting.forEach((resume) => resume());
+    const { request } = done;
+    queue.delete(request.maze);
+
+    if (found.failed === true) {
+      searchInIdle(request);
+    } else {
+      rememberRoutes(request.maze, found.routes);
+      request.waiting.forEach((resume) => resume());
+    }
   }
 
   pump();
+}
+
+/**
+ * Searches the routes of `request` on the page, in idle time, and resumes what waits for them;
+ * a search that fails resumes nothing, so the thumbnail stays without routes.
+ */
+function searchInIdle(request: Request): void {
+  schedulePaint(() => {
+    try {
+      shortestRoutes(request.maze);
+    } catch {
+      return;
+    }
+
+    request.waiting.forEach((resume) => resume());
+  });
+}
+
+/** Gives up the worker, as when its chunk fails to load, and searches all it was asked in idle time. */
+function workerLost(): void {
+  workerFailed = true;
+  post = undefined;
+  prefetched = undefined;
+  const lost = new Set([
+    ...(searching === undefined ? [] : [searching.request]),
+    ...queue.values(),
+  ]);
+  searching = undefined;
+  queue.clear();
+  lost.forEach(searchInIdle);
 }
 
 function pump(): void {
@@ -95,15 +132,22 @@ function pump(): void {
 
   if (request !== undefined) {
     searching = { request, code: encodeMazeCode(request.maze) };
-    worker ??= startWorker();
-    worker.postMessage(searching.code, []);
+    post ??= startWorker();
+    post(searching.code);
   }
 }
 
-function startWorker(): Worker {
-  const started = new Worker(new URL('./route-worker.ts', import.meta.url), { type: 'module' });
-  started.addEventListener('message', (event: MessageEvent<RoutesFound>) => answer(event.data));
-  return started;
+function startWorker(): (code: string) => void {
+  const worker = new Worker(new URL('./route-worker.ts', import.meta.url), { type: 'module' });
+  const fail = (event: Event): void => {
+    event.preventDefault();
+    worker.terminate();
+    workerLost();
+  };
+  worker.addEventListener('message', (event: MessageEvent<RoutesFound>) => answer(event.data));
+  worker.addEventListener('error', fail);
+  worker.addEventListener('messageerror', fail);
+  return (code) => worker.postMessage(code, []);
 }
 
 /**
@@ -111,11 +155,10 @@ function startWorker(): Worker {
  * thumbnail on screen, goes before the others. The function returned takes the request back.
  */
 export function requestRoutes(maze: Maze, urgent: boolean, found: () => void): () => void {
-  if (typeof Worker !== 'function') {
-    return schedulePaint(() => {
-      shortestRoutes(maze);
-      found();
-    });
+  if (typeof Worker !== 'function' || workerFailed) {
+    const alone: Request = { maze, urgent, waiting: new Set([found]) };
+    searchInIdle(alone);
+    return () => alone.waiting.delete(found);
   }
 
   const inFlight = searching?.request.maze === maze ? searching.request : undefined;
@@ -146,7 +189,8 @@ export function prefetchRoutes(
   mazes: Iterable<Maze> | undefined,
   hold: () => boolean = () => false
 ): void {
-  prefetched = typeof Worker === 'function' ? mazes?.[Symbol.iterator]() : undefined;
+  prefetched =
+    typeof Worker === 'function' && !workerFailed ? mazes?.[Symbol.iterator]() : undefined;
   held = hold;
   pump();
 }

@@ -309,7 +309,7 @@ describe('The Generate dialog', () => {
     await expect.element(page.getByRole('button', { name: 'Settings' })).toHaveFocus();
   });
 
-  test('docked beside the editor, previews the maze opened or hovered, without a board of its own, and nothing once closed', async () => {
+  test('docked beside the editor, previews the maze opened or hovered, without a board or Routes of its own, and nothing once closed', async () => {
     const previews: (GeneratorPreview | undefined)[] = [];
     const board = borderedMaze(16, 16);
     const props = {
@@ -321,6 +321,7 @@ describe('The Generate dialog', () => {
       onUse: () => undefined,
     };
     const screen = await render(<GenerateDialog {...props} open />);
+    expect(page.getByRole('button', { name: 'Routes' }).query()).toBeNull();
     await generate();
     await expect.poll(building, GENERATION).toBe(false);
     await expect.poll(() => previews.at(-1)?.seed).toBe(1);
