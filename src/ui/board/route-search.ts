@@ -99,6 +99,10 @@ function answer(found: RoutesFound): void {
  */
 function searchInIdle(request: Request): void {
   schedulePaint(() => {
+    if (request.waiting.size === 0) {
+      return;
+    }
+
     try {
       shortestRoutes(request.maze);
     } catch {
