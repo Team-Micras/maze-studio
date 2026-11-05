@@ -166,7 +166,7 @@ describe('The shell', () => {
     await expect.element(page.getByText(snapshot.commit.slice(0, 7))).toBeVisible();
   });
 
-  test('switches the theme for the session, with the desk colour in theme-color', async () => {
+  test('switches the theme and keeps it in this browser, with the desk colour in theme-color', async () => {
     const meta = document.createElement('meta');
     meta.name = 'theme-color';
     document.head.append(meta);
@@ -176,7 +176,9 @@ describe('The shell', () => {
     await userEvent.click(page.getByRole('menuitem', { name: /^(Light|Dark) theme$/ }));
 
     expect(document.documentElement.classList.contains('dark')).toBe(!dark);
-    expect(meta.content).toBe(dark ? '#e3e3e3' : '#191919');
+    expect(meta.content).toBe(dark ? '#ffffff' : '#191919');
+    expect(localStorage.getItem('maze-studio:theme')).toBe(dark ? 'light' : 'dark');
+    localStorage.removeItem('maze-studio:theme');
     meta.remove();
   });
 

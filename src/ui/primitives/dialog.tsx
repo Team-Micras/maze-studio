@@ -3,6 +3,7 @@ import { Dialog as DialogPrimitive } from 'radix-ui';
 
 import { useCloseOnBack } from '@/ui/hooks/use-close-on-back';
 
+import { closeAutoFocus } from './close-focus';
 import { cn } from './utils';
 
 function Dialog(props: React.ComponentProps<typeof DialogPrimitive.Root>) {
@@ -55,6 +56,7 @@ function DialogContent({
           className
         )}
         {...props}
+        onCloseAutoFocus={closeAutoFocus(props.onCloseAutoFocus)}
       >
         {children}
       </DialogPrimitive.Content>
