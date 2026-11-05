@@ -87,6 +87,7 @@ export const Artboard = memo(function Artboard({
   onFocus,
 }: ArtboardProps) {
   const routes = useShownRoutes((now) => now.shown);
+  const exploration = useShownRoutes((now) => now.exploration);
   const press = useRef<{ readonly id: number; readonly x: number; readonly y: number } | undefined>(
     undefined
   );
@@ -254,6 +255,7 @@ export const Artboard = memo(function Artboard({
         height={height}
         maze={maze}
         resolution={band}
+        exploration={exploration}
         routes={routes}
         width={width}
       />

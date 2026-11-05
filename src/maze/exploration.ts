@@ -228,3 +228,13 @@ export function explore(maze: Maze): Exploration | null | undefined {
 
   return memo.get(maze);
 }
+
+/** Whether the search of `maze` is already known, run here or remembered. */
+export function explorationKnown(maze: Maze): boolean {
+  return memo.has(maze);
+}
+
+/** Remembers `exploration` as the search of `maze`, run elsewhere, as in a worker. */
+export function rememberExploration(maze: Maze, exploration: Exploration | null | undefined): void {
+  memo.set(maze, exploration);
+}

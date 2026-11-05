@@ -10,19 +10,23 @@
 
 import {
   encodeMazeCode,
+  explore,
+  rememberExploration,
   rememberRoutes,
   routesKnown,
   shortestRoutes,
+  type Exploration,
   type Maze,
   type ShortestRoutes,
 } from '@/maze';
 
 import { schedulePaint } from './paint-queue';
 
-/** What the worker answers: the routes of the maze of `code`, or that its search `failed`. */
+/** What the worker answers: the routes and search of the maze of `code`, or that they `failed`. */
 export interface RoutesFound {
   readonly code: string;
   readonly routes: ShortestRoutes | null | undefined;
+  readonly exploration: Exploration | null | undefined;
   readonly failed?: true;
 }
 
@@ -86,6 +90,7 @@ function answer(found: RoutesFound): void {
       searchInIdle(request);
     } else {
       rememberRoutes(request.maze, found.routes);
+      rememberExploration(request.maze, found.exploration);
       request.waiting.forEach((resume) => resume());
     }
   }
@@ -105,6 +110,7 @@ function searchInIdle(request: Request): void {
 
     try {
       shortestRoutes(request.maze);
+      explore(request.maze);
     } catch {
       return;
     }

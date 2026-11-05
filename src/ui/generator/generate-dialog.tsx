@@ -162,6 +162,7 @@ const NOT_A_RECIPE = 'This is not a recipe: copy it again with “Copy recipe”
  */
 function CardPicture({ item, place }: { item: ReadyItem; place: number }) {
   const routes = useShownRoutes((now) => now.shown);
+  const exploration = useShownRoutes((now) => now.exploration);
   const [settling] = useState(
     () => item.builtAt !== undefined && performance.now() - item.builtAt < SETTLE
   );
@@ -170,6 +171,7 @@ function CardPicture({ item, place }: { item: ReadyItem; place: number }) {
     <span className="relative self-center">
       <ThumbnailCanvas
         cached={!settling}
+        exploration={exploration}
         height={CARD_SIDE}
         maze={measureItem(item).maze}
         routes={routes}

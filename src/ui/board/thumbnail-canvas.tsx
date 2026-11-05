@@ -2,12 +2,13 @@ import { useEffect, useRef } from 'react';
 
 import {
   encodeMazeCode,
+  explorationKnown,
+  explore,
   routesKnown,
   routesShown,
   type Maze,
   type MazeDiff,
   type RouteSwitches,
-  type ShortestRoutes,
 } from '@/maze';
 import {
   boardGeometry,
@@ -15,6 +16,7 @@ import {
   PREVIEW_BAND,
   thumbnailBand,
   type ThumbnailBand,
+  type ThumbnailRoutes,
 } from '@/render';
 import { cn } from '@/ui/primitives/utils';
 import { anyRouteShown } from '@/ui/route-switches';
@@ -51,6 +53,8 @@ export interface ThumbnailCanvasProps {
    * not searched yet shows without them, and with them once a worker has searched them.
    */
   readonly routes?: RouteSwitches;
+  /** Whether the flood-fill search's trail is drawn under the routes, unless a diff is; off by default. */
+  readonly exploration?: boolean;
   /**
    * Whether a missing bitmap paints at the next frame when no idle time comes first, as through a
    * fling of the library's grid, which leaves almost no idle time on a phone; off by default.
@@ -91,7 +95,7 @@ function paintCached(
   band: ThumbnailBand,
   blank: boolean,
   diff: ThumbnailDiff | undefined,
-  routes: Partial<ShortestRoutes> | undefined,
+  routes: ThumbnailRoutes | undefined,
   eachFrame: boolean,
   flung: (() => boolean) | undefined
 ): () => void {
@@ -159,7 +163,7 @@ function paintLive(
   canvas: HTMLCanvasElement,
   maze: Maze,
   pixels: { width: number; height: number },
-  routes: Partial<ShortestRoutes> | undefined
+  routes: ThumbnailRoutes | undefined
 ) {
   canvas.width = Math.max(1, Math.round(pixels.width));
   canvas.height = Math.max(1, Math.round(pixels.height));
@@ -177,8 +181,19 @@ function paintLive(
   paintTrack(context, maze, geometry, { routes });
 }
 
+function shownOf(
+  maze: Maze,
+  switches: RouteSwitches | undefined,
+  exploring: boolean
+): ThumbnailRoutes | undefined {
+  const routes = routesShown(maze, switches);
+  const exploration = exploring ? (explore(maze) ?? undefined) : undefined;
+  return exploration === undefined ? routes : { ...routes, exploration };
+}
+
 /**
- * Paints with the routes `switches` turn on, searched in a worker, first for a canvas on screen:
+ * Paints with the routes `switches` turn on and, when `exploring`, the search's trail, searched in
+ * a worker, first for a canvas on screen:
  * until they are, a blank canvas paints without them, and a painted one keeps its bitmap. Once
  * searched, the routes paint as a blank canvas's first paint would, at once when ready and by the
  * fling's rules otherwise; a maze without routes that already shows its plain bitmap stays as is.
@@ -187,16 +202,19 @@ function withRoutes(
   canvas: HTMLCanvasElement,
   maze: Maze,
   switches: RouteSwitches | undefined,
-  paint: (routes: Partial<ShortestRoutes> | undefined, blank?: boolean) => () => void
+  exploring: boolean,
+  paint: (routes: ThumbnailRoutes | undefined, blank?: boolean) => () => void
 ): () => void {
-  if (!anyRouteShown(switches) || routesKnown(maze)) {
-    return paint(routesShown(maze, switches));
+  const known = routesKnown(maze) && (!exploring || explorationKnown(maze));
+
+  if ((!anyRouteShown(switches) && !exploring) || known) {
+    return paint(shownOf(maze, switches, exploring));
   }
 
   const blank = canvas.dataset.painted === undefined;
   let cancel = blank ? paint(undefined) : () => undefined;
   const search = requestRoutes(maze, onScreen(canvas), () => {
-    const shown = routesShown(maze, switches);
+    const shown = shownOf(maze, switches, exploring);
 
     if (shown === undefined && blank) {
       return;
@@ -227,6 +245,7 @@ export function ThumbnailCanvas({
   cached = true,
   diff,
   routes,
+  exploration = false,
   eachFrame = false,
   flung,
   className,
@@ -243,7 +262,7 @@ export function ThumbnailCanvas({
     }
 
     const paint = (
-      shown: Partial<ShortestRoutes> | undefined,
+      shown: ThumbnailRoutes | undefined,
       blank = element.dataset.painted === undefined
     ): (() => void) => {
       if (cached) {
@@ -254,8 +273,14 @@ export function ThumbnailCanvas({
       return () => undefined;
     };
 
-    return withRoutes(element, maze, diff === undefined ? routes : undefined, paint);
-  }, [maze, width, height, ratio, cached, band, diff, routes, eachFrame, flung]);
+    return withRoutes(
+      element,
+      maze,
+      diff === undefined ? routes : undefined,
+      diff === undefined && exploration,
+      paint
+    );
+  }, [maze, width, height, ratio, cached, band, diff, routes, exploration, eachFrame, flung]);
 
   return (
     <canvas aria-hidden className={cn('block', className)} ref={canvas} style={{ width, height }} />

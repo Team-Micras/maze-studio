@@ -236,7 +236,7 @@ describe('The Generate dialog', () => {
     }
   );
 
-  test('lists the flood-fill search in its Routes and draws it on the maze opened, never on a card', async () => {
+  test('lists the flood-fill search in its Routes and draws it on the cards and the maze opened, until it is turned off', async () => {
     await mount();
     await generate();
     await expect.poll(building, GENERATION).toBe(false);
@@ -246,11 +246,17 @@ describe('The Generate dialog', () => {
     await userEvent.click(page.getByRole('button', { name: 'Close routes' }));
 
     await expect.poll(() => showsAmberRoute(firstCard())).toBe(true);
-    expect(showsExploration(firstCard())).toBe(false);
+    await expect.poll(() => showsExploration(firstCard())).toBe(true);
     await open(1);
     await expect
       .poll(() => document.querySelector('[data-detail] [data-route="exploration"]'))
       .not.toBeNull();
+
+    await userEvent.click(page.getByRole('button', { name: 'Routes' }));
+    await userEvent.click(page.getByRole('switch', { name: 'Flood fill · to the goal' }));
+    await expect
+      .poll(() => document.querySelector('[data-detail] [data-route="exploration"]'))
+      .toBeNull();
   });
 
   test('opens a maze drawn large in a view of its own, steps with ‹ › and the arrow keys, and goes back to the gallery where it was', async () => {

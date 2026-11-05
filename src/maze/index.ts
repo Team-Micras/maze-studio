@@ -24,7 +24,9 @@ export {
 } from './edits';
 export {
   explore,
+  explorationKnown,
   NEVER_SEEN,
+  rememberExploration,
   type Exploration,
   type ExplorationStep,
   type SeenWall,

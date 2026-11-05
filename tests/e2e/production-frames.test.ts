@@ -66,11 +66,12 @@ function runScroll(page: Page, count = STEPS): Promise<number[]> {
   );
 }
 
-/** Switches both routes on from the library's Routes and closes it. */
+/** Switches both routes and the flood-fill search on from the library's Routes and closes it. */
 async function showBothRoutes(page: Page): Promise<void> {
   await page.getByRole('button', { name: 'Routes' }).click();
   await page.getByRole('switch', { name: 'Without diagonals' }).click();
   await page.getByRole('switch', { name: 'With diagonals' }).click();
+  await page.getByRole('switch', { name: 'Flood fill · to the goal' }).click();
   await page.keyboard.press('Escape');
 }
 

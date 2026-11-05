@@ -425,13 +425,16 @@ describe('The flood-fill search', () => {
     await expect.poll(() => useExplorationPlayback.getState()).toBeUndefined();
   });
 
-  test('is listed in the library and never drawn on its thumbnails', async () => {
+  test('is listed in the library and drawn on its thumbnails until it is turned off', async () => {
     await mountApp();
     await libraryRoutes(/With diagonals/, /^Flood fill/);
 
     await expect.poll(() => showsAmberRoute(thumbnail())).toBe(true);
-    expect(showsExploration(thumbnail())).toBe(false);
+    await expect.poll(() => showsExploration(thumbnail())).toBe(true);
     expect(libraryActive()).toBe(true);
+    await libraryRoutes(/^Flood fill/);
+    await expect.poll(() => showsExploration(thumbnail())).toBe(false);
+    await libraryRoutes(/^Flood fill/);
     await openMaze();
     expect(explored()).toBe(true);
   });
