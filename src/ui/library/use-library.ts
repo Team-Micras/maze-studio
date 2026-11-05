@@ -133,12 +133,27 @@ async function loadLibrary(): Promise<Loaded> {
   return { commit: copy.commit, files: copy.files, mine };
 }
 
+/** Why the library could not be read. */
+interface Failure {
+  readonly failure: string;
+}
+
+/** Why the library failed when it took longer than {@link LOAD_TIMEOUT_MS}. */
+const SLOW_LOAD = 'The browser storage did not answer in 10 s.';
+
+function reasonOf(error: unknown): string {
+  return error instanceof Error ? `${error.name}: ${error.message}` : String(error);
+}
+
 /** The library as {@link useLibrary} gives it. */
 export interface LibraryLoad {
   /** The library, or `undefined` while it loads or when it failed to. */
   readonly library: Library | undefined;
-  /** Whether the library could not be read; a later failure keeps the library already shown. */
-  readonly failed: boolean;
+  /**
+   * Why the library could not be read, or `undefined` when it was or still loads; a later failure
+   * keeps the library already shown.
+   */
+  readonly failed: string | undefined;
 }
 
 /**
@@ -147,7 +162,7 @@ export interface LibraryLoad {
  * {@link LOAD_TIMEOUT_MS}, is logged with `console.error`.
  */
 export function useLibrary(): LibraryLoad {
-  const [loaded, setLoaded] = useState<Loaded | 'failed' | undefined>(undefined);
+  const [loaded, setLoaded] = useState<Loaded | Failure | undefined>(undefined);
 
   useEffect(() => {
     let current = true;
@@ -170,7 +185,7 @@ export function useLibrary(): LibraryLoad {
           console.error('The library could not be read', error);
 
           if (current) {
-            setLoaded((previous) => previous ?? 'failed');
+            setLoaded((previous) => previous ?? { failure: reasonOf(error) });
           }
         }
       );
@@ -178,7 +193,7 @@ export function useLibrary(): LibraryLoad {
 
     const slow = setTimeout(() => {
       console.error('The library took too long to load');
-      setLoaded((previous) => previous ?? 'failed');
+      setLoaded((previous) => previous ?? { failure: SLOW_LOAD });
     }, LOAD_TIMEOUT_MS);
 
     load();
@@ -199,8 +214,8 @@ export function useLibrary(): LibraryLoad {
 
   return useMemo(
     () => ({
-      library: loaded === undefined || loaded === 'failed' ? undefined : library(loaded),
-      failed: loaded === 'failed',
+      library: loaded === undefined || 'failure' in loaded ? undefined : library(loaded),
+      failed: loaded !== undefined && 'failure' in loaded ? loaded.failure : undefined,
     }),
     [loaded]
   );

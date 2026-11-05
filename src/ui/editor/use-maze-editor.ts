@@ -302,6 +302,7 @@ export function useMazeEditor(input: MazeEditorInput): MazeEditor {
         const next = openSession({ ...sessionView(now), name });
         latest.current = next;
         setStored(next);
+        noteWrites(mineWriter.saveToMine(next));
         return true;
       }
 

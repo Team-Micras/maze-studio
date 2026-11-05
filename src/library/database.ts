@@ -62,23 +62,58 @@ function finished(transaction: IDBTransaction): Promise<void> {
   });
 }
 
-/** The open database. */
+/**
+ * The database. Its connection reopens on the next use once closed, by {@link Database.close} or
+ * by the browser, so a page frozen in the background can let go of it.
+ */
 export class Database {
-  readonly #database: IDBDatabase;
+  #connection: Promise<IDBDatabase> | undefined;
+  readonly #reopen: () => Promise<IDBDatabase>;
 
-  constructor(database: IDBDatabase) {
-    this.#database = database;
+  /**
+   * @param database The connection to start with.
+   * @param reopen Opens a new connection once this one is closed.
+   */
+  constructor(database: IDBDatabase, reopen: () => Promise<IDBDatabase>) {
+    this.#reopen = reopen;
+    this.#connection = this.#held(Promise.resolve(database));
+  }
+
+  #held(connection: Promise<IDBDatabase>): Promise<IDBDatabase> {
+    const held = connection.then(
+      (database) => {
+        database.addEventListener('close', () => {
+          if (this.#connection === held) {
+            this.#connection = undefined;
+          }
+        });
+        return database;
+      },
+      (error: unknown) => {
+        if (this.#connection === held) {
+          this.#connection = undefined;
+        }
+
+        throw error;
+      }
+    );
+    return held;
+  }
+
+  #open(): Promise<IDBDatabase> {
+    this.#connection ??= this.#held(this.#reopen());
+    return this.#connection;
   }
 
   /** The value at `key`, if there is one. */
   async get<T>(store: StoreName, key: IDBValidKey): Promise<T | undefined> {
-    const transaction = this.#database.transaction(store, 'readonly');
+    const transaction = (await this.#open()).transaction(store, 'readonly');
     return result<T | undefined>(transaction.objectStore(store).get(key));
   }
 
   /** Every value of a store, in key order. */
   async getAll<T>(store: StoreName): Promise<T[]> {
-    const transaction = this.#database.transaction(store, 'readonly');
+    const transaction = (await this.#open()).transaction(store, 'readonly');
     return result<T[]>(transaction.objectStore(store).getAll());
   }
 
@@ -91,7 +126,7 @@ export class Database {
     store: StoreName,
     valid: (value: unknown) => value is T
   ): Promise<ReadableRecords<T>> {
-    const objects = this.#database.transaction(store, 'readonly').objectStore(store);
+    const objects = (await this.#open()).transaction(store, 'readonly').objectStore(store);
     const [keys, all] = await Promise.allSettled([
       result(objects.getAllKeys()),
       result<unknown[]>(objects.getAll()),
@@ -129,14 +164,14 @@ export class Database {
 
   /** Writes `value`, at `key` for the `settings` store, at its own key for the others. */
   async put(store: StoreName, value: unknown, key?: string): Promise<void> {
-    const transaction = this.#database.transaction(store, 'readwrite');
+    const transaction = (await this.#open()).transaction(store, 'readwrite');
     transaction.objectStore(store).put(value, key);
     await finished(transaction);
   }
 
   /** Deletes the value at `key`. */
   async delete(store: StoreName, key: string): Promise<void> {
-    const transaction = this.#database.transaction(store, 'readwrite');
+    const transaction = (await this.#open()).transaction(store, 'readwrite');
     transaction.objectStore(store).delete(key);
     await finished(transaction);
   }
@@ -148,7 +183,7 @@ export class Database {
    * @param run Makes the writes; it may not wait on anything else.
    */
   async write(stores: readonly StoreName[], run: (writer: StoreWriter) => void): Promise<void> {
-    const transaction = this.#database.transaction([...stores], 'readwrite');
+    const transaction = (await this.#open()).transaction([...stores], 'readwrite');
     const done = finished(transaction);
 
     try {
@@ -180,7 +215,7 @@ export class Database {
     key: string,
     change: (current: T | undefined) => R
   ): Promise<R> {
-    const transaction = this.#database.transaction(store, 'readwrite');
+    const transaction = (await this.#open()).transaction(store, 'readwrite');
     const objects = transaction.objectStore(store);
     const next = change(await result<T | undefined>(objects.get(key)));
 
@@ -192,9 +227,10 @@ export class Database {
     return next;
   }
 
-  /** Closes the connection. */
+  /** Closes the connection; the next use opens another. */
   close(): void {
-    this.#database.close();
+    void this.#connection?.then((database) => database.close()).catch(() => undefined);
+    this.#connection = undefined;
   }
 }
 
@@ -208,6 +244,11 @@ export async function openDatabase(
   name: string = DATABASE_NAME,
   factory: IDBFactory = indexedDB
 ): Promise<Database> {
+  const reopen = (): Promise<IDBDatabase> => connect(name, factory);
+  return new Database(await reopen(), reopen);
+}
+
+function connect(name: string, factory: IDBFactory): Promise<IDBDatabase> {
   const request = factory.open(name, SCHEMA_VERSION);
   request.addEventListener('upgradeneeded', () => {
     const database = request.result;
@@ -225,5 +266,5 @@ export async function openDatabase(
     }
   });
 
-  return new Database(await result(request));
+  return result(request);
 }

@@ -1,35 +1,28 @@
-import { describe, expect, test } from 'vitest';
+import { afterEach, describe, expect, test, vi } from 'vitest';
 
-import { trackWriter, writesSettled } from '@/ui/editor/pending-writes';
+import { noteWrites, SLOW_WRITE, SLOW_WRITE_MS } from '@/ui/editor/pending-writes';
+import * as toasts from '@/ui/toasts';
 
-function slowWriter(): { writer: { idle: () => Promise<void> }; finish: () => void } {
-  const { promise, resolve } = Promise.withResolvers<void>();
-  return { writer: { idle: () => promise }, finish: () => resolve() };
-}
+afterEach(() => {
+  vi.useRealTimers();
+  vi.restoreAllMocks();
+});
 
-describe('writesSettled', () => {
-  test('waits for every writer tracked, and no longer for one untracked', async () => {
-    const first = slowWriter();
-    const second = slowWriter();
-    const stopFirst = trackWriter(first.writer);
-    const stopSecond = trackWriter(second.writer);
-    let settled = false;
-    void writesSettled().then(() => {
-      settled = true;
-    });
+describe('Writes on their way', () => {
+  test('say once that saving is taking long, however many are waiting, and not when they end in time', async () => {
+    vi.useFakeTimers();
+    const shown = vi.spyOn(toasts, 'showToast').mockImplementation(() => undefined);
+    noteWrites(Promise.resolve());
+    await vi.advanceTimersByTimeAsync(SLOW_WRITE_MS);
 
-    first.finish();
-    await Promise.resolve();
-    await Promise.resolve();
-    expect(settled).toBe(false);
-    second.finish();
-    await expect.poll(() => settled).toBe(true);
+    expect(shown).not.toHaveBeenCalled();
 
-    stopFirst();
-    stopSecond();
-    const stuck = slowWriter();
-    const stopStuck = trackWriter(stuck.writer);
-    stopStuck();
-    await expect(writesSettled()).resolves.toBeUndefined();
+    const stuck = new Promise<void>(() => undefined);
+    noteWrites(stuck);
+    noteWrites(stuck);
+    noteWrites(stuck);
+    await vi.advanceTimersByTimeAsync(SLOW_WRITE_MS * 2);
+
+    expect(shown.mock.calls).toEqual([[SLOW_WRITE]]);
   });
 });
