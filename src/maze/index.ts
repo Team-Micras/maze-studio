@@ -1,7 +1,8 @@
 /**
  * The maze core: the model, its edits and their history, the diff between two mazes, the
- * mazefiles text format, the compact code, validation and the shortest routes. Pure TypeScript, with
- * no React, no browser API beyond text encoding, and no other module of maze-studio.
+ * mazefiles text format, the compact code, validation, the shortest routes and the flood-fill
+ * search. Pure TypeScript, with no React, no browser API beyond text encoding, and no other
+ * module of maze-studio.
  *
  * @module
  */
@@ -22,6 +23,15 @@ export {
   wallRectangle,
   type CellArea,
 } from './edits';
+export {
+  explore,
+  explorationKnown,
+  NEVER_SEEN,
+  rememberExploration,
+  type Exploration,
+  type ExplorationStep,
+  type SeenWall,
+} from './exploration';
 export { borderedMaze, presetMaze, presetProfile, type MazePreset } from './new-maze';
 export {
   beginGesture,

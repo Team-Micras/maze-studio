@@ -4,6 +4,7 @@ import { render } from 'vitest-browser-react';
 
 import {
   diffMazes,
+  explore,
   setGoals,
   setStart,
   shortestRoutes,
@@ -11,8 +12,15 @@ import {
   type Edge,
   type Maze,
 } from '@/maze';
-import { ARTBOARD_SIZE, ROUTE_COLORS, TRACK_COLORS, type BoardOverlays } from '@/render';
+import {
+  ARTBOARD_SIZE,
+  EXPLORATION_COLOR,
+  ROUTE_COLORS,
+  TRACK_COLORS,
+  type BoardOverlays,
+} from '@/render';
 import { Board } from '@/ui/board/board';
+import { stopExploration, useExplorationPlayback } from '@/ui/route-switches';
 import '@/ui/styles.css';
 import { settled } from '@tests/support/ui/animations';
 import { BoardHarness } from '@tests/support/ui/board-harness';
@@ -37,6 +45,7 @@ const ALL_LAYERS = [
 ];
 
 afterEach(() => {
+  stopExploration();
   document.documentElement.classList.remove('dark');
 });
 
@@ -170,6 +179,55 @@ describe('The board', () => {
     expect(
       routes.map((route) => route.querySelector('[data-layer="route"]')?.getAttribute('stroke'))
     ).toEqual([ROUTE_COLORS.withoutDiagonals, ROUTE_COLORS.withDiagonals]);
+  });
+
+  test('draws the flood-fill search under the shortest routes, still, without a robot', async () => {
+    const maze = await repoMaze(REPO_MAZES.classic);
+    await render(
+      <Board
+        maze={maze}
+        overlays={{ routes: { ...shortestRoutes(maze) }, exploration: explore(maze)! }}
+      />
+    );
+    const routes = [...document.querySelectorAll('[data-route]')];
+
+    expect(routes.map((route) => route.getAttribute('data-route'))).toEqual([
+      'exploration',
+      'withoutDiagonals',
+      'withDiagonals',
+    ]);
+    expect(routes[0].querySelector('[data-layer="route"]')?.getAttribute('stroke')).toBe(
+      EXPLORATION_COLOR
+    );
+    expect(routes[0].querySelector('[data-layer="route-goal"]')).not.toBeNull();
+    expect(layer('robot')).toBeNull();
+    expect(layer('unseen')).toBeNull();
+  });
+
+  test('plays the search with its robot and the walls it has not seen dimmed, then ends still', async () => {
+    const maze = await repoMaze(REPO_MAZES.classic);
+    const exploration = explore(maze)!;
+    await render(<Board maze={maze} overlays={{ exploration }} />);
+    useExplorationPlayback.setState({ exploration, at: 2.5, playing: false }, true);
+
+    await expect.poll(() => layer('robot')).not.toBeNull();
+    expect(layer('robot')?.getAttribute('fill')).toBe(TRACK_COLORS.cursor);
+    expect(layer('unseen')?.getAttribute('fill')).toBe(TRACK_COLORS.unseenWall);
+    expect(shapes('unseen')).toBe(exploration.walls.filter((wall) => wall.seenAt > 2).length);
+    expect(
+      document.querySelector('[data-route="exploration"] [data-layer="route-goal"]')
+    ).toBeNull();
+
+    useExplorationPlayback.setState({ exploration, at: 40.5, playing: false }, true);
+    await expect
+      .poll(() => shapes('unseen'))
+      .toBe(exploration.walls.filter((wall) => wall.seenAt > 40).length);
+    stopExploration();
+    await expect.poll(() => layer('robot')).toBeNull();
+    expect(layer('unseen')).toBeNull();
+    expect(
+      document.querySelector('[data-route="exploration"] [data-layer="route-goal"]')
+    ).not.toBeNull();
   });
 
   test('draws the preview of a wall taken away as a dashed outline over the floor', async () => {

@@ -3,11 +3,13 @@ import { describe, expect, test } from 'vitest';
 import {
   createMaze,
   diffMazes,
+  explore,
   fillBorder,
   setGoals,
   setStart,
   setWall,
   shortestRoutes,
+  type Edge,
   type Maze,
 } from '@/maze';
 import {
@@ -158,6 +160,34 @@ describe('overlayLayers', () => {
         ).toBeLessThan(0.02);
       }
     }
+  });
+
+  test('draws the search into a dead end and back over itself, sharp at the turn back', () => {
+    const walls: readonly Edge[] = [
+      { direction: 'vertical', x: 1, y: 0 },
+      { direction: 'vertical', x: 1, y: 2 },
+    ];
+    const corridor = walls.reduce(
+      (walled, edge) => setWall(walled, edge, true),
+      setGoals(setStart(createMaze({ width: 2, height: 3 }), { x: 0, y: 0 }), [{ x: 1, y: 2 }])
+    );
+    const board = boardGeometry(corridor);
+    const exploration = explore(corridor)!;
+    const { line } = overlayLayers(board, { exploration }).exploration!;
+    const end = (u: number, v: number): string =>
+      `${formatLength(board.margin + u * board.pitch)} ${formatLength(board.margin + (3 - v) * board.pitch)}`;
+
+    expect(exploration.steps.map(({ x, y }) => `${x},${y}`)).toEqual([
+      '0,0',
+      '0,1',
+      '0,2',
+      '0,1',
+      '1,1',
+      '1,2',
+    ]);
+    expect(line).toContain(`L${end(0.5, 2.5)}L`);
+    expect(line).toContain(`Q${end(0.5, 1.5)}`);
+    expect(line.endsWith(`L${end(1.5, 2.5)}`)).toBe(true);
   });
 
   test('outlines walls put, dashes walls taken and rings the marks that moved', () => {

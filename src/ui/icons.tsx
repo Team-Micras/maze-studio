@@ -384,6 +384,16 @@ export function Path(props: IconProps) {
   );
 }
 
+/** Phosphor's `pause`. */
+export function Pause(props: IconProps) {
+  return (
+    <Glyph
+      d="M200,32H160a16,16,0,0,0-16,16V208a16,16,0,0,0,16,16h40a16,16,0,0,0,16-16V48A16,16,0,0,0,200,32Zm0,176H160V48h40ZM96,32H56A16,16,0,0,0,40,48V208a16,16,0,0,0,16,16H96a16,16,0,0,0,16-16V48A16,16,0,0,0,96,32Zm0,176H56V48H96Z"
+      {...props}
+    />
+  );
+}
+
 /** Phosphor's `pencil-simple`. */
 export function PencilSimple(props: IconProps) {
   return (
@@ -399,6 +409,16 @@ export function PencilSimpleLine(props: IconProps) {
   return (
     <Glyph
       d="M227.32,73.37,182.63,28.69a16,16,0,0,0-22.63,0L36.69,152A15.86,15.86,0,0,0,32,163.31V208a16,16,0,0,0,16,16H216a8,8,0,0,0,0-16H115.32l112-112A16,16,0,0,0,227.32,73.37ZM92.69,208H48V163.31l88-88L180.69,120ZM192,108.69,147.32,64l24-24L216,84.69Z"
+      {...props}
+    />
+  );
+}
+
+/** Phosphor's `play`. */
+export function Play(props: IconProps) {
+  return (
+    <Glyph
+      d="M232.4,114.49,88.32,26.35a16,16,0,0,0-16.2-.3A15.86,15.86,0,0,0,64,39.87V216.13A15.94,15.94,0,0,0,80,232a16.07,16.07,0,0,0,8.36-2.35L232.4,141.51a15.81,15.81,0,0,0,0-27ZM80,215.94V40l143.83,88Z"
       {...props}
     />
   );

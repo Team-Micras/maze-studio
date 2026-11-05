@@ -53,7 +53,7 @@ import { LibraryChrome } from '@/ui/library/library-chrome';
 import type { Library } from '@/ui/library/use-library';
 import { openEntry, type OpenMaze } from '@/ui/open-maze';
 import { cn } from '@/ui/primitives/utils';
-import { useShownRoutes } from '@/ui/route-switches';
+import { explorationShown, useShownRoutes } from '@/ui/route-switches';
 import { useTheme } from '@/ui/theme';
 import { showToast } from '@/ui/toasts';
 import { newMazeName, type NewMazeRequest } from '@/ui/new-maze';
@@ -292,6 +292,7 @@ export function Studio({
   const sessionChangesNow = useStore(sessionChanges);
   const theme = useTheme((current) => current.theme);
   const shownRoutes = useShownRoutes((now) => now.shown);
+  const exploring = useShownRoutes((now) => now.exploration);
   const toggleTheme = useTheme((current) => current.toggle);
   const changes = useStudioChanges({
     store,
@@ -468,7 +469,10 @@ export function Studio({
               overlays={
                 mode === 'editor'
                   ? editing.overlays
-                  : { routes: routesShown(onScreen.maze, shownRoutes) }
+                  : {
+                      routes: routesShown(onScreen.maze, shownRoutes),
+                      exploration: explorationShown(onScreen.maze, exploring),
+                    }
               }
               fadeIn={mode !== 'flying-out'}
               rect={board}
@@ -477,7 +481,10 @@ export function Studio({
           ) : preparedMaze === undefined ? null : (
             <OpenBoard
               maze={preparedMaze}
-              overlays={{ routes: routesShown(preparedMaze, shownRoutes) }}
+              overlays={{
+                routes: routesShown(preparedMaze, shownRoutes),
+                exploration: explorationShown(preparedMaze, exploring),
+              }}
               rect={boardOf(preparedMaze)}
               shown={false}
             />

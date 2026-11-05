@@ -5,6 +5,7 @@ import { render } from 'vitest-browser-react';
 import {
   diffMazes,
   encodeMazeCode,
+  explore,
   setStart,
   routesKnown,
   shortestRoutes,
@@ -273,6 +274,18 @@ describe('ThumbnailCache', () => {
     expect(cache.thumbnail('a', maze, 128, none)).toBe(plain);
     expect(cache.cached('a', 128, both)).toBe(routed);
     expect(cache.cached('a', 128)).toBe(plain);
+  });
+
+  test('keeps a thumbnail with the search apart from the one with only its routes', async () => {
+    const maze = await repoMaze(REPO_MAZES.classic);
+    const routes = { ...shortestRoutes(maze) };
+    const cache = new ThumbnailCache();
+    const routed = cache.thumbnail('a', maze, 128, routes);
+    const explored = cache.thumbnail('a', maze, 128, { ...routes, exploration: explore(maze)! });
+
+    expect(explored).not.toBe(routed);
+    expect(cache.cached('a', 128, { exploration: explore(maze)! })).toBeUndefined();
+    expect(cache.cached('a', 128, { ...routes, exploration: explore(maze)! })).toBe(explored);
   });
 
   test('drops the least recently used bitmap once past its capacity', async () => {

@@ -9,11 +9,11 @@ import type { Generated } from '@/ui/editor/edit-session';
 import { Batch } from '@/ui/generator/batch-run';
 import GenerateDialog, { type GeneratorPreview } from '@/ui/generator/generate-dialog';
 import type { NewMazeRequest } from '@/ui/new-maze';
-import { NO_ROUTES, useShownRoutes } from '@/ui/route-switches';
+import { NO_ROUTES, stopExploration, useShownRoutes } from '@/ui/route-switches';
 import { TooltipProvider } from '@/ui/primitives/tooltip';
 import '@/ui/styles.css';
 import { axeViolations } from '@tests/support/axe-check';
-import { showsAmberRoute } from '@tests/support/ui/route-pixels';
+import { showsAmberRoute, showsExploration } from '@tests/support/ui/route-pixels';
 
 const render = (ui: ReactNode) => renderReact(ui, { wrapper: TooltipProvider });
 
@@ -62,7 +62,8 @@ function routesOnMaze(): number {
 }
 
 afterEach(async () => {
-  useShownRoutes.setState({ shown: NO_ROUTES });
+  useShownRoutes.setState({ shown: NO_ROUTES, exploration: false });
+  stopExploration();
   await page.viewport(1440, 900);
 });
 
@@ -234,6 +235,29 @@ describe('The Generate dialog', () => {
       await expect.poll(routesOnMaze).toBe(0);
     }
   );
+
+  test('lists the flood-fill search in its Routes and draws it on the cards and the maze opened, until it is turned off', async () => {
+    await mount();
+    await generate();
+    await expect.poll(building, GENERATION).toBe(false);
+    await userEvent.click(page.getByRole('button', { name: 'Routes' }));
+    await userEvent.click(page.getByRole('switch', { name: 'With diagonals' }));
+    await userEvent.click(page.getByRole('switch', { name: 'Flood fill · to the goal' }));
+    await userEvent.click(page.getByRole('button', { name: 'Close routes' }));
+
+    await expect.poll(() => showsAmberRoute(firstCard())).toBe(true);
+    await expect.poll(() => showsExploration(firstCard())).toBe(true);
+    await open(1);
+    await expect
+      .poll(() => document.querySelector('[data-detail] [data-route="exploration"]'))
+      .not.toBeNull();
+
+    await userEvent.click(page.getByRole('button', { name: 'Routes' }));
+    await userEvent.click(page.getByRole('switch', { name: 'Flood fill · to the goal' }));
+    await expect
+      .poll(() => document.querySelector('[data-detail] [data-route="exploration"]'))
+      .toBeNull();
+  });
 
   test('opens a maze drawn large in a view of its own, steps with ‹ › and the arrow keys, and goes back to the gallery where it was', async () => {
     const used = await mount();
