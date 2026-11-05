@@ -74,11 +74,9 @@ function RenameForm({ name, taken, onDone }: FormProps) {
             </Button>
           )}
         </div>
-        {error === undefined ? null : (
-          <p className="text-xs text-destructive" id={`${id}-error`}>
-            {error}
-          </p>
-        )}
+        <p className="min-h-4 text-xs text-destructive" id={`${id}-error`}>
+          {error}
+        </p>
       </div>
       <Button className="self-end rounded-[10px]" disabled={error !== undefined} type="submit">
         Save

@@ -58,9 +58,11 @@ describe('The Rename dialog', () => {
   test('refuses an empty name, and saves a free one with Enter', async () => {
     const renamed = await mount();
     const field = page.getByRole('textbox', { name: 'Name' });
+    const before = page.getByRole('dialog').element().getBoundingClientRect().height;
     await userEvent.fill(field, '   ');
 
     await expect.element(page.getByText('Name cannot be empty')).toBeVisible();
+    expect(page.getByRole('dialog').element().getBoundingClientRect().height).toBe(before);
     await userEvent.fill(field, ' Practice run ');
     await userEvent.keyboard('{Enter}');
     expect(renamed).toEqual(['Practice run']);
