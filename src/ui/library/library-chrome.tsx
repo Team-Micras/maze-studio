@@ -144,9 +144,9 @@ function ThemeItem() {
 }
 
 /**
- * The library's action menus (DESIGN.md 6.1). A phone has one `+`: New maze, Open a .txt file,
+ * The library's action menus (DESIGN.md 6.1). A phone has one `+`: New maze, Open mazefile (.txt),
  * the "My mazes and files" items and the theme. A notebook has New maze, whose menu also opens a
- * .txt file and imports, as Drive's New uploads, and a ⋯ with Export all, Check for updates and
+ * mazefile and imports, as Drive's New uploads, and a ⋯ with Export all, Check for updates and
  * the theme.
  */
 function LibraryMenus({ phone, onOpenFile, files, onNew, onGenerate, newName }: MenuProps) {
@@ -155,7 +155,7 @@ function LibraryMenus({ phone, onOpenFile, files, onNew, onGenerate, newName }: 
   const openTxt = (
     <DropdownMenuItem className="rounded-[9px]" onSelect={() => input.current?.click()}>
       <FolderOpen aria-hidden size={16} />
-      Open a .txt file…
+      Open mazefile (.txt)…
     </DropdownMenuItem>
   );
 

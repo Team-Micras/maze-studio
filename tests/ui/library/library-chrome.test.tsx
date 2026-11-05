@@ -132,7 +132,7 @@ describe("The notebook's actions", () => {
       'Training, 16 × 16',
       'Custom size…',
       'Generate…Beta',
-      'Open a .txt file…',
+      'Open mazefile (.txt)…',
       'Import…',
     ]);
     expect(await menuItems('More library actions')).toEqual([
