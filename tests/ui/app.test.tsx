@@ -176,7 +176,7 @@ describe('The shell', () => {
     await userEvent.click(page.getByRole('menuitem', { name: /^(Light|Dark) theme$/ }));
 
     expect(document.documentElement.classList.contains('dark')).toBe(!dark);
-    expect(meta.content).toBe(dark ? '#e3e3e3' : '#191919');
+    expect(meta.content).toBe(dark ? '#ffffff' : '#191919');
     expect(localStorage.getItem('maze-studio:theme')).toBe(dark ? 'light' : 'dark');
     localStorage.removeItem('maze-studio:theme');
     meta.remove();

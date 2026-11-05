@@ -12,7 +12,7 @@ import { create } from 'zustand';
 export type Theme = 'light' | 'dark';
 
 /** The desk colour of each theme, for `<meta name="theme-color">`. */
-export const DESK_COLORS: Readonly<Record<Theme, string>> = { light: '#e3e3e3', dark: '#191919' };
+export const DESK_COLORS: Readonly<Record<Theme, string>> = { light: '#ffffff', dark: '#191919' };
 
 /** The theme `?theme=` forces, if any. */
 export function forcedTheme(search: string): Theme | undefined {
