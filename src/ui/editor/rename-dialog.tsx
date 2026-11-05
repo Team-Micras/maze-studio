@@ -1,6 +1,5 @@
 import { useId, useRef, useState, type FormEvent } from 'react';
 
-import { useCoarsePointer } from '@/ui/hooks/use-media-query';
 import { X } from '@/ui/icons';
 import { IslandButton } from '@/ui/islands/island';
 import { Button } from '@/ui/primitives/button';
@@ -30,6 +29,7 @@ interface FormProps {
 
 function RenameForm({ name, taken, onDone }: FormProps) {
   const [value, setValue] = useState(name);
+  const field = useRef<HTMLInputElement>(null);
   const id = useId();
   const trimmed = value.trim();
   const error = nameError(value, taken);
@@ -45,16 +45,35 @@ function RenameForm({ name, taken, onDone }: FormProps) {
     <form className="flex flex-col gap-4" onSubmit={submit}>
       <div className="flex flex-col gap-1.5">
         <Label htmlFor={id}>Name</Label>
-        <Input
-          aria-describedby={error === undefined ? undefined : `${id}-error`}
-          aria-invalid={error !== undefined}
-          autoComplete="off"
-          id={id}
-          name="name"
-          onChange={(event) => setValue(event.target.value)}
-          spellCheck={false}
-          value={value}
-        />
+        <div className="relative">
+          <Input
+            aria-describedby={error === undefined ? undefined : `${id}-error`}
+            aria-invalid={error !== undefined}
+            autoComplete="off"
+            className="pr-9"
+            id={id}
+            name="name"
+            onChange={(event) => setValue(event.target.value)}
+            ref={field}
+            spellCheck={false}
+            value={value}
+          />
+          {value === '' ? null : (
+            <Button
+              aria-label="Clear the name"
+              className="absolute top-1/2 right-1 size-7 -translate-y-1/2 text-muted-foreground"
+              onClick={() => {
+                setValue('');
+                field.current?.focus();
+              }}
+              size="icon-sm"
+              type="button"
+              variant="ghost"
+            >
+              <X aria-hidden size={14} />
+            </Button>
+          )}
+        </div>
         {error === undefined ? null : (
           <p className="text-xs text-destructive" id={`${id}-error`}>
             {error}
@@ -69,13 +88,13 @@ function RenameForm({ name, taken, onDone }: FormProps) {
 }
 
 /**
- * Rename (DESIGN.md 6 and 12): one field, which takes the focus, Enter saves; an empty name says
+ * Rename (DESIGN.md 6 and 12): one field, which takes the focus with its name selected, so typing
+ * replaces it, and a ✕ that clears it; Enter saves; an empty name says
  * "Name cannot be empty", a name another maze of My mazes has says "Name already in My mazes", and either
  * disables Save.
  */
 export function RenameDialog({ open, onOpenChange, name, taken, onRename }: RenameDialogProps) {
   const content = useRef<HTMLDivElement>(null);
-  const coarse = useCoarsePointer();
 
   return (
     <Dialog onOpenChange={onOpenChange} open={open}>
@@ -83,12 +102,7 @@ export function RenameDialog({ open, onOpenChange, name, taken, onRename }: Rena
         aria-describedby={undefined}
         onOpenAutoFocus={(event) => {
           event.preventDefault();
-
-          if (coarse) {
-            content.current?.focus();
-          } else {
-            content.current?.querySelector('input')?.select();
-          }
+          content.current?.querySelector('input')?.select();
         }}
         ref={content}
       >

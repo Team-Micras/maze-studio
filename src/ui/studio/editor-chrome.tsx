@@ -161,17 +161,15 @@ export function EditorChrome({
             {children}
           </div>
         ) : null}
-        <ZoomIsland
-          className={
-            phone
-              ? 'right-safe-2 bottom-[calc(96px+env(safe-area-inset-bottom))]'
-              : 'right-safe-4 bottom-safe-[18px]'
-          }
-          orientation={phone ? 'vertical' : 'horizontal'}
-          percent={zoomPercent(controller)}
-          refit={controller.refit}
-          zoomBy={controller.zoomBy}
-        />
+        {phone ? null : (
+          <ZoomIsland
+            className="right-safe-4 bottom-safe-[18px]"
+            orientation="horizontal"
+            percent={zoomPercent(controller)}
+            refit={controller.refit}
+            zoomBy={controller.zoomBy}
+          />
+        )}
       </footer>
     </div>
   );

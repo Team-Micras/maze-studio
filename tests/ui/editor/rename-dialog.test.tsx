@@ -24,6 +24,24 @@ async function mount(): Promise<string[]> {
 }
 
 describe('The Rename dialog', () => {
+  test('opens with the name selected, so typing replaces it, and clears it with ✕', async () => {
+    const renamed = await mount();
+    const field = page.getByRole('textbox', { name: 'Name' });
+    await expect.element(field).toHaveFocus();
+    const input = document.activeElement;
+    expect(
+      input instanceof HTMLInputElement ? [input.selectionStart, input.selectionEnd] : []
+    ).toEqual([0, 'Practice'.length]);
+    await userEvent.keyboard('Sprint');
+    await expect.element(field).toHaveValue('Sprint');
+    await userEvent.click(page.getByRole('button', { name: 'Clear the name' }));
+    await expect.element(field).toHaveValue('');
+    await expect.element(field).toHaveFocus();
+    expect(document.querySelector('[aria-label="Clear the name"]')).toBeNull();
+    await userEvent.keyboard('Final{Enter}');
+    expect(renamed).toEqual(['Final']);
+  });
+
   test('refuses a name another maze of My mazes has, in any case, beside the field', async () => {
     const renamed = await mount();
     const field = page.getByRole('textbox', { name: 'Name' });
