@@ -2,6 +2,7 @@ import { afterEach, describe, expect, test, vi } from 'vitest';
 
 import {
   browserIdleScheduler,
+  IDLE_TIMEOUT_MS,
   createPaintQueue,
   FRAME_PAINT_MS,
   MIN_IDLE_MS,
@@ -221,6 +222,17 @@ describe("The browser's idle scheduler", () => {
     expect(periods.map((period) => [period.timeRemaining(), period.mustProgress])).toEqual([
       [12, false],
     ]);
+  });
+
+  test('asks for an idle period within a second, and must paint in one that timed out', () => {
+    const { idles } = fakeBrowser();
+    const asked = vi.spyOn(window, 'requestIdleCallback');
+    const periods: IdlePeriod[] = [];
+    browserIdleScheduler(false)((period) => periods.push(period));
+    idles.fire((callback) => callback({ didTimeout: true, timeRemaining: () => 0 }));
+
+    expect(asked.mock.calls[0]?.[1]).toEqual({ timeout: IDLE_TIMEOUT_MS });
+    expect(periods.map((period) => period.mustProgress)).toEqual([true]);
   });
 
   test('asks for no frame unless told to paint each frame', () => {
