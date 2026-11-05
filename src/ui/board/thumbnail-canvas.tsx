@@ -72,6 +72,16 @@ function showBitmap(canvas: HTMLCanvasElement, bitmap: OffscreenCanvas): void {
   canvas.getContext('2d')?.drawImage(bitmap, 0, 0);
 }
 
+interface CachedPaint {
+  readonly maze: Maze;
+  readonly band: ThumbnailBand;
+  readonly blank: boolean;
+  readonly diff: ThumbnailDiff | undefined;
+  readonly routes: RouteOverlays;
+  readonly eachFrame: boolean;
+  readonly flung: (() => boolean) | undefined;
+}
+
 /**
  * Shows the cached thumbnail of `maze` in `band`: at once when the canvas shows nothing yet and
  * the bitmap is ready, in idle time otherwise, so switching every artboard to a new band never
@@ -81,13 +91,7 @@ function showBitmap(canvas: HTMLCanvasElement, bitmap: OffscreenCanvas): void {
  */
 function paintCached(
   canvas: HTMLCanvasElement,
-  maze: Maze,
-  band: ThumbnailBand,
-  blank: boolean,
-  diff: ThumbnailDiff | undefined,
-  routes: RouteOverlays,
-  eachFrame: boolean,
-  flung: (() => boolean) | undefined
+  { maze, band, blank, diff, routes, eachFrame, flung }: CachedPaint
 ): () => void {
   const key = encodeMazeCode(maze);
 
@@ -247,7 +251,15 @@ export function ThumbnailCanvas({
       blank = element.dataset.painted === undefined
     ): (() => void) => {
       if (cached) {
-        return paintCached(element, maze, band, blank, diff, shown, eachFrame, flung);
+        return paintCached(element, {
+          maze,
+          band,
+          blank,
+          diff,
+          routes: shown,
+          eachFrame,
+          flung,
+        });
       }
 
       paintLive(element, maze, { width: width * ratio, height: height * ratio }, shown);
