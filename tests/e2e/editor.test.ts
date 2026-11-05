@@ -737,7 +737,7 @@ async function openTxt(
   await page.getByRole('button', { name: 'New maze and more' }).tap();
   const [chooser] = await Promise.all([
     page.waitForEvent('filechooser'),
-    page.getByRole('menuitem', { name: 'Open a .txt file…' }).tap(),
+    page.getByRole('menuitem', { name: 'Open mazefile (.txt)…' }).tap(),
   ]);
   await chooser.setFiles({
     name: `${name}.txt`,
@@ -956,7 +956,7 @@ describe('The top islands on a phone', () => {
       await page.getByRole('button', { name: 'New maze and more' }).tap();
       const [chooser] = await Promise.all([
         page.waitForEvent('filechooser'),
-        page.getByRole('menuitem', { name: 'Open a .txt file…' }).tap(),
+        page.getByRole('menuitem', { name: 'Open mazefile (.txt)…' }).tap(),
       ]);
       await chooser.setFiles({
         name: `${name}.txt`,

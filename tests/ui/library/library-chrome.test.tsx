@@ -1,5 +1,5 @@
-import { afterEach, describe, expect, test } from 'vitest';
-import { page } from 'vitest/browser';
+import { afterEach, describe, expect, test, vi } from 'vitest';
+import { page, userEvent } from 'vitest/browser';
 import { render } from 'vitest-browser-react';
 
 import { SearchIndex } from '@/library';
@@ -109,5 +109,54 @@ describe("The notebook's top islands", () => {
     const brand = boxOf(page.getByRole('heading', { name: 'Maze Studio' }).element().parentElement);
 
     expect(boxOf(document.querySelector('search > div')).top).toBe(brand.top);
+  });
+});
+
+/** The items of the menu `button` opens, which it closes again. */
+async function menuItems(button: string): Promise<string[]> {
+  await userEvent.click(page.getByRole('button', { name: button }));
+  const names = page
+    .getByRole('menuitem')
+    .elements()
+    .map((item) => item.textContent ?? '');
+  await userEvent.keyboard('{Escape}');
+  return names;
+}
+
+describe("The notebook's actions", () => {
+  test('pick the files of Import… and Open mazefile (.txt)… from New maze', async () => {
+    await mountChrome();
+    const picked: string[] = [];
+    const spy = vi.spyOn(HTMLInputElement.prototype, 'click').mockImplementation(function (
+      this: HTMLInputElement
+    ) {
+      picked.push(this.accept);
+    });
+
+    await userEvent.click(page.getByRole('button', { name: 'New maze' }));
+    await userEvent.click(page.getByRole('menuitem', { name: 'Import…' }));
+    await userEvent.click(page.getByRole('button', { name: 'New maze' }));
+    await userEvent.click(page.getByRole('menuitem', { name: 'Open mazefile (.txt)…' }));
+
+    spy.mockRestore();
+    expect(picked).toEqual(['.zip,.txt,application/zip,text/plain', '.txt,text/plain']);
+  });
+
+  test('are New maze, which also opens and imports files, and ⋯ with the rest', async () => {
+    await mountChrome();
+    expect(await menuItems('New maze')).toEqual([
+      'Classic, 16 × 16',
+      'Half size, 32 × 32',
+      'Training, 16 × 16',
+      'Custom size…',
+      'Generate…Beta',
+      'Open mazefile (.txt)…',
+      'Import…',
+    ]);
+    expect(await menuItems('More library actions')).toEqual([
+      'Export all',
+      'Check for updates',
+      expect.stringMatching(/^(Light|Dark) theme$/),
+    ]);
   });
 });

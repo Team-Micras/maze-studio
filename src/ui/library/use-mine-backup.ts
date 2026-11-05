@@ -35,7 +35,7 @@ function reasonOf(error: unknown): string {
 }
 
 /**
- * Export all and Import of the "My mazes and files" menu (DESIGN.md 6.1): the zip of `exportMine`, with
+ * Export all and Import of the library's menus (DESIGN.md 6.1): the zip of `exportMine`, with
  * a Details action when it left mazes out, and the drafts of `readImport` stored under names unique
  * in My mazes, with the report of what was added, renamed and skipped.
  */

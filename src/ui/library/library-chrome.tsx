@@ -1,11 +1,10 @@
-import { FolderOpen, FolderSimple, GithubLogo, Moon, Plus, Sun } from '@/ui/icons';
+import { DotsThree, FolderOpen, GithubLogo, Moon, Plus, Sun } from '@/ui/icons';
 import { useRef, type ReactNode } from 'react';
 
 import { MAZEFILES, type LibraryFilter } from '@/library';
 import { useOneRowTopBar } from '@/ui/hooks/use-media-query';
 import { RoutesButton } from '@/ui/editor/routes-panel';
 import { Island, IslandButton, IslandSeparator } from '@/ui/islands/island';
-import { ThemeButton } from '@/ui/islands/theme-button';
 import type { NewMazeRequest } from '@/ui/new-maze';
 import {
   DropdownMenu,
@@ -21,8 +20,6 @@ import { Verbatim } from '@/ui/verbatim';
 import { CategoryFilter, SourceFilter } from './filter-toggles';
 import { MineAndFilesItems, type MineAndFilesActions } from './mine-and-files';
 import { NewMazeDialogs } from './new-maze-menu';
-import { NewMazeMenu } from './new-maze-button';
-import { OpenFileButton } from './open-file';
 import { pickedFile } from './picked-file';
 import { SearchField } from './search-field';
 import type { Library } from './use-library';
@@ -41,7 +38,7 @@ export interface LibraryChromeProps {
   /** The name a new maze gets unless named: "Untitled maze", unique in My mazes. */
   readonly newName: string;
   readonly phone: boolean;
-  /** What the "My mazes and files" menu does. */
+  /** What the library's file actions do. */
   readonly files: MineAndFilesActions;
   /** What the credit adds of the updates from GitHub, if anything. */
   readonly updateNote?: string | undefined;
@@ -126,77 +123,104 @@ function Credit({
 }
 
 interface MenuProps {
+  readonly phone: boolean;
   readonly onOpenFile: (file: File) => void;
   readonly files: MineAndFilesActions;
   readonly onNew: (request: NewMazeRequest) => void;
+  readonly onGenerate: (() => void) | undefined;
   readonly newName: string;
 }
 
-/** The "My mazes and files" menu (DESIGN.md 6.1) of the notebook's actions island. */
-function MineAndFiles({ files }: { readonly files: MineAndFilesActions }) {
-  return (
-    <MineAndFilesItems actions={files}>
-      {(items) => (
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <IslandButton aria-label="My mazes and files">
-              <FolderSimple aria-hidden size={18} />
-            </IslandButton>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="z-20 min-w-52 rounded-[14px]">
-            {items}
-          </DropdownMenuContent>
-        </DropdownMenu>
-      )}
-    </MineAndFilesItems>
-  );
-}
-
-/** A phone's `+` menu: New maze, Open a .txt file, the "My mazes and files" items and the theme. */
-function PhoneMenu({ onOpenFile, files, onNew, newName }: MenuProps) {
-  const input = useRef<HTMLInputElement>(null);
+function ThemeItem() {
   const theme = useTheme((state) => state.theme);
   const toggleTheme = useTheme((state) => state.toggle);
 
   return (
-    <NewMazeDialogs defaultName={newName} onNew={onNew}>
+    <DropdownMenuItem className="rounded-[9px]" onSelect={toggleTheme}>
+      {theme === 'dark' ? <Sun aria-hidden size={16} /> : <Moon aria-hidden size={16} />}
+      {theme === 'dark' ? 'Light theme' : 'Dark theme'}
+    </DropdownMenuItem>
+  );
+}
+
+/**
+ * The library's action menus (DESIGN.md 6.1). A phone has one `+`: New maze, Open mazefile (.txt),
+ * the "My mazes and files" items and the theme. A notebook has New maze, whose menu also opens a
+ * mazefile and imports, as Drive's New uploads, and a ⋯ with Export all, Check for updates and
+ * the theme.
+ */
+function LibraryMenus({ phone, onOpenFile, files, onNew, onGenerate, newName }: MenuProps) {
+  const input = useRef<HTMLInputElement>(null);
+  const content = 'z-20 min-w-52 rounded-[14px]';
+  const openTxt = (
+    <DropdownMenuItem className="rounded-[9px]" onSelect={() => input.current?.click()}>
+      <FolderOpen aria-hidden size={16} />
+      Open mazefile (.txt)…
+    </DropdownMenuItem>
+  );
+
+  return (
+    <NewMazeDialogs defaultName={newName} onGenerate={onGenerate} onNew={onNew}>
       {(newItems) => (
         <>
           <MineAndFilesItems actions={files}>
-            {(fileItems) => (
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <IslandButton aria-label="New maze and more">
-                    <Plus aria-hidden size={18} />
-                  </IslandButton>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="z-20 min-w-52 rounded-[14px]">
-                  {newItems}
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem
-                    className="rounded-[9px]"
-                    onSelect={() => input.current?.click()}
-                  >
-                    <FolderOpen aria-hidden size={16} />
-                    Open a .txt file…
-                  </DropdownMenuItem>
-                  {fileItems}
-                  <DropdownMenuItem className="rounded-[9px]" onSelect={toggleTheme}>
-                    {theme === 'dark' ? (
-                      <Sun aria-hidden size={16} />
-                    ) : (
-                      <Moon aria-hidden size={16} />
-                    )}
-                    {theme === 'dark' ? 'Light theme' : 'Dark theme'}
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            )}
+            {({ exportAll, importFiles, checkUpdates }) =>
+              phone ? (
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <IslandButton aria-label="New maze and more">
+                      <Plus aria-hidden size={18} />
+                    </IslandButton>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className={content}>
+                    {newItems}
+                    <DropdownMenuSeparator />
+                    {openTxt}
+                    {exportAll}
+                    {importFiles}
+                    <DropdownMenuSeparator />
+                    {checkUpdates}
+                    <ThemeItem />
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              ) : (
+                <>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <IslandButton variant="default">
+                        <Plus aria-hidden size={16} />
+                        New maze
+                      </IslandButton>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className={content}>
+                      {newItems}
+                      <DropdownMenuSeparator />
+                      {openTxt}
+                      {importFiles}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <IslandButton aria-label="More library actions">
+                        <DotsThree aria-hidden size={18} />
+                      </IslandButton>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className={content}>
+                      {exportAll}
+                      {checkUpdates}
+                      <DropdownMenuSeparator />
+                      <ThemeItem />
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </>
+              )
+            }
           </MineAndFilesItems>
           <input
             accept=".txt,text/plain"
             aria-hidden
             className="hidden"
+            data-open-file=""
             onChange={(event) => pickedFile(event, onOpenFile)}
             ref={input}
             tabIndex={-1}
@@ -269,7 +293,14 @@ export function LibraryChrome({
             <Island className="fixed top-safe-2 right-safe-2 left-safe-2">
               {search}
               <RoutesButton phone />
-              <PhoneMenu files={files} newName={newName} onNew={onNew} onOpenFile={onOpenFile} />
+              <LibraryMenus
+                files={files}
+                newName={newName}
+                onGenerate={undefined}
+                onNew={onNew}
+                onOpenFile={onOpenFile}
+                phone
+              />
             </Island>
           </search>
           <Island className="fixed top-safe-16 right-safe-2 left-safe-2 overflow-x-auto overscroll-x-contain">
@@ -305,11 +336,14 @@ export function LibraryChrome({
           </search>
           <Island className="h-11 justify-self-end">
             {changes}
-            <MineAndFiles files={files} />
-            <OpenFileButton onFile={onOpenFile} />
-            <NewMazeMenu newName={newName} onGenerate={onGenerate} onNew={onNew} />
-            <IslandSeparator />
-            <ThemeButton />
+            <LibraryMenus
+              files={files}
+              newName={newName}
+              onGenerate={onGenerate}
+              onNew={onNew}
+              onOpenFile={onOpenFile}
+              phone={false}
+            />
           </Island>
         </header>
       )}
