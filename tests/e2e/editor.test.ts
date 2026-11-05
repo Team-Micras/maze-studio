@@ -737,7 +737,7 @@ async function openTxt(
   await page.getByRole('button', { name: 'New maze and more' }).tap();
   const [chooser] = await Promise.all([
     page.waitForEvent('filechooser'),
-    page.getByRole('menuitem', { name: 'Open a .txt file…' }).tap(),
+    page.getByRole('menuitem', { name: 'Open mazefile (.txt)…' }).tap(),
   ]);
   await chooser.setFiles({
     name: `${name}.txt`,
@@ -956,7 +956,7 @@ describe('The top islands on a phone', () => {
       await page.getByRole('button', { name: 'New maze and more' }).tap();
       const [chooser] = await Promise.all([
         page.waitForEvent('filechooser'),
-        page.getByRole('menuitem', { name: 'Open a .txt file…' }).tap(),
+        page.getByRole('menuitem', { name: 'Open mazefile (.txt)…' }).tap(),
       ]);
       await chooser.setFiles({
         name: `${name}.txt`,
@@ -1015,6 +1015,16 @@ describe('Round 3 on a phone', () => {
 
     expect(reached).toEqual([true, true]);
     expect(description).toBe('Rename');
+  });
+
+  test('zooms by pinch alone, with no zoom island, and its ⋯ menu shows no keys', async () => {
+    const page = await openMaze(CLASSIC, PHONE);
+    await page.getByRole('button', { name: 'More actions' }).tap();
+    const menu = page.getByRole('menu');
+    await menu.getByRole('menuitem', { name: /^Fit/ }).waitFor();
+
+    expect(await page.getByRole('button', { name: 'Zoom in' }).count()).toBe(0);
+    expect(await menu.locator('[data-slot="dropdown-menu-shortcut"]').count()).toBe(0);
   });
 
   test('Show changes names D as its shortcut but shows no key', async () => {
@@ -1076,8 +1086,10 @@ describe('Editing on a phone', () => {
     const page = await openMaze(CLASSIC, PHONE);
     await page.getByRole('button', { name: 'Edit', exact: true }).tap();
 
+    await page.locator('#canvas').focus();
+
     for (let zoom = 0; zoom < 3; zoom++) {
-      await page.getByRole('button', { name: 'Zoom in' }).tap();
+      await page.keyboard.press('+');
     }
 
     const walls = (): Promise<string[]> =>
@@ -1127,8 +1139,10 @@ describe('Editing on a phone', () => {
     const page = await openMaze(CLASSIC, PHONE);
     await page.getByRole('button', { name: 'Edit', exact: true }).tap();
 
+    await page.locator('#canvas').focus();
+
     for (let zoom = 0; zoom < 3; zoom++) {
-      await page.getByRole('button', { name: 'Zoom in' }).tap();
+      await page.keyboard.press('+');
     }
 
     const point = await pagePoint(page, maze, edgeMiddle({ direction: 'vertical', x: 8, y: 8 }));

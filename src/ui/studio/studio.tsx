@@ -91,7 +91,7 @@ export interface StudioProps {
   readonly onDiscard: (item: ChangeItem) => void;
   /** Deletes the mazes of My mazes `ids` and opens the library on My mazes. */
   readonly onDelete: (ids: readonly string[]) => void;
-  /** What the library's "My mazes and files" menu does. */
+  /** What the library's file actions do. */
   readonly files: MineAndFilesActions;
   /** What the credit adds of the updates from GitHub, if anything. */
   readonly updateNote?: string | undefined;
