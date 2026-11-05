@@ -53,6 +53,7 @@ export const ICONS: readonly string[] = [
   'MagnifyingGlass',
   'Minus',
   'Moon',
+  'Path',
   'PencilSimple',
   'PencilSimpleLine',
   'Plus',

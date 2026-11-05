@@ -1,11 +1,19 @@
 import { useStore, type StoreApi } from 'zustand';
 import { useCallback, type FocusEvent, type KeyboardEvent } from 'react';
 
-import { fillBorder, validateMaze, type Finding, type MazeDiff } from '@/maze';
+import {
+  fillBorder,
+  routesShown,
+  shortestRoutes,
+  validateMaze,
+  type Finding,
+  type MazeDiff,
+} from '@/maze';
 import { areaInWorld, boardGeometry, focusArea, revealCamera, type Insets } from '@/render';
 import type { CanvasCamera } from '@/ui/board/use-canvas-camera';
 import type { ChecksProps } from '@/ui/editor/checks';
 import { findingKey } from '@/ui/editor/checks-summary';
+import type { RoutesProps } from '@/ui/editor/routes-panel';
 import type { ShortcutHelpProps } from '@/ui/editor/shortcut-help';
 import { toolInfo, type Tool } from '@/ui/editor/tools';
 import { useBoardKeys, type BoardKey } from '@/ui/editor/use-board-keys';
@@ -13,6 +21,7 @@ import { isCellTool, useCellDrawing } from '@/ui/editor/use-cell-drawing';
 import { useEditorShortcuts, type EditorShortcuts } from '@/ui/editor/use-editor-shortcuts';
 import type { MazeEditor } from '@/ui/editor/use-maze-editor';
 import { useWallDrawing } from '@/ui/editor/use-wall-drawing';
+import { toggleRoute, useShownRoutes } from '@/ui/route-switches';
 
 import type { StudioScreen, StudioState } from './studio-store';
 
@@ -116,6 +125,9 @@ export function useStudioEditing({
   const selected =
     onScreen !== undefined && state.finding?.maze === onScreen.key ? state.finding.key : undefined;
   const focused = findings.find((finding, index) => findingKey(finding, index) === selected);
+  const shownRoutes = useShownRoutes((now) => now.shown);
+  const setRoutesOpen = (open: boolean): void => store.setState({ routesOpen: open });
+  const routes = maze === undefined || !state.routesOpen ? undefined : shortestRoutes(maze);
 
   useEditorShortcuts({
     list,
@@ -179,6 +191,7 @@ export function useStudioEditing({
       selection: cells.selection ?? boardKeys.selection,
       focus: focused,
       diff,
+      routes: maze === undefined ? undefined : routesShown(maze, shownRoutes),
     },
     cursor: boardKeys.cursor,
     onCanvasKey,
@@ -221,10 +234,23 @@ export function useStudioEditing({
             },
             phone,
           } satisfies ChecksProps),
+    routes:
+      onScreen === undefined || maze === undefined
+        ? undefined
+        : ({
+            routes,
+            cellSize: onScreen.document.profile === 'halfsize' ? 0.09 : 0.18,
+            shown: shownRoutes,
+            open: state.routesOpen,
+            onOpenChange: setRoutesOpen,
+            onToggle: toggleRoute,
+            phone,
+          } satisfies RoutesProps),
     actions: {
       editable,
       onCloseBorder: closeBorder,
       onChanges,
+      onRoutes: phone ? () => setRoutesOpen(true) : undefined,
       onHelp: coarse ? undefined : openHelp,
     },
     help: {

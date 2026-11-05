@@ -8,6 +8,7 @@ import { expect } from 'vitest';
 import { render } from 'vitest-browser-react';
 
 import { App } from '@/ui/app';
+import { NO_ROUTES, useShownRoutes } from '@/ui/route-switches';
 import { settled } from '@tests/support/ui/animations';
 
 /** The artboards in the DOM. */
@@ -15,8 +16,9 @@ export function artboards(): HTMLAnchorElement[] {
   return [...document.querySelectorAll<HTMLAnchorElement>('a[data-artboard]')];
 }
 
-/** Mounts the app at `hash` and waits for the library's artboards. */
+/** Mounts the app at `hash`, with both routes off, and waits for the library's artboards. */
 export async function mountApp(hash = '#/'): Promise<void> {
+  useShownRoutes.setState({ shown: NO_ROUTES });
   window.history.replaceState(
     null,
     '',

@@ -1,6 +1,15 @@
 import { describe, expect, test } from 'vitest';
 
-import { createMaze, diffMazes, fillBorder, setGoals, setStart, setWall, type Maze } from '@/maze';
+import {
+  createMaze,
+  diffMazes,
+  fillBorder,
+  setGoals,
+  setStart,
+  setWall,
+  shortestRoutes,
+  type Maze,
+} from '@/maze';
 import {
   boardGeometry,
   formatLength,
@@ -31,7 +40,10 @@ describe('trackLayers', () => {
 
   test('leaves bare the walls and posts that touch the start or a goal', () => {
     const marked = setGoals(
-      setStart(setWall(BORDERED, { direction: 'vertical', x: 1, y: 0 }, true), { x: 0, y: 0 }),
+      setStart(setWall(BORDERED, { direction: 'vertical', x: 1, y: 0 }, true), {
+        x: 0,
+        y: 0,
+      }),
       [{ x: 3, y: 2 }]
     );
     const layers = trackLayers(marked, boardGeometry(marked));
@@ -104,6 +116,50 @@ describe('overlayLayers', () => {
     ).toBe('');
   });
 
+  test('draws the routes asked for, with diagonals last, in straight runs and 45° diagonals', () => {
+    const open = setGoals(setStart(createMaze({ width: 5, height: 5 }), { x: 0, y: 0 }), [
+      { x: 4, y: 3 },
+    ]);
+    const openGeometry = boardGeometry(open);
+    const routes = shortestRoutes(open);
+    const layers = overlayLayers(openGeometry, { routes: { ...routes } });
+    const only = overlayLayers(openGeometry, {
+      routes: { withDiagonals: routes?.withDiagonals },
+    });
+
+    expect(layers.routes.map((route) => route.name)).toEqual(['withoutDiagonals', 'withDiagonals']);
+    expect(only.routes.map((route) => route.name)).toEqual(['withDiagonals']);
+
+    for (const { line } of layers.routes) {
+      const points = [...line.matchAll(/(-?[\d.]+) (-?[\d.]+)/g)].map(([, x, y]) => [
+        Number(x),
+        Number(y),
+      ]);
+      const runs = line
+        .split(/(?=[LQ])/)
+        .map((part) => part[0])
+        .join('');
+
+      expect(runs).toMatch(/^M(LQ)*L$/);
+      const start = [
+        openGeometry.margin + 0.5 * openGeometry.pitch,
+        openGeometry.margin + 4.5 * openGeometry.pitch,
+      ];
+      expect(
+        Math.hypot(points[0][0] - start[0], points[0][1] - start[1]) / openGeometry.pitch
+      ).toBeCloseTo(0.35, 1);
+      for (let index = 1; index < points.length; index++) {
+        const [dx, dy] = [
+          points[index][0] - points[index - 1][0],
+          points[index][1] - points[index - 1][1],
+        ];
+        expect(
+          Math.min(Math.abs(dx), Math.abs(dy), Math.abs(Math.abs(dx) - Math.abs(dy)))
+        ).toBeLessThan(0.02);
+      }
+    }
+  });
+
   test('outlines walls put, dashes walls taken and rings the marks that moved', () => {
     const after = setStart(
       setGoals(
@@ -138,7 +194,9 @@ describe('overlayLayers', () => {
   });
 
   test('outlines the cells of a finding only when it points at no edge and no post', () => {
-    const cells = draw({ focus: { cells: [{ x: 1, y: 1 }], edges: [], posts: [] } });
+    const cells = draw({
+      focus: { cells: [{ x: 1, y: 1 }], edges: [], posts: [] },
+    });
     const edges = draw({
       focus: {
         cells: [{ x: 1, y: 1 }],
@@ -154,8 +212,12 @@ describe('overlayLayers', () => {
   });
 
   test('draws the same selection from either pair of corners', () => {
-    const one = draw({ selection: { from: { x: 0, y: 2 }, to: { x: 2, y: 0 } } });
-    const other = draw({ selection: { from: { x: 2, y: 0 }, to: { x: 0, y: 2 } } });
+    const one = draw({
+      selection: { from: { x: 0, y: 2 }, to: { x: 2, y: 0 } },
+    });
+    const other = draw({
+      selection: { from: { x: 2, y: 0 }, to: { x: 0, y: 2 } },
+    });
 
     expect(one.selection).toBe(other.selection);
     expect(shapes(one.selection)).toBe(1);
