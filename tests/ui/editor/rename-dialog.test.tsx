@@ -44,6 +44,18 @@ describe('The Rename dialog', () => {
     expect(renamed).toEqual(['Sprint']);
   });
 
+  test("saves the field as it reads, though React has not seen the keyboard's last word yet", async () => {
+    const renamed = await mount();
+    const field = page.getByRole('textbox', { name: 'Name' }).element();
+    Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set?.call(
+      field,
+      'Gerado'
+    );
+    await userEvent.click(page.getByRole('button', { name: 'Save' }));
+
+    expect(renamed).toEqual(['Gerado']);
+  });
+
   test('refuses a name another maze of My mazes has, in any case, beside the field', async () => {
     const renamed = await mount();
     const field = page.getByRole('textbox', { name: 'Name' });

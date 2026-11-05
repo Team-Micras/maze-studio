@@ -30,13 +30,15 @@ interface FormProps {
 function RenameForm({ name, taken, onDone }: FormProps) {
   const [value, setValue] = useState(name);
   const id = useId();
-  const trimmed = value.trim();
   const error = nameError(value, taken);
   const submit = (event: FormEvent<HTMLFormElement>): void => {
     event.preventDefault();
+    const field = event.currentTarget.elements.namedItem('name');
+    const typed = field instanceof HTMLInputElement ? field.value : value;
+    setValue(typed);
 
-    if (error === undefined) {
-      onDone(trimmed);
+    if (nameError(typed, taken) === undefined) {
+      onDone(typed.trim());
     }
   };
 
@@ -67,7 +69,8 @@ function RenameForm({ name, taken, onDone }: FormProps) {
 
 /**
  * Rename (DESIGN.md 6 and 12): one field, which takes the focus with its name selected, so typing
- * replaces it; Enter saves; an empty name says
+ * replaces it; Enter or Save saves the field as it reads then, since a phone's keyboard may put a
+ * picked word in only as Save is tapped; an empty name says
  * "Name cannot be empty", a name another maze of My mazes has says "Name already in My mazes", and either
  * disables Save.
  */
