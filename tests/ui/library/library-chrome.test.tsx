@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, test } from 'vitest';
+import { afterEach, describe, expect, test, vi } from 'vitest';
 import { page, userEvent } from 'vitest/browser';
 import { render } from 'vitest-browser-react';
 
@@ -124,6 +124,24 @@ async function menuItems(button: string): Promise<string[]> {
 }
 
 describe("The notebook's actions", () => {
+  test('pick the files of Import… and Open mazefile (.txt)… from New maze', async () => {
+    await mountChrome();
+    const picked: string[] = [];
+    const spy = vi.spyOn(HTMLInputElement.prototype, 'click').mockImplementation(function (
+      this: HTMLInputElement
+    ) {
+      picked.push(this.accept);
+    });
+
+    await userEvent.click(page.getByRole('button', { name: 'New maze' }));
+    await userEvent.click(page.getByRole('menuitem', { name: 'Import…' }));
+    await userEvent.click(page.getByRole('button', { name: 'New maze' }));
+    await userEvent.click(page.getByRole('menuitem', { name: 'Open mazefile (.txt)…' }));
+
+    spy.mockRestore();
+    expect(picked).toEqual(['.zip,.txt,application/zip,text/plain', '.txt,text/plain']);
+  });
+
   test('are New maze, which also opens and imports files, and ⋯ with the rest', async () => {
     await mountChrome();
     expect(await menuItems('New maze')).toEqual([

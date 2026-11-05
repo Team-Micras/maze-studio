@@ -38,7 +38,7 @@ export interface LibraryChromeProps {
   /** The name a new maze gets unless named: "Untitled maze", unique in My mazes. */
   readonly newName: string;
   readonly phone: boolean;
-  /** What the "My mazes and files" menu does. */
+  /** What the library's file actions do. */
   readonly files: MineAndFilesActions;
   /** What the credit adds of the updates from GitHub, if anything. */
   readonly updateNote?: string | undefined;

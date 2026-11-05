@@ -5,7 +5,7 @@ import { DropdownMenuItem } from '@/ui/primitives/dropdown-menu';
 
 import { pickedFiles } from './picked-file';
 
-/** What the "My mazes and files" menu does (DESIGN.md 6.1). */
+/** What the library's file actions do: Export all, Import… and Check for updates (DESIGN.md 6.1). */
 export interface MineAndFilesActions {
   readonly onExportAll: () => void;
   readonly onImport: (files: readonly File[]) => void;
