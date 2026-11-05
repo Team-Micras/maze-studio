@@ -31,6 +31,19 @@ function editorRoutes() {
   return page.getByRole('button', { name: 'Routes' }).last();
 }
 
+/**
+ * Opens the editor's Routes once its button is there: the editor's actions mount a moment after
+ * the maze opens, and until then the last Routes button is the library's, under the board.
+ */
+async function openEditorRoutes(): Promise<void> {
+  await expect
+    .poll(
+      () => document.querySelector('[data-chrome="editor"] button[aria-label="Routes"]') !== null
+    )
+    .toBe(true);
+  await userEvent.click(editorRoutes());
+}
+
 async function openList(): Promise<void> {
   await userEvent.click(page.getByRole('button', { name: 'Maze list' }));
   await expect.element(page.getByPlaceholder('Filter mazes…')).toBeVisible();
@@ -195,7 +208,7 @@ describe('The routes of an open maze', () => {
         await userEvent.click(page.getByRole('button', { name: 'More actions' }));
         await userEvent.click(page.getByRole('menuitem', { name: 'Routes' }));
       } else {
-        await userEvent.click(editorRoutes());
+        await openEditorRoutes();
       }
 
       await expect.element(page.getByRole('dialog', { name: 'Routes' })).toBeVisible();
@@ -212,7 +225,7 @@ describe('The Routes panel', () => {
   test('left open, stays closed on the next maze while its routes stay drawn', async () => {
     await mountApp('#/repo/classic/AAMC15Maze.txt');
     await expect.poll(mode).toBe('editor');
-    await userEvent.click(editorRoutes());
+    await openEditorRoutes();
     await expect.element(page.getByRole('dialog', { name: 'Routes' })).toBeVisible();
     await userEvent.click(page.getByRole('switch', { name: /Without diagonals/ }));
     await userEvent.click(page.getByRole('switch', { name: /With diagonals/ }));
@@ -269,7 +282,7 @@ describe('The routes the session shows', () => {
 
     await openMaze();
     expect(drawn()).toBe(2);
-    await userEvent.click(editorRoutes());
+    await openEditorRoutes();
     await userEvent.click(page.getByRole('switch', { name: /With diagonals/ }));
     expect(drawn()).toBe(1);
 
@@ -383,7 +396,7 @@ describe('The flood-fill search', () => {
   test('is drawn on the board by its switch, under the routes, and hidden again', async () => {
     await mountApp('#/repo/classic/AAMC15Maze.txt');
     await expect.poll(mode).toBe('editor');
-    await userEvent.click(editorRoutes());
+    await openEditorRoutes();
     await userEvent.click(page.getByRole('switch', { name: /Without diagonals/ }));
 
     expect(explored()).toBe(false);
@@ -401,7 +414,7 @@ describe('The flood-fill search', () => {
   test('plays from ▶ with its robot, the routes faded, and ends with the whole trail still', async () => {
     await mountApp('#/repo/classic/AAMC15Maze.txt');
     await expect.poll(mode).toBe('editor');
-    await userEvent.click(editorRoutes());
+    await openEditorRoutes();
     await userEvent.click(page.getByRole('switch', { name: /With diagonals/ }));
     await userEvent.click(page.getByRole('button', { name: 'Play the search' }));
 
@@ -431,7 +444,7 @@ describe('The flood-fill search', () => {
   test('stops playing when the maze changes', async () => {
     await mountApp('#/repo/classic/AAMC15Maze.txt');
     await expect.poll(mode).toBe('editor');
-    await userEvent.click(editorRoutes());
+    await openEditorRoutes();
     await userEvent.click(page.getByRole('button', { name: 'Play the search' }));
     await expect.poll(robot).toBe(true);
     await userEvent.click(page.getByRole('button', { name: 'Back to the library' }));
