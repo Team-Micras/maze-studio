@@ -83,10 +83,14 @@ export function useMazeActions({
           name: open.name,
           taken: mineNames.filter((name) => name.toLowerCase() !== open.name.toLowerCase()),
           onRename: async (name) => {
+            let timer: number | undefined;
             const done = await Promise.race([
               editor.rename(name),
-              new Promise<undefined>((resolve) => setTimeout(resolve, SLOW_WRITE_MS)),
+              new Promise<undefined>((resolve) => {
+                timer = window.setTimeout(resolve, SLOW_WRITE_MS);
+              }),
             ]);
+            window.clearTimeout(timer);
 
             if (done === undefined) {
               showToast(SLOW_WRITE);
