@@ -25,9 +25,7 @@ export {
 } from './edits';
 export {
   explore,
-  explorationKnown,
   NEVER_SEEN,
-  rememberExploration,
   type Exploration,
   type ExplorationStep,
   type SeenWall,
@@ -84,16 +82,14 @@ export { parseMazeText } from './parse-maze-text';
 export { failure, success, type Result } from './result';
 export { mazeGridText, serializeMazeText } from './serialize-maze-text';
 export {
-  rememberRoutes,
-  routesKnown,
-  routesShown,
   shortestRoutes,
   type Route,
   type RoutePoint,
-  type RouteSwitches,
   type ShortestRoutes,
 } from './shortest-routes';
+export { rememberSearches, searchesKnown, type MazeSearches } from './searches';
 export {
+  CELL_SIZES,
   profileOfPath,
   RULE_SEVERITIES,
   RULES,

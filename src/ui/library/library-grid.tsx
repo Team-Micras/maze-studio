@@ -19,7 +19,7 @@ import { useCloseOnBack } from '@/ui/hooks/use-close-on-back';
 import { useOneRowTopBar } from '@/ui/hooks/use-media-query';
 import { Island, IslandButton } from '@/ui/islands/island';
 import { cn } from '@/ui/primitives/utils';
-import { anyRouteShown, useShownRoutes } from '@/ui/route-switches';
+import { anyOverlayShown, useOverlaySwitches } from '@/ui/route-switches';
 
 import { Artboard } from './artboard';
 import { libraryFlung, libraryKind, noteLibraryScroll, scrolledInsets } from './library-scroller';
@@ -120,7 +120,7 @@ export function LibraryGrid({
   const [focused, setFocused] = useState<string | undefined>(undefined);
   const [selected, setSelected] = useState<ReadonlySet<string> | undefined>(undefined);
   const [armed, setArmed] = useState(false);
-  const routesOn = useShownRoutes((now) => anyRouteShown(now.shown) || now.exploration);
+  const routesOn = useOverlaySwitches(anyOverlayShown);
   const selecting = selected !== undefined;
   const picked = entries.flatMap((entry) => (selected?.has(entry.key) === true ? [entry.key] : []));
 

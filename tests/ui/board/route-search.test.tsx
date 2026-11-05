@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'vitest';
 
-import { routesKnown, shortestRoutes, type Maze } from '@/maze';
+import { searchesKnown, shortestRoutes, type Maze } from '@/maze';
 import { prefetchRoutes, requestRoutes } from '@/ui/board/route-search';
 import { REPO_MAZES, repoMaze } from '@tests/support/ui/repo-mazes';
 
@@ -22,7 +22,7 @@ describe('requestRoutes', () => {
 
     await expect.poll(() => found.length).toBe(6);
     expect(found.slice(0, 2)).toEqual([first, onScreen]);
-    expect(routesKnown(onScreen ?? maze)).toBe(true);
+    expect(searchesKnown(onScreen ?? maze)).toBe(true);
     expect(shortestRoutes(onScreen ?? maze)).toEqual(shortestRoutes(maze));
   });
 
@@ -35,9 +35,9 @@ describe('requestRoutes', () => {
     prefetchRoutes(ahead);
     requestRoutes(asked, false, () => found.push(asked));
 
-    await expect.poll(() => ahead.every(routesKnown)).toBe(true);
+    await expect.poll(() => ahead.every((each) => searchesKnown(each))).toBe(true);
     expect(found).toEqual([busy, asked]);
-    expect(routesKnown(dropped)).toBe(false);
+    expect(searchesKnown(dropped)).toBe(false);
   });
 
   test('holds the prefetch while it is told to, and goes on once it may', async () => {
@@ -46,8 +46,8 @@ describe('requestRoutes', () => {
     prefetchRoutes(mazes, () => holding);
     await new Promise((resolve) => setTimeout(resolve, 300));
 
-    expect(mazes.some(routesKnown)).toBe(false);
+    expect(mazes.some((each) => searchesKnown(each))).toBe(false);
     holding = false;
-    await expect.poll(() => mazes.every(routesKnown)).toBe(true);
+    await expect.poll(() => mazes.every((each) => searchesKnown(each))).toBe(true);
   });
 });

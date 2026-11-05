@@ -1,6 +1,6 @@
 import { afterAll, describe, expect, test, vi } from 'vitest';
 
-import { routesKnown, shortestRoutes, type Maze } from '@/maze';
+import { searchesKnown, shortestRoutes, type Maze } from '@/maze';
 import type { RoutesFound } from '@/ui/board/route-search';
 import { prefetchRoutes, requestRoutes } from '@/ui/board/route-search';
 import { REPO_MAZES, repoMaze } from '@tests/support/ui/repo-mazes';
@@ -61,6 +61,6 @@ describe('requestRoutes without a working worker', () => {
     await expect.poll(() => found).toEqual([inFlight, queued]);
     requestRoutes(later, true, () => found.push(later));
     await expect.poll(() => found).toEqual([inFlight, queued, later]);
-    expect(routesKnown(prefetched)).toBe(false);
+    expect(searchesKnown(prefetched)).toBe(false);
   });
 });

@@ -10,11 +10,17 @@
  * @module
  */
 
-import type { Exploration, Maze, MazeDiff, ShortestRoutes } from '@/maze';
+import type { Maze, MazeDiff } from '@/maze';
 
 import { boardGeometry, type BoardGeometry } from './geometry';
 import { LruCache } from './lru-cache';
-import { diffLayers, overlayLayers, overlayStrokes } from './overlay-layers';
+import {
+  diffLayers,
+  overlayLayers,
+  overlayStrokes,
+  type BoardOverlays,
+  type RouteOverlays,
+} from './overlay-layers';
 import { EXPLORATION_COLOR, ROUTE_COLORS, TRACK_COLORS, TRACK_OPACITY } from './track-colors';
 import { trackPaint } from './track-layers';
 
@@ -44,9 +50,6 @@ export const PREVIEW_CACHE_BYTES = 40 * 1024 * 1024;
  * never thinner than a wall.
  */
 const THUMBNAIL_ROUTE_SCALE = 2;
-
-/** The routes a thumbnail draws, and the flood-fill search whose trail goes under them. */
-export type ThumbnailRoutes = Partial<ShortestRoutes> & { readonly exploration?: Exploration };
 
 /** The size of a thumbnail's bitmap, in device pixels. */
 export interface ThumbnailSize {
@@ -110,14 +113,10 @@ function stroke(
   context.setLineDash([]);
 }
 
-function paintRoutes(
-  context: Canvas2D,
-  geometry: BoardGeometry,
-  { exploration, ...routes }: ThumbnailRoutes
-): void {
+function paintRoutes(context: Canvas2D, geometry: BoardGeometry, shown: RouteOverlays): void {
   const strokes = overlayStrokes(geometry);
   const width = Math.max(strokes.route * THUMBNAIL_ROUTE_SCALE, geometry.wall);
-  const layers = overlayLayers(geometry, { routes, exploration });
+  const layers = overlayLayers(geometry, shown);
   context.lineCap = 'round';
   context.lineJoin = 'round';
 
@@ -141,15 +140,11 @@ function paintRoutes(
   }
 }
 
-/** What a thumbnail draws over the track; anything left out is not drawn. */
-export interface ThumbnailOverlays {
-  readonly diff?: MazeDiff;
-  /**
-   * The routes drawn on top of all, the search's trail under them; what is left out is not
-   * drawn.
-   */
-  readonly routes?: ThumbnailRoutes;
-}
+/**
+ * What a thumbnail draws over the track: the diff, then the flood-fill search's trail, then the
+ * routes on top of all; anything left out is not drawn.
+ */
+export type ThumbnailOverlays = RouteOverlays & Pick<BoardOverlays, 'diff'>;
 
 /**
  * Paints the track of `maze` drawn with `geometry` on `context`, in board units, and `overlays`
@@ -159,7 +154,7 @@ export function paintTrack(
   context: Canvas2D,
   maze: Maze,
   geometry: BoardGeometry,
-  { diff, routes }: ThumbnailOverlays = {}
+  { diff, ...shown }: ThumbnailOverlays = {}
 ): void {
   for (const layer of trackPaint(maze, geometry)) {
     const shape = new Path2D(layer.d);
@@ -191,8 +186,8 @@ export function paintTrack(
     stroke(context, paths.dashed, strokes.diff, strokes.diffDash);
   }
 
-  if (routes !== undefined) {
-    paintRoutes(context, geometry, routes);
+  if (shown.routes !== undefined || shown.exploration !== undefined) {
+    paintRoutes(context, geometry, shown);
   }
 }
 
@@ -216,11 +211,11 @@ export function drawThumbnail(
   return canvas;
 }
 
-function routesKey(routes: ThumbnailRoutes | undefined): string {
+function routesKey(shown: RouteOverlays | undefined): string {
   const on = [
-    routes?.withoutDiagonals && 'o',
-    routes?.withDiagonals && 'd',
-    routes?.exploration && 'e',
+    shown?.routes?.withoutDiagonals && 'o',
+    shown?.routes?.withDiagonals && 'd',
+    shown?.exploration && 'e',
   ].filter(Boolean);
   return on.length === 0 ? '' : `:routes:${on.join('')}`;
 }
@@ -256,10 +251,10 @@ export class ThumbnailCache {
    * @param routes The routes of `maze` drawn on top, which a bitmap of its own keeps; none by
    *   default, and the plain bitmap when none is given.
    */
-  thumbnail(key: string, maze: Maze, pixels: number, routes?: ThumbnailRoutes): OffscreenCanvas {
+  thumbnail(key: string, maze: Maze, pixels: number, routes?: RouteOverlays): OffscreenCanvas {
     const band = thumbnailBand(pixels);
     return this.#cached(band, `${band}:${key}${routesKey(routes)}`, () =>
-      drawThumbnail(maze, band, { routes })
+      drawThumbnail(maze, band, routes)
     );
   }
 
@@ -289,7 +284,7 @@ export class ThumbnailCache {
    * already drawn, with `routes` on top as for {@link ThumbnailCache.thumbnail}; never draws, so a
    * caller can show what is ready at once and draw the rest later.
    */
-  cached(key: string, pixels: number, routes?: ThumbnailRoutes): OffscreenCanvas | undefined {
+  cached(key: string, pixels: number, routes?: RouteOverlays): OffscreenCanvas | undefined {
     const band = thumbnailBand(pixels);
     return this.#cacheOf(band).get(`${band}:${key}${routesKey(routes)}`);
   }
