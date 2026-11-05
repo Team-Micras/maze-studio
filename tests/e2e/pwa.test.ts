@@ -117,7 +117,7 @@ describe('the PWA built under a path', () => {
       .locator('meta[name="theme-color"]')
       .evaluateAll((metas) => metas.map((meta) => meta.getAttribute('content')));
     expect(colors).toHaveLength(1);
-    expect(['#e3e3e3', '#191919']).toContain(colors[0]);
+    expect(['#ffffff', '#191919']).toContain(colors[0]);
   });
 
   test('registers the service worker, which precaches the shell and the latin fonts only', async () => {

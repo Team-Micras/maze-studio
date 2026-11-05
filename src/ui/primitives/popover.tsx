@@ -3,6 +3,7 @@ import { Popover as PopoverPrimitive } from 'radix-ui';
 
 import { useCloseOnBack } from '@/ui/hooks/use-close-on-back';
 
+import { closeAutoFocus } from './close-focus';
 import { cn } from './utils';
 
 function Popover(props: React.ComponentProps<typeof PopoverPrimitive.Root>) {
@@ -35,6 +36,7 @@ function PopoverContent({
           className
         )}
         {...props}
+        onCloseAutoFocus={closeAutoFocus(props.onCloseAutoFocus)}
       />
     </PopoverPrimitive.Portal>
   );

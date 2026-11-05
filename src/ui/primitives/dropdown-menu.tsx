@@ -6,6 +6,7 @@ import { DropdownMenu as DropdownMenuPrimitive } from 'radix-ui';
 
 import { useCloseOnBack } from '@/ui/hooks/use-close-on-back';
 
+import { closeAutoFocus } from './close-focus';
 import { cn } from './utils';
 
 function DropdownMenu(props: React.ComponentProps<typeof DropdownMenuPrimitive.Root>) {
@@ -46,6 +47,7 @@ function DropdownMenuContent({
           className
         )}
         {...props}
+        onCloseAutoFocus={closeAutoFocus(props.onCloseAutoFocus)}
       />
     </DropdownMenuPrimitive.Portal>
   );

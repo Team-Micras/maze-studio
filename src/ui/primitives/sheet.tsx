@@ -3,6 +3,7 @@ import { Dialog as SheetPrimitive } from 'radix-ui';
 
 import { useCloseOnBack } from '@/ui/hooks/use-close-on-back';
 
+import { closeAutoFocus } from './close-focus';
 import { cn } from './utils';
 
 function Sheet(props: React.ComponentProps<typeof SheetPrimitive.Root>) {
@@ -67,6 +68,7 @@ function SheetContent({
           className
         )}
         {...props}
+        onCloseAutoFocus={closeAutoFocus(props.onCloseAutoFocus)}
       >
         {children}
       </SheetPrimitive.Content>
