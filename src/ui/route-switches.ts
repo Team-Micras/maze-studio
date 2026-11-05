@@ -11,51 +11,54 @@
 
 import { create } from 'zustand';
 
-import {
-  explore,
-  type Exploration,
-  type Maze,
-  type RouteSwitches,
-  type ShortestRoutes,
-} from '@/maze';
+import { explore, shortestRoutes, type Exploration, type Maze } from '@/maze';
+import type { RouteOverlays } from '@/render';
 
-/** Both routes off, as the session starts. */
-export const NO_ROUTES: RouteSwitches = { withoutDiagonals: false, withDiagonals: false };
+/** Whether each shortest route and the flood-fill search are drawn. */
+export type OverlaySwitches = Readonly<
+  Record<'withoutDiagonals' | 'withDiagonals' | 'exploration', boolean>
+>;
 
-interface ShownRoutes {
-  readonly shown: RouteSwitches;
-  /** Whether the flood-fill search is drawn on the boards. */
-  readonly exploration: boolean;
-}
-
-/** The session's route switches. */
-export const useShownRoutes = create<ShownRoutes>()(() => ({
-  shown: NO_ROUTES,
+/** Every switch off, as the session starts. */
+export const NO_OVERLAYS: OverlaySwitches = {
+  withoutDiagonals: false,
+  withDiagonals: false,
   exploration: false,
-}));
+};
 
-/** Whether `shown` draws any route. */
-export function anyRouteShown(shown: RouteSwitches | undefined): boolean {
-  return shown !== undefined && (shown.withoutDiagonals || shown.withDiagonals);
+/** The session's switches. */
+export const useOverlaySwitches = create<OverlaySwitches>()(() => NO_OVERLAYS);
+
+/** Whether `switches` draw anything. */
+export function anyOverlayShown(switches: OverlaySwitches): boolean {
+  return switches.withoutDiagonals || switches.withDiagonals || switches.exploration;
 }
 
-/** Flips the switch of the route `name`. */
-export function toggleRoute(name: keyof ShortestRoutes): void {
-  useShownRoutes.setState(({ shown }) => ({ shown: { ...shown, [name]: !shown[name] } }));
-}
-
-/** Flips the switch of the flood-fill search; turning it off stops its playback. */
-export function toggleExploration(): void {
-  if (useShownRoutes.getState().exploration) {
+/** Flips the switch `name`; turning the search's off stops its playback. */
+export function toggleOverlay(name: keyof OverlaySwitches): void {
+  if (name === 'exploration' && useOverlaySwitches.getState().exploration) {
     stopExploration();
   }
 
-  useShownRoutes.setState(({ exploration }) => ({ exploration: !exploration }));
+  useOverlaySwitches.setState((switches) => ({ [name]: !switches[name] }));
 }
 
-/** The search of `maze` when `on`, which searches nothing when off, and when it has none. */
-export function explorationShown(maze: Maze, on: boolean): Exploration | undefined {
-  return on ? (explore(maze) ?? undefined) : undefined;
+/**
+ * The routes and the search of `maze` that `switches` turn on; a search whose switch is off is
+ * never run, and what the maze has none of is left out.
+ */
+export function shownOverlays(maze: Maze, switches: OverlaySwitches): RouteOverlays {
+  const routes =
+    switches.withoutDiagonals || switches.withDiagonals
+      ? (shortestRoutes(maze) ?? undefined)
+      : undefined;
+  return {
+    routes: routes && {
+      withoutDiagonals: switches.withoutDiagonals ? routes.withoutDiagonals : undefined,
+      withDiagonals: switches.withDiagonals ? routes.withDiagonals : undefined,
+    },
+    exploration: switches.exploration ? (explore(maze) ?? undefined) : undefined,
+  };
 }
 
 /** The search being played and how far, in moves from the start. */
@@ -101,7 +104,7 @@ function tick(time: number): void {
 export function playExploration(exploration: Exploration): void {
   const now = useExplorationPlayback.getState();
   cancelAnimationFrame(frame);
-  useShownRoutes.setState({ exploration: true });
+  useOverlaySwitches.setState({ exploration: true });
 
   if (now?.exploration === exploration && now.playing) {
     useExplorationPlayback.setState({ ...now, playing: false }, true);

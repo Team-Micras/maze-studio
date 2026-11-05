@@ -14,6 +14,14 @@ import type { MazeTextSource } from './maze-text';
  */
 export type Profile = 'classic' | 'halfsize' | 'training' | 'free';
 
+/** The side of a cell in metres under each profile. */
+export const CELL_SIZES: Readonly<Record<Profile, number>> = {
+  classic: 0.18,
+  halfsize: 0.09,
+  training: 0.18,
+  free: 0.18,
+};
+
 /** How much a finding matters; none blocks anything. */
 export type Severity = 'error' | 'warning' | 'hint';
 

@@ -4,6 +4,7 @@ import type { Maze } from '@/maze';
 import type { BoardOverlays, WorldRect } from '@/render';
 import { Board } from '@/ui/board/board';
 import { cn } from '@/ui/primitives/utils';
+import { useExplorationPlayback } from '@/ui/route-switches';
 
 /** The props of {@link OpenBoard}. */
 export interface OpenBoardProps {
@@ -17,7 +18,7 @@ export interface OpenBoardProps {
    * as the route leaves it and must show at once.
    */
   readonly fadeIn?: boolean;
-  /** The editor's cursor and edge preview. */
+  /** The editor's cursor and edge preview; the ▶ playback of its search is added here. */
   readonly overlays?: BoardOverlays;
 }
 
@@ -37,6 +38,10 @@ function placeStyle(rect: WorldRect): CSSProperties {
  * canvas.
  */
 export function OpenBoard({ maze, rect, shown, fadeIn = true, overlays }: OpenBoardProps) {
+  const explorationAt = useExplorationPlayback((now) =>
+    now !== undefined && now.exploration === overlays?.exploration ? now.at : undefined
+  );
+
   return (
     <div
       className={cn(
@@ -47,7 +52,7 @@ export function OpenBoard({ maze, rect, shown, fadeIn = true, overlays }: OpenBo
       data-open-board=""
       style={placeStyle(rect)}
     >
-      <Board className="size-full" maze={maze} overlays={overlays} />
+      <Board className="size-full" maze={maze} overlays={{ ...overlays, explorationAt }} />
     </div>
   );
 }

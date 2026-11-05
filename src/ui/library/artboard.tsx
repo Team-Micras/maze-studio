@@ -8,7 +8,7 @@ import { Check } from '@/ui/icons';
 import { artboardLabel } from '@/ui/labels';
 import { cn } from '@/ui/primitives/utils';
 import { pushRoute } from '@/ui/navigation';
-import { useShownRoutes } from '@/ui/route-switches';
+import { useOverlaySwitches } from '@/ui/route-switches';
 
 import { libraryFlung } from './library-scroller';
 import { routeHash, routeOfEntry } from '@/ui/routes';
@@ -86,8 +86,7 @@ export const Artboard = memo(function Artboard({
   onToggle,
   onFocus,
 }: ArtboardProps) {
-  const routes = useShownRoutes((now) => now.shown);
-  const exploration = useShownRoutes((now) => now.exploration);
+  const overlays = useOverlaySwitches();
   const press = useRef<{ readonly id: number; readonly x: number; readonly y: number } | undefined>(
     undefined
   );
@@ -255,8 +254,7 @@ export const Artboard = memo(function Artboard({
         height={height}
         maze={maze}
         resolution={band}
-        exploration={exploration}
-        routes={routes}
+        overlays={overlays}
         width={width}
       />
       {selected ? (

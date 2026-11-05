@@ -1,4 +1,4 @@
-import type { CSSProperties } from 'react';
+import { memo, useMemo, type CSSProperties } from 'react';
 
 import type { Maze } from '@/maze';
 import {
@@ -18,7 +18,6 @@ import {
   type RouteLayers,
 } from '@/render';
 import { cn } from '@/ui/primitives/utils';
-import { useExplorationPlayback } from '@/ui/route-switches';
 
 /** The props of {@link Board}. */
 export interface BoardProps {
@@ -66,7 +65,13 @@ function Layer({ name, d, fill = 'none', strokeDasharray, ...paint }: LayerProps
   );
 }
 
-function Track({ maze, geometry }: { readonly maze: Maze; readonly geometry: BoardGeometry }) {
+const Track = memo(function Track({
+  maze,
+  geometry,
+}: {
+  readonly maze: Maze;
+  readonly geometry: BoardGeometry;
+}) {
   return (
     <g data-group="track">
       {trackPaint(maze, geometry).map((layer) => (
@@ -74,7 +79,7 @@ function Track({ maze, geometry }: { readonly maze: Maze; readonly geometry: Boa
       ))}
     </g>
   );
-}
+});
 
 function RouteGroup({
   name,
@@ -116,12 +121,9 @@ function Overlays({
   readonly overlays: BoardOverlays;
   readonly geometry: BoardGeometry;
 }) {
-  const explorationAt = useExplorationPlayback((now) =>
-    now !== undefined && now.exploration === overlays.exploration ? now.at : undefined
-  );
-  const layers = overlayLayers(geometry, { ...overlays, explorationAt });
+  const layers = overlayLayers(geometry, overlays);
   const strokes = overlayStrokes(geometry);
-  const playing = explorationAt !== undefined;
+  const playing = overlays.explorationAt !== undefined;
   const shortest = (
     <g data-group="routes" opacity={playing ? TRACK_OPACITY.routesWhilePlaying : undefined}>
       {layers.routes.map((route) => (
@@ -234,7 +236,7 @@ export function Board({
   className,
   style,
 }: BoardProps) {
-  const geometry = boardGeometry(maze, { size });
+  const geometry = useMemo(() => boardGeometry(maze, { size }), [maze, size]);
   const width = formatLength(geometry.width);
   const height = formatLength(geometry.height);
 

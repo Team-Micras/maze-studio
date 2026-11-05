@@ -13,6 +13,7 @@
 
 import type { CellSide, Edge } from './edges';
 import { horizontalEdgeCount, verticalEdgeCount, type Cell, type Maze } from './maze';
+import { mazeMemo } from './maze-memo';
 
 /** A cell the robot is in, and the way it faces, the way it moved to get there. */
 export interface ExplorationStep extends Cell {
@@ -212,29 +213,15 @@ function search(maze: Maze, start: Cell): Exploration | null {
   return null;
 }
 
-const memo = new WeakMap<Maze, Exploration | null | undefined>();
+/** The flood-fill search of each maze, remembered per maze. */
+export const explorationMemo = mazeMemo((maze): Exploration | null | undefined =>
+  maze.start === undefined || maze.goals.length === 0 ? undefined : search(maze, maze.start)
+);
 
 /**
  * The flood-fill search of `maze` from the start to a goal: `undefined` when it has no start or
  * no goal, `null` when the robot cannot reach a goal. Remembered per maze, which never changes.
  */
 export function explore(maze: Maze): Exploration | null | undefined {
-  if (!memo.has(maze)) {
-    memo.set(
-      maze,
-      maze.start === undefined || maze.goals.length === 0 ? undefined : search(maze, maze.start)
-    );
-  }
-
-  return memo.get(maze);
-}
-
-/** Whether the search of `maze` is already known, run here or remembered. */
-export function explorationKnown(maze: Maze): boolean {
-  return memo.has(maze);
-}
-
-/** Remembers `exploration` as the search of `maze`, run elsewhere, as in a worker. */
-export function rememberExploration(maze: Maze, exploration: Exploration | null | undefined): void {
-  memo.set(maze, exploration);
+  return explorationMemo.get(maze);
 }

@@ -1,24 +1,16 @@
 import { useEffect, useRef } from 'react';
 
-import {
-  encodeMazeCode,
-  explorationKnown,
-  routesKnown,
-  routesShown,
-  type Maze,
-  type MazeDiff,
-  type RouteSwitches,
-} from '@/maze';
+import { encodeMazeCode, searchesKnown, type Maze, type MazeDiff } from '@/maze';
 import {
   boardGeometry,
   paintTrack,
   PREVIEW_BAND,
   thumbnailBand,
   type ThumbnailBand,
-  type ThumbnailRoutes,
+  type RouteOverlays,
 } from '@/render';
 import { cn } from '@/ui/primitives/utils';
-import { anyRouteShown, explorationShown } from '@/ui/route-switches';
+import { NO_OVERLAYS, shownOverlays, type OverlaySwitches } from '@/ui/route-switches';
 
 import { schedulePaint } from './paint-queue';
 import { requestRoutes } from './route-search';
@@ -48,15 +40,11 @@ export interface ThumbnailCanvasProps {
    */
   readonly diff?: ThumbnailDiff;
   /**
-   * The shortest routes drawn on top, unless a diff is; none by default. A maze whose routes are
-   * not searched yet shows without them, and with them once a worker has searched them.
+   * The shortest routes drawn on top and the flood-fill search's trail under them, unless a diff
+   * is; none by default. A maze not searched yet shows without them, and with them once a worker
+   * has searched it.
    */
-  readonly routes?: RouteSwitches;
-  /**
-   * Whether the flood-fill search's trail is drawn under the routes, unless a diff is; off by
-   * default.
-   */
-  readonly exploration?: boolean;
+  readonly overlays?: OverlaySwitches;
   /**
    * Whether a missing bitmap paints at the next frame when no idle time comes first, as through a
    * fling of the library's grid, which leaves almost no idle time on a phone; off by default.
@@ -97,7 +85,7 @@ function paintCached(
   band: ThumbnailBand,
   blank: boolean,
   diff: ThumbnailDiff | undefined,
-  routes: ThumbnailRoutes | undefined,
+  routes: RouteOverlays,
   eachFrame: boolean,
   flung: (() => boolean) | undefined
 ): () => void {
@@ -165,7 +153,7 @@ function paintLive(
   canvas: HTMLCanvasElement,
   maze: Maze,
   pixels: { width: number; height: number },
-  routes: ThumbnailRoutes | undefined
+  routes: RouteOverlays
 ) {
   canvas.width = Math.max(1, Math.round(pixels.width));
   canvas.height = Math.max(1, Math.round(pixels.height));
@@ -180,22 +168,12 @@ function paintLive(
     size: Math.max(canvas.width, canvas.height),
   });
   context.scale(canvas.width / geometry.width, canvas.height / geometry.height);
-  paintTrack(context, maze, geometry, { routes });
-}
-
-function shownOf(
-  maze: Maze,
-  switches: RouteSwitches | undefined,
-  exploring: boolean
-): ThumbnailRoutes | undefined {
-  const routes = routesShown(maze, switches);
-  const exploration = explorationShown(maze, exploring);
-  return exploration === undefined ? routes : { ...routes, exploration };
+  paintTrack(context, maze, geometry, routes);
 }
 
 /**
- * Paints with the routes `switches` turn on and, when `exploring`, the search's trail, searched in
- * a worker, first for a canvas on screen:
+ * Paints with the routes and the search's trail `switches` turn on, searched in a worker, first
+ * for a canvas on screen:
  * until they are, a blank canvas paints without them, and a painted one keeps its bitmap. Once
  * searched, the routes paint as a blank canvas's first paint would, at once when ready and by the
  * fling's rules otherwise; a maze without routes that already shows its plain bitmap stays as is.
@@ -203,22 +181,24 @@ function shownOf(
 function withRoutes(
   canvas: HTMLCanvasElement,
   maze: Maze,
-  switches: RouteSwitches | undefined,
-  exploring: boolean,
-  paint: (routes: ThumbnailRoutes | undefined, blank?: boolean) => () => void
+  switches: OverlaySwitches,
+  paint: (shown: RouteOverlays, blank?: boolean) => () => void
 ): () => void {
-  const known = routesKnown(maze) && (!exploring || explorationKnown(maze));
-
-  if ((!anyRouteShown(switches) && !exploring) || known) {
-    return paint(shownOf(maze, switches, exploring));
+  if (
+    searchesKnown(maze, {
+      routes: switches.withoutDiagonals || switches.withDiagonals,
+      exploration: switches.exploration,
+    })
+  ) {
+    return paint(shownOverlays(maze, switches));
   }
 
   const blank = canvas.dataset.painted === undefined;
-  let cancel = blank ? paint(undefined) : () => undefined;
+  let cancel = blank ? paint({}) : () => undefined;
   const search = requestRoutes(maze, onScreen(canvas), () => {
-    const shown = shownOf(maze, switches, exploring);
+    const shown = shownOverlays(maze, switches);
 
-    if (shown === undefined && blank) {
+    if (shown.routes === undefined && shown.exploration === undefined && blank) {
       return;
     }
 
@@ -246,8 +226,7 @@ export function ThumbnailCanvas({
   resolution,
   cached = true,
   diff,
-  routes,
-  exploration = false,
+  overlays = NO_OVERLAYS,
   eachFrame = false,
   flung,
   className,
@@ -264,7 +243,7 @@ export function ThumbnailCanvas({
     }
 
     const paint = (
-      shown: ThumbnailRoutes | undefined,
+      shown: RouteOverlays,
       blank = element.dataset.painted === undefined
     ): (() => void) => {
       if (cached) {
@@ -275,14 +254,8 @@ export function ThumbnailCanvas({
       return () => undefined;
     };
 
-    return withRoutes(
-      element,
-      maze,
-      diff === undefined ? routes : undefined,
-      diff === undefined && exploration,
-      paint
-    );
-  }, [maze, width, height, ratio, cached, band, diff, routes, exploration, eachFrame, flung]);
+    return withRoutes(element, maze, diff === undefined ? overlays : NO_OVERLAYS, paint);
+  }, [maze, width, height, ratio, cached, band, diff, overlays, eachFrame, flung]);
 
   return (
     <canvas aria-hidden className={cn('block', className)} ref={canvas} style={{ width, height }} />

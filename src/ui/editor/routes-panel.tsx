@@ -1,7 +1,7 @@
 import { Path, Pause, Play, X } from '@/ui/icons';
-import { useId, useState, type ReactNode } from 'react';
+import { Fragment, useId, useState, type ReactNode } from 'react';
 
-import type { Exploration, Route, RouteSwitches, ShortestRoutes } from '@/maze';
+import type { Exploration, Route, ShortestRoutes } from '@/maze';
 import { EXPLORATION_COLOR, ROUTE_COLORS, TRACK_COLORS } from '@/render';
 import { insideCanvas } from '@/ui/canvas-id';
 import { Hint, IslandButton } from '@/ui/islands/island';
@@ -11,12 +11,12 @@ import { Sheet, SheetContent, SheetTitle } from '@/ui/primitives/sheet';
 import { Switch } from '@/ui/primitives/switch';
 import { cn } from '@/ui/primitives/utils';
 import {
-  anyRouteShown,
+  anyOverlayShown,
   playExploration,
-  toggleExploration,
-  toggleRoute,
+  toggleOverlay,
   useExplorationPlayback,
-  useShownRoutes,
+  useOverlaySwitches,
+  type OverlaySwitches,
 } from '@/ui/route-switches';
 
 /** The props of {@link Routes}. */
@@ -25,41 +25,51 @@ export interface RoutesProps {
   readonly routes: ShortestRoutes | null | undefined;
   /** The side of a cell in metres. */
   readonly cellSize: number;
-  /** Which routes the board draws. */
-  readonly shown: RouteSwitches;
   /** The flood-fill search of the maze on screen, searched while the panel is open. */
   readonly exploration: Exploration | null | undefined;
   readonly open: boolean;
   readonly onOpenChange: (open: boolean) => void;
-  readonly onToggle: (name: keyof ShortestRoutes) => void;
   readonly phone: boolean;
 }
 
 const ROWS = [
   {
     name: 'withoutDiagonals',
+    heading: 'Shortest',
     label: 'Without diagonals',
     tile: 'M7 26V9Q7 7 9 7H26',
+    color: ROUTE_COLORS.withoutDiagonals,
   },
-  { name: 'withDiagonals', label: 'With diagonals', tile: 'M7 26V19L19 7H26' },
+  {
+    name: 'withDiagonals',
+    label: 'With diagonals',
+    tile: 'M7 26V19L19 7H26',
+    color: ROUTE_COLORS.withDiagonals,
+  },
+  {
+    name: 'exploration',
+    heading: 'Exploration',
+    label: 'Flood fill · to the goal',
+    tile: 'M7 26V16H16V9H25V20',
+    color: EXPLORATION_COLOR,
+  },
 ] as const;
 
-const EXPLORATION_TILE = 'M7 26V16H16V9H25V20';
-
 function sameRoute(left: Route, right: Route): boolean {
-  return JSON.stringify(left.points) === JSON.stringify(right.points);
+  return (
+    left.points.length === right.points.length &&
+    left.points.every(
+      ({ u, v }, index) => u === right.points[index].u && v === right.points[index].v
+    )
+  );
 }
 
-/** The props of {@link RouteRows}. */
-export interface RouteRowsProps {
-  /** Which routes are drawn. */
-  readonly shown: RouteSwitches;
-  readonly onToggle: (name: keyof ShortestRoutes) => void;
+interface RouteRowsProps {
   /** What each row says under its name, if anything, such as the route's cells and length. */
-  readonly details?: Readonly<Record<keyof ShortestRoutes, string>>;
+  readonly details?: Partial<Record<keyof OverlaySwitches, string>>;
   /**
-   * The search of the maze on screen, which gives its row its moves, cells and walls seen and
-   * its ▶; the library and the generator, with no maze on screen, leave it out.
+   * The search of the maze on screen, which gives its row the ▶; the library and the generator,
+   * with no maze on screen, leave it out.
    */
   readonly exploration?: Exploration | null;
   /** Called once ▶ starts the search playing, as to close a phone's sheet over the board. */
@@ -150,40 +160,43 @@ function explorationDetail(exploration: Exploration): string {
 
 /**
  * A row per route, without diagonals then with them, and one for the flood-fill search: its tile,
- * its name and its switch.
+ * its name and the session's switch.
  */
-export function RouteRows({ shown, onToggle, details, exploration, onPlay }: RouteRowsProps) {
+function RouteRows({ details, exploration, onPlay }: RouteRowsProps) {
   const id = useId();
-  const exploring = useShownRoutes((now) => now.exploration);
+  const switches = useOverlaySwitches();
 
   return (
     <div className="px-1 pb-2">
-      <h3 className="mx-3 mt-1 mb-0.5 text-xs font-medium text-muted-foreground">Shortest</h3>
-      {ROWS.map(({ name, label, tile }) => (
-        <Row
-          color={ROUTE_COLORS[name]}
-          detail={details?.[name]}
-          id={`${id}-${name}`}
-          key={name}
-          label={label}
-          name={name}
-          on={shown[name]}
-          onToggle={() => onToggle(name)}
-          tile={tile}
-        />
+      {ROWS.map((row, index) => (
+        <Fragment key={row.name}>
+          {'heading' in row ? (
+            <h3
+              className={cn(
+                'mx-3 mb-0.5 text-xs font-medium text-muted-foreground',
+                index === 0 ? 'mt-1' : 'mt-2'
+              )}
+            >
+              {row.heading}
+            </h3>
+          ) : null}
+          <Row
+            color={row.color}
+            detail={details?.[row.name]}
+            id={`${id}-${row.name}`}
+            label={row.label}
+            name={row.name}
+            on={switches[row.name]}
+            onToggle={() => toggleOverlay(row.name)}
+            play={
+              row.name === 'exploration' && exploration ? (
+                <PlayButton exploration={exploration} onPlay={onPlay} />
+              ) : undefined
+            }
+            tile={row.tile}
+          />
+        </Fragment>
       ))}
-      <h3 className="mx-3 mt-2 mb-0.5 text-xs font-medium text-muted-foreground">Exploration</h3>
-      <Row
-        color={EXPLORATION_COLOR}
-        detail={exploration ? explorationDetail(exploration) : undefined}
-        id={`${id}-exploration`}
-        label="Flood fill · to the goal"
-        name="exploration"
-        on={exploring}
-        onToggle={toggleExploration}
-        play={exploration ? <PlayButton exploration={exploration} onPlay={onPlay} /> : undefined}
-        tile={EXPLORATION_TILE}
-      />
     </div>
   );
 }
@@ -196,8 +209,6 @@ function Body({
   routes,
   exploration,
   cellSize,
-  shown,
-  onToggle,
   onPlay,
 }: Omit<RoutesProps, 'open' | 'onOpenChange' | 'phone'> & { readonly onPlay?: () => void }) {
   if (routes === undefined || routes === null) {
@@ -216,11 +227,10 @@ function Body({
       details={{
         withoutDiagonals: routeDetail(routes.withoutDiagonals, cellSize),
         withDiagonals: `${routeDetail(routes.withDiagonals, cellSize)}${twin ? ' · same route as without diagonals' : ''}`,
+        exploration: exploration ? explorationDetail(exploration) : undefined,
       }}
       exploration={exploration}
       onPlay={onPlay}
-      onToggle={onToggle}
-      shown={shown}
     />
   );
 }
@@ -254,7 +264,7 @@ interface RoutesShellProps {
  * rows on a phone; its button shows active while a route or the search is drawn.
  */
 function RoutesShell({ phone, open, onOpenChange, trigger, children }: RoutesShellProps) {
-  const active = useShownRoutes((now) => anyRouteShown(now.shown) || now.exploration);
+  const active = useOverlaySwitches(anyOverlayShown);
   const close = (): void => onOpenChange(false);
   const button = trigger ? (
     <IslandButton
@@ -340,11 +350,10 @@ export interface RoutesButtonProps {
  */
 export function RoutesButton({ phone }: RoutesButtonProps) {
   const [open, setOpen] = useState(false);
-  const shown = useShownRoutes((now) => now.shown);
 
   return (
     <RoutesShell onOpenChange={setOpen} open={open} phone={phone} trigger>
-      <RouteRows onToggle={toggleRoute} shown={shown} />
+      <RouteRows />
     </RoutesShell>
   );
 }
