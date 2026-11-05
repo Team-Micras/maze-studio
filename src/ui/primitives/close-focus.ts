@@ -7,22 +7,15 @@
  */
 
 let byPointer = false;
-let listening = false;
 
-function listen(): void {
-  if (!listening) {
-    listening = true;
-    window.addEventListener('pointerdown', () => (byPointer = true), true);
-    window.addEventListener('keydown', () => (byPointer = false), true);
-  }
-}
+window.addEventListener('pointerdown', () => (byPointer = true), true);
+window.addEventListener('keydown', () => (byPointer = false), true);
 
 /**
  * An `onCloseAutoFocus` that runs `handler`, then keeps the focus off the trigger when the last
  * input was a pointer.
  */
 export function closeAutoFocus(handler?: (event: Event) => void): (event: Event) => void {
-  listen();
   return (event) => {
     handler?.(event);
 
