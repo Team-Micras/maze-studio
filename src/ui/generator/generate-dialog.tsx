@@ -40,7 +40,7 @@ import { Input } from '@/ui/primitives/input';
 import { Sheet, SheetClose, SheetContent, SheetTitle } from '@/ui/primitives/sheet';
 import { cn } from '@/ui/primitives/utils';
 import { appStorage } from '@/ui/storage';
-import { useShownRoutes } from '@/ui/route-switches';
+import { explorationShown, useShownRoutes } from '@/ui/route-switches';
 import { showToast } from '@/ui/toasts';
 
 import { Batch, MAX_ITEMS, randomSeed, type Item } from './batch-run';
@@ -162,6 +162,7 @@ const NOT_A_RECIPE = 'This is not a recipe: copy it again with “Copy recipe”
  */
 function CardPicture({ item, place }: { item: ReadyItem; place: number }) {
   const routes = useShownRoutes((now) => now.shown);
+  const exploration = useShownRoutes((now) => now.exploration);
   const [settling] = useState(
     () => item.builtAt !== undefined && performance.now() - item.builtAt < SETTLE
   );
@@ -170,6 +171,7 @@ function CardPicture({ item, place }: { item: ReadyItem; place: number }) {
     <span className="relative self-center">
       <ThumbnailCanvas
         cached={!settling}
+        exploration={exploration}
         height={CARD_SIDE}
         maze={measureItem(item).maze}
         routes={routes}
@@ -477,6 +479,7 @@ function DetailView({
 }: DetailViewProps) {
   const start = useRef<{ x: number; y: number } | undefined>(undefined);
   const shownRoutes = useShownRoutes((now) => now.shown);
+  const exploring = useShownRoutes((now) => now.exploration);
   const item = items[index];
 
   if (item === undefined) {
@@ -508,7 +511,10 @@ function DetailView({
             className="h-auto w-full"
             label={`Maze #${index + 1}, seed ${item.seed}`}
             maze={measureItem(item).maze}
-            overlays={{ routes: routesShown(measureItem(item).maze, shownRoutes) }}
+            overlays={{
+              routes: routesShown(measureItem(item).maze, shownRoutes),
+              exploration: explorationShown(measureItem(item).maze, exploring),
+            }}
           />
           {item.builtAt === undefined ? null : (
             <LoadingCanvas

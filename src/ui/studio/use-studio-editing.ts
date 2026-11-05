@@ -1,7 +1,8 @@
 import { useStore, type StoreApi } from 'zustand';
-import { useCallback, type FocusEvent, type KeyboardEvent } from 'react';
+import { useCallback, useEffect, type FocusEvent, type KeyboardEvent } from 'react';
 
 import {
+  explore,
   fillBorder,
   routesShown,
   shortestRoutes,
@@ -21,7 +22,12 @@ import { isCellTool, useCellDrawing } from '@/ui/editor/use-cell-drawing';
 import { useEditorShortcuts, type EditorShortcuts } from '@/ui/editor/use-editor-shortcuts';
 import type { MazeEditor } from '@/ui/editor/use-maze-editor';
 import { useWallDrawing } from '@/ui/editor/use-wall-drawing';
-import { toggleRoute, useShownRoutes } from '@/ui/route-switches';
+import {
+  explorationShown,
+  stopExplorationUnless,
+  toggleRoute,
+  useShownRoutes,
+} from '@/ui/route-switches';
 
 import type { StudioScreen, StudioState } from './studio-store';
 
@@ -128,6 +134,10 @@ export function useStudioEditing({
   const shownRoutes = useShownRoutes((now) => now.shown);
   const setRoutesOpen = (open: boolean): void => store.setState({ routesOpen: open });
   const routes = maze === undefined || !state.routesOpen ? undefined : shortestRoutes(maze);
+  const exploring = useShownRoutes((now) => now.exploration);
+  const exploration = maze === undefined ? undefined : explorationShown(maze, exploring);
+
+  useEffect(() => stopExplorationUnless(exploration), [exploration]);
 
   useEditorShortcuts({
     list,
@@ -192,6 +202,7 @@ export function useStudioEditing({
       focus: focused,
       diff,
       routes: maze === undefined ? undefined : routesShown(maze, shownRoutes),
+      exploration,
     },
     cursor: boardKeys.cursor,
     onCanvasKey,
@@ -239,6 +250,7 @@ export function useStudioEditing({
         ? undefined
         : ({
             routes,
+            exploration: state.routesOpen ? explore(maze) : undefined,
             cellSize: onScreen.document.profile === 'halfsize' ? 0.09 : 0.18,
             shown: shownRoutes,
             open: state.routesOpen,

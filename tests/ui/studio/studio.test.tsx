@@ -1,11 +1,12 @@
 import { afterEach, describe, expect, test } from 'vitest';
 import { page, userEvent } from 'vitest/browser';
 
+import { useExplorationPlayback } from '@/ui/route-switches';
 import '@/ui/styles.css';
 import { axeViolations } from '@tests/support/axe-check';
 import { settled } from '@tests/support/ui/animations';
 import { artboards, mountApp } from '@tests/support/ui/library-app';
-import { showsAmberRoute } from '@tests/support/ui/route-pixels';
+import { showsAmberRoute, showsExploration } from '@tests/support/ui/route-pixels';
 
 afterEach(async () => {
   document.documentElement.classList.remove('dark');
@@ -361,5 +362,94 @@ describe('Generate from the editor', () => {
     await openMaze(7);
 
     await expect.element(page.getByRole('dialog', { name: 'Generate' })).not.toBeInTheDocument();
+  });
+});
+
+/** Whether the open board draws the search's trail. */
+function explored(): boolean {
+  return document.querySelector('[data-open-board] [data-route="exploration"]') !== null;
+}
+
+function routesOpacity(): string | null | undefined {
+  return document.querySelector('[data-open-board] [data-group="routes"]')?.getAttribute('opacity');
+}
+
+/** Whether the open board draws the search's robot, as it does only while the search plays. */
+function robot(): boolean {
+  return document.querySelector('[data-open-board] [data-layer="robot"]') !== null;
+}
+
+describe('The flood-fill search', () => {
+  test('is drawn on the board by its switch, under the routes, and hidden again', async () => {
+    await mountApp('#/repo/classic/AAMC15Maze.txt');
+    await expect.poll(mode).toBe('editor');
+    await userEvent.click(editorRoutes());
+    await userEvent.click(page.getByRole('switch', { name: /Without diagonals/ }));
+
+    expect(explored()).toBe(false);
+    await userEvent.click(page.getByRole('switch', { name: /^Flood fill/ }));
+    await expect.poll(explored).toBe(true);
+    expect(
+      [...document.querySelectorAll('[data-open-board] [data-route]')].map((route) =>
+        route.getAttribute('data-route')
+      )
+    ).toEqual(['exploration', 'withoutDiagonals']);
+    await userEvent.click(page.getByRole('switch', { name: /^Flood fill/ }));
+    await expect.poll(explored).toBe(false);
+  });
+
+  test('plays from ▶ with its robot, the routes faded, and ends with the whole trail still', async () => {
+    await mountApp('#/repo/classic/AAMC15Maze.txt');
+    await expect.poll(mode).toBe('editor');
+    await userEvent.click(editorRoutes());
+    await userEvent.click(page.getByRole('switch', { name: /With diagonals/ }));
+    await userEvent.click(page.getByRole('button', { name: 'Play the search' }));
+
+    await expect.poll(robot).toBe(true);
+    expect(document.querySelector('[data-open-board] [data-layer="unseen"]')).not.toBeNull();
+    expect(routesOpacity()).toBe('0.3');
+    await expect
+      .poll(() =>
+        document.querySelector(
+          '[data-open-board] [data-group="routes"] ~ [data-route="exploration"]'
+        )
+      )
+      .not.toBeNull();
+    const playing = useExplorationPlayback.getState()!;
+    useExplorationPlayback.setState({ ...playing, at: playing.exploration.moves - 0.01 }, true);
+    await expect.poll(robot).toBe(false);
+    expect(explored()).toBe(true);
+    expect(routesOpacity()).toBeNull();
+    expect(
+      document.querySelector(
+        '[data-open-board] [data-route="exploration"] [data-layer="route-goal"]'
+      )
+    ).not.toBeNull();
+    await expect.element(page.getByRole('button', { name: 'Play the search' })).toBeVisible();
+  });
+
+  test('stops playing when the maze changes', async () => {
+    await mountApp('#/repo/classic/AAMC15Maze.txt');
+    await expect.poll(mode).toBe('editor');
+    await userEvent.click(editorRoutes());
+    await userEvent.click(page.getByRole('button', { name: 'Play the search' }));
+    await expect.poll(robot).toBe(true);
+    await userEvent.click(page.getByRole('button', { name: 'Back to the library' }));
+
+    await expect.poll(() => useExplorationPlayback.getState()).toBeUndefined();
+  });
+
+  test('is listed in the library and drawn on its thumbnails until it is turned off', async () => {
+    await mountApp();
+    await libraryRoutes(/With diagonals/, /^Flood fill/);
+
+    await expect.poll(() => showsAmberRoute(thumbnail())).toBe(true);
+    await expect.poll(() => showsExploration(thumbnail())).toBe(true);
+    expect(libraryActive()).toBe(true);
+    await libraryRoutes(/^Flood fill/);
+    await expect.poll(() => showsExploration(thumbnail())).toBe(false);
+    await libraryRoutes(/^Flood fill/);
+    await openMaze();
+    expect(explored()).toBe(true);
   });
 });

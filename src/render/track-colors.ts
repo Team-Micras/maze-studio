@@ -28,6 +28,8 @@ export const TRACK_COLORS = {
   cursor: 'oklch(0.985 0 0)',
   /** What changed in the session. */
   diff: 'oklch(0.74 0.15 235)',
+  /** A wall the flood-fill search has not seen yet, while it plays. */
+  unseenWall: 'oklch(0.33 0.07 27)',
 } as const;
 
 /** The colour of each shortest route, on the board and in the Routes panel. */
@@ -37,6 +39,9 @@ export const ROUTE_COLORS: Readonly<Record<keyof ShortestRoutes, string>> = {
   /** #f5b942. */
   withDiagonals: 'oklch(0.82 0.147 80.7)',
 };
+
+/** The colour of the flood-fill search's trail, on the board and in the Routes panel. */
+export const EXPLORATION_COLOR = 'oklch(0.75 0.11 280)';
 
 /** The opacities the palette is painted at where it is not opaque. */
 export const TRACK_OPACITY = {
@@ -48,4 +53,9 @@ export const TRACK_OPACITY = {
   previewFill: 0.5,
   previewOutline: 0.6,
   routeCasing: 0.9,
+  /**
+   * The shortest routes while the flood-fill search plays, drawn under its trail so it stands
+   * out.
+   */
+  routesWhilePlaying: 0.3,
 } as const;

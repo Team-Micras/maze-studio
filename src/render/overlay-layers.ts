@@ -1,6 +1,7 @@
 /**
  * What the editor draws over the track, as path data, in the order it is painted (DESIGN.md
- * 2.3): the session diff, the shortest routes, the selected finding, the selection, the edge
+ * 2.3): the walls the search has not seen yet, the session diff, the search's trail, the shortest
+ * routes, the robot, the selected finding, the selection, the edge
  * preview and the keyboard cursor. Every size is a fraction of the cell pitch, so the overlays
  * scale with the board.
  *
@@ -12,10 +13,11 @@ import {
   type Cell,
   type CellArea,
   type Edge,
+  type Exploration,
   type Finding,
   type MazeDiff,
   type Post,
-  type Route,
+  type RoutePoint,
   type ShortestRoutes,
 } from '@/maze';
 
@@ -43,6 +45,13 @@ export interface BoardOverlays {
   readonly diff?: MazeDiff;
   /** The shortest routes shown; a route left out is not drawn. */
   readonly routes?: Partial<ShortestRoutes>;
+  /** The flood-fill search whose trail is drawn under the routes. */
+  readonly exploration?: Exploration;
+  /**
+   * How far the search is played, in moves from the start; left out, its whole trail is drawn
+   * still. While it plays, the robot and the walls it has not seen yet are drawn too.
+   */
+  readonly explorationAt?: number;
   readonly focus?: FindingFocus;
   readonly selection?: CellArea;
   readonly preview?: EdgePreview;
@@ -71,7 +80,11 @@ export interface RouteLayers {
 
 /** Path data of every overlay; an empty string draws nothing. */
 export interface OverlayLayers {
+  /** The walls the search has not seen yet while it plays, as their places between the posts. */
+  readonly unseen: string;
   readonly diff: DiffLayers;
+  /** The trail of the search, drawn like a route; while it plays, without the goal dot. */
+  readonly exploration: RouteLayers | undefined;
   /** The routes shown, in the order they are painted: with diagonals on top. */
   readonly routes: readonly (RouteLayers & {
     readonly name: keyof ShortestRoutes;
@@ -85,6 +98,8 @@ export interface OverlayLayers {
   /** Whether the preview shows a wall being taken away rather than put. */
   readonly previewRemoves: boolean;
   readonly cursor: string;
+  /** A triangle on the robot of the search while it plays, pointing the way it moves. */
+  readonly robot: string;
 }
 
 /** A dash pattern: the length drawn, then the gap. */
@@ -103,6 +118,8 @@ export interface OverlayStrokes {
   readonly route: number;
   /** The floor-coloured casing under a route, wider than the route by this much. */
   readonly routeCasing: number;
+  /** The floor-coloured outline of the robot. */
+  readonly robot: number;
 }
 
 const DIFF_PAD = 0.07;
@@ -137,6 +154,7 @@ export function overlayStrokes(geometry: BoardGeometry): OverlayStrokes {
     cursor: 0.05 * p,
     route: ROUTE_WIDTH * p,
     routeCasing: (ROUTE_WIDTH + ROUTE_CASING) * p,
+    robot: 0.06 * p,
   };
 }
 
@@ -243,19 +261,25 @@ function cursorPath(geometry: BoardGeometry, cell: Cell | undefined): string {
   return roundedRectPath(inset(cellRect(geometry, cell), gap), CURSOR_RADIUS * geometry.pitch);
 }
 
+function reversing(before: BoardPoint, at: BoardPoint, after: BoardPoint): boolean {
+  return (at.x - before.x) * (after.x - at.x) + (at.y - before.y) * (after.y - at.y) < 0;
+}
+
 function turning(before: BoardPoint, at: BoardPoint, after: BoardPoint): boolean {
   return (
-    Math.abs((at.x - before.x) * (after.y - at.y) - (at.y - before.y) * (after.x - at.x)) > 1e-6
+    Math.abs((at.x - before.x) * (after.y - at.y) - (at.y - before.y) * (after.x - at.x)) > 1e-6 ||
+    reversing(before, at, after)
   );
 }
 
 /**
- * The line of `route` drawn with `geometry`: straight runs and 45° diagonals between its nodes,
- * each corner softened by a small fixed radius for looks only.
+ * The line through `points` drawn with `geometry`: straight runs and 45° diagonals between them,
+ * each corner softened by a small fixed radius for looks only, and a turn back sharp, so that the
+ * line goes back over itself.
  */
-function routeLayers(geometry: BoardGeometry, route: Route): RouteLayers {
+function routeLayers(geometry: BoardGeometry, points: readonly RoutePoint[]): RouteLayers {
   const f = formatLength;
-  const all = route.points.map((point) => toBoardPoint(geometry, point));
+  const all = points.map((point) => toBoardPoint(geometry, point));
   const corners = all.filter(
     (point, index) =>
       index === 0 || index === all.length - 1 || turning(all[index - 1], point, all[index + 1])
@@ -267,6 +291,11 @@ function routeLayers(geometry: BoardGeometry, route: Route): RouteLayers {
   const bends = corners.slice(1, -1).map((corner, index) => {
     const before = corners[index];
     const after = corners[index + 2];
+
+    if (reversing(before, corner, after)) {
+      return `L${f(corner.x)} ${f(corner.y)}`;
+    }
+
     const radius = Math.min(
       ROUTE_CORNER * geometry.pitch,
       Math.hypot(corner.x - before.x, corner.y - before.y) / 2,
@@ -283,17 +312,71 @@ function routeLayers(geometry: BoardGeometry, route: Route): RouteLayers {
   };
 }
 
+const ROBOT_NOSE = 0.3;
+const ROBOT_TAIL = 0.2;
+const ROBOT_HALF_WIDTH = 0.22;
+const HEADINGS = {
+  north: [0, -1],
+  east: [1, 0],
+  south: [0, 1],
+  west: [-1, 0],
+} as const;
+
+const centre = (cell: Cell): RoutePoint => ({ u: cell.x + 0.5, v: cell.y + 0.5 });
+
+function explorationLayers(
+  geometry: BoardGeometry,
+  exploration: Exploration | undefined,
+  at: number | undefined
+): Pick<OverlayLayers, 'unseen' | 'exploration' | 'robot'> {
+  if (exploration === undefined) {
+    return { unseen: '', exploration: undefined, robot: '' };
+  }
+
+  const { steps } = exploration;
+
+  if (at === undefined) {
+    return { unseen: '', exploration: routeLayers(geometry, steps.map(centre)), robot: '' };
+  }
+
+  const step = Math.min(Math.floor(at), steps.length - 1);
+  const here = steps[step];
+  const next = steps[Math.min(step + 1, steps.length - 1)];
+  const part = at - step;
+  const robot = {
+    u: here.x + 0.5 + (next.x - here.x) * part,
+    v: here.y + 0.5 + (next.y - here.y) * part,
+  };
+  const trail = [...steps.slice(0, step + 1).map(centre), ...(part > 0 ? [robot] : [])];
+  const p = geometry.pitch;
+  const tip = toBoardPoint(geometry, robot);
+  const [dx, dy] = HEADINGS[part > 0 ? next.heading : here.heading];
+  const corner = (forward: number, side: number): string =>
+    `${formatLength(tip.x + (dx * forward - dy * side) * p)} ${formatLength(tip.y + (dy * forward + dx * side) * p)}`;
+
+  return {
+    unseen: exploration.walls
+      .filter((wall) => wall.seenAt > step)
+      .map((wall) => rectPath(slotRect(geometry, wall)))
+      .join(''),
+    exploration:
+      trail.length < 2 ? undefined : { ...routeLayers(geometry, trail), goal: '', goalCasing: '' },
+    robot: `M${corner(ROBOT_NOSE, 0)}L${corner(-ROBOT_TAIL, ROBOT_HALF_WIDTH)}L${corner(-ROBOT_TAIL, -ROBOT_HALF_WIDTH)}Z`,
+  };
+}
+
 /** The overlays drawn with `geometry`. */
 export function overlayLayers(geometry: BoardGeometry, overlays: BoardOverlays): OverlayLayers {
   const { preview } = overlays;
   return {
+    ...explorationLayers(geometry, overlays.exploration, overlays.explorationAt),
     diff:
       overlays.diff === undefined
         ? { added: '', marked: '', dashed: '' }
         : diffLayers(geometry, overlays.diff),
     routes: ROUTE_ORDER.flatMap((name) => {
       const route = overlays.routes?.[name];
-      return route === undefined ? [] : [{ name, ...routeLayers(geometry, route) }];
+      return route === undefined ? [] : [{ name, ...routeLayers(geometry, route.points) }];
     }),
     ...focusLayers(geometry, overlays.focus),
     selection: selectionPath(geometry, overlays.selection),

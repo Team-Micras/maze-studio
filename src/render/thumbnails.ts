@@ -4,17 +4,18 @@
  * the bytes of the bitmaps (PLAN.md 3.3, DESIGN.md 7): one for the small bands, roomy enough for a
  * preview of every maze, and one for the large bands. The library, the minimap, the quick list
  * and the Changes panel, which draws the diff on top, all take them from here; the library and the
- * generator's gallery may draw the shortest routes on top, kept apart from the plain bitmap.
+ * generator's gallery may draw the shortest routes and the flood-fill search on top, kept apart
+ * from the plain bitmap.
  *
  * @module
  */
 
-import type { Maze, MazeDiff, ShortestRoutes } from '@/maze';
+import type { Exploration, Maze, MazeDiff, ShortestRoutes } from '@/maze';
 
 import { boardGeometry, type BoardGeometry } from './geometry';
 import { LruCache } from './lru-cache';
 import { diffLayers, overlayLayers, overlayStrokes } from './overlay-layers';
-import { ROUTE_COLORS, TRACK_COLORS, TRACK_OPACITY } from './track-colors';
+import { EXPLORATION_COLOR, ROUTE_COLORS, TRACK_COLORS, TRACK_OPACITY } from './track-colors';
 import { trackPaint } from './track-layers';
 
 /** The sizes a thumbnail is drawn at, in device pixels on its longest side. */
@@ -43,6 +44,9 @@ export const PREVIEW_CACHE_BYTES = 40 * 1024 * 1024;
  * never thinner than a wall.
  */
 const THUMBNAIL_ROUTE_SCALE = 2;
+
+/** The routes a thumbnail draws, and the flood-fill search whose trail goes under them. */
+export type ThumbnailRoutes = Partial<ShortestRoutes> & { readonly exploration?: Exploration };
 
 /** The size of a thumbnail's bitmap, in device pixels. */
 export interface ThumbnailSize {
@@ -109,21 +113,29 @@ function stroke(
 function paintRoutes(
   context: Canvas2D,
   geometry: BoardGeometry,
-  routes: Partial<ShortestRoutes>
+  { exploration, ...routes }: ThumbnailRoutes
 ): void {
   const strokes = overlayStrokes(geometry);
   const width = Math.max(strokes.route * THUMBNAIL_ROUTE_SCALE, geometry.wall);
+  const layers = overlayLayers(geometry, { routes, exploration });
   context.lineCap = 'round';
   context.lineJoin = 'round';
 
-  for (const route of overlayLayers(geometry, { routes }).routes) {
-    const line = new Path2D(route.line);
+  const lines: [line: string, color: string][] = [
+    ...(layers.exploration === undefined
+      ? []
+      : [[layers.exploration.line, EXPLORATION_COLOR] as [string, string]]),
+    ...layers.routes.map((route): [string, string] => [route.line, ROUTE_COLORS[route.name]]),
+  ];
+
+  for (const [path, color] of lines) {
+    const line = new Path2D(path);
     context.globalAlpha = TRACK_OPACITY.routeCasing;
     context.strokeStyle = TRACK_COLORS.floor;
     context.lineWidth = width + strokes.routeCasing - strokes.route;
     context.stroke(line);
     context.globalAlpha = 1;
-    context.strokeStyle = ROUTE_COLORS[route.name];
+    context.strokeStyle = color;
     context.lineWidth = width;
     context.stroke(line);
   }
@@ -132,8 +144,11 @@ function paintRoutes(
 /** What a thumbnail draws over the track; anything left out is not drawn. */
 export interface ThumbnailOverlays {
   readonly diff?: MazeDiff;
-  /** The routes drawn on top of all; a route left out is not drawn. */
-  readonly routes?: Partial<ShortestRoutes>;
+  /**
+   * The routes drawn on top of all, the search's trail under them; what is left out is not
+   * drawn.
+   */
+  readonly routes?: ThumbnailRoutes;
 }
 
 /**
@@ -201,8 +216,12 @@ export function drawThumbnail(
   return canvas;
 }
 
-function routesKey(routes: Partial<ShortestRoutes> | undefined): string {
-  const on = [routes?.withoutDiagonals && 'o', routes?.withDiagonals && 'd'].filter(Boolean);
+function routesKey(routes: ThumbnailRoutes | undefined): string {
+  const on = [
+    routes?.withoutDiagonals && 'o',
+    routes?.withDiagonals && 'd',
+    routes?.exploration && 'e',
+  ].filter(Boolean);
   return on.length === 0 ? '' : `:routes:${on.join('')}`;
 }
 
@@ -237,12 +256,7 @@ export class ThumbnailCache {
    * @param routes The routes of `maze` drawn on top, which a bitmap of its own keeps; none by
    *   default, and the plain bitmap when none is given.
    */
-  thumbnail(
-    key: string,
-    maze: Maze,
-    pixels: number,
-    routes?: Partial<ShortestRoutes>
-  ): OffscreenCanvas {
+  thumbnail(key: string, maze: Maze, pixels: number, routes?: ThumbnailRoutes): OffscreenCanvas {
     const band = thumbnailBand(pixels);
     return this.#cached(band, `${band}:${key}${routesKey(routes)}`, () =>
       drawThumbnail(maze, band, { routes })
@@ -275,11 +289,7 @@ export class ThumbnailCache {
    * already drawn, with `routes` on top as for {@link ThumbnailCache.thumbnail}; never draws, so a
    * caller can show what is ready at once and draw the rest later.
    */
-  cached(
-    key: string,
-    pixels: number,
-    routes?: Partial<ShortestRoutes>
-  ): OffscreenCanvas | undefined {
+  cached(key: string, pixels: number, routes?: ThumbnailRoutes): OffscreenCanvas | undefined {
     const band = thumbnailBand(pixels);
     return this.#cacheOf(band).get(`${band}:${key}${routesKey(routes)}`);
   }

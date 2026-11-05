@@ -120,7 +120,7 @@ export function LibraryGrid({
   const [focused, setFocused] = useState<string | undefined>(undefined);
   const [selected, setSelected] = useState<ReadonlySet<string> | undefined>(undefined);
   const [armed, setArmed] = useState(false);
-  const routesOn = useShownRoutes((now) => anyRouteShown(now.shown));
+  const routesOn = useShownRoutes((now) => anyRouteShown(now.shown) || now.exploration);
   const selecting = selected !== undefined;
   const picked = entries.flatMap((entry) => (selected?.has(entry.key) === true ? [entry.key] : []));
 

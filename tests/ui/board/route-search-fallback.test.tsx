@@ -31,7 +31,12 @@ describe('requestRoutes without a working worker', () => {
   test('searches a maze the worker failed on in idle time, and goes on with the next', async () => {
     answer = (code) =>
       new MessageEvent('message', {
-        data: { code, routes: undefined, failed: true } satisfies RoutesFound,
+        data: {
+          code,
+          routes: undefined,
+          exploration: undefined,
+          failed: true,
+        } satisfies RoutesFound,
       });
     const original = await repoMaze(REPO_MAZES.classic);
     const mazes = copies(original, 2);
