@@ -157,6 +157,22 @@ function writerOn(mine: FakeMine): { writer: MineWriter; heard: Heard } {
 }
 
 describe('The writer of My mazes', () => {
+  test('renames one after the other, so a rename asked again is never refused by the first', async () => {
+    const mine = new FakeMine();
+    const { writer } = writerOn(mine);
+    const session = edited(opened('a'), 0);
+    writer.write(session);
+    await writer.idle();
+    const results = await Promise.all([
+      writer.rename(session, 'First'),
+      writer.rename(session, 'Second'),
+    ]);
+
+    expect(results).toEqual([true, true]);
+    expect(mine.log.filter((line) => line.startsWith('refuse'))).toEqual([]);
+    expect(writer.copyOf(session)?.name).toBe('Second');
+  });
+
   test('copies on the first edit, then saves, in the order asked', async () => {
     const mine = new FakeMine();
     const { writer } = writerOn(mine);

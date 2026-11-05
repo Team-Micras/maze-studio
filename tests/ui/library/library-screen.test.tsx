@@ -278,10 +278,11 @@ describe('Search and filters', () => {
     await expect.element(heading).toBeVisible();
     expect(heading.element().parentElement?.querySelector('button')?.textContent).toBe('Reload');
     expect(artboards()).toHaveLength(0);
+    await expect.element(page.getByText('Error: IndexedDB could not be read')).toBeVisible();
     expect(logged).toHaveBeenCalledWith('The library could not be read', failure);
   });
 
-  test('says so when the library never finishes loading, instead of staying blank', async () => {
+  test('says it is loading, then why it failed when the library never finishes loading', async () => {
     const storage = await appStorage();
 
     if (storage === undefined) {
@@ -295,6 +296,7 @@ describe('Search and filters', () => {
 
     try {
       await render(<App />);
+      await expect.element(page.getByText('Loading the library…')).toBeInTheDocument();
       await vi.advanceTimersByTimeAsync(10_000);
     } finally {
       vi.useRealTimers();
@@ -303,6 +305,10 @@ describe('Search and filters', () => {
     await expect
       .element(page.getByRole('heading', { name: 'The library could not be read' }))
       .toBeVisible();
+    await expect
+      .element(page.getByText('The browser storage did not answer in 10 s.'))
+      .toBeVisible();
+    expect(document.querySelector('[data-library-loading]')).toBeNull();
   });
 
   test('logs no slow load once the library has loaded', async () => {

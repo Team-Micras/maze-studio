@@ -444,7 +444,7 @@ describe('The first edit of a maze that is not in My mazes', () => {
 });
 
 describe('A new maze before its first edit', () => {
-  test('takes a name from its title, which its copy in My mazes keeps', async () => {
+  test('goes to My mazes once renamed from its title, and keeps the name as it is edited', async () => {
     const page = await openPage(browser, contexts, app);
     await page.getByRole('button', { name: 'New maze' }).first().click();
     await page.getByRole('menuitem', { name: 'Training, 16 × 16' }).click();
@@ -457,14 +457,17 @@ describe('A new maze before its first edit', () => {
     await page.getByRole('button', { name: 'Save' }).click();
 
     await expect.poll(() => page.locator('h1').textContent()).toBe('Practice run');
-    expect(new URL(page.url()).hash).toBe('#/');
     const maze = borderedMaze(16, 16);
+    const renamed = await expectSaved(page, sameMaze(maze));
+
+    expect(renamed.name).toBe('Practice run');
+    await expect.poll(() => new URL(page.url()).hash).toBe(`#/mine/${renamed.id}`);
     const edge: Edge = { direction: 'horizontal', x: 4, y: 5 };
     const point = await pagePoint(page, maze, edgeMiddle(edge));
     await page.mouse.click(point.x, point.y);
     const saved = await expectSaved(page, sameMaze(toggleWall(maze, edge)));
 
-    expect(saved.name).toBe('Practice run');
+    expect(saved).toMatchObject({ id: renamed.id, name: 'Practice run' });
     expect(await page.locator('h1').textContent()).toBe('Practice run');
   });
 });

@@ -55,6 +55,7 @@ export class MineWriter {
   readonly #copiesOnTheirWay = new Set<Promise<void>>();
   readonly #waiting = new Map<OpenMaze, EditSession>();
   #draining: Promise<void> | undefined;
+  #renames: Promise<unknown> = Promise.resolve();
 
   constructor(mine: () => Promise<MineStore | undefined>, events: MineWriterEvents) {
     this.#mine = mine;
@@ -83,12 +84,21 @@ export class MineWriter {
   }
 
   /**
-   * Renames `session`'s item of My mazes on the version this tab knows.
+   * Renames `session`'s item of My mazes on the version this tab knows, once the writes and the
+   * renames asked before it are done, so a rename asked again never races the one still on its way.
    *
    * @returns Whether My mazes took the name; another tab's newer save refuses it.
    */
-  async rename(session: EditSession, name: string): Promise<boolean> {
-    await this.idle();
+  rename(session: EditSession, name: string): Promise<boolean> {
+    const renamed = this.#renames.then(async () => {
+      await this.#settled();
+      return this.#renameNow(session, name);
+    });
+    this.#renames = renamed.catch(() => undefined);
+    return renamed;
+  }
+
+  async #renameNow(session: EditSession, name: string): Promise<boolean> {
     const { opened } = session;
     const copy = this.copyOf(session);
     const mine = await this.#mine();
@@ -122,16 +132,22 @@ export class MineWriter {
   }
 
   /**
-   * Resolves once every session asked has been written and every copy asked has been made, or has
-   * failed to be, including those asked while it waits.
+   * Resolves once every session asked has been written, every copy asked has been made and every
+   * rename asked is done, or has failed to be, including those asked while it waits.
    */
   async idle(): Promise<void> {
+    await this.#settled();
+    await this.#renames;
+    await this.#settled();
+  }
+
+  async #settled(): Promise<void> {
     if (this.#draining === undefined && this.#copiesOnTheirWay.size === 0) {
       return;
     }
 
     await Promise.allSettled([this.#draining, ...this.#copiesOnTheirWay]);
-    await this.idle();
+    await this.#settled();
   }
 
   async #drain(): Promise<void> {
