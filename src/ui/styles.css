@@ -103,7 +103,7 @@
   --slab-shadow:
     0 0 0 1px oklch(1 0 0 / 0.06), 0 1px 0 oklch(0 0 0 / 0.05),
     0 18px 40px -22px oklch(0 0 0 / 0.55);
-  --artboard-shadow: 0 0 0 1px oklch(1 0 0 / 0.06), 0 2px 0 oklch(0 0 0 / 0.5);
+  --artboard-shadow: 0 0 0 1px oklch(1 0 0 / 0.06);
 }
 
 /*

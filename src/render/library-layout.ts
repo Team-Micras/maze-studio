@@ -8,10 +8,13 @@
  */
 
 import { clamp, type Insets, type WorldPoint, type WorldRect } from './camera';
-import { ARTBOARD_SIZE } from './geometry';
+import { ARTBOARD_SIZE, boardGeometry } from './geometry';
 
-/** The gap between two slots of a row, as a share of the slot's side. */
+/** The gap between two slots of a row, as a share of the slot's side, on a notebook. */
 export const SLOT_GAP_X = 200 / ARTBOARD_SIZE;
+
+/** The gap between two slots of a row on a phone, narrower so its two columns use the width. */
+export const PHONE_SLOT_GAP_X = 80 / ARTBOARD_SIZE;
 
 /** The gap between two rows, room for the name above each slot, as a share of the slot's side. */
 export const SLOT_GAP_Y = 210 / ARTBOARD_SIZE;
@@ -26,7 +29,7 @@ export type LibraryKind = 'notebook' | 'stacked' | 'phone';
 export const LIBRARY_INSETS: Readonly<Record<LibraryKind, Insets>> = {
   notebook: { top: 112, right: 56, bottom: 72, left: 56 },
   stacked: { top: 164, right: 56, bottom: 72, left: 56 },
-  phone: { top: 150, right: 14, bottom: 56, left: 14 },
+  phone: { top: 150, right: 20, bottom: 56, left: 20 },
 };
 
 const COLUMN_WIDTH = { notebook: 250, stacked: 250, phone: 170 } as const;
@@ -80,14 +83,15 @@ export function libraryLayout(
   const insets = LIBRARY_INSETS[layout];
   const columns = libraryColumns(viewportWidth, layout);
   const room = Math.max(1, viewportWidth - insets.left - insets.right);
-  const side = room / (columns + (columns - 1) * SLOT_GAP_X);
+  const gap = layout === 'phone' ? PHONE_SLOT_GAP_X : SLOT_GAP_X;
+  const side = room / (columns + (columns - 1) * gap);
   const rows = Math.max(1, Math.ceil(count / columns));
   const rowPitch = side * (1 + SLOT_GAP_Y);
   return {
     columns,
     rows,
     side,
-    columnPitch: side * (1 + SLOT_GAP_X),
+    columnPitch: side * (1 + gap),
     rowPitch,
     insets,
     height: insets.top + rows * side + (rows - 1) * side * SLOT_GAP_Y + insets.bottom,
@@ -96,12 +100,14 @@ export function libraryLayout(
 
 /**
  * Where a maze of `size` lies in a square slot of `side` whose top-left corner is `corner`: its
- * longest side the slot's, centred across it and standing on its bottom.
+ * longest side the slot's, centred across it and standing on its bottom, in the proportions of
+ * its board, margin included, so a narrow maze is drawn whole rather than shrunk or stretched.
  */
 export function artboardIn(corner: WorldPoint, size: MazeSize, side = ARTBOARD_SIZE): WorldRect {
-  const longest = Math.max(size.width, size.height);
-  const width = (side * size.width) / longest;
-  const height = (side * size.height) / longest;
+  const board = boardGeometry(size, { size: side });
+  const longest = Math.max(board.width, board.height);
+  const width = (side * board.width) / longest;
+  const height = (side * board.height) / longest;
   return { x: corner.x + (side - width) / 2, y: corner.y + (side - height), width, height };
 }
 

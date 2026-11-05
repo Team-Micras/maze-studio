@@ -105,6 +105,12 @@ function easingError(samples: readonly WorldSample[], from: Camera, to: Camera, 
 }
 
 /**
+ * The frames a flight must be seen in to count as moving: a slow runner paints a 520 ms flight in
+ * as few as 7 frames, so a count of 10 or more failed there although the flight was whole.
+ */
+const MOVING_FRAMES = 5;
+
+/**
  * Records the mode, the open board's box, the height of an artboard's name and the grid's opacity
  * at every frame until `stop` is called, and how much of the artboard `key` shows.
  */
@@ -229,7 +235,7 @@ describe('The flight into a maze and back', () => {
 
     const fading = flying.slice(0, Math.ceil(flying.length / 3));
 
-    expect(flying.length).toBeGreaterThan(10);
+    expect(flying.length).toBeGreaterThanOrEqual(MOVING_FRAMES);
     expect(new Set(flying.map((frame) => Math.round(frame.labelHeight))).size).toBe(1);
     expect(fading.some((frame) => frame.gridOpacity < 0.5)).toBe(true);
     expect(flying.at(-1)?.gridOpacity).toBe(0);
@@ -259,7 +265,7 @@ describe('The flight into a maze and back', () => {
     expect(Math.abs(from.y + board.y * from.k - (thumbnail?.y ?? 0))).toBeLessThan(1);
     console.info(`flight easing: ${samples} samples, at most ${error.toFixed(3)} off the curve`);
 
-    expect(samples).toBeGreaterThan(10);
+    expect(samples).toBeGreaterThanOrEqual(MOVING_FRAMES);
     expect(error).toBeLessThan(0.02);
   });
 
@@ -297,9 +303,9 @@ describe('The flight into a maze and back', () => {
       () => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)))
     );
     const flownOut = await outward();
-    expect(during(flownIn, 'flying-in').length).toBeGreaterThan(10);
+    expect(during(flownIn, 'flying-in').length).toBeGreaterThanOrEqual(MOVING_FRAMES);
     expect(during(flownIn, 'flying-in').every((opacity) => opacity === 0)).toBe(true);
-    expect(during(flownOut, 'flying-out').length).toBeGreaterThan(10);
+    expect(during(flownOut, 'flying-out').length).toBeGreaterThanOrEqual(MOVING_FRAMES);
     expect(during(flownOut, 'flying-out').every((opacity) => opacity === 0)).toBe(true);
     expect(flownOut.at(-1)?.mode).toBe('library');
     expect(flownOut.at(-1)?.artboardOpacity).toBe(1);
@@ -327,7 +333,9 @@ describe('The flight into a maze and back', () => {
           .map((frame) => Math.round(frame.labelHeight))
       ).size
     ).toBe(1);
-    expect(new Set(widths.map((width) => Math.round(width))).size).toBeGreaterThan(10);
+    expect(new Set(widths.map((width) => Math.round(width))).size).toBeGreaterThanOrEqual(
+      MOVING_FRAMES
+    );
     expect(widths[0] ?? 0).toBeGreaterThan(2 * (widths.at(-1) ?? 0));
     expect(
       widths.every((width, index) => index === 0 || width <= (widths[index - 1] ?? 0) + 0.5)
@@ -441,7 +449,7 @@ describe('Every way back from a maze that has an artboard', () => {
       );
       const widths = flying.map((frame) => frame.board?.width ?? 0);
 
-      expect(flying.length).toBeGreaterThan(10);
+      expect(flying.length).toBeGreaterThanOrEqual(MOVING_FRAMES);
       expect(flying.every((frame) => (frame.boardOpacity ?? 0) > 0.99)).toBe(true);
       expect(widths[0] ?? 0).toBeGreaterThan(1.5 * (widths.at(-1) ?? 0));
     }
