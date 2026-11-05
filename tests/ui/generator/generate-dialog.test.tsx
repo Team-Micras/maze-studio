@@ -1,21 +1,19 @@
-import type { ReactNode } from "react";
-import { afterEach, describe, expect, test, vi } from "vitest";
-import { page, userEvent } from "vitest/browser";
-import { render as renderReact } from "vitest-browser-react";
+import type { ReactNode } from 'react';
+import { afterEach, describe, expect, test, vi } from 'vitest';
+import { page, userEvent } from 'vitest/browser';
+import { render as renderReact } from 'vitest-browser-react';
 
-import { readRecipe } from "@/generator";
-import { borderedMaze, toggleWall } from "@/maze";
-import type { Generated } from "@/ui/editor/edit-session";
-import { Batch } from "@/ui/generator/batch-run";
-import GenerateDialog, {
-  type GeneratorPreview,
-} from "@/ui/generator/generate-dialog";
-import type { NewMazeRequest } from "@/ui/new-maze";
-import { NO_ROUTES, useShownRoutes } from "@/ui/route-switches";
-import { TooltipProvider } from "@/ui/primitives/tooltip";
-import "@/ui/styles.css";
-import { axeViolations } from "@tests/support/axe-check";
-import { showsAmberRoute } from "@tests/support/ui/route-pixels";
+import { readRecipe } from '@/generator';
+import { borderedMaze, toggleWall } from '@/maze';
+import type { Generated } from '@/ui/editor/edit-session';
+import { Batch } from '@/ui/generator/batch-run';
+import GenerateDialog, { type GeneratorPreview } from '@/ui/generator/generate-dialog';
+import type { NewMazeRequest } from '@/ui/new-maze';
+import { NO_ROUTES, useShownRoutes } from '@/ui/route-switches';
+import { TooltipProvider } from '@/ui/primitives/tooltip';
+import '@/ui/styles.css';
+import { axeViolations } from '@tests/support/axe-check';
+import { showsAmberRoute } from '@tests/support/ui/route-pixels';
 
 const render = (ui: ReactNode) => renderReact(ui, { wrapper: TooltipProvider });
 
@@ -29,35 +27,28 @@ async function mount(): Promise<NewMazeRequest[]> {
       onOpenChange={() => undefined}
       onUse={(request) => used.push(request)}
       open
-    />,
+    />
   );
   return used;
 }
 
 const BOARD = toggleWall(
-  toggleWall(borderedMaze(32, 32), { direction: "horizontal", x: 3, y: 3 }),
+  toggleWall(borderedMaze(32, 32), { direction: 'horizontal', x: 3, y: 3 }),
   {
-    direction: "vertical",
+    direction: 'vertical',
     x: 3,
     y: 3,
-  },
+  }
 );
 
-async function generate(seed = "1"): Promise<void> {
-  await userEvent.fill(
-    page.getByRole("spinbutton", { name: "First seed" }),
-    seed,
-  );
-  await userEvent.click(
-    page.getByRole("button", { name: "Generate", exact: true }),
-  );
+async function generate(seed = '1'): Promise<void> {
+  await userEvent.fill(page.getByRole('spinbutton', { name: 'First seed' }), seed);
+  await userEvent.click(page.getByRole('button', { name: 'Generate', exact: true }));
 }
 
 /** Opens the card of maze `place` in the detail view. */
 async function open(place: number): Promise<void> {
-  await userEvent.click(
-    page.getByRole("button", { name: new RegExp(`^#${place},`) }),
-  );
+  await userEvent.click(page.getByRole('button', { name: new RegExp(`^#${place},`) }));
 }
 
 /** The thumbnail of the first card. */
@@ -67,7 +58,7 @@ function firstCard(): HTMLCanvasElement | null {
 
 /** How many routes the maze opened in the detail view draws. */
 function routesOnMaze(): number {
-  return document.querySelectorAll("[data-detail] [data-route]").length;
+  return document.querySelectorAll('[data-detail] [data-route]').length;
 }
 
 afterEach(async () => {
@@ -75,167 +66,125 @@ afterEach(async () => {
   await page.viewport(1440, 900);
 });
 
-describe("The Generate dialog", () => {
-  test("shows its settings with every rule and fine tuning field, focuses Generate, and has no accessibility violations", async () => {
+describe('The Generate dialog', () => {
+  test('shows its settings with every rule and fine tuning field, focuses Generate, and has no accessibility violations', async () => {
     await mount();
 
+    await expect.element(page.getByRole('button', { name: 'Generate', exact: true })).toHaveFocus();
+    await expect.element(page.getByText('Beta')).toBeVisible();
+    await userEvent.click(page.getByText('Rules', { exact: true }));
+    await userEvent.click(page.getByText('Fine tuning'));
+    await expect.element(page.getByRole('switch', { name: 'Never trivial' })).toBeChecked();
     await expect
-      .element(page.getByRole("button", { name: "Generate", exact: true }))
-      .toHaveFocus();
-    await expect.element(page.getByText("Beta")).toBeVisible();
-    await userEvent.click(page.getByText("Rules", { exact: true }));
-    await userEvent.click(page.getByText("Fine tuning"));
-    await expect
-      .element(page.getByRole("switch", { name: "Never trivial" }))
-      .toBeChecked();
-    await expect
-      .element(
-        page
-          .getByRole("radiogroup", { name: "Zigzag" })
-          .getByRole("radio", { name: "Mix" }),
-      )
+      .element(page.getByRole('radiogroup', { name: 'Zigzag' }).getByRole('radio', { name: 'Mix' }))
       .toBeChecked();
 
     expect(await axeViolations()).toEqual([]);
   });
 
-  test("says when a range does not read and keeps Generate off until it does", async () => {
+  test('says when a range does not read and keeps Generate off until it does', async () => {
     await mount();
     await userEvent.fill(
-      page.getByRole("spinbutton", { name: "Shortest path, in cells, from" }),
-      "120",
+      page.getByRole('spinbutton', { name: 'Shortest path, in cells, from' }),
+      '120'
     );
 
     await expect
-      .element(
-        page.getByText(
-          "Whole numbers from 1 to 999, the first not above the second",
-        ),
-      )
+      .element(page.getByText('Whole numbers from 1 to 999, the first not above the second'))
       .toBeVisible();
     await expect
-      .element(page.getByRole("button", { name: "Generate", exact: true }))
+      .element(page.getByRole('button', { name: 'Generate', exact: true }))
       .toBeDisabled();
     await userEvent.fill(
-      page.getByRole("spinbutton", { name: "Shortest path, in cells, from" }),
-      "70",
+      page.getByRole('spinbutton', { name: 'Shortest path, in cells, from' }),
+      '70'
     );
+    await expect.element(page.getByRole('button', { name: 'Generate', exact: true })).toBeEnabled();
     await expect
-      .element(page.getByRole("button", { name: "Generate", exact: true }))
-      .toBeEnabled();
-    await expect
-      .element(page.getByRole("combobox", { name: "Preset" }))
-      .toHaveDisplayValue("Custom (from Recommended)");
-    await expect
-      .element(page.getByRole("combobox", { name: "Preset" }))
-      .toBeVisible();
+      .element(page.getByRole('combobox', { name: 'Preset' }))
+      .toHaveDisplayValue('Custom (from Recommended)');
+    await expect.element(page.getByRole('combobox', { name: 'Preset' })).toBeVisible();
   });
 
-  test("builds a batch in workers, shows its cards with their tags, and opens the one picked", async () => {
+  test('builds a batch in workers, shows its cards with their tags, and opens the one picked', async () => {
     const used = await mount();
     await generate();
 
     await expect.poll(building).toBe(true);
-    await expect
-      .element(page.getByRole("button", { name: /^#8,/ }), GENERATION)
-      .toBeVisible();
+    await expect.element(page.getByRole('button', { name: /^#8,/ }), GENERATION).toBeVisible();
     await expect.poll(building, GENERATION).toBe(false);
-    await expect.element(page.getByText("Seeds 1–8").first()).toBeVisible();
-    expect(page.getByRole("button", { name: "Use this" }).query()).toBeNull();
+    await expect.element(page.getByText('Seeds 1–8').first()).toBeVisible();
+    expect(page.getByRole('button', { name: 'Use this' }).query()).toBeNull();
     expect(await axeViolations()).toEqual([]);
 
     await open(3);
-    await expect
-      .element(page.getByRole("heading", { name: /^#3 of 8 ·/ }))
-      .toHaveFocus();
-    await userEvent.click(page.getByRole("button", { name: "Use this" }));
+    await expect.element(page.getByRole('heading', { name: /^#3 of 8 ·/ })).toHaveFocus();
+    await userEvent.click(page.getByRole('button', { name: 'Use this' }));
 
     expect(used).toHaveLength(1);
-    expect(used[0]).toMatchObject({ kind: "generated", profile: "classic" });
-    expect(
-      used[0]?.kind === "generated" ? used[0].recipe : undefined,
-    ).toMatchObject({
+    expect(used[0]).toMatchObject({ kind: 'generated', profile: 'classic' });
+    expect(used[0]?.kind === 'generated' ? used[0].recipe : undefined).toMatchObject({
       version: 7,
       seed: 3,
       settings: { size: 16 },
     });
   });
 
-  test("shows each maze in its card as it is built, before the batch is done", async () => {
+  test('shows each maze in its card as it is built, before the batch is done', async () => {
     await mount();
     await generate();
-    await expect
-      .element(page.getByRole("button", { name: /^#1,/ }), GENERATION)
-      .toBeVisible();
+    await expect.element(page.getByRole('button', { name: /^#1,/ }), GENERATION).toBeVisible();
 
     expect(building()).toBe(true);
-    expect(
-      document.querySelectorAll('[aria-busy="true"]').length,
-    ).toBeGreaterThan(0);
+    expect(document.querySelectorAll('[aria-busy="true"]').length).toBeGreaterThan(0);
   });
 
-  test("draws a grey skeleton maze in each card still waiting, gone once every maze is built", async () => {
+  test('draws a grey skeleton maze in each card still waiting, gone once every maze is built', async () => {
     await mount();
     await generate();
     const skeleton = document.querySelector<HTMLCanvasElement>(
-      '[aria-busy="true"] canvas[data-loading]',
+      '[aria-busy="true"] canvas[data-loading]'
     );
 
     expect(skeleton).not.toBeNull();
-    await expect
-      .poll(() => (skeleton === null ? [] : greys(skeleton)))
-      .not.toEqual([]);
-    expect(
-      greys(skeleton ?? document.createElement("canvas")).every(isGrey),
-    ).toBe(true);
+    await expect.poll(() => (skeleton === null ? [] : greys(skeleton))).not.toEqual([]);
+    expect(greys(skeleton ?? document.createElement('canvas')).every(isGrey)).toBe(true);
     await expect.poll(building, GENERATION).toBe(false);
-    await expect
-      .poll(() => document.querySelectorAll("canvas[data-loading]").length)
-      .toBe(0);
+    await expect.poll(() => document.querySelectorAll('canvas[data-loading]').length).toBe(0);
   });
 
-  test("opens a card still building in the detail view, Use this off until its maze is built, the title still and the arrow keys working on", async () => {
+  test('opens a card still building in the detail view, Use this off until its maze is built, the title still and the arrow keys working on', async () => {
     await mount();
     await generate();
-    await userEvent.click(page.getByRole("button", { name: "#8, building" }));
+    await userEvent.click(page.getByRole('button', { name: '#8, building' }));
 
-    await expect
-      .element(page.getByRole("heading", { name: /^#8 of 8/ }))
-      .toBeVisible();
-    await expect
-      .element(page.getByRole("button", { name: "Use this" }))
-      .toBeDisabled();
+    await expect.element(page.getByRole('heading', { name: /^#8 of 8/ })).toBeVisible();
+    await expect.element(page.getByRole('button', { name: 'Use this' })).toBeDisabled();
     const top = page
-      .getByRole("heading", { name: /^#8 of 8/ })
+      .getByRole('heading', { name: /^#8 of 8/ })
       .element()
       .getBoundingClientRect().top;
-    await expect
-      .element(page.getByRole("button", { name: "Use this" }), GENERATION)
-      .toBeEnabled();
+    await expect.element(page.getByRole('button', { name: 'Use this' }), GENERATION).toBeEnabled();
     expect(
       page
-        .getByRole("heading", { name: /^#8 of 8/ })
+        .getByRole('heading', { name: /^#8 of 8/ })
         .element()
-        .getBoundingClientRect().top,
+        .getBoundingClientRect().top
     ).toBe(top);
-    await expect
-      .element(page.getByRole("heading", { name: /^#8 of 8/ }))
-      .toHaveFocus();
-    await userEvent.keyboard("{ArrowLeft}");
-    await expect
-      .element(page.getByRole("heading", { name: /^#7 of 8/ }))
-      .toBeVisible();
+    await expect.element(page.getByRole('heading', { name: /^#8 of 8/ })).toHaveFocus();
+    await userEvent.keyboard('{ArrowLeft}');
+    await expect.element(page.getByRole('heading', { name: /^#7 of 8/ })).toBeVisible();
   });
 
-  test("stops its workers when it unmounts in the middle of a run", async () => {
-    const terminate = vi.spyOn(Worker.prototype, "terminate");
+  test('stops its workers when it unmounts in the middle of a run', async () => {
+    const terminate = vi.spyOn(Worker.prototype, 'terminate');
     const screen = await render(
       <GenerateDialog
         batch={new Batch()}
         onOpenChange={() => undefined}
         onUse={() => undefined}
         open
-      />,
+      />
     );
     await generate();
     await expect.poll(building).toBe(true);
@@ -246,14 +195,14 @@ describe("The Generate dialog", () => {
     terminate.mockRestore();
   });
 
-  test("keeps the status row and the gallery still as a run starts and ends", async () => {
+  test('keeps the status row and the gallery still as a run starts and ends', async () => {
     await mount();
     await generate();
     await expect.poll(building, GENERATION).toBe(false);
     const height = statusHeight();
     const top = galleryTop();
 
-    await userEvent.click(page.getByRole("button", { name: "8 more" }));
+    await userEvent.click(page.getByRole('button', { name: '8 more' }));
     await expect.poll(building).toBe(true);
     expect([statusHeight(), galleryTop()]).toEqual([height, top]);
     await expect.poll(building, GENERATION).toBe(false);
@@ -261,7 +210,7 @@ describe("The Generate dialog", () => {
   });
 
   test.each([false, true])(
-    "shows and hides the routes from its own Routes, on its cards and the maze opened, phone %s",
+    'shows and hides the routes from its own Routes, on its cards and the maze opened, phone %s',
     async (phone) => {
       await page.viewport(phone ? 390 : 1440, phone ? 844 : 900);
       await mount();
@@ -269,167 +218,111 @@ describe("The Generate dialog", () => {
       await expect.poll(building, GENERATION).toBe(false);
 
       expect(showsAmberRoute(firstCard())).toBe(false);
-      await userEvent.click(page.getByRole("button", { name: "Routes" }));
-      await expect
-        .element(page.getByRole("switch", { name: "With diagonals" }))
-        .not.toBeChecked();
+      await userEvent.click(page.getByRole('button', { name: 'Routes' }));
+      await expect.element(page.getByRole('switch', { name: 'With diagonals' })).not.toBeChecked();
       expect(await axeViolations()).toEqual([]);
-      await userEvent.click(
-        page.getByRole("switch", { name: "Without diagonals" }),
-      );
-      await userEvent.click(
-        page.getByRole("switch", { name: "With diagonals" }),
-      );
-      await userEvent.click(page.getByRole("button", { name: "Close routes" }));
+      await userEvent.click(page.getByRole('switch', { name: 'Without diagonals' }));
+      await userEvent.click(page.getByRole('switch', { name: 'With diagonals' }));
+      await userEvent.click(page.getByRole('button', { name: 'Close routes' }));
       await expect.poll(() => showsAmberRoute(firstCard())).toBe(true);
 
       await open(1);
       await expect.poll(routesOnMaze).toBe(2);
-      await userEvent.click(page.getByRole("button", { name: "Routes" }));
-      await userEvent.click(
-        page.getByRole("switch", { name: "With diagonals" }),
-      );
-      await userEvent.click(
-        page.getByRole("switch", { name: "Without diagonals" }),
-      );
+      await userEvent.click(page.getByRole('button', { name: 'Routes' }));
+      await userEvent.click(page.getByRole('switch', { name: 'With diagonals' }));
+      await userEvent.click(page.getByRole('switch', { name: 'Without diagonals' }));
       await expect.poll(routesOnMaze).toBe(0);
-    },
+    }
   );
 
-  test("opens a maze drawn large in a view of its own, steps with ‹ › and the arrow keys, and goes back to the gallery where it was", async () => {
+  test('opens a maze drawn large in a view of its own, steps with ‹ › and the arrow keys, and goes back to the gallery where it was', async () => {
     const used = await mount();
     await generate();
     await expect.poll(building, GENERATION).toBe(false);
-    const body = document.querySelector("[data-generate] .overflow-y-auto");
+    const body = document.querySelector('[data-generate] .overflow-y-auto');
     body?.scrollTo({ top: 120 });
     const scrolled = body?.scrollTop;
     await open(3);
 
-    await expect
-      .element(page.getByRole("img", { name: "Maze #3, seed 3" }))
-      .toBeVisible();
-    await expect
-      .element(page.getByRole("region", { name: /^#3 of 8 ·/ }))
-      .toBeVisible();
+    await expect.element(page.getByRole('img', { name: 'Maze #3, seed 3' })).toBeVisible();
+    await expect.element(page.getByRole('region', { name: /^#3 of 8 ·/ })).toBeVisible();
     expect(await axeViolations()).toEqual([]);
-    await userEvent.click(page.getByRole("button", { name: "Next maze" }));
-    await expect
-      .element(page.getByRole("heading", { name: /^#4 of 8 ·/ }))
-      .toBeVisible();
-    await userEvent.keyboard("{ArrowRight}");
-    await expect
-      .element(page.getByRole("img", { name: "Maze #5, seed 5" }))
-      .toBeVisible();
-    await userEvent.keyboard("{ArrowLeft}");
-    await expect
-      .element(page.getByRole("heading", { name: /^#4 of 8 ·/ }))
-      .toBeVisible();
+    await userEvent.click(page.getByRole('button', { name: 'Next maze' }));
+    await expect.element(page.getByRole('heading', { name: /^#4 of 8 ·/ })).toBeVisible();
+    await userEvent.keyboard('{ArrowRight}');
+    await expect.element(page.getByRole('img', { name: 'Maze #5, seed 5' })).toBeVisible();
+    await userEvent.keyboard('{ArrowLeft}');
+    await expect.element(page.getByRole('heading', { name: /^#4 of 8 ·/ })).toBeVisible();
 
-    await userEvent.click(
-      page.getByRole("button", { name: "Back to the mazes" }),
-    );
-    await expect
-      .element(page.getByRole("button", { name: /^#4,/ }))
-      .toHaveFocus();
+    await userEvent.click(page.getByRole('button', { name: 'Back to the mazes' }));
+    await expect.element(page.getByRole('button', { name: /^#4,/ })).toHaveFocus();
     expect(body?.scrollTop).toBe(scrolled);
 
     await open(1);
-    await expect
-      .element(page.getByRole("button", { name: "Previous maze" }))
-      .toBeDisabled();
-    await userEvent.keyboard("{Escape}");
-    await expect
-      .element(page.getByRole("list", { name: "Mazes generated" }))
-      .toBeVisible();
+    await expect.element(page.getByRole('button', { name: 'Previous maze' })).toBeDisabled();
+    await userEvent.keyboard('{Escape}');
+    await expect.element(page.getByRole('list', { name: 'Mazes generated' })).toBeVisible();
     await open(8);
-    await userEvent.click(page.getByRole("button", { name: "Use this" }));
-    expect(
-      used[0]?.kind === "generated" ? used[0].recipe.seed : undefined,
-    ).toBe(8);
+    await userEvent.click(page.getByRole('button', { name: 'Use this' }));
+    expect(used[0]?.kind === 'generated' ? used[0].recipe.seed : undefined).toBe(8);
   });
 
-  test("fits the maze and its details above the footer on a phone", async () => {
+  test('fits the maze and its details above the footer on a phone', async () => {
     await page.viewport(390, 844);
     await mount();
     await generate();
     await expect.poll(building, GENERATION).toBe(false);
     await open(3);
-    const lists = document.querySelectorAll("[data-detail] ul");
-    const bottom =
-      lists[lists.length - 1]?.getBoundingClientRect().bottom ?? Infinity;
-    const footer = page
-      .getByRole("button", { name: "Use this" })
-      .element()
-      .getBoundingClientRect();
+    const lists = document.querySelectorAll('[data-detail] ul');
+    const bottom = lists[lists.length - 1]?.getBoundingClientRect().bottom ?? Infinity;
+    const footer = page.getByRole('button', { name: 'Use this' }).element().getBoundingClientRect();
 
     expect(bottom).toBeLessThanOrEqual(footer.top);
     await page.viewport(1440, 900);
   });
 
-  test("loads 8 more with › past the last maze, keeping #1 to #8, and lands on #9 while it builds", async () => {
+  test('loads 8 more with › past the last maze, keeping #1 to #8, and lands on #9 while it builds', async () => {
     await mount();
     await generate();
     await expect.poll(building, GENERATION).toBe(false);
     await open(8);
-    await userEvent.click(
-      page.getByRole("button", { name: "Next maze, building 8 more" }),
-    );
+    await userEvent.click(page.getByRole('button', { name: 'Next maze, building 8 more' }));
 
+    await expect.element(page.getByRole('heading', { name: /^#9 of 16/ })).toBeVisible();
+    await expect.element(page.getByRole('button', { name: 'Use this' })).toBeDisabled();
     await expect
-      .element(page.getByRole("heading", { name: /^#9 of 16/ }))
+      .element(page.getByRole('heading', { name: /^#9 of 16 · seed 9/ }), GENERATION)
       .toBeVisible();
-    await expect
-      .element(page.getByRole("button", { name: "Use this" }))
-      .toBeDisabled();
-    await expect
-      .element(
-        page.getByRole("heading", { name: /^#9 of 16 · seed 9/ }),
-        GENERATION,
-      )
-      .toBeVisible();
-    await userEvent.click(page.getByRole("button", { name: "Previous maze" }));
-    await expect
-      .element(page.getByRole("heading", { name: /^#8 of 16 · seed 8/ }))
-      .toBeVisible();
+    await userEvent.click(page.getByRole('button', { name: 'Previous maze' }));
+    await expect.element(page.getByRole('heading', { name: /^#8 of 16 · seed 8/ })).toBeVisible();
     expect(await axeViolations()).toEqual([]);
   });
 
-  test("opens the settings as a view of their own and comes back to the mazes, focus following", async () => {
+  test('opens the settings as a view of their own and comes back to the mazes, focus following', async () => {
     await mount();
     await generate();
     await expect.poll(building, GENERATION).toBe(false);
 
-    expect(document.querySelector("[data-settings]")).toBeNull();
-    await userEvent.click(page.getByRole("button", { name: "Settings" }));
-    await expect
-      .element(page.getByRole("combobox", { name: "Preset" }))
-      .toBeVisible();
-    await expect
-      .element(page.getByRole("button", { name: "Back to the mazes" }))
-      .toHaveFocus();
-    await expect
-      .element(page.getByRole("dialog", { name: "Generate" }))
-      .toBeVisible();
+    expect(document.querySelector('[data-settings]')).toBeNull();
+    await userEvent.click(page.getByRole('button', { name: 'Settings' }));
+    await expect.element(page.getByRole('combobox', { name: 'Preset' })).toBeVisible();
+    await expect.element(page.getByRole('button', { name: 'Back to the mazes' })).toHaveFocus();
+    await expect.element(page.getByRole('dialog', { name: 'Generate' })).toBeVisible();
     expect(await axeViolations()).toEqual([]);
 
-    await userEvent.click(
-      page.getByRole("button", { name: "Back to the mazes" }),
-    );
-    expect(document.querySelector("[data-settings]")).toBeNull();
-    await expect
-      .element(page.getByRole("button", { name: "Settings" }))
-      .toHaveFocus();
+    await userEvent.click(page.getByRole('button', { name: 'Back to the mazes' }));
+    expect(document.querySelector('[data-settings]')).toBeNull();
+    await expect.element(page.getByRole('button', { name: 'Settings' })).toHaveFocus();
   });
 
-  test("docked beside the editor, previews the maze opened or hovered, without a board or Routes of its own, and nothing once closed", async () => {
+  test('docked beside the editor, previews the maze opened or hovered, without a board or Routes of its own, and nothing once closed', async () => {
     const previews: (GeneratorPreview | undefined)[] = [];
     const board = borderedMaze(16, 16);
     const props = {
       batch: new Batch(),
       board,
       onOpenChange: () => undefined,
-      onPreview: (preview: GeneratorPreview | undefined) =>
-        previews.push(preview),
+      onPreview: (preview: GeneratorPreview | undefined) => previews.push(preview),
       onReplace: () => true,
       onUse: () => undefined,
     };
@@ -437,17 +330,17 @@ describe("The Generate dialog", () => {
     await generate();
     await expect.poll(building, GENERATION).toBe(false);
     await expect.poll(() => previews.at(-1)?.seed).toBe(1);
-    await userEvent.hover(page.getByRole("button", { name: /^#5,/ }));
+    await userEvent.hover(page.getByRole('button', { name: /^#5,/ }));
     await expect.poll(() => previews.at(-1)?.seed).toBe(5);
-    await userEvent.unhover(page.getByRole("button", { name: /^#5,/ }));
+    await userEvent.unhover(page.getByRole('button', { name: /^#5,/ }));
     await expect.poll(() => previews.at(-1)?.seed).toBe(1);
     await open(2);
     await expect.poll(() => previews.at(-1)?.seed).toBe(2);
 
     expect(document.querySelector('[data-slot="sheet-overlay"]')).toBeNull();
-    expect(document.querySelector("[data-detail] svg[data-board]")).toBeNull();
+    expect(document.querySelector('[data-detail] svg[data-board]')).toBeNull();
     await expect
-      .element(page.getByRole("button", { name: "Back to the board" }))
+      .element(page.getByRole('button', { name: 'Back to the board' }))
       .toBeInTheDocument();
     expect(await axeViolations()).toEqual([]);
 
@@ -455,7 +348,7 @@ describe("The Generate dialog", () => {
     await expect.poll(() => previews.at(-1)).toBeUndefined();
   });
 
-  test("docked, has the board show the maze picked as it is built, then the maze", async () => {
+  test('docked, has the board show the maze picked as it is built, then the maze', async () => {
     const previews: (GeneratorPreview | undefined)[] = [];
     await render(
       <GenerateDialog
@@ -466,7 +359,7 @@ describe("The Generate dialog", () => {
         onReplace={() => true}
         onUse={() => undefined}
         open
-      />,
+      />
     );
     await generate();
     await expect.poll(() => previews.at(-1)?.size).toBe(16);
@@ -482,7 +375,7 @@ describe("The Generate dialog", () => {
     expect(first?.track().walls).toBeInstanceOf(Uint8Array);
   });
 
-  test("appends 8 more from the gallery and moves to #9, unless another maze was opened meanwhile", async () => {
+  test('appends 8 more from the gallery and moves to #9, unless another maze was opened meanwhile', async () => {
     const previews: (GeneratorPreview | undefined)[] = [];
     await render(
       <GenerateDialog
@@ -493,60 +386,45 @@ describe("The Generate dialog", () => {
         onReplace={() => true}
         onUse={() => undefined}
         open
-      />,
+      />
     );
     await generate();
     await expect.poll(building, GENERATION).toBe(false);
-    await userEvent.click(page.getByRole("button", { name: "8 more" }));
+    await userEvent.click(page.getByRole('button', { name: '8 more' }));
     await expect.poll(() => previews.at(-1)?.seed, GENERATION).toBe(9);
     await expect.poll(building, GENERATION).toBe(false);
-    expect(
-      document.querySelectorAll('ol[aria-label="Mazes generated"] > li'),
-    ).toHaveLength(16);
+    expect(document.querySelectorAll('ol[aria-label="Mazes generated"] > li')).toHaveLength(16);
 
-    await userEvent.click(page.getByRole("button", { name: "8 more" }));
+    await userEvent.click(page.getByRole('button', { name: '8 more' }));
     await open(3);
     await expect.poll(building, GENERATION).toBe(false);
-    await expect
-      .element(page.getByRole("heading", { name: /^#3 of 24 ·/ }))
-      .toBeVisible();
+    await expect.element(page.getByRole('heading', { name: /^#3 of 24 ·/ })).toBeVisible();
   });
 
   test("builds More past the last maze with the batch's own settings, whatever the form says since", async () => {
     const batch = new Batch();
     await render(
-      <GenerateDialog
-        batch={batch}
-        onOpenChange={() => undefined}
-        onUse={() => undefined}
-        open
-      />,
+      <GenerateDialog batch={batch} onOpenChange={() => undefined} onUse={() => undefined} open />
     );
     await generate();
     await expect.poll(building, GENERATION).toBe(false);
     const made = batch.getState().settings?.path;
-    await userEvent.click(page.getByRole("button", { name: "Settings" }));
+    await userEvent.click(page.getByRole('button', { name: 'Settings' }));
     await userEvent.fill(
-      page.getByRole("spinbutton", { name: "Shortest path, in cells, from" }),
-      String((made?.[0] ?? 60) + 1),
+      page.getByRole('spinbutton', { name: 'Shortest path, in cells, from' }),
+      String((made?.[0] ?? 60) + 1)
     );
-    await userEvent.click(
-      page.getByRole("button", { name: "Back to the mazes" }),
-    );
+    await userEvent.click(page.getByRole('button', { name: 'Back to the mazes' }));
     await open(8);
-    await userEvent.click(
-      page.getByRole("button", { name: "Next maze, building 8 more" }),
-    );
+    await userEvent.click(page.getByRole('button', { name: 'Next maze, building 8 more' }));
     await expect.poll(() => batch.getState().progress, GENERATION).toBeNull();
 
     const more = batch.getState().items.slice(8);
     expect(more).toHaveLength(8);
-    expect(more.map((item) => item.recipe?.settings.path)).toEqual(
-      Array(8).fill(made),
-    );
+    expect(more.map((item) => item.recipe?.settings.path)).toEqual(Array(8).fill(made));
   });
 
-  test("marks a maze In use only once the board takes it", async () => {
+  test('marks a maze In use only once the board takes it', async () => {
     const batch = new Batch();
     let takes = false;
     await render(
@@ -557,24 +435,22 @@ describe("The Generate dialog", () => {
         onReplace={() => takes}
         onUse={() => undefined}
         open
-      />,
+      />
     );
     await generate();
     await expect.poll(building, GENERATION).toBe(false);
     await open(2);
-    await userEvent.click(page.getByRole("button", { name: "Use this" }));
+    await userEvent.click(page.getByRole('button', { name: 'Use this' }));
     expect(batch.getState().used).toBeUndefined();
-    expect(page.getByText("In use", { exact: true }).query()).toBeNull();
+    expect(page.getByText('In use', { exact: true }).query()).toBeNull();
 
     takes = true;
-    await userEvent.click(page.getByRole("button", { name: "Use this" }));
+    await userEvent.click(page.getByRole('button', { name: 'Use this' }));
     expect(batch.getState().used).toBe(batch.getState().items[1]?.n);
-    await expect
-      .element(page.getByText("In use", { exact: true }))
-      .toBeVisible();
+    await expect.element(page.getByText('In use', { exact: true })).toBeVisible();
   });
 
-  test("goes back one view per Esc: settings, then the maze opened, then the gallery, which closes", async () => {
+  test('goes back one view per Esc: settings, then the maze opened, then the gallery, which closes', async () => {
     const changes: boolean[] = [];
     await render(
       <GenerateDialog
@@ -582,30 +458,24 @@ describe("The Generate dialog", () => {
         onOpenChange={(next) => changes.push(next)}
         onUse={() => undefined}
         open
-      />,
+      />
     );
     await generate();
     await expect.poll(building, GENERATION).toBe(false);
     await open(2);
-    await userEvent.click(page.getByRole("button", { name: "Settings" }));
-    await expect
-      .element(page.getByRole("combobox", { name: "Preset" }))
-      .toBeVisible();
+    await userEvent.click(page.getByRole('button', { name: 'Settings' }));
+    await expect.element(page.getByRole('combobox', { name: 'Preset' })).toBeVisible();
 
-    await userEvent.keyboard("{Escape}");
-    await expect
-      .element(page.getByRole("heading", { name: /^#2 of 8 ·/ }))
-      .toHaveFocus();
-    await userEvent.keyboard("{Escape}");
-    await expect
-      .element(page.getByRole("button", { name: /^#2,/ }))
-      .toHaveFocus();
+    await userEvent.keyboard('{Escape}');
+    await expect.element(page.getByRole('heading', { name: /^#2 of 8 ·/ })).toHaveFocus();
+    await userEvent.keyboard('{Escape}');
+    await expect.element(page.getByRole('button', { name: /^#2,/ })).toHaveFocus();
     expect(changes).toEqual([]);
-    await userEvent.keyboard("{Escape}");
+    await userEvent.keyboard('{Escape}');
     expect(changes).toEqual([false]);
   });
 
-  test("stops the run when the panel closes, dropping the mazes not yet built", async () => {
+  test('stops the run when the panel closes, dropping the mazes not yet built', async () => {
     const props = {
       batch: new Batch(),
       onOpenChange: () => undefined,
@@ -621,78 +491,59 @@ describe("The Generate dialog", () => {
     expect(document.querySelectorAll('[aria-busy="true"]')).toHaveLength(0);
   });
 
-  test("starts over when Generate is asked again during a run", async () => {
+  test('starts over when Generate is asked again during a run', async () => {
     await mount();
     await generate();
     await expect.poll(building).toBe(true);
-    await userEvent.click(page.getByRole("button", { name: "Settings" }));
-    await generate("101");
+    await userEvent.click(page.getByRole('button', { name: 'Settings' }));
+    await generate('101');
 
     await expect.poll(building, GENERATION).toBe(false);
-    await expect.element(page.getByText("Seeds 101–108").first()).toBeVisible();
-    expect(
-      document.querySelectorAll('ol[aria-label="Mazes generated"] > li'),
-    ).toHaveLength(8);
+    await expect.element(page.getByText('Seeds 101–108').first()).toBeVisible();
+    expect(document.querySelectorAll('ol[aria-label="Mazes generated"] > li')).toHaveLength(8);
   });
 
-  test("rebuilds a recipe, warns when it rebuilds other walls, and refuses what is not one", async () => {
+  test('rebuilds a recipe, warns when it rebuilds other walls, and refuses what is not one', async () => {
     await mount();
     await generate();
-    await expect
-      .element(page.getByRole("button", { name: /^#1,/ }), GENERATION)
-      .toBeVisible();
+    await expect.element(page.getByRole('button', { name: /^#1,/ }), GENERATION).toBeVisible();
     await open(1);
     const text = await navigatorRecipe();
-    await userEvent.click(page.getByRole("button", { name: "Settings" }));
-    await userEvent.click(page.getByText("Rebuild from a recipe"));
-    await userEvent.fill(
-      page.getByRole("textbox", { name: "Recipe" }),
-      "not json",
-    );
-    await userEvent.click(page.getByRole("button", { name: "Rebuild" }));
+    await userEvent.click(page.getByRole('button', { name: 'Settings' }));
+    await userEvent.click(page.getByText('Rebuild from a recipe'));
+    await userEvent.fill(page.getByRole('textbox', { name: 'Recipe' }), 'not json');
+    await userEvent.click(page.getByRole('button', { name: 'Rebuild' }));
     await expect
-      .element(page.getByRole("alert"))
-      .toHaveTextContent(
-        "This is not a recipe: copy it again with “Copy recipe”",
-      );
+      .element(page.getByRole('alert'))
+      .toHaveTextContent('This is not a recipe: copy it again with “Copy recipe”');
 
     const recipe = readRecipe(text);
     await userEvent.fill(
-      page.getByRole("textbox", { name: "Recipe" }),
-      JSON.stringify({ ...recipe, hash: "00000000" }),
+      page.getByRole('textbox', { name: 'Recipe' }),
+      JSON.stringify({ ...recipe, hash: '00000000' })
     );
-    await userEvent.click(page.getByRole("button", { name: "Rebuild" }));
+    await userEvent.click(page.getByRole('button', { name: 'Rebuild' }));
 
-    await expect
-      .element(page.getByRole("heading", { name: /^#1 of 1 ·/ }))
-      .toHaveFocus();
+    await expect.element(page.getByRole('heading', { name: /^#1 of 1 ·/ })).toHaveFocus();
     await expect
       .element(
-        page.getByText(
-          /^This generator rebuilt other walls than the recipe saved/,
-        ),
-        GENERATION,
+        page.getByText(/^This generator rebuilt other walls than the recipe saved/),
+        GENERATION
       )
       .toBeVisible();
     await expect
       .element(
-        page.getByRole("heading", {
+        page.getByRole('heading', {
           name: /^#1 of 1 · from a recipe · seed 1/,
-        }),
+        })
       )
       .toBeVisible();
-    await userEvent.click(
-      page.getByRole("button", { name: "Back to the mazes" }),
-    );
-    await expect
-      .element(page.getByText("Seed 1", { exact: true }).first())
-      .toBeVisible();
-    expect(
-      document.querySelectorAll('ol[aria-label="Mazes generated"] > li'),
-    ).toHaveLength(1);
+    await userEvent.click(page.getByRole('button', { name: 'Back to the mazes' }));
+    await expect.element(page.getByText('Seed 1', { exact: true }).first()).toBeVisible();
+    expect(document.querySelectorAll('ol[aria-label="Mazes generated"] > li')).toHaveLength(1);
   });
 
-  test("reopens on the last batch, from any Generate of the app, with New batch and the maze used marked", async () => {
+  test('reopens on the last batch, from any Generate of the app, with New batch and the maze used marked', async () => {
     const used: NewMazeRequest[] = [];
     const props = {
       onOpenChange: () => undefined,
@@ -702,44 +553,32 @@ describe("The Generate dialog", () => {
     await generate();
     await expect.poll(building, GENERATION).toBe(false);
     await open(3);
-    await userEvent.click(page.getByRole("button", { name: "Use this" }));
+    await userEvent.click(page.getByRole('button', { name: 'Use this' }));
     await library.rerender(<GenerateDialog {...props} open={false} />);
     await library.unmount();
 
     const editor = await render(<GenerateDialog {...props} open />);
-    await expect
-      .element(page.getByText("Last batch · 8 mazes").first())
-      .toBeVisible();
-    await expect
-      .element(page.getByRole("button", { name: /^#3, in use,/ }))
-      .toBeVisible();
-    expect(page.getByRole("button", { name: /in use/ }).all()).toHaveLength(1);
+    await expect.element(page.getByText('Last batch · 8 mazes').first()).toBeVisible();
+    await expect.element(page.getByRole('button', { name: /^#3, in use,/ })).toBeVisible();
+    expect(page.getByRole('button', { name: /in use/ }).all()).toHaveLength(1);
     await open(4);
-    await userEvent.click(page.getByRole("button", { name: "Use this" }));
+    await userEvent.click(page.getByRole('button', { name: 'Use this' }));
     await editor.rerender(<GenerateDialog {...props} open={false} />);
     await editor.rerender(<GenerateDialog {...props} open />);
-    await expect
-      .element(page.getByRole("button", { name: /^#4, in use,/ }))
-      .toBeVisible();
+    await expect.element(page.getByRole('button', { name: /^#4, in use,/ })).toBeVisible();
     await open(4);
-    await expect
-      .element(page.getByText("In use", { exact: true }))
-      .toBeVisible();
-    expect(
-      used.map((request) =>
-        request.kind === "generated" ? request.recipe.seed : 0,
-      ),
-    ).toEqual([3, 4]);
-    await userEvent.click(
-      page.getByRole("button", { name: "Back to the mazes" }),
+    await expect.element(page.getByText('In use', { exact: true })).toBeVisible();
+    expect(used.map((request) => (request.kind === 'generated' ? request.recipe.seed : 0))).toEqual(
+      [3, 4]
     );
+    await userEvent.click(page.getByRole('button', { name: 'Back to the mazes' }));
 
-    await userEvent.click(page.getByRole("button", { name: "New batch" }));
+    await userEvent.click(page.getByRole('button', { name: 'New batch' }));
     await expect.poll(building).toBe(true);
-    expect(page.getByRole("button", { name: "New batch" }).query()).toBeNull();
+    expect(page.getByRole('button', { name: 'New batch' }).query()).toBeNull();
     await expect.poll(building, GENERATION).toBe(false);
-    await expect.element(page.getByText("Seeds 9–16").first()).toBeVisible();
-    expect(page.getByText("In use").query()).toBeNull();
+    await expect.element(page.getByText('Seeds 9–16').first()).toBeVisible();
+    expect(page.getByText('In use').query()).toBeNull();
   });
 
   test("from the editor, takes the board's size and replaces the board with the maze picked", async () => {
@@ -753,24 +592,20 @@ describe("The Generate dialog", () => {
         onReplace={(generated) => replaced.push(generated) > 0}
         onUse={(request) => used.push(request)}
         open
-      />,
+      />
     );
 
-    await expect
-      .element(page.getByRole("radio", { name: "32 × 32" }))
-      .toBeChecked();
+    await expect.element(page.getByRole('radio', { name: '32 × 32' })).toBeChecked();
     await generate();
     await expect
-      .element(page.getByRole("button", { name: /^#8,/ }), { timeout: 120_000 })
+      .element(page.getByRole('button', { name: /^#8,/ }), { timeout: 120_000 })
       .toBeVisible();
     await open(1);
     await expect
-      .element(
-        page.getByText("Replaces the maze on the board. Undo brings it back."),
-      )
+      .element(page.getByText('Replaces the maze on the board. Undo brings it back.'))
       .toBeVisible();
     expect(await axeViolations()).toEqual([]);
-    await userEvent.click(page.getByRole("button", { name: "Use this" }));
+    await userEvent.click(page.getByRole('button', { name: 'Use this' }));
 
     expect(used).toEqual([]);
     expect(replaced).toHaveLength(1);
@@ -778,7 +613,7 @@ describe("The Generate dialog", () => {
     expect(replaced[0]?.recipe).toMatchObject({ settings: { size: 32 } });
   }, 150_000);
 
-  test("from the editor of a board it cannot make, says so and opens the maze picked as a new one", async () => {
+  test('from the editor of a board it cannot make, says so and opens the maze picked as a new one', async () => {
     await render(
       <GenerateDialog
         batch={new Batch()}
@@ -787,15 +622,11 @@ describe("The Generate dialog", () => {
         onReplace={() => true}
         onUse={() => undefined}
         open
-      />,
+      />
     );
 
     await expect
-      .element(
-        page.getByText(
-          /^The generator makes 16 × 16 and 32 × 32 mazes, not 8 × 8/,
-        ),
-      )
+      .element(page.getByText(/^The generator makes 16 × 16 and 32 × 32 mazes, not 8 × 8/))
       .toBeVisible();
     expect(await axeViolations()).toEqual([]);
   });
@@ -804,23 +635,16 @@ describe("The Generate dialog", () => {
 /** Where the gallery starts in the panel's scrolling body, which no run may move. */
 function galleryTop(): number | undefined {
   const gallery = document.querySelector('ol[aria-label="Mazes generated"]');
-  const body = gallery?.closest(".overflow-y-auto");
-  return gallery === null ||
-    gallery === undefined ||
-    body === null ||
-    body === undefined
+  const body = gallery?.closest('.overflow-y-auto');
+  return gallery === null || gallery === undefined || body === null || body === undefined
     ? undefined
-    : gallery.getBoundingClientRect().top -
-        body.getBoundingClientRect().top +
-        body.scrollTop;
+    : gallery.getBoundingClientRect().top - body.getBoundingClientRect().top + body.scrollTop;
 }
 
 /** Whether a run is on its way, as the status row says. */
 /** The colours a canvas shows besides its floor, as `r,g,b`. */
 function greys(canvas: HTMLCanvasElement): string[] {
-  const data =
-    canvas.getContext("2d")?.getImageData(0, 0, canvas.width, canvas.height)
-      .data ?? [];
+  const data = canvas.getContext('2d')?.getImageData(0, 0, canvas.width, canvas.height).data ?? [];
   const seen = new Set<string>();
 
   for (let k = 0; k < data.length; k += 4) {
@@ -833,27 +657,24 @@ function greys(canvas: HTMLCanvasElement): string[] {
 }
 
 function isGrey(rgb: string): boolean {
-  const [r, g, b] = rgb.split(",").map(Number);
+  const [r, g, b] = rgb.split(',').map(Number);
   return r === g && g === b;
 }
 
 function building(): boolean {
-  return (
-    document.querySelector("[data-status-row] p")?.textContent ?? ""
-  ).startsWith("Building");
+  return (document.querySelector('[data-status-row] p')?.textContent ?? '').startsWith('Building');
 }
 
 /** The height of the status row above the gallery. */
 function statusHeight(): number | undefined {
-  return document.querySelector("[data-status-row]")?.getBoundingClientRect()
-    .height;
+  return document.querySelector('[data-status-row]')?.getBoundingClientRect().height;
 }
 
 /** The recipe Copy recipe puts on the clipboard. */
 async function navigatorRecipe(): Promise<string> {
-  let copied = "";
+  let copied = '';
   const clipboard = navigator.clipboard;
-  Object.defineProperty(navigator, "clipboard", {
+  Object.defineProperty(navigator, 'clipboard', {
     configurable: true,
     value: {
       writeText: (text: string) => {
@@ -862,8 +683,8 @@ async function navigatorRecipe(): Promise<string> {
       },
     },
   });
-  await userEvent.click(page.getByRole("button", { name: "Copy recipe" }));
-  Object.defineProperty(navigator, "clipboard", {
+  await userEvent.click(page.getByRole('button', { name: 'Copy recipe' }));
+  Object.defineProperty(navigator, 'clipboard', {
     configurable: true,
     value: clipboard,
   });

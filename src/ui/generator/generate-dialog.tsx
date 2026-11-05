@@ -1029,7 +1029,7 @@ export default function GenerateDialog({
             </button>
           ) : null}
           <span className="ml-auto flex items-center gap-2">
-            <RoutesButton phone={phone} />
+            {docked ? null : <RoutesButton phone={phone} />}
             {settingsOpen ? null : (
               <IslandButton aria-label="Settings" onClick={() => openSettings(true)} ref={gear}>
                 <GearSix aria-hidden size={16} />

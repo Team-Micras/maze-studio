@@ -40,7 +40,10 @@ describe('trackLayers', () => {
 
   test('leaves bare the walls and posts that touch the start or a goal', () => {
     const marked = setGoals(
-      setStart(setWall(BORDERED, { direction: 'vertical', x: 1, y: 0 }, true), { x: 0, y: 0 }),
+      setStart(setWall(BORDERED, { direction: 'vertical', x: 1, y: 0 }, true), {
+        x: 0,
+        y: 0,
+      }),
       [{ x: 3, y: 2 }]
     );
     const layers = trackLayers(marked, boardGeometry(marked));
@@ -120,7 +123,9 @@ describe('overlayLayers', () => {
     const openGeometry = boardGeometry(open);
     const routes = shortestRoutes(open);
     const layers = overlayLayers(openGeometry, { routes: { ...routes } });
-    const only = overlayLayers(openGeometry, { routes: { withDiagonals: routes?.withDiagonals } });
+    const only = overlayLayers(openGeometry, {
+      routes: { withDiagonals: routes?.withDiagonals },
+    });
 
     expect(layers.routes.map((route) => route.name)).toEqual(['withoutDiagonals', 'withDiagonals']);
     expect(only.routes.map((route) => route.name)).toEqual(['withDiagonals']);
@@ -136,10 +141,13 @@ describe('overlayLayers', () => {
         .join('');
 
       expect(runs).toMatch(/^M(LQ)*L$/);
-      expect(points[0]).toEqual([
-        Number(formatLength(openGeometry.margin + 0.5 * openGeometry.pitch)),
-        Number(formatLength(openGeometry.margin + 4.5 * openGeometry.pitch)),
-      ]);
+      const start = [
+        openGeometry.margin + 0.5 * openGeometry.pitch,
+        openGeometry.margin + 4.5 * openGeometry.pitch,
+      ];
+      expect(
+        Math.hypot(points[0][0] - start[0], points[0][1] - start[1]) / openGeometry.pitch
+      ).toBeCloseTo(0.35, 1);
       for (let index = 1; index < points.length; index++) {
         const [dx, dy] = [
           points[index][0] - points[index - 1][0],
@@ -186,7 +194,9 @@ describe('overlayLayers', () => {
   });
 
   test('outlines the cells of a finding only when it points at no edge and no post', () => {
-    const cells = draw({ focus: { cells: [{ x: 1, y: 1 }], edges: [], posts: [] } });
+    const cells = draw({
+      focus: { cells: [{ x: 1, y: 1 }], edges: [], posts: [] },
+    });
     const edges = draw({
       focus: {
         cells: [{ x: 1, y: 1 }],
@@ -202,8 +212,12 @@ describe('overlayLayers', () => {
   });
 
   test('draws the same selection from either pair of corners', () => {
-    const one = draw({ selection: { from: { x: 0, y: 2 }, to: { x: 2, y: 0 } } });
-    const other = draw({ selection: { from: { x: 2, y: 0 }, to: { x: 0, y: 2 } } });
+    const one = draw({
+      selection: { from: { x: 0, y: 2 }, to: { x: 2, y: 0 } },
+    });
+    const other = draw({
+      selection: { from: { x: 2, y: 0 }, to: { x: 0, y: 2 } },
+    });
 
     expect(one.selection).toBe(other.selection);
     expect(shapes(one.selection)).toBe(1);

@@ -126,26 +126,19 @@ function Overlays({
               {...ROUND}
             />
             <Layer
+              d={route.goalCasing}
+              fill={TRACK_COLORS.floor}
+              fillOpacity={TRACK_OPACITY.routeCasing}
+              name="route-goal-casing"
+            />
+            <Layer
               d={route.line}
               name="route"
               stroke={color}
               strokeWidth={strokes.route}
               {...ROUND}
             />
-            <Layer
-              d={route.start}
-              fill={TRACK_COLORS.floor}
-              name="route-start"
-              stroke={color}
-              strokeWidth={strokes.routeStart}
-            />
-            <Layer
-              d={route.goal}
-              fill={color}
-              name="route-goal"
-              stroke={TRACK_COLORS.floor}
-              strokeWidth={strokes.routeGoal}
-            />
+            <Layer d={route.goal} fill={color} name="route-goal" />
           </g>
         );
       })}

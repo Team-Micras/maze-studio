@@ -8,6 +8,7 @@ import {
   useRef,
   useState,
   type PointerEvent,
+  type ReactNode,
 } from 'react';
 import { flushSync } from 'react-dom';
 import { useStore } from 'zustand';
@@ -112,6 +113,21 @@ function editorInsetsFor(phone: boolean, viewing: boolean): Insets {
   return viewing ? EDITOR_PHONE_INSETS : EDITOR_PHONE_EDIT_INSETS;
 }
 
+/** Actions of the editor's island that fold away, as beside the docked Generate panel. */
+function Fold({ folded, children }: { readonly folded: boolean; readonly children: ReactNode }) {
+  return (
+    <div
+      className={cn(
+        'grid transition-[grid-template-columns,opacity] duration-200 ease-(--ease)',
+        folded ? 'grid-cols-[0fr] opacity-0' : 'grid-cols-[1fr]'
+      )}
+      inert={folded}
+    >
+      <div className="flex min-w-0 items-center gap-0.5 overflow-hidden">{children}</div>
+    </div>
+  );
+}
+
 /** The width the docked Generate panel takes from the board on a notebook, with its margin. */
 const GENERATE_PANEL = 452;
 
@@ -123,7 +139,9 @@ const REPLACED = 'Maze replaced. Undo brings the old one back';
 
 /** The skeleton of a maze being generated, in the generator's chunk, which is loaded by then. */
 const LoadingCanvas = lazy(() =>
-  import('@/ui/generator/generate-dialog').then((module) => ({ default: module.LoadingCanvas }))
+  import('@/ui/generator/generate-dialog').then((module) => ({
+    default: module.LoadingCanvas,
+  }))
 );
 
 /** Where the content is while no board is on the stage, as in the library. */
@@ -275,7 +293,13 @@ export function Studio({
   const theme = useTheme((current) => current.theme);
   const shownRoutes = useShownRoutes((now) => now.shown);
   const toggleTheme = useTheme((current) => current.toggle);
-  const changes = useStudioChanges({ store, screen, library, phone, onDiscard });
+  const changes = useStudioChanges({
+    store,
+    screen,
+    library,
+    phone,
+    onDiscard,
+  });
   const actions = useMazeActions({
     store,
     screen,
@@ -507,26 +531,31 @@ export function Studio({
       />
       {chromeMounted && onScreen !== undefined && board !== undefined && mode !== 'library' ? (
         <EditorChrome
+          shift={generating && !phone ? GENERATE_PANEL : 0}
           board={board}
           controller={camera}
           actions={
             editing.checks === undefined ? null : (
               <>
-                <ChangesChip {...changes.chip} />
-                <Checks {...editing.checks} />
-                {editing.routes === undefined || generating ? null : <Routes {...editing.routes} />}
-                <MoreActions
-                  {...editing.actions}
-                  {...actions.menu}
-                  editable={editing.actions.editable && candidateShown === undefined}
-                  onFit={() => refit({ animate: true })}
-                  onGenerate={
-                    editingKey === undefined ? undefined : () => setGenerateFor(editingKey)
-                  }
-                  onToggleTheme={toggleTheme}
-                  theme={theme}
-                />
-                {actions.copyLink === undefined ? null : <CopyLinkButton {...actions.copyLink} />}
+                <Fold folded={generating && !phone}>
+                  <ChangesChip {...changes.chip} />
+                  <Checks {...editing.checks} />
+                </Fold>
+                {editing.routes === undefined ? null : <Routes {...editing.routes} />}
+                <Fold folded={generating && !phone}>
+                  <MoreActions
+                    {...editing.actions}
+                    {...actions.menu}
+                    editable={editing.actions.editable && candidateShown === undefined}
+                    onFit={() => refit({ animate: true })}
+                    onGenerate={
+                      editingKey === undefined ? undefined : () => setGenerateFor(editingKey)
+                    }
+                    onToggleTheme={toggleTheme}
+                    theme={theme}
+                  />
+                  {actions.copyLink === undefined ? null : <CopyLinkButton {...actions.copyLink} />}
+                </Fold>
               </>
             )
           }

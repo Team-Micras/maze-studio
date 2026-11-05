@@ -28,6 +28,8 @@ const RENAME_HINT = 'title-rename-hint';
 
 /** The props of {@link EditorChrome}. */
 export interface EditorChromeProps {
+  /** How far left, in pixels, the actions move, as beside the docked Generate panel. */
+  readonly shift?: number;
   readonly open: OpenMaze;
   /** Where its board lies in the world. */
   readonly board: WorldRect;
@@ -74,6 +76,7 @@ export function EditorChrome({
   children,
   actions,
   onRename,
+  shift = 0,
 }: EditorChromeProps) {
   const settled = useDeferredValue(landed, false) && landed;
 
@@ -128,7 +131,10 @@ export function EditorChrome({
           </div>
         </Island>
         {!settled || actions === undefined || actions === null ? null : (
-          <Island className="fixed top-safe-4 right-safe-4 h-11 transition-opacity duration-200 ease-(--ease) starting:opacity-0 max-[720px]:pointer-events-auto max-[720px]:static max-[720px]:ml-auto max-[720px]:shrink-0">
+          <Island
+            style={shift === 0 ? undefined : { transform: `translateX(-${shift}px)` }}
+            className="fixed top-safe-4 right-safe-4 h-11 transition-[opacity,transform] duration-200 ease-(--ease) starting:opacity-0 max-[720px]:pointer-events-auto max-[720px]:static max-[720px]:ml-auto max-[720px]:shrink-0"
+          >
             {actions}
           </Island>
         )}

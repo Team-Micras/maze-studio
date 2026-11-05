@@ -323,7 +323,7 @@ describe('The Changes panel of an open maze', () => {
 });
 
 describe('Generate from the editor', () => {
-  test('docked, has the one Routes button on screen, which changes the routes without closing it', async () => {
+  test('docked, folds every action of the editor but Routes, which changes the routes without closing it', async () => {
     await mountApp('#/repo/classic/AAMC15Maze.txt');
     await expect.poll(mode).toBe('editor');
     await userEvent.click(page.getByRole('button', { name: 'More actions' }));
@@ -338,7 +338,11 @@ describe('Generate from the editor', () => {
     );
 
     expect(outsideLibrary).toHaveLength(1);
-    await userEvent.click(generate.getByRole('button', { name: 'Routes' }));
+    expect(generate.getByRole('button', { name: 'Routes' }).query()).toBeNull();
+    await expect
+      .poll(() => page.getByRole('button', { name: 'More actions' }).element().closest('[inert]'))
+      .not.toBeNull();
+    await userEvent.click(outsideLibrary[0]);
     await userEvent.click(page.getByRole('switch', { name: /With diagonals/ }));
 
     await expect.poll(drawn).toBe(1);
