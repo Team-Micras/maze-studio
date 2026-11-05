@@ -1,7 +1,8 @@
 name: Pages
 
 # Publishes main to Cloudflare Pages, which serves it at maze.micras.team. The build runs read only
-# and with no secret; publish, which holds the Cloudflare token, only uploads its files.
+# and with no secret, in Playwright's image of the pinned version, which has Chromium for the
+# tests; publish, which holds the Cloudflare token, only uploads its files.
 on:
   push:
     branches: [main]
@@ -18,23 +19,22 @@ jobs:
   build:
     if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-24.04
+    container:
+      image: mcr.microsoft.com/playwright:v1.63.0
+      options: --ipc=host
+    env:
+      HOME: /root
     steps:
       - uses: actions/checkout@v7
         with:
           submodules: true
           persist-credentials: false
 
-      - uses: oven-sh/setup-bun@v2
-        with:
-          bun-version: 1.4.2
+      - run: git config --global --add safe.directory '*'
 
-      - uses: actions/setup-node@v7
-        with:
-          node-version: 24
+      - run: npm install --global bun@1.4.2
 
       - run: bun install --frozen-lockfile
-
-      - run: bunx playwright install --with-deps chromium
 
       - run: bun run lint
 
