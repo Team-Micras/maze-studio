@@ -40,7 +40,9 @@ function scratch(name: string): string {
 }
 
 async function mineMenu(page: Page, item: string): Promise<void> {
-  await page.getByRole('button', { name: 'My mazes and files' }).click();
+  await page
+    .getByRole('button', { name: item === 'Import…' ? 'New maze' : 'More library actions' })
+    .click();
   await page.getByRole('menuitem', { name: item }).click();
 }
 

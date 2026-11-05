@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, test } from 'vitest';
-import { page } from 'vitest/browser';
+import { page, userEvent } from 'vitest/browser';
 import { render } from 'vitest-browser-react';
 
 import { SearchIndex } from '@/library';
@@ -109,5 +109,36 @@ describe("The notebook's top islands", () => {
     const brand = boxOf(page.getByRole('heading', { name: 'Maze Studio' }).element().parentElement);
 
     expect(boxOf(document.querySelector('search > div')).top).toBe(brand.top);
+  });
+});
+
+/** The items of the menu `button` opens, which it closes again. */
+async function menuItems(button: string): Promise<string[]> {
+  await userEvent.click(page.getByRole('button', { name: button }));
+  const names = page
+    .getByRole('menuitem')
+    .elements()
+    .map((item) => item.textContent ?? '');
+  await userEvent.keyboard('{Escape}');
+  return names;
+}
+
+describe("The notebook's actions", () => {
+  test('are New maze, which also opens and imports files, and ⋯ with the rest', async () => {
+    await mountChrome();
+    expect(await menuItems('New maze')).toEqual([
+      'Classic, 16 × 16',
+      'Half size, 32 × 32',
+      'Training, 16 × 16',
+      'Custom size…',
+      'Generate…Beta',
+      'Open a .txt file…',
+      'Import…',
+    ]);
+    expect(await menuItems('More library actions')).toEqual([
+      'Export all',
+      'Check for updates',
+      expect.stringMatching(/^(Light|Dark) theme$/),
+    ]);
   });
 });

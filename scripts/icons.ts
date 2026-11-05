@@ -42,7 +42,6 @@ export const ICONS: readonly string[] = [
   'FlagCheckered',
   'FloppyDisk',
   'FolderOpen',
-  'FolderSimple',
   'GearSix',
   'GitDiff',
   'GithubLogo',

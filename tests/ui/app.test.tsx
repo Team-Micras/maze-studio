@@ -172,7 +172,8 @@ describe('The shell', () => {
     document.head.append(meta);
     await mountApp();
     const dark = document.documentElement.classList.contains('dark');
-    await userEvent.click(page.getByRole('button', { name: /^Switch to the (light|dark) theme$/ }));
+    await userEvent.click(page.getByRole('button', { name: 'More library actions' }));
+    await userEvent.click(page.getByRole('menuitem', { name: /^(Light|Dark) theme$/ }));
 
     expect(document.documentElement.classList.contains('dark')).toBe(!dark);
     expect(meta.content).toBe(dark ? '#e3e3e3' : '#191919');
