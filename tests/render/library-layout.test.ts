@@ -3,11 +3,13 @@ import { describe, expect, test } from 'vitest';
 import {
   artboardIn,
   cameraOnto,
+  boardGeometry,
   LIBRARY_INSETS,
   libraryColumns,
   libraryLayout,
   libraryRect,
   mountedRows,
+  PHONE_SLOT_GAP_X,
   revealCamera,
   revealScroll,
   rowOf,
@@ -41,6 +43,16 @@ describe('libraryLayout', () => {
     expect(span).toBeCloseTo(1440 - NOTEBOOK.left - NOTEBOOK.right, 9);
     expect(layout.columnPitch).toBeCloseTo(layout.side * (1 + SLOT_GAP_X), 9);
     expect(layout.rowPitch).toBeCloseTo(layout.side * (1 + SLOT_GAP_Y), 9);
+  });
+
+  test("keeps a phone's two columns 20 px from its edges, with a narrower gap between them", () => {
+    const layout = libraryLayout(390, 'phone', 4);
+    const gap = layout.columnPitch - layout.side;
+
+    expect(LIBRARY_INSETS.phone.left).toBe(20);
+    expect(gap).toBeCloseTo(layout.side * PHONE_SLOT_GAP_X, 9);
+    expect(gap).toBeLessThan(layout.side * SLOT_GAP_X);
+    expect(layout.insets.left + 2 * layout.side + gap + layout.insets.right).toBeCloseTo(390, 9);
   });
 
   test('is as tall as its rows, their gaps and the insets, with one row when empty', () => {
@@ -80,18 +92,26 @@ describe('libraryRect and artboardIn', () => {
   });
 
   test('keep the longest side and stand a narrow maze on the bottom of its slot, centred', () => {
-    expect(artboardIn({ x: 0, y: 0 }, { width: 8, height: 16 }, 200)).toEqual({
-      x: 50,
-      y: 0,
-      width: 100,
-      height: 200,
-    });
-    expect(artboardIn({ x: 10, y: 20 }, { width: 16, height: 8 })).toEqual({
-      x: 10,
-      y: 340,
-      width: 640,
-      height: 320,
-    });
+    const tall = artboardIn({ x: 0, y: 0 }, { width: 8, height: 16 }, 200);
+    const wide = artboardIn({ x: 10, y: 20 }, { width: 16, height: 8 });
+
+    expect(tall.height).toBe(200);
+    expect(tall.x).toBeCloseTo((200 - tall.width) / 2, 9);
+    expect(tall.y).toBe(0);
+    expect(wide.width).toBe(640);
+    expect(wide.x).toBe(10);
+    expect(wide.y + wide.height).toBeCloseTo(20 + 640, 9);
+  });
+
+  test.each([
+    [8, 16],
+    [3, 32],
+    [1, 64],
+  ])('give a %i × %i maze the proportions of its board, margin included', (width, height) => {
+    const rect = artboardIn({ x: 0, y: 0 }, { width, height });
+    const board = boardGeometry({ width, height }, { size: 640 });
+
+    expect(rect.width / rect.height).toBeCloseTo(board.width / board.height, 9);
   });
 });
 

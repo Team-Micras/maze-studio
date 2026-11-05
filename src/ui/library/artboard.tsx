@@ -244,7 +244,7 @@ export const Artboard = memo(function Artboard({
       </span>
       <ThumbnailCanvas
         className={cn(
-          'rounded-[4px] bg-[oklch(0.17_0_0)] bg-[length:100%_100%] shadow-artboard outline-ring group-hover:outline-2 group-hover:outline-offset-[3px] group-hover:outline-solid group-focus-visible:outline-2 group-focus-visible:outline-offset-[3px] group-focus-visible:outline-solid',
+          'bg-[oklch(0.17_0_0)] bg-[length:100%_100%] shadow-artboard outline-ring group-hover:outline-2 group-hover:outline-offset-[3px] group-hover:outline-solid group-focus-visible:outline-2 group-focus-visible:outline-offset-[3px] group-focus-visible:outline-solid',
           entry.width > 16
             ? 'bg-(image:--thumbnail-skeleton-32)'
             : 'bg-(image:--thumbnail-skeleton-16)',

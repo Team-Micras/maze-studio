@@ -76,6 +76,7 @@ export {
   mountedRows,
   revealScroll,
   rowOf,
+  PHONE_SLOT_GAP_X,
   SLOT_GAP_X,
   SLOT_GAP_Y,
   libraryRect,
