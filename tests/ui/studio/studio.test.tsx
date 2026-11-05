@@ -370,6 +370,10 @@ function explored(): boolean {
   return document.querySelector('[data-open-board] [data-route="exploration"]') !== null;
 }
 
+function routesOpacity(): string | null | undefined {
+  return document.querySelector('[data-open-board] [data-group="routes"]')?.getAttribute('opacity');
+}
+
 /** Whether the open board draws the search's robot, as it does only while the search plays. */
 function robot(): boolean {
   return document.querySelector('[data-open-board] [data-layer="robot"]') !== null;
@@ -394,18 +398,24 @@ describe('The flood-fill search', () => {
     await expect.poll(explored).toBe(false);
   });
 
-  test('plays from ▶ with its robot and ends with the whole trail still', async () => {
+  test('plays from ▶ with its robot, the routes faded, and ends with the whole trail still', async () => {
     await mountApp('#/repo/classic/AAMC15Maze.txt');
     await expect.poll(mode).toBe('editor');
     await userEvent.click(editorRoutes());
+    await userEvent.click(page.getByRole('switch', { name: /With diagonals/ }));
     await userEvent.click(page.getByRole('button', { name: 'Play the search' }));
 
     await expect.poll(robot).toBe(true);
     expect(document.querySelector('[data-open-board] [data-layer="unseen"]')).not.toBeNull();
+    expect(routesOpacity()).toBe('0.3');
+    expect(
+      document.querySelector('[data-open-board] [data-group="routes"] ~ [data-route="exploration"]')
+    ).not.toBeNull();
     const playing = useExplorationPlayback.getState()!;
     useExplorationPlayback.setState({ ...playing, at: playing.exploration.moves - 0.01 }, true);
     await expect.poll(robot).toBe(false);
     expect(explored()).toBe(true);
+    expect(routesOpacity()).toBeNull();
     expect(
       document.querySelector(
         '[data-open-board] [data-route="exploration"] [data-layer="route-goal"]'

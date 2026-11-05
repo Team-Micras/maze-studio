@@ -121,6 +121,20 @@ function Overlays({
   );
   const layers = overlayLayers(geometry, { ...overlays, explorationAt });
   const strokes = overlayStrokes(geometry);
+  const playing = explorationAt !== undefined;
+  const shortest = (
+    <g data-group="routes" opacity={playing ? TRACK_OPACITY.routesWhilePlaying : undefined}>
+      {layers.routes.map((route) => (
+        <RouteGroup
+          color={ROUTE_COLORS[route.name]}
+          key={route.name}
+          name={route.name}
+          route={route}
+          strokes={strokes}
+        />
+      ))}
+    </g>
+  );
   const diff = { stroke: TRACK_COLORS.diff, strokeWidth: strokes.diff };
   const preview = layers.previewRemoves
     ? {
@@ -154,6 +168,7 @@ function Overlays({
         strokeDasharray={strokes.diffDash}
         {...diff}
       />
+      {playing ? shortest : null}
       {layers.exploration === undefined ? null : (
         <RouteGroup
           color={EXPLORATION_COLOR}
@@ -162,15 +177,7 @@ function Overlays({
           strokes={strokes}
         />
       )}
-      {layers.routes.map((route) => (
-        <RouteGroup
-          color={ROUTE_COLORS[route.name]}
-          key={route.name}
-          name={route.name}
-          route={route}
-          strokes={strokes}
-        />
-      ))}
+      {playing ? null : shortest}
       <Layer
         name="robot"
         d={layers.robot}
