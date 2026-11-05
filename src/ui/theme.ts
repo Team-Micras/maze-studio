@@ -1,6 +1,7 @@
 /**
- * The theme (DESIGN.md 2.1): the system's light or dark, unless `?theme=light|dark` forces one;
- * the theme button changes it for the session. The `<meta name="theme-color">` follows the desk.
+ * The theme (DESIGN.md 2.1): the one last picked in this browser, else the system's light or dark,
+ * unless `?theme=light|dark` forces one. The `<meta name="theme-color">` follows the desk;
+ * `index.html` reads the same choice before the first paint.
  *
  * @module
  */
@@ -19,6 +20,18 @@ export function forcedTheme(search: string): Theme | undefined {
   return value === 'light' || value === 'dark' ? value : undefined;
 }
 
+/** Where the theme picked last is kept, which `index.html` reads too. */
+export const THEME_KEY = 'maze-studio:theme';
+
+function pickedTheme(): Theme | undefined {
+  try {
+    const value = localStorage.getItem(THEME_KEY);
+    return value === 'light' || value === 'dark' ? value : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
 function systemTheme(): Theme {
   return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
 }
@@ -34,12 +47,18 @@ interface ThemeState {
   readonly toggle: () => void;
 }
 
-/** The session's theme. */
+/** The theme, kept in this browser once picked. */
 export const useTheme = create<ThemeState>()((set, get) => ({
-  theme: forcedTheme(window.location.search) ?? systemTheme(),
+  theme: forcedTheme(window.location.search) ?? pickedTheme() ?? systemTheme(),
   toggle: () => {
     const theme = get().theme === 'dark' ? 'light' : 'dark';
     applyTheme(theme);
     set({ theme });
+
+    try {
+      localStorage.setItem(THEME_KEY, theme);
+    } catch {
+      return;
+    }
   },
 }));

@@ -249,6 +249,27 @@ async function lowestAtTheEnd(page: Page): Promise<number> {
     .evaluateAll((links) => Math.max(...links.map((link) => link.getBoundingClientRect().bottom)));
 }
 
+describe('The theme', () => {
+  test('stays as picked across a reload, from the first paint', async () => {
+    const context = await browser.newContext({
+      viewport: { width: 1440, height: 900 },
+      colorScheme: 'dark',
+    });
+    contexts.push(context);
+    const page = await context.newPage();
+    await page.goto(app);
+    await page.locator('a[data-artboard]').first().waitFor();
+    await page.getByRole('button', { name: 'More library actions' }).click();
+    await page.getByRole('menuitem', { name: 'Light theme' }).click();
+    await page.reload({ waitUntil: 'commit' });
+    await page.waitForFunction(() => document.body !== null);
+
+    expect(await page.evaluate(() => document.documentElement.classList.contains('dark'))).toBe(
+      false
+    );
+  });
+});
+
 describe('The top bar and the grid', () => {
   let classicScrollbars: Browser;
 

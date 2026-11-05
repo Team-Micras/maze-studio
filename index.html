@@ -16,7 +16,11 @@
     <meta name="theme-color" content="#e3e3e3" />
     <script>
       {
-        const forced = new URLSearchParams(location.search).get('theme');
+        let picked = null;
+        try {
+          picked = localStorage.getItem('maze-studio:theme');
+        } catch {}
+        const forced = new URLSearchParams(location.search).get('theme') ?? picked;
         const dark =
           forced === 'dark' ||
           (forced !== 'light' && matchMedia('(prefers-color-scheme: dark)').matches);
