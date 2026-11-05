@@ -1,15 +1,23 @@
-import { Path, X } from '@/ui/icons';
-import { useId, useState, type ReactNode } from 'react';
+import { Path, X } from "@/ui/icons";
+import { useId, useState, type ReactNode } from "react";
 
-import type { Route, RouteSwitches, ShortestRoutes } from '@/maze';
-import { ROUTE_COLORS, TRACK_COLORS } from '@/render';
-import { insideCanvas } from '@/ui/canvas-id';
-import { IslandButton } from '@/ui/islands/island';
-import { Popover, PopoverContent, PopoverTrigger } from '@/ui/primitives/popover';
-import { Sheet, SheetContent, SheetTitle } from '@/ui/primitives/sheet';
-import { Switch } from '@/ui/primitives/switch';
-import { cn } from '@/ui/primitives/utils';
-import { anyRouteShown, toggleRoute, useShownRoutes } from '@/ui/route-switches';
+import type { Route, RouteSwitches, ShortestRoutes } from "@/maze";
+import { ROUTE_COLORS, TRACK_COLORS } from "@/render";
+import { insideCanvas } from "@/ui/canvas-id";
+import { Hint, IslandButton } from "@/ui/islands/island";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/ui/primitives/popover";
+import { Sheet, SheetContent, SheetTitle } from "@/ui/primitives/sheet";
+import { Switch } from "@/ui/primitives/switch";
+import { cn } from "@/ui/primitives/utils";
+import {
+  anyRouteShown,
+  toggleRoute,
+  useShownRoutes,
+} from "@/ui/route-switches";
 
 /** The props of {@link Routes}. */
 export interface RoutesProps {
@@ -26,8 +34,12 @@ export interface RoutesProps {
 }
 
 const ROWS = [
-  { name: 'withoutDiagonals', label: 'Without diagonals', tile: 'M7 26V9Q7 7 9 7H26' },
-  { name: 'withDiagonals', label: 'With diagonals', tile: 'M7 26V19L19 7H26' },
+  {
+    name: "withoutDiagonals",
+    label: "Without diagonals",
+    tile: "M7 26V9Q7 7 9 7H26",
+  },
+  { name: "withDiagonals", label: "With diagonals", tile: "M7 26V19L19 7H26" },
 ] as const;
 
 function sameRoute(left: Route, right: Route): boolean {
@@ -49,7 +61,9 @@ export function RouteRows({ shown, onToggle, details }: RouteRowsProps) {
 
   return (
     <div className="px-1 pb-2">
-      <h3 className="mx-3 mt-1 mb-0.5 text-xs font-medium text-muted-foreground">Shortest</h3>
+      <h3 className="mx-3 mt-1 mb-0.5 text-xs font-medium text-muted-foreground">
+        Shortest
+      </h3>
       {ROWS.map(({ name, label, tile }) => (
         <label
           className="grid cursor-pointer grid-cols-[32px_1fr_auto] items-center gap-2.5 rounded-[10px] p-2 hover:bg-muted"
@@ -59,7 +73,10 @@ export function RouteRows({ shown, onToggle, details }: RouteRowsProps) {
         >
           <svg
             aria-hidden
-            className={cn('size-8 rounded-[7px] shadow-island', !shown[name] && 'opacity-45')}
+            className={cn(
+              "size-8 rounded-[7px] shadow-island",
+              !shown[name] && "opacity-45",
+            )}
             style={{ background: TRACK_COLORS.floor }}
             viewBox="0 0 32 32"
           >
@@ -75,7 +92,9 @@ export function RouteRows({ shown, onToggle, details }: RouteRowsProps) {
           <span>
             <span className="block text-[13px] font-medium">{label}</span>
             {details === undefined ? null : (
-              <span className="block text-xs text-muted-foreground">{details[name]}</span>
+              <span className="block text-xs text-muted-foreground">
+                {details[name]}
+              </span>
             )}
           </span>
           <Switch
@@ -98,12 +117,15 @@ function Body({
   cellSize,
   shown,
   onToggle,
-}: Omit<RoutesProps, 'open' | 'onOpenChange' | 'phone'>) {
+}: Omit<RoutesProps, "open" | "onOpenChange" | "phone">) {
   if (routes === undefined || routes === null) {
     return (
-      <p className="px-4 pt-1 pb-4 text-[13px] text-muted-foreground" data-routes-empty="">
+      <p
+        className="px-4 pt-1 pb-4 text-[13px] text-muted-foreground"
+        data-routes-empty=""
+      >
         {routes === undefined
-          ? 'Routes need a start and a goal. Mark them with the Start and Goal tools.'
+          ? "Routes need a start and a goal. Mark them with the Start and Goal tools."
           : "The goal can't be reached from the start. Open a wall to see the routes again."}
       </p>
     );
@@ -114,7 +136,7 @@ function Body({
     <RouteRows
       details={{
         withoutDiagonals: routeDetail(routes.withoutDiagonals, cellSize),
-        withDiagonals: `${routeDetail(routes.withDiagonals, cellSize)}${twin ? ' · same route as without diagonals' : ''}`,
+        withDiagonals: `${routeDetail(routes.withDiagonals, cellSize)}${twin ? " · same route as without diagonals" : ""}`,
       }}
       onToggle={onToggle}
       shown={shown}
@@ -122,7 +144,13 @@ function Body({
   );
 }
 
-function Head({ heading, onClose }: { readonly heading: ReactNode; readonly onClose: () => void }) {
+function Head({
+  heading,
+  onClose,
+}: {
+  readonly heading: ReactNode;
+  readonly onClose: () => void;
+}) {
   return (
     <div className="flex items-center gap-2 pt-2.5 pr-2 pb-1.5 pl-4">
       {heading}
@@ -139,10 +167,10 @@ interface RoutesShellProps {
   readonly open: boolean;
   readonly onOpenChange: (open: boolean) => void;
   /**
-   * The button that opens it, named Routes, with or without the word; a phone's sheet opened
-   * from elsewhere, as the editor's ⋯ menu, has none.
+   * Whether it has its button, an icon named Routes; a phone's sheet opened from elsewhere, as
+   * the editor's ⋯ menu, has none.
    */
-  readonly trigger?: 'icon' | 'label';
+  readonly trigger: boolean;
   readonly children: ReactNode;
 }
 
@@ -150,23 +178,30 @@ interface RoutesShellProps {
  * The Routes popover on a notebook, open while the board is edited, and a sheet as tall as its
  * rows on a phone; its button shows active while either route is drawn.
  */
-function RoutesShell({ phone, open, onOpenChange, trigger, children }: RoutesShellProps) {
+function RoutesShell({
+  phone,
+  open,
+  onOpenChange,
+  trigger,
+  children,
+}: RoutesShellProps) {
   const active = useShownRoutes((now) => anyRouteShown(now.shown));
   const close = (): void => onOpenChange(false);
-  const button =
-    trigger === undefined ? null : (
-      <IslandButton
-        aria-expanded={open}
-        aria-haspopup="dialog"
-        aria-label={trigger === 'icon' ? 'Routes' : undefined}
-        className={cn(active && 'bg-accent text-foreground shadow-[inset_0_0_0_1px_var(--border)]')}
-        data-active={active ? '' : undefined}
-        onClick={phone ? () => onOpenChange(true) : undefined}
-      >
-        <Path aria-hidden size={16} />
-        {trigger === 'label' ? 'Routes' : null}
-      </IslandButton>
-    );
+  const button = trigger ? (
+    <IslandButton
+      aria-expanded={open}
+      aria-haspopup="dialog"
+      aria-label="Routes"
+      className={cn(
+        active &&
+          "bg-accent text-foreground shadow-[inset_0_0_0_1px_var(--border)]",
+      )}
+      data-active={active ? "" : undefined}
+      onClick={phone ? () => onOpenChange(true) : undefined}
+    >
+      <Path aria-hidden size={16} />
+    </IslandButton>
+  ) : null;
 
   if (phone) {
     return (
@@ -175,7 +210,9 @@ function RoutesShell({ phone, open, onOpenChange, trigger, children }: RoutesShe
         <Sheet onOpenChange={onOpenChange} open={open}>
           <SheetContent aria-describedby={undefined}>
             <Head
-              heading={<SheetTitle className="flex-1 text-sm">Routes</SheetTitle>}
+              heading={
+                <SheetTitle className="flex-1 text-sm">Routes</SheetTitle>
+              }
               onClose={close}
             />
             {children}
@@ -187,7 +224,11 @@ function RoutesShell({ phone, open, onOpenChange, trigger, children }: RoutesShe
 
   return (
     <Popover modal={false} onOpenChange={onOpenChange} open={open}>
-      {button === null ? null : <PopoverTrigger asChild>{button}</PopoverTrigger>}
+      {button === null ? null : (
+        <Hint label="Routes" side="bottom">
+          <PopoverTrigger asChild>{button}</PopoverTrigger>
+        </Hint>
+      )}
       <PopoverContent
         align="end"
         aria-label="Routes"
@@ -199,7 +240,9 @@ function RoutesShell({ phone, open, onOpenChange, trigger, children }: RoutesShe
         }}
       >
         <Head
-          heading={<h2 className="flex-1 text-sm leading-5 font-semibold">Routes</h2>}
+          heading={
+            <h2 className="flex-1 text-sm leading-5 font-semibold">Routes</h2>
+          }
           onClose={close}
         />
         {children}
@@ -221,7 +264,7 @@ export function Routes({ phone, open, onOpenChange, ...body }: RoutesProps) {
       onOpenChange={onOpenChange}
       open={open}
       phone={phone}
-      trigger={phone ? undefined : 'label'}
+      trigger={!phone}
     >
       <Body {...body} />
     </RoutesShell>
@@ -231,25 +274,18 @@ export function Routes({ phone, open, onOpenChange, ...body }: RoutesProps) {
 /** The props of {@link RoutesButton}. */
 export interface RoutesButtonProps {
   readonly phone: boolean;
-  /** Whether the button shows only its icon, as where room is short. */
-  readonly iconOnly?: boolean;
 }
 
 /**
  * The Routes button of the library and the generator: the same rows and switches as the editor's
  * Routes panel, for the routes the whole session draws, without a maze's cells and length.
  */
-export function RoutesButton({ phone, iconOnly = false }: RoutesButtonProps) {
+export function RoutesButton({ phone }: RoutesButtonProps) {
   const [open, setOpen] = useState(false);
   const shown = useShownRoutes((now) => now.shown);
 
   return (
-    <RoutesShell
-      onOpenChange={setOpen}
-      open={open}
-      phone={phone}
-      trigger={iconOnly ? 'icon' : 'label'}
-    >
+    <RoutesShell onOpenChange={setOpen} open={open} phone={phone} trigger>
       <RouteRows onToggle={toggleRoute} shown={shown} />
     </RoutesShell>
   );

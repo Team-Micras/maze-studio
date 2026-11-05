@@ -268,7 +268,7 @@ export function LibraryChrome({
           <search>
             <Island className="fixed top-safe-2 right-safe-2 left-safe-2">
               {search}
-              <RoutesButton iconOnly phone />
+              <RoutesButton phone />
               <PhoneMenu files={files} newName={newName} onNew={onNew} onOpenFile={onOpenFile} />
             </Island>
           </search>
