@@ -21,7 +21,7 @@ import {
   Trash,
   type Icon,
 } from '@/ui/icons';
-import { usePhoneLayout } from '@/ui/hooks/use-media-query';
+import { useCoarsePointer, usePhoneLayout } from '@/ui/hooks/use-media-query';
 import { IslandButton } from '@/ui/islands/island';
 import { Badge } from '@/ui/primitives/badge';
 import {
@@ -135,6 +135,7 @@ export function MoreActions({
   onHelp,
 }: MoreActionsProps) {
   const phone = usePhoneLayout();
+  const keys = !useCoarsePointer();
   const [armed, setArmed] = useState(false);
   const [exportOpen, setExportOpen] = useState(false);
   const afterClose = useRef<(() => void) | undefined>(undefined);
@@ -257,7 +258,7 @@ export function MoreActions({
         <DropdownMenuItem className={ITEM} disabled={!editable} onSelect={onCloseBorder}>
           <Square aria-hidden size={16} />
           Close outer walls
-          <DropdownMenuShortcut>B</DropdownMenuShortcut>
+          {keys ? <DropdownMenuShortcut>B</DropdownMenuShortcut> : null}
         </DropdownMenuItem>
         <DropdownMenuItem className={ITEM} onSelect={onChanges}>
           <GitDiff aria-hidden size={16} />
@@ -296,7 +297,7 @@ export function MoreActions({
         <DropdownMenuItem className={ITEM} onSelect={onFit}>
           <CornersOut aria-hidden size={16} />
           Fit
-          <DropdownMenuShortcut>0</DropdownMenuShortcut>
+          {keys ? <DropdownMenuShortcut>0</DropdownMenuShortcut> : null}
         </DropdownMenuItem>
         <DropdownMenuItem className={ITEM} onSelect={onToggleTheme}>
           {theme === 'dark' ? <Sun aria-hidden size={16} /> : <Moon aria-hidden size={16} />}
@@ -307,7 +308,7 @@ export function MoreActions({
             <DropdownMenuItem className={ITEM} onSelect={onHelp}>
               <Keyboard aria-hidden size={16} />
               Keyboard shortcuts
-              <DropdownMenuShortcut>?</DropdownMenuShortcut>
+              {keys ? <DropdownMenuShortcut>?</DropdownMenuShortcut> : null}
             </DropdownMenuItem>
           </>
         )}

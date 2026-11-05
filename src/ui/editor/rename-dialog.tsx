@@ -1,6 +1,5 @@
 import { useId, useRef, useState, type FormEvent } from 'react';
 
-import { useCoarsePointer } from '@/ui/hooks/use-media-query';
 import { X } from '@/ui/icons';
 import { IslandButton } from '@/ui/islands/island';
 import { Button } from '@/ui/primitives/button';
@@ -55,11 +54,9 @@ function RenameForm({ name, taken, onDone }: FormProps) {
           spellCheck={false}
           value={value}
         />
-        {error === undefined ? null : (
-          <p className="text-xs text-destructive" id={`${id}-error`}>
-            {error}
-          </p>
-        )}
+        <p className="min-h-4 text-xs text-destructive" id={`${id}-error`}>
+          {error}
+        </p>
       </div>
       <Button className="self-end rounded-[10px]" disabled={error !== undefined} type="submit">
         Save
@@ -69,13 +66,13 @@ function RenameForm({ name, taken, onDone }: FormProps) {
 }
 
 /**
- * Rename (DESIGN.md 6 and 12): one field, which takes the focus, Enter saves; an empty name says
+ * Rename (DESIGN.md 6 and 12): one field, which takes the focus with its name selected, so typing
+ * replaces it; Enter saves; an empty name says
  * "Name cannot be empty", a name another maze of My mazes has says "Name already in My mazes", and either
  * disables Save.
  */
 export function RenameDialog({ open, onOpenChange, name, taken, onRename }: RenameDialogProps) {
   const content = useRef<HTMLDivElement>(null);
-  const coarse = useCoarsePointer();
 
   return (
     <Dialog onOpenChange={onOpenChange} open={open}>
@@ -83,12 +80,7 @@ export function RenameDialog({ open, onOpenChange, name, taken, onRename }: Rena
         aria-describedby={undefined}
         onOpenAutoFocus={(event) => {
           event.preventDefault();
-
-          if (coarse) {
-            content.current?.focus();
-          } else {
-            content.current?.querySelector('input')?.select();
-          }
+          content.current?.querySelector('input')?.select();
         }}
         ref={content}
       >

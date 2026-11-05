@@ -24,6 +24,20 @@ async function mount(): Promise<string[]> {
 }
 
 describe('The Rename dialog', () => {
+  test('opens with the name selected, so typing replaces it', async () => {
+    const renamed = await mount();
+    const field = page.getByRole('textbox', { name: 'Name' });
+    await expect.element(field).toHaveFocus();
+    const input = document.activeElement;
+    expect(
+      input instanceof HTMLInputElement ? [input.selectionStart, input.selectionEnd] : []
+    ).toEqual([0, 'Practice'.length]);
+    await userEvent.keyboard('Sprint');
+    await expect.element(field).toHaveValue('Sprint');
+    await userEvent.keyboard('{Enter}');
+    expect(renamed).toEqual(['Sprint']);
+  });
+
   test('refuses a name another maze of My mazes has, in any case, beside the field', async () => {
     const renamed = await mount();
     const field = page.getByRole('textbox', { name: 'Name' });
@@ -40,9 +54,11 @@ describe('The Rename dialog', () => {
   test('refuses an empty name, and saves a free one with Enter', async () => {
     const renamed = await mount();
     const field = page.getByRole('textbox', { name: 'Name' });
+    const before = page.getByRole('dialog').element().getBoundingClientRect().height;
     await userEvent.fill(field, '   ');
 
     await expect.element(page.getByText('Name cannot be empty')).toBeVisible();
+    expect(page.getByRole('dialog').element().getBoundingClientRect().height).toBe(before);
     await userEvent.fill(field, ' Practice run ');
     await userEvent.keyboard('{Enter}');
     expect(renamed).toEqual(['Practice run']);
