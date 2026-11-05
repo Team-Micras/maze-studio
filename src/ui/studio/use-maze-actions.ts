@@ -1,5 +1,6 @@
 import { useStore, type StoreApi } from 'zustand';
 
+import { SLOW_WRITE, SLOW_WRITE_MS } from '@/ui/editor/pending-writes';
 import type { RenameDialogProps } from '@/ui/editor/rename-dialog';
 import {
   copyText,
@@ -82,7 +83,15 @@ export function useMazeActions({
           name: open.name,
           taken: mineNames.filter((name) => name.toLowerCase() !== open.name.toLowerCase()),
           onRename: async (name) => {
-            const done = await editor.rename(name);
+            const done = await Promise.race([
+              editor.rename(name),
+              new Promise<undefined>((resolve) => setTimeout(resolve, SLOW_WRITE_MS)),
+            ]);
+
+            if (done === undefined) {
+              showToast(SLOW_WRITE);
+              return false;
+            }
 
             if (!done) {
               showToast(

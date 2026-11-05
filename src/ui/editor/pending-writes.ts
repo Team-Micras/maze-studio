@@ -23,6 +23,14 @@ export async function writesSettled(): Promise<void> {
   await Promise.all([...writers].map((writer) => writer.idle()));
 }
 
+import { showToast } from '@/ui/toasts';
+
+/** How long writes may take before the app says the browser's storage is not answering. */
+export const SLOW_WRITE_MS = 10_000;
+
+/** What the app says when writes take longer than {@link SLOW_WRITE_MS}. */
+export const SLOW_WRITE = 'Saving is taking long. Close other tabs of Maze Studio, then reload';
+
 const listeners = new Set<() => void>();
 let busy = 0;
 
@@ -32,20 +40,20 @@ function announce(): void {
   }
 }
 
-/** Counts `done` as writes on their way until it settles, for {@link isWriting}. */
+/**
+ * Counts `done` as writes on their way until it settles, for {@link isWriting}, and says so when
+ * it takes longer than {@link SLOW_WRITE_MS}.
+ */
 export function noteWrites(done: Promise<void>): void {
   busy += 1;
   announce();
-  void done.then(
-    () => {
-      busy -= 1;
-      announce();
-    },
-    () => {
-      busy -= 1;
-      announce();
-    }
-  );
+  const slow = setTimeout(() => showToast(SLOW_WRITE), SLOW_WRITE_MS);
+  const settle = (): void => {
+    clearTimeout(slow);
+    busy -= 1;
+    announce();
+  };
+  void done.then(settle, settle);
 }
 
 /** Whether writes noted by {@link noteWrites} are still on their way. */

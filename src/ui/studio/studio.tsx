@@ -73,8 +73,8 @@ import { boardOf, createStudioStore, type StudioScreen } from './studio-store';
 export interface StudioProps {
   /** The library, or `undefined` while it loads or when it could not be read. */
   readonly library: Library | undefined;
-  /** Whether the library could not be read, which it then says in place of the mazes. */
-  readonly libraryFailed: boolean;
+  /** Why the library could not be read, which it then says in place of the mazes. */
+  readonly libraryFailed: string | undefined;
   /** The maze the route or an opened file puts on screen, if any, as edited. */
   readonly opened: OpenMaze | undefined;
   /** The editing of the maze on screen. */
@@ -189,7 +189,7 @@ export function Studio({
   const shown = library === undefined ? [] : filterCatalog(library.entries, filter, library.index);
   const { mode } = state;
   const newName = newMazeName('', mineNames);
-  const failedShown = libraryFailed && mode === 'library';
+  const failedShown = libraryFailed !== undefined && mode === 'library';
   const mineIsEmpty = filter.source === 'mine' && library?.mineCount === 0;
   const emptyTitle =
     library !== undefined && mode === 'library' && shown.length === 0
@@ -508,7 +508,15 @@ export function Studio({
             </Suspense>
           )}
         </CameraStage>
-        {failedShown ? <LibraryError title={FAILED_TITLE} /> : null}
+        {failedShown ? <LibraryError reason={libraryFailed} title={FAILED_TITLE} /> : null}
+        {library === undefined && libraryFailed === undefined && mode === 'library' ? (
+          <p
+            className="fixed inset-x-0 top-1/2 text-center text-sm text-muted-foreground transition-opacity delay-500 duration-300 starting:opacity-0"
+            data-library-loading=""
+          >
+            Loading the library…
+          </p>
+        ) : null}
         {emptyTitle === undefined ? null : (
           <EmptyLibrary
             mineIsEmpty={mineIsEmpty}

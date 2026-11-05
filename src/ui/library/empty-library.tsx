@@ -44,13 +44,26 @@ export function EmptyLibrary({
   );
 }
 
-/** What the library says, with a Reload button, when the browser's storage could not be read. */
-export function LibraryError({ title }: { readonly title: string }) {
+/**
+ * What the library says, with a Reload button, when the browser's storage could not be read, and
+ * the browser's own reason in small print.
+ */
+export function LibraryError({
+  title,
+  reason,
+}: {
+  readonly title: string;
+  readonly reason: string;
+}) {
   return (
     <Island className={PANEL}>
       <h2 className="text-[15px] leading-5 font-semibold">{title}</h2>
       <p className="text-pretty text-muted-foreground">
-        Something this browser keeps for the app failed to load. Reload to try again.
+        Something this browser keeps for the app failed to load. Close other tabs of Maze Studio,
+        then reload.
+      </p>
+      <p className="font-mono text-[11px] break-words text-muted-foreground" translate="no">
+        {reason}
       </p>
       <IslandButton onClick={() => window.location.reload()} variant="default">
         <ArrowClockwise aria-hidden size={16} />

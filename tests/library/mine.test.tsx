@@ -87,6 +87,19 @@ function mazeOf(item: MineMaze | undefined): Maze {
 }
 
 describe('My mazes', () => {
+  test('reads and writes on after its connection is closed, as when the page was frozen', async () => {
+    const [{ mine, database }, other] = await tabs();
+    const first = await mine.create({ name: 'First', maze: MAZE, profile: 'free' });
+    database.close();
+    const second = await mine.create({ name: 'Second', maze: MAZE, profile: 'free' });
+    database.close();
+    database.close();
+
+    expect((await mine.list()).map((item) => item.name).toSorted()).toEqual(['First', 'Second']);
+    expect(await other.mine.get(second.id)).toMatchObject({ name: 'Second' });
+    expect(await mine.get(first.id)).toMatchObject({ name: 'First' });
+  });
+
   test('creates, reads, lists, saves and removes', async () => {
     const [{ mine }] = await tabs();
     const first = await mine.create({

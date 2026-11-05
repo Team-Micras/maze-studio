@@ -1,5 +1,7 @@
 /**
- * The browser storage the app runs on, opened once: the repository's cache, My mazes and the settings. When the
+ * The browser storage the app runs on, opened once: the repository's cache, My mazes and the settings. Its
+ * connection closes when the page is frozen or hidden, as Android does to a tab in the background, so
+ * the app open elsewhere never waits on it, and opens again on the next use. When the
  * browser gives no IndexedDB, as some private windows do, there is none, and the library shows
  * the built-in snapshot alone.
  *
@@ -27,6 +29,10 @@ let opened: Promise<AppStorage | undefined> | undefined;
 async function open(): Promise<AppStorage | undefined> {
   try {
     const database = await openDatabase(DATABASE_NAME);
+
+    document.addEventListener('freeze', () => database.close());
+    window.addEventListener('pagehide', () => database.close());
+
     const settings = new Settings(database);
     void settings.forgetFolder().catch(() => undefined);
     return {
