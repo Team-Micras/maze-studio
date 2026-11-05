@@ -45,7 +45,7 @@ import { GenerateDialogLoader } from '@/ui/generator/generate-dialog-loader';
 import type { GeneratorPreview } from '@/ui/generator/generate-dialog';
 import { appStorage } from '@/ui/storage';
 import { EmptyLibrary, LibraryError } from '@/ui/library/empty-library';
-import type { MineAndFilesActions } from '@/ui/library/mine-and-files';
+import type { MineAndFilesActions } from '@/ui/library/library-chrome';
 import { LibraryGrid } from '@/ui/library/library-grid';
 import { libraryScroller } from '@/ui/library/library-scroller';
 import { LibraryChrome } from '@/ui/library/library-chrome';

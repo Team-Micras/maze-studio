@@ -14,19 +14,21 @@ export type Theme = 'light' | 'dark';
 /** The desk colour of each theme, for `<meta name="theme-color">`. */
 export const DESK_COLORS: Readonly<Record<Theme, string>> = { light: '#ffffff', dark: '#191919' };
 
-/** The theme `?theme=` forces, if any. */
-export function forcedTheme(search: string): Theme | undefined {
-  const value = new URLSearchParams(search).get('theme');
+function themeOf(value: string | null): Theme | undefined {
   return value === 'light' || value === 'dark' ? value : undefined;
 }
 
+/** The theme `?theme=` forces, if any. */
+export function forcedTheme(search: string): Theme | undefined {
+  return themeOf(new URLSearchParams(search).get('theme'));
+}
+
 /** Where the theme picked last is kept, which `index.html` reads too. */
-export const THEME_KEY = 'maze-studio:theme';
+const THEME_KEY = 'maze-studio:theme';
 
 function pickedTheme(): Theme | undefined {
   try {
-    const value = localStorage.getItem(THEME_KEY);
-    return value === 'light' || value === 'dark' ? value : undefined;
+    return themeOf(localStorage.getItem(THEME_KEY));
   } catch {
     return undefined;
   }
