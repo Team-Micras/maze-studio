@@ -62,6 +62,8 @@ export interface RouteRowsProps {
    * its ▶; the library and the generator, with no maze on screen, leave it out.
    */
   readonly exploration?: Exploration | null;
+  /** Called once ▶ starts the search playing, as to close a phone's sheet over the board. */
+  readonly onPlay?: () => void;
 }
 
 interface RowProps {
@@ -113,7 +115,13 @@ function Row({ id, name, label, tile, color, on, onToggle, detail, play }: RowPr
   );
 }
 
-function PlayButton({ exploration }: { readonly exploration: Exploration }) {
+function PlayButton({
+  exploration,
+  onPlay,
+}: {
+  readonly exploration: Exploration;
+  readonly onPlay: (() => void) | undefined;
+}) {
   const playing = useExplorationPlayback(
     (now) => now !== undefined && now.exploration === exploration && now.playing
   );
@@ -121,7 +129,13 @@ function PlayButton({ exploration }: { readonly exploration: Exploration }) {
   return (
     <Button
       aria-label={playing ? 'Pause the search' : 'Play the search'}
-      onClick={() => playExploration(exploration)}
+      onClick={() => {
+        playExploration(exploration);
+
+        if (!playing) {
+          onPlay?.();
+        }
+      }}
       size="icon-sm"
       variant="ghost"
     >
@@ -138,7 +152,7 @@ function explorationDetail(exploration: Exploration): string {
  * A row per route, without diagonals then with them, and one for the flood-fill search: its tile,
  * its name and its switch.
  */
-export function RouteRows({ shown, onToggle, details, exploration }: RouteRowsProps) {
+export function RouteRows({ shown, onToggle, details, exploration, onPlay }: RouteRowsProps) {
   const id = useId();
   const exploring = useShownRoutes((now) => now.exploration);
 
@@ -167,7 +181,7 @@ export function RouteRows({ shown, onToggle, details, exploration }: RouteRowsPr
         name="exploration"
         on={exploring}
         onToggle={toggleExploration}
-        play={exploration ? <PlayButton exploration={exploration} /> : undefined}
+        play={exploration ? <PlayButton exploration={exploration} onPlay={onPlay} /> : undefined}
         tile={EXPLORATION_TILE}
       />
     </div>
@@ -184,7 +198,8 @@ function Body({
   cellSize,
   shown,
   onToggle,
-}: Omit<RoutesProps, 'open' | 'onOpenChange' | 'phone'>) {
+  onPlay,
+}: Omit<RoutesProps, 'open' | 'onOpenChange' | 'phone'> & { readonly onPlay?: () => void }) {
   if (routes === undefined || routes === null) {
     return (
       <p className="px-4 pt-1 pb-4 text-[13px] text-muted-foreground" data-routes-empty="">
@@ -203,6 +218,7 @@ function Body({
         withDiagonals: `${routeDetail(routes.withDiagonals, cellSize)}${twin ? ' · same route as without diagonals' : ''}`,
       }}
       exploration={exploration}
+      onPlay={onPlay}
       onToggle={onToggle}
       shown={shown}
     />
@@ -308,7 +324,7 @@ function RoutesShell({ phone, open, onOpenChange, trigger, children }: RoutesShe
 export function Routes({ phone, open, onOpenChange, ...body }: RoutesProps) {
   return (
     <RoutesShell onOpenChange={onOpenChange} open={open} phone={phone} trigger={!phone}>
-      <Body {...body} />
+      <Body {...body} onPlay={phone ? () => onOpenChange(false) : undefined} />
     </RoutesShell>
   );
 }

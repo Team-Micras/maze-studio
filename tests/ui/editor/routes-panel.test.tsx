@@ -137,6 +137,14 @@ describe('The Routes panel', () => {
     expect(useExplorationPlayback.getState()).toBeUndefined();
   });
 
+  test('closes its sheet on a phone once ▶ starts the search, so it plays over the whole board', async () => {
+    await mount(CLASSIC, true);
+    await userEvent.click(page.getByRole('button', { name: 'Play the search' }));
+
+    expect(useExplorationPlayback.getState()?.playing).toBe(true);
+    await expect.element(page.getByRole('dialog', { name: 'Routes' })).not.toBeInTheDocument();
+  });
+
   test('asks for a start and a goal when the maze has none', async () => {
     await mount(undefined);
 
