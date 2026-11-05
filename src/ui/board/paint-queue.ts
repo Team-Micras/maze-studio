@@ -99,10 +99,16 @@ export function createPaintQueue(whenIdle: IdleScheduler): PaintQueue {
 }
 
 /**
- * The browser's idle periods; with `eachFrame`, raced against the next animation frame, which
- * paints at least one thumbnail and starts previews for {@link FRAME_PAINT_MS} more, since a fling
- * leaves almost no idle time on a phone. Without `requestIdleCallback`, as in Safari, only the
- * frames paint.
+ * How long a paint waits for an idle period with room before one is forced: a page kept busy, as
+ * a slow phone or a loaded machine, may give none for seconds.
+ */
+export const IDLE_TIMEOUT_MS = 1000;
+
+/**
+ * The browser's idle periods, which must paint once {@link IDLE_TIMEOUT_MS} passed without one;
+ * with `eachFrame`, raced against the next animation frame, which paints at least one thumbnail
+ * and starts previews for {@link FRAME_PAINT_MS} more, since a fling leaves almost no idle time on
+ * a phone. Without `requestIdleCallback`, as in Safari, only the frames paint.
  */
 export function browserIdleScheduler(eachFrame: boolean): IdleScheduler {
   return (run) => {
@@ -116,13 +122,16 @@ export function browserIdleScheduler(eachFrame: boolean): IdleScheduler {
       return;
     }
 
-    const idle = window.requestIdleCallback((deadline) => {
-      if (frame !== undefined) {
-        cancelAnimationFrame(frame);
-      }
+    const idle = window.requestIdleCallback(
+      (deadline) => {
+        if (frame !== undefined) {
+          cancelAnimationFrame(frame);
+        }
 
-      run({ timeRemaining: () => deadline.timeRemaining(), mustProgress: false });
-    });
+        run({ timeRemaining: () => deadline.timeRemaining(), mustProgress: deadline.didTimeout });
+      },
+      { timeout: IDLE_TIMEOUT_MS }
+    );
     const frame = eachFrame
       ? requestAnimationFrame(() => {
           window.cancelIdleCallback(idle);
