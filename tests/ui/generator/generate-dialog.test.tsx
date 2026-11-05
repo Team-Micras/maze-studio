@@ -1,6 +1,7 @@
-import { describe, expect, test, vi } from 'vitest';
+import type { ReactNode } from 'react';
+import { afterEach, describe, expect, test, vi } from 'vitest';
 import { page, userEvent } from 'vitest/browser';
-import { render } from 'vitest-browser-react';
+import { render as renderReact } from 'vitest-browser-react';
 
 import { readRecipe } from '@/generator';
 import { borderedMaze, toggleWall } from '@/maze';
@@ -8,8 +9,13 @@ import type { Generated } from '@/ui/editor/edit-session';
 import { Batch } from '@/ui/generator/batch-run';
 import GenerateDialog, { type GeneratorPreview } from '@/ui/generator/generate-dialog';
 import type { NewMazeRequest } from '@/ui/new-maze';
+import { NO_ROUTES, useShownRoutes } from '@/ui/route-switches';
+import { TooltipProvider } from '@/ui/primitives/tooltip';
 import '@/ui/styles.css';
 import { axeViolations } from '@tests/support/axe-check';
+import { showsAmberRoute } from '@tests/support/ui/route-pixels';
+
+const render = (ui: ReactNode) => renderReact(ui, { wrapper: TooltipProvider });
 
 const GENERATION = { timeout: 50_000 };
 
@@ -44,6 +50,21 @@ async function generate(seed = '1'): Promise<void> {
 async function open(place: number): Promise<void> {
   await userEvent.click(page.getByRole('button', { name: new RegExp(`^#${place},`) }));
 }
+
+/** The thumbnail of the first card. */
+function firstCard(): HTMLCanvasElement | null {
+  return document.querySelector('[data-card="1"] canvas');
+}
+
+/** How many routes the maze opened in the detail view draws. */
+function routesOnMaze(): number {
+  return document.querySelectorAll('[data-detail] [data-route]').length;
+}
+
+afterEach(async () => {
+  useShownRoutes.setState({ shown: NO_ROUTES });
+  await page.viewport(1440, 900);
+});
 
 describe('The Generate dialog', () => {
   test('shows its settings with every rule and fine tuning field, focuses Generate, and has no accessibility violations', async () => {
@@ -188,6 +209,32 @@ describe('The Generate dialog', () => {
     expect([statusHeight(), galleryTop()]).toEqual([height, top]);
   });
 
+  test.each([false, true])(
+    'shows and hides the routes from its own Routes, on its cards and the maze opened, phone %s',
+    async (phone) => {
+      await page.viewport(phone ? 390 : 1440, phone ? 844 : 900);
+      await mount();
+      await generate();
+      await expect.poll(building, GENERATION).toBe(false);
+
+      expect(showsAmberRoute(firstCard())).toBe(false);
+      await userEvent.click(page.getByRole('button', { name: 'Routes' }));
+      await expect.element(page.getByRole('switch', { name: 'With diagonals' })).not.toBeChecked();
+      expect(await axeViolations()).toEqual([]);
+      await userEvent.click(page.getByRole('switch', { name: 'Without diagonals' }));
+      await userEvent.click(page.getByRole('switch', { name: 'With diagonals' }));
+      await userEvent.click(page.getByRole('button', { name: 'Close routes' }));
+      await expect.poll(() => showsAmberRoute(firstCard())).toBe(true);
+
+      await open(1);
+      await expect.poll(routesOnMaze).toBe(2);
+      await userEvent.click(page.getByRole('button', { name: 'Routes' }));
+      await userEvent.click(page.getByRole('switch', { name: 'With diagonals' }));
+      await userEvent.click(page.getByRole('switch', { name: 'Without diagonals' }));
+      await expect.poll(routesOnMaze).toBe(0);
+    }
+  );
+
   test('opens a maze drawn large in a view of its own, steps with ‹ › and the arrow keys, and goes back to the gallery where it was', async () => {
     const used = await mount();
     await generate();
@@ -268,7 +315,7 @@ describe('The Generate dialog', () => {
     await expect.element(page.getByRole('button', { name: 'Settings' })).toHaveFocus();
   });
 
-  test('docked beside the editor, previews the maze opened or hovered, without a board of its own, and nothing once closed', async () => {
+  test('docked beside the editor, previews the maze opened or hovered, without a board or Routes of its own, and nothing once closed', async () => {
     const previews: (GeneratorPreview | undefined)[] = [];
     const board = borderedMaze(16, 16);
     const props = {
@@ -321,7 +368,10 @@ describe('The Generate dialog', () => {
     expect(first?.maze).toBeUndefined();
     await expect.poll(() => first?.track().started, GENERATION).toBe(true);
     await expect.poll(() => previews.at(-1)?.seed, GENERATION).toBe(1);
-    expect(previews.at(-1)).toMatchObject({ n: first?.n, builtAt: expect.any(Number) });
+    expect(previews.at(-1)).toMatchObject({
+      n: first?.n,
+      builtAt: expect.any(Number),
+    });
     expect(first?.track().walls).toBeInstanceOf(Uint8Array);
   });
 
@@ -426,7 +476,11 @@ describe('The Generate dialog', () => {
   });
 
   test('stops the run when the panel closes, dropping the mazes not yet built', async () => {
-    const props = { batch: new Batch(), onOpenChange: () => undefined, onUse: () => undefined };
+    const props = {
+      batch: new Batch(),
+      onOpenChange: () => undefined,
+      onUse: () => undefined,
+    };
     const screen = await render(<GenerateDialog {...props} open />);
     await generate();
     await expect.poll(building).toBe(true);
@@ -478,7 +532,11 @@ describe('The Generate dialog', () => {
       )
       .toBeVisible();
     await expect
-      .element(page.getByRole('heading', { name: /^#1 of 1 · from a recipe · seed 1/ }))
+      .element(
+        page.getByRole('heading', {
+          name: /^#1 of 1 · from a recipe · seed 1/,
+        })
+      )
       .toBeVisible();
     await userEvent.click(page.getByRole('button', { name: 'Back to the mazes' }));
     await expect.element(page.getByText('Seed 1', { exact: true }).first()).toBeVisible();
@@ -626,6 +684,9 @@ async function navigatorRecipe(): Promise<string> {
     },
   });
   await userEvent.click(page.getByRole('button', { name: 'Copy recipe' }));
-  Object.defineProperty(navigator, 'clipboard', { configurable: true, value: clipboard });
+  Object.defineProperty(navigator, 'clipboard', {
+    configurable: true,
+    value: clipboard,
+  });
   return copied;
 }

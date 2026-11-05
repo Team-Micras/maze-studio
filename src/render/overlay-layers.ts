@@ -59,20 +59,23 @@ export interface DiffLayers {
   readonly dashed: string;
 }
 
-/** Path data of a route: its line through the centres and wall middles, and its two ends. */
+/** Path data of a route: its line through the centres and wall middles, and the dot at its goal. */
 export interface RouteLayers {
+  /** From a little past the start chevron, so as not to cover it, to the goal cell's centre. */
   readonly line: string;
-  /** A ring on the start cell's centre. */
-  readonly start: string;
   /** A dot on the goal cell's centre. */
   readonly goal: string;
+  /** The floor-coloured disc under the goal dot and its own line, as wide around the dot as the casing is around the line. */
+  readonly goalCasing: string;
 }
 
 /** Path data of every overlay; an empty string draws nothing. */
 export interface OverlayLayers {
   readonly diff: DiffLayers;
   /** The routes shown, in the order they are painted: with diagonals on top. */
-  readonly routes: readonly (RouteLayers & { readonly name: keyof ShortestRoutes })[];
+  readonly routes: readonly (RouteLayers & {
+    readonly name: keyof ShortestRoutes;
+  })[];
   /** Cells of the finding, outlined, when it points at no edge and no post. */
   readonly focusOutline: string;
   /** Edges and posts of the finding, outlined and lightly filled. */
@@ -100,8 +103,6 @@ export interface OverlayStrokes {
   readonly route: number;
   /** The floor-coloured casing under a route, wider than the route by this much. */
   readonly routeCasing: number;
-  readonly routeStart: number;
-  readonly routeGoal: number;
 }
 
 const DIFF_PAD = 0.07;
@@ -116,8 +117,9 @@ const CURSOR_GAP = 0.08;
 const CURSOR_RADIUS = 0.08;
 const ROUTE_WIDTH = 0.085;
 const ROUTE_CORNER = 0.1;
-const ROUTE_START_RADIUS = 0.085;
+const ROUTE_LEAVE = 0.35;
 const ROUTE_GOAL_RADIUS = 0.1;
+const ROUTE_CASING = 0.06;
 const ROUTE_ORDER = ['withoutDiagonals', 'withDiagonals'] as const;
 
 /** The line widths and dashes of the overlays drawn with `geometry`. */
@@ -134,9 +136,7 @@ export function overlayStrokes(geometry: BoardGeometry): OverlayStrokes {
     previewRemoveDash: dash(0.07, 0.05),
     cursor: 0.05 * p,
     route: ROUTE_WIDTH * p,
-    routeCasing: (ROUTE_WIDTH + 0.06) * p,
-    routeStart: 0.045 * p,
-    routeGoal: 0.04 * p,
+    routeCasing: (ROUTE_WIDTH + ROUTE_CASING) * p,
   };
 }
 
@@ -277,9 +277,9 @@ function routeLayers(geometry: BoardGeometry, route: Route): RouteLayers {
   const first = all[0];
   const last = all[all.length - 1];
   return {
-    line: `M${f(first.x)} ${f(first.y)}${bends.join('')}L${f(last.x)} ${f(last.y)}`,
-    start: circlePath(first.x, first.y, ROUTE_START_RADIUS * geometry.pitch),
+    line: `M${toward(first, all[1], ROUTE_LEAVE * geometry.pitch)}${bends.join('')}L${f(last.x)} ${f(last.y)}`,
     goal: circlePath(last.x, last.y, ROUTE_GOAL_RADIUS * geometry.pitch),
+    goalCasing: circlePath(last.x, last.y, (ROUTE_GOAL_RADIUS + ROUTE_CASING / 2) * geometry.pitch),
   };
 }
 

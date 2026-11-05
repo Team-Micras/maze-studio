@@ -1,12 +1,16 @@
+import type { ReactNode } from 'react';
 import { useState } from 'react';
 import { describe, expect, test } from 'vitest';
 import { page, userEvent } from 'vitest/browser';
-import { render } from 'vitest-browser-react';
+import { render as renderReact } from 'vitest-browser-react';
 
 import { presetMaze, shortestRoutes, type ShortestRoutes } from '@/maze';
 import { Routes } from '@/ui/editor/routes-panel';
+import { TooltipProvider } from '@/ui/primitives/tooltip';
 import '@/ui/styles.css';
 import { axeViolations } from '@tests/support/axe-check';
+
+const render = (ui: ReactNode) => renderReact(ui, { wrapper: TooltipProvider });
 
 interface Heard {
   readonly toggled: (keyof ShortestRoutes)[];

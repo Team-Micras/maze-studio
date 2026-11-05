@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState, type FocusEvent } from 'react';
 
 import { mineIdOf, type CatalogEntry } from '@/library';
+import type { Maze } from '@/maze';
 import {
   libraryLayout,
   libraryRect,
@@ -11,16 +12,29 @@ import {
   type LibraryLayout,
   type RowRange,
 } from '@/render';
+import { prefetchRoutes } from '@/ui/board/route-search';
 import { paintThumbnailSkeletons } from '@/ui/board/thumbnail-skeleton';
 import { useDevicePixelRatio } from '@/ui/board/use-device-pixel-ratio';
 import { useCloseOnBack } from '@/ui/hooks/use-close-on-back';
 import { useOneRowTopBar } from '@/ui/hooks/use-media-query';
 import { Island, IslandButton } from '@/ui/islands/island';
 import { cn } from '@/ui/primitives/utils';
+import { anyRouteShown, useShownRoutes } from '@/ui/route-switches';
 
 import { Artboard } from './artboard';
-import { libraryKind, noteLibraryScroll, scrolledInsets } from './library-scroller';
+import { libraryFlung, libraryKind, noteLibraryScroll, scrolledInsets } from './library-scroller';
 import type { Library } from './use-library';
+
+/** The mazes of `entries`, decoded one at a time as they are asked for. */
+function* mazesOf(library: Library, entries: readonly CatalogEntry[]): Generator<Maze> {
+  for (const entry of entries) {
+    const maze = library.mazeOf(entry.key);
+
+    if (maze !== undefined) {
+      yield maze;
+    }
+  }
+}
 
 /** The props of {@link LibraryGrid}. */
 export interface LibraryGridProps {
@@ -88,7 +102,9 @@ function sameView(left: View, right: View): boolean {
  * screen and that the browser scrolls, with its own momentum on a phone; its columns follow its
  * width. Only the rows on screen and one more above and below are mounted, and the artboard with
  * the keyboard's focus never leaves; Tab onto an artboard under an island scrolls it into the room
- * between them. While a maze is open the grid fades out, keeping where it was scrolled to.
+ * between them. While a maze is open the grid fades out, keeping where it was scrolled to. With
+ * routes on, it has the routes of all its mazes searched in the background, in grid order, held
+ * while it is flung.
  */
 export function LibraryGrid({
   library,
@@ -104,12 +120,22 @@ export function LibraryGrid({
   const [focused, setFocused] = useState<string | undefined>(undefined);
   const [selected, setSelected] = useState<ReadonlySet<string> | undefined>(undefined);
   const [armed, setArmed] = useState(false);
+  const routesOn = useShownRoutes((now) => anyRouteShown(now.shown));
   const selecting = selected !== undefined;
   const picked = entries.flatMap((entry) => (selected?.has(entry.key) === true ? [entry.key] : []));
 
   if (selecting && (onDelete === undefined || hidden)) {
     setSelected(undefined);
   }
+
+  useEffect(() => {
+    if (!routesOn) {
+      return undefined;
+    }
+
+    prefetchRoutes(mazesOf(library, entries), libraryFlung);
+    return () => prefetchRoutes(undefined);
+  }, [routesOn, library, entries]);
 
   const hold = useCallback((key: string) => {
     setSelected(new Set([key]));

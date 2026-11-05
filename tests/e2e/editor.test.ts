@@ -128,14 +128,18 @@ function routeText(maze: Maze, name: 'withoutDiagonals' | 'withDiagonals'): stri
 }
 
 describe('Routes', () => {
-  test('draw both routes from the panel, follow the walls, and stay after the panel closes', async () => {
+  test('draw both routes once switched on in the panel, follow the walls, and stay after the panel closes', async () => {
     const { maze } = await repoContent(CLASSIC);
     const page = await openMaze(CLASSIC);
     const drawn = page.locator('[data-open-board] [data-route]');
     await expect.poll(() => drawn.count()).toBe(0);
-    await page.getByRole('button', { name: 'Routes' }).click();
+    await page.locator('[data-chrome="editor"]').getByRole('button', { name: 'Routes' }).click();
     const plain = page.locator('[data-route-row="withoutDiagonals"]');
     const diagonal = page.locator('[data-route-row="withDiagonals"]');
+    await page.waitForTimeout(300);
+    await expect.poll(() => drawn.count()).toBe(0);
+    await plain.click();
+    await diagonal.click();
     await expect.poll(() => drawn.count()).toBe(2);
     await expect.poll(() => plain.textContent()).toContain(routeText(maze, 'withoutDiagonals'));
 
