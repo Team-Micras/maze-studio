@@ -23,6 +23,12 @@ async function mount(): Promise<string[]> {
   return renamed;
 }
 
+/** The dialog's laid-out height, which its opening scale does not change. */
+function dialogHeight(): number {
+  const dialog = page.getByRole('dialog').element();
+  return dialog instanceof HTMLElement ? dialog.offsetHeight : 0;
+}
+
 describe('The Rename dialog', () => {
   test('opens with the name selected, so typing replaces it', async () => {
     const renamed = await mount();
@@ -54,11 +60,11 @@ describe('The Rename dialog', () => {
   test('refuses an empty name, and saves a free one with Enter', async () => {
     const renamed = await mount();
     const field = page.getByRole('textbox', { name: 'Name' });
-    const before = page.getByRole('dialog').element().getBoundingClientRect().height;
+    const before = dialogHeight();
     await userEvent.fill(field, '   ');
 
     await expect.element(page.getByText('Name cannot be empty')).toBeVisible();
-    expect(page.getByRole('dialog').element().getBoundingClientRect().height).toBe(before);
+    expect(dialogHeight()).toBe(before);
     await userEvent.fill(field, ' Practice run ');
     await userEvent.keyboard('{Enter}');
     expect(renamed).toEqual(['Practice run']);
