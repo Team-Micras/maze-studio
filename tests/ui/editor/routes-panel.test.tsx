@@ -1,12 +1,18 @@
 import type { ReactNode } from 'react';
 import { useState } from 'react';
-import { describe, expect, test } from 'vitest';
+import { afterEach, describe, expect, test } from 'vitest';
 import { page, userEvent } from 'vitest/browser';
 import { render as renderReact } from 'vitest-browser-react';
 
-import { presetMaze, shortestRoutes, type ShortestRoutes } from '@/maze';
+import { explore, presetMaze, shortestRoutes, type ShortestRoutes } from '@/maze';
 import { Routes } from '@/ui/editor/routes-panel';
 import { TooltipProvider } from '@/ui/primitives/tooltip';
+import {
+  NO_ROUTES,
+  stopExploration,
+  useExplorationPlayback,
+  useShownRoutes,
+} from '@/ui/route-switches';
 import '@/ui/styles.css';
 import { axeViolations } from '@tests/support/axe-check';
 
@@ -17,6 +23,12 @@ interface Heard {
 }
 
 const CLASSIC = shortestRoutes(presetMaze('classic'));
+const SEARCH = explore(presetMaze('classic'))!;
+
+afterEach(() => {
+  stopExploration();
+  useShownRoutes.setState({ shown: NO_ROUTES, exploration: false });
+});
 
 function Harness({
   routes,
@@ -32,6 +44,7 @@ function Harness({
     <main>
       <Routes
         cellSize={0.18}
+        exploration={SEARCH}
         onOpenChange={setOpen}
         onToggle={(name) => heard.toggled.push(name)}
         open={open}
@@ -92,6 +105,36 @@ describe('The Routes panel', () => {
     await userEvent.click(without);
 
     expect(heard.toggled).toEqual(['withDiagonals', 'withoutDiagonals']);
+  });
+
+  test('lists the flood-fill search with its moves, cells and walls seen, off', async () => {
+    await mount(CLASSIC);
+
+    await expect
+      .element(page.getByRole('switch', { name: /^Flood fill · to the goal/ }))
+      .not.toBeChecked();
+    await expect
+      .element(
+        page.getByText(
+          `${SEARCH.moves} moves · ${SEARCH.cells} cells · ${Math.round(SEARCH.seen * 100)}% of walls seen`
+        )
+      )
+      .toBeVisible();
+  });
+
+  test('plays the search with ▶, turning its switch on, and pauses and resumes it', async () => {
+    await mount(CLASSIC);
+    await userEvent.click(page.getByRole('button', { name: 'Play the search' }));
+
+    await expect.element(page.getByRole('switch', { name: /^Flood fill/ })).toBeChecked();
+    expect(useExplorationPlayback.getState()).toMatchObject({ exploration: SEARCH, playing: true });
+    await userEvent.click(page.getByRole('button', { name: 'Pause the search' }));
+    expect(useExplorationPlayback.getState()?.playing).toBe(false);
+    await expect.element(page.getByRole('button', { name: 'Play the search' })).toBeVisible();
+    await userEvent.click(page.getByRole('button', { name: 'Play the search' }));
+    expect(useExplorationPlayback.getState()?.playing).toBe(true);
+    await userEvent.click(page.getByRole('switch', { name: /^Flood fill/ }));
+    expect(useExplorationPlayback.getState()).toBeUndefined();
   });
 
   test('asks for a start and a goal when the maze has none', async () => {

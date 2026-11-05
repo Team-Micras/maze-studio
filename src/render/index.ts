@@ -134,5 +134,5 @@ export {
   type ThumbnailBand,
   type ThumbnailSize,
 } from './thumbnails';
-export { ROUTE_COLORS, TRACK_COLORS, TRACK_OPACITY } from './track-colors';
+export { EXPLORATION_COLOR, ROUTE_COLORS, TRACK_COLORS, TRACK_OPACITY } from './track-colors';
 export { trackLayers, trackPaint, type TrackLayers, type TrackPaint } from './track-layers';

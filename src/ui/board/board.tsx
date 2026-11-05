@@ -4,6 +4,7 @@ import type { Maze } from '@/maze';
 import {
   ARTBOARD_SIZE,
   boardGeometry,
+  EXPLORATION_COLOR,
   formatLength,
   overlayLayers,
   overlayStrokes,
@@ -13,8 +14,11 @@ import {
   trackPaint,
   type BoardGeometry,
   type BoardOverlays,
+  type OverlayStrokes,
+  type RouteLayers,
 } from '@/render';
 import { cn } from '@/ui/primitives/utils';
+import { useExplorationPlayback } from '@/ui/route-switches';
 
 /** The props of {@link Board}. */
 export interface BoardProps {
@@ -72,6 +76,39 @@ function Track({ maze, geometry }: { readonly maze: Maze; readonly geometry: Boa
   );
 }
 
+function RouteGroup({
+  name,
+  route,
+  color,
+  strokes,
+}: {
+  readonly name: string;
+  readonly route: RouteLayers;
+  readonly color: string;
+  readonly strokes: OverlayStrokes;
+}) {
+  return (
+    <g data-route={name}>
+      <Layer
+        d={route.line}
+        name="route-casing"
+        stroke={TRACK_COLORS.floor}
+        strokeOpacity={TRACK_OPACITY.routeCasing}
+        strokeWidth={strokes.routeCasing}
+        {...ROUND}
+      />
+      <Layer
+        d={route.goalCasing}
+        fill={TRACK_COLORS.floor}
+        fillOpacity={TRACK_OPACITY.routeCasing}
+        name="route-goal-casing"
+      />
+      <Layer d={route.line} name="route" stroke={color} strokeWidth={strokes.route} {...ROUND} />
+      <Layer d={route.goal} fill={color} name="route-goal" />
+    </g>
+  );
+}
+
 function Overlays({
   overlays,
   geometry,
@@ -79,7 +116,10 @@ function Overlays({
   readonly overlays: BoardOverlays;
   readonly geometry: BoardGeometry;
 }) {
-  const layers = overlayLayers(geometry, overlays);
+  const explorationAt = useExplorationPlayback((now) =>
+    now !== undefined && now.exploration === overlays.exploration ? now.at : undefined
+  );
+  const layers = overlayLayers(geometry, { ...overlays, explorationAt });
   const strokes = overlayStrokes(geometry);
   const diff = { stroke: TRACK_COLORS.diff, strokeWidth: strokes.diff };
   const preview = layers.previewRemoves
@@ -99,6 +139,7 @@ function Overlays({
 
   return (
     <g data-group="overlays">
+      <Layer name="unseen" d={layers.unseen} fill={TRACK_COLORS.unseenWall} />
       <Layer
         name="diff-added"
         d={layers.diff.added}
@@ -113,35 +154,31 @@ function Overlays({
         strokeDasharray={strokes.diffDash}
         {...diff}
       />
-      {layers.routes.map((route) => {
-        const color = ROUTE_COLORS[route.name];
-        return (
-          <g data-route={route.name} key={route.name}>
-            <Layer
-              d={route.line}
-              name="route-casing"
-              stroke={TRACK_COLORS.floor}
-              strokeOpacity={TRACK_OPACITY.routeCasing}
-              strokeWidth={strokes.routeCasing}
-              {...ROUND}
-            />
-            <Layer
-              d={route.goalCasing}
-              fill={TRACK_COLORS.floor}
-              fillOpacity={TRACK_OPACITY.routeCasing}
-              name="route-goal-casing"
-            />
-            <Layer
-              d={route.line}
-              name="route"
-              stroke={color}
-              strokeWidth={strokes.route}
-              {...ROUND}
-            />
-            <Layer d={route.goal} fill={color} name="route-goal" />
-          </g>
-        );
-      })}
+      {layers.exploration === undefined ? null : (
+        <RouteGroup
+          color={EXPLORATION_COLOR}
+          name="exploration"
+          route={layers.exploration}
+          strokes={strokes}
+        />
+      )}
+      {layers.routes.map((route) => (
+        <RouteGroup
+          color={ROUTE_COLORS[route.name]}
+          key={route.name}
+          name={route.name}
+          route={route}
+          strokes={strokes}
+        />
+      ))}
+      <Layer
+        name="robot"
+        d={layers.robot}
+        fill={TRACK_COLORS.cursor}
+        stroke={TRACK_COLORS.floor}
+        strokeWidth={strokes.robot}
+        {...ROUND}
+      />
       <Layer
         name="focus-outline"
         d={layers.focusOutline}

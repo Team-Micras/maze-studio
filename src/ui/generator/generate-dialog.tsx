@@ -40,7 +40,7 @@ import { Input } from '@/ui/primitives/input';
 import { Sheet, SheetClose, SheetContent, SheetTitle } from '@/ui/primitives/sheet';
 import { cn } from '@/ui/primitives/utils';
 import { appStorage } from '@/ui/storage';
-import { useShownRoutes } from '@/ui/route-switches';
+import { explorationShown, useShownRoutes } from '@/ui/route-switches';
 import { showToast } from '@/ui/toasts';
 
 import { Batch, MAX_ITEMS, randomSeed, type Item } from './batch-run';
@@ -477,6 +477,7 @@ function DetailView({
 }: DetailViewProps) {
   const start = useRef<{ x: number; y: number } | undefined>(undefined);
   const shownRoutes = useShownRoutes((now) => now.shown);
+  const exploring = useShownRoutes((now) => now.exploration);
   const item = items[index];
 
   if (item === undefined) {
@@ -508,7 +509,10 @@ function DetailView({
             className="h-auto w-full"
             label={`Maze #${index + 1}, seed ${item.seed}`}
             maze={measureItem(item).maze}
-            overlays={{ routes: routesShown(measureItem(item).maze, shownRoutes) }}
+            overlays={{
+              routes: routesShown(measureItem(item).maze, shownRoutes),
+              exploration: explorationShown(measureItem(item).maze, exploring),
+            }}
           />
           {item.builtAt === undefined ? null : (
             <LoadingCanvas
