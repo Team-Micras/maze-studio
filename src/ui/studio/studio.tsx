@@ -14,7 +14,6 @@ import { flushSync } from 'react-dom';
 import { useStore } from 'zustand';
 
 import { filterCatalog, type LibraryFilter } from '@/library';
-import { routesShown } from '@/maze';
 import {
   boardLimits,
   EDITOR_INSETS,
@@ -46,14 +45,14 @@ import { GenerateDialogLoader } from '@/ui/generator/generate-dialog-loader';
 import type { GeneratorPreview } from '@/ui/generator/generate-dialog';
 import { appStorage } from '@/ui/storage';
 import { EmptyLibrary, LibraryError } from '@/ui/library/empty-library';
-import type { MineAndFilesActions } from '@/ui/library/mine-and-files';
+import type { MineAndFilesActions } from '@/ui/library/library-chrome';
 import { LibraryGrid } from '@/ui/library/library-grid';
 import { libraryScroller } from '@/ui/library/library-scroller';
 import { LibraryChrome } from '@/ui/library/library-chrome';
 import type { Library } from '@/ui/library/use-library';
 import { openEntry, type OpenMaze } from '@/ui/open-maze';
 import { cn } from '@/ui/primitives/utils';
-import { explorationShown, useShownRoutes } from '@/ui/route-switches';
+import { shownOverlays, useOverlaySwitches } from '@/ui/route-switches';
 import { useTheme } from '@/ui/theme';
 import { showToast } from '@/ui/toasts';
 import { newMazeName, type NewMazeRequest } from '@/ui/new-maze';
@@ -291,8 +290,7 @@ export function Studio({
   const writing = useWriting();
   const sessionChangesNow = useStore(sessionChanges);
   const theme = useTheme((current) => current.theme);
-  const shownRoutes = useShownRoutes((now) => now.shown);
-  const exploring = useShownRoutes((now) => now.exploration);
+  const switches = useOverlaySwitches();
   const toggleTheme = useTheme((current) => current.toggle);
   const changes = useStudioChanges({
     store,
@@ -467,12 +465,7 @@ export function Studio({
             <OpenBoard
               maze={onScreen.maze}
               overlays={
-                mode === 'editor'
-                  ? editing.overlays
-                  : {
-                      routes: routesShown(onScreen.maze, shownRoutes),
-                      exploration: explorationShown(onScreen.maze, exploring),
-                    }
+                mode === 'editor' ? editing.overlays : shownOverlays(onScreen.maze, switches)
               }
               fadeIn={mode !== 'flying-out'}
               rect={board}
@@ -481,10 +474,7 @@ export function Studio({
           ) : preparedMaze === undefined ? null : (
             <OpenBoard
               maze={preparedMaze}
-              overlays={{
-                routes: routesShown(preparedMaze, shownRoutes),
-                exploration: explorationShown(preparedMaze, exploring),
-              }}
+              overlays={shownOverlays(preparedMaze, switches)}
               rect={boardOf(preparedMaze)}
               shown={false}
             />

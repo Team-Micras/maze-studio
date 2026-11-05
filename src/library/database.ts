@@ -70,13 +70,15 @@ export class Database {
   #connection: Promise<IDBDatabase> | undefined;
   readonly #reopen: () => Promise<IDBDatabase>;
 
-  /**
-   * @param database The connection to start with.
-   * @param reopen Opens a new connection once this one is closed.
-   */
-  constructor(database: IDBDatabase, reopen: () => Promise<IDBDatabase>) {
+  private constructor(reopen: () => Promise<IDBDatabase>) {
     this.#reopen = reopen;
-    this.#connection = this.#held(Promise.resolve(database));
+  }
+
+  /** A database on the connections `reopen` opens, once the first is open. */
+  static async open(reopen: () => Promise<IDBDatabase>): Promise<Database> {
+    const database = new Database(reopen);
+    await database.#open();
+    return database;
   }
 
   #held(connection: Promise<IDBDatabase>): Promise<IDBDatabase> {
@@ -244,8 +246,7 @@ export async function openDatabase(
   name: string = DATABASE_NAME,
   factory: IDBFactory = indexedDB
 ): Promise<Database> {
-  const reopen = (): Promise<IDBDatabase> => connect(name, factory);
-  return new Database(await reopen(), reopen);
+  return Database.open(() => connect(name, factory));
 }
 
 function connect(name: string, factory: IDBFactory): Promise<IDBDatabase> {

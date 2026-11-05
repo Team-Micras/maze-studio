@@ -20,7 +20,6 @@ import {
   type BoardOverlays,
 } from '@/render';
 import { Board } from '@/ui/board/board';
-import { stopExploration, useExplorationPlayback } from '@/ui/route-switches';
 import '@/ui/styles.css';
 import { settled } from '@tests/support/ui/animations';
 import { BoardHarness } from '@tests/support/ui/board-harness';
@@ -45,7 +44,6 @@ const ALL_LAYERS = [
 ];
 
 afterEach(() => {
-  stopExploration();
   document.documentElement.classList.remove('dark');
 });
 
@@ -207,8 +205,9 @@ describe('The board', () => {
   test('plays the search with its robot and the walls it has not seen dimmed, then ends still', async () => {
     const maze = await repoMaze(REPO_MAZES.classic);
     const exploration = explore(maze)!;
-    await render(<Board maze={maze} overlays={{ exploration }} />);
-    useExplorationPlayback.setState({ exploration, at: 2.5, playing: false }, true);
+    const shown = await render(
+      <Board maze={maze} overlays={{ exploration, explorationAt: 2.5 }} />
+    );
 
     await expect.poll(() => layer('robot')).not.toBeNull();
     expect(layer('robot')?.getAttribute('fill')).toBe(TRACK_COLORS.cursor);
@@ -218,11 +217,11 @@ describe('The board', () => {
       document.querySelector('[data-route="exploration"] [data-layer="route-goal"]')
     ).toBeNull();
 
-    useExplorationPlayback.setState({ exploration, at: 40.5, playing: false }, true);
+    await shown.rerender(<Board maze={maze} overlays={{ exploration, explorationAt: 40.5 }} />);
     await expect
       .poll(() => shapes('unseen'))
       .toBe(exploration.walls.filter((wall) => wall.seenAt > 40).length);
-    stopExploration();
+    await shown.rerender(<Board maze={maze} overlays={{ exploration }} />);
     await expect.poll(() => layer('robot')).toBeNull();
     expect(layer('unseen')).toBeNull();
     expect(

@@ -7,31 +7,16 @@ import {
   useSyncExternalStore,
   type FormEvent,
   type KeyboardEvent,
-  type Ref,
 } from 'react';
 
 import { BATCH, readRecipe, resize } from '@/generator';
-import { routesShown, type Maze } from '@/maze';
-import { SETTLE, type LoadingTrack } from '@/render/loading';
+import type { Maze } from '@/maze';
+import type { LoadingTrack } from '@/render/loading';
 import type { Generated } from '@/ui/editor/edit-session';
-import { ThumbnailCanvas } from '@/ui/board/thumbnail-canvas';
 import { RoutesButton } from '@/ui/editor/routes-panel';
-import { copyText } from '@/ui/editor/share';
 import { useCoarsePointer, usePhoneLayout } from '@/ui/hooks/use-media-query';
-import { Board } from '@/ui/board/board';
 import { CANVAS_ID } from '@/ui/canvas-id';
-import {
-  CaretDown,
-  CaretLeft,
-  CaretRight,
-  Check,
-  Copy,
-  DiceFive,
-  GearSix,
-  Shuffle,
-  Warning,
-  X,
-} from '@/ui/icons';
+import { CaretDown, CaretLeft, CaretRight, Check, DiceFive, GearSix, Shuffle, X } from '@/ui/icons';
 import { IslandButton } from '@/ui/islands/island';
 import type { NewMazeRequest } from '@/ui/new-maze';
 import { Badge } from '@/ui/primitives/badge';
@@ -40,32 +25,23 @@ import { Input } from '@/ui/primitives/input';
 import { Sheet, SheetClose, SheetContent, SheetTitle } from '@/ui/primitives/sheet';
 import { cn } from '@/ui/primitives/utils';
 import { appStorage } from '@/ui/storage';
-import { explorationShown, useShownRoutes } from '@/ui/route-switches';
-import { showToast } from '@/ui/toasts';
 
 import { Batch, MAX_ITEMS, randomSeed, type Item } from './batch-run';
 import {
-  cardLabel,
   generatesFor,
   isReady,
-  itemFeatures,
-  itemOrigin,
-  itemTags,
-  itemTitle,
-  elapsedText,
-  phaseText,
-  itemWarning,
   measureItem,
   replacesBoard,
   requestOf,
   statusLine,
   stepTo,
   STOPPED,
-  swipeStep,
   unsupportedBoard,
   pickHint,
   type ReadyItem,
 } from './candidates';
+import { Card } from './gallery-card';
+import { DetailView } from './detail-view';
 import { LoadingCanvas } from './loading-canvas';
 
 export { LoadingCanvas };
@@ -143,412 +119,10 @@ export interface GeneratorPreview {
   readonly builtAt?: number;
 }
 
-const CARD_SIDE = 156;
-
-/** How often, in milliseconds, the title line of a maze building reads what it is at. */
-const PHASE_READ = 200;
-
-/** How far apart, in milliseconds, the waves of two cards in a row run. */
-const WAVE_STAGGER = 537;
-
 /** What the footer says on the last maze of a full batch. */
 const FULL = `A batch holds ${MAX_ITEMS} mazes: start a new batch from the settings`;
 
 const NOT_A_RECIPE = 'This is not a recipe: copy it again with “Copy recipe”';
-
-/**
- * A ready card's thumbnail, with the routes the session shows; the first time a maze shows after
- * it was built, painted at once rather than in idle time, under the skeleton that fades into it.
- */
-function CardPicture({ item, place }: { item: ReadyItem; place: number }) {
-  const routes = useShownRoutes((now) => now.shown);
-  const exploration = useShownRoutes((now) => now.exploration);
-  const [settling] = useState(
-    () => item.builtAt !== undefined && performance.now() - item.builtAt < SETTLE
-  );
-
-  return (
-    <span className="relative self-center">
-      <ThumbnailCanvas
-        cached={!settling}
-        exploration={exploration}
-        height={CARD_SIDE}
-        maze={measureItem(item).maze}
-        routes={routes}
-        width={CARD_SIDE}
-      />
-      {settling ? (
-        <LoadingCanvas
-          builtAt={item.builtAt}
-          className="absolute inset-0"
-          offset={place * WAVE_STAGGER}
-          scale="thumbnail"
-          size={item.size}
-          style={{ width: CARD_SIDE, height: CARD_SIDE }}
-        />
-      ) : null}
-    </span>
-  );
-}
-
-function Card({
-  item,
-  place,
-  marked,
-  used,
-  onPick,
-  onHover,
-}: {
-  item: Item;
-  place: number;
-  /** Whether it is the card last opened, which the gallery marks on the way back. */
-  marked: boolean;
-  /** Whether it is the maze picked with Use this. */
-  used: boolean;
-  onPick: () => void;
-  /** Called with `true` as the pointer comes over the card, and `false` as it leaves. */
-  onHover: (over: boolean) => void;
-}) {
-  if (item.status === 'pending') {
-    return (
-      <li>
-        <button
-          aria-busy
-          aria-label={`#${place}, building`}
-          className={cn(
-            'flex w-full flex-col items-start gap-1.5 rounded-[12px] p-1.5 text-left text-xs text-muted-foreground ring-offset-background outline-none hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring',
-            marked && 'bg-accent'
-          )}
-          data-card={item.n}
-          onClick={onPick}
-          type="button"
-        >
-          <LoadingCanvas
-            className="self-center"
-            offset={place * WAVE_STAGGER}
-            scale="thumbnail"
-            size={item.size}
-            style={{ width: CARD_SIDE, height: CARD_SIDE }}
-          />
-          <span>#{place}</span>
-        </button>
-      </li>
-    );
-  }
-
-  if (!isReady(item)) {
-    return (
-      <li>
-        <div className="flex flex-col gap-1.5 rounded-[12px] p-1.5 text-xs text-muted-foreground">
-          <div className="aspect-square w-full rounded-[6px] bg-muted" />
-          <span>#{place}, not made</span>
-        </div>
-      </li>
-    );
-  }
-
-  const tags = itemTags(item);
-  const warning = itemWarning(item);
-
-  return (
-    <li>
-      <button
-        aria-label={cardLabel(item, place, used)}
-        data-card={item.n}
-        onMouseEnter={() => onHover(true)}
-        onMouseLeave={() => onHover(false)}
-        className={cn(
-          'flex w-full flex-col items-start gap-1.5 rounded-[12px] p-1.5 text-left text-xs ring-offset-background outline-none hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring',
-          marked && 'bg-accent'
-        )}
-        onClick={onPick}
-        type="button"
-      >
-        <CardPicture item={item} place={place} />
-        <span className="flex items-center gap-1">
-          {warning === undefined ? null : (
-            <span className="inline-flex" title={warning}>
-              <Warning aria-hidden className="text-amber-600 dark:text-amber-400" size={14} />
-            </span>
-          )}
-          <b className="font-semibold">#{place}</b> ·{' '}
-          <span className="font-mono">{measureItem(item).analysis.shortest}</span> cells
-          {used ? <InUse /> : null}
-        </span>
-        {tags.length === 0 ? null : (
-          <span className="flex flex-wrap gap-1">
-            {tags.map((tag) => (
-              <span
-                className="rounded-full bg-muted px-1.5 py-0.5 text-[11px] leading-none"
-                key={tag}
-              >
-                {tag}
-              </span>
-            ))}
-          </span>
-        )}
-      </button>
-    </li>
-  );
-}
-
-/** The tag of the maze picked with Use this. */
-function InUse() {
-  return <Badge className="ml-1 px-1.5 py-0.5 text-[11px] leading-none">In use</Badge>;
-}
-
-function CopyRecipe({ item }: { item: ReadyItem }) {
-  return (
-    <Button
-      aria-label="Copy recipe"
-      className="size-7 rounded-[8px]"
-      onClick={() => {
-        void copyText(JSON.stringify(item.recipe)).then((copied) =>
-          showToast(copied ? 'Recipe copied' : 'Copy failed')
-        );
-      }}
-      size="icon"
-      type="button"
-      variant="outline"
-    >
-      <Copy aria-hidden />
-    </Button>
-  );
-}
-
-/** `read` of what `track` returns, read again a few times a second. */
-function useTrackText(
-  track: () => LoadingTrack,
-  read: (track: LoadingTrack, now: number) => string
-): string {
-  const latest = useRef(track);
-  const [text, setText] = useState(() => read(track(), performance.now()));
-
-  useLayoutEffect(() => {
-    latest.current = track;
-  });
-
-  useEffect(() => {
-    const timer = setInterval(() => setText(read(latest.current(), performance.now())), PHASE_READ);
-    return () => clearInterval(timer);
-  }, [read]);
-
-  return text;
-}
-
-/**
- * What a maze still building is at, under a band of light that sweeps it so a long stage still
- * shows it works; plain under reduced motion.
- */
-function PhaseText({ track }: { track: () => LoadingTrack }) {
-  return <span className="text-shimmer">{useTrackText(track, phaseText)}</span>;
-}
-
-/** For how long a maze has been building, at the end of its title line where Copy recipe comes. */
-function Elapsed({ track }: { track: () => LoadingTrack }) {
-  return (
-    <span className="shrink-0 font-mono text-xs text-muted-foreground tabular-nums">
-      {useTrackText(track, elapsedText)}
-    </span>
-  );
-}
-
-/** The line that names a maze: "#4 of 8 · seed 4004890115 · Diagonal staircases". */
-function MazeTitle({
-  item,
-  place,
-  total,
-  headingRef,
-  track,
-}: {
-  item: Item;
-  place: number;
-  total: number;
-  headingRef?: Ref<HTMLHeadingElement>;
-  track: () => LoadingTrack;
-}) {
-  return (
-    <h3
-      className="min-w-0 flex-1 truncate text-[13px] leading-5 font-semibold outline-none"
-      id={`maze-${item.n}`}
-      ref={headingRef}
-      tabIndex={-1}
-    >
-      {itemTitle(place, total)}
-      <span className="font-normal text-muted-foreground">
-        {' · '}
-        {isReady(item) ? (
-          itemOrigin(item)
-        ) : item.status !== 'pending' ? (
-          'The generator could not make this maze'
-        ) : (
-          <PhaseText key={item.n} track={track} />
-        )}
-      </span>
-    </h3>
-  );
-}
-
-/**
- * A maze's title line, and once it is built Copy recipe, its tags and its sentences, the Off target
- * one first. The title stays the same element as the maze gets built, so focus on it stays too.
- */
-function Details({
-  item,
-  place,
-  total,
-  used,
-  headingRef,
-  track,
-}: {
-  item: Item;
-  place: number;
-  total: number;
-  used: boolean;
-  headingRef?: Ref<HTMLHeadingElement>;
-  track: () => LoadingTrack;
-}) {
-  const ready = isReady(item);
-  const warning = ready ? itemWarning(item) : undefined;
-  const tags = ready ? itemTags(item) : [];
-
-  return (
-    <section aria-labelledby={`maze-${item.n}`} className="flex flex-col gap-1.5">
-      <div className="flex min-h-7 items-center gap-2">
-        <MazeTitle headingRef={headingRef} item={item} place={place} total={total} track={track} />
-        {used ? <InUse /> : null}
-        {ready ? (
-          <CopyRecipe item={item} />
-        ) : item.status === 'pending' ? (
-          <Elapsed key={item.n} track={track} />
-        ) : null}
-      </div>
-      {tags.length === 0 ? null : (
-        <ul aria-label="This maze has" className="flex flex-wrap gap-1">
-          {tags.map((tag) => (
-            <li className="rounded-full bg-muted px-1.5 py-0.5 text-[11px] leading-none" key={tag}>
-              {tag}
-            </li>
-          ))}
-        </ul>
-      )}
-      {!ready ? null : (
-        <ul className="flex list-disc flex-col gap-0.5 pl-4 text-xs leading-4">
-          {warning === undefined ? null : (
-            <li className="-ml-4 flex list-none items-start gap-1 text-amber-700 dark:text-amber-400">
-              <Warning aria-hidden className="shrink-0" size={14} />
-              {warning}
-            </li>
-          )}
-          {itemFeatures(item).map((line) => (
-            <li key={line}>{line}</li>
-          ))}
-        </ul>
-      )}
-    </section>
-  );
-}
-
-interface DetailViewProps {
-  readonly items: readonly Item[];
-  readonly index: number;
-  /** The `n` of the maze picked with Use this. */
-  readonly used: number | undefined;
-  /** Draws the maze large; not beside the editor, whose own board shows it. */
-  readonly withBoard: boolean;
-  readonly headingRef: Ref<HTMLHeadingElement>;
-  /** What the maze numbered `n` has shown of its progress. */
-  readonly track: (n: number) => LoadingTrack;
-  /** Steps to the maze before (-1) or after (1), as a swipe asks. */
-  readonly onSwipe: (delta: -1 | 1) => void;
-}
-
-/**
- * The maze opened from the gallery, a view pushed over it: drawn large with the routes the session
- * shows, unless the editor's board shows it, then its title line with Copy recipe, its tags and
- * its sentences. A swipe steps.
- */
-function DetailView({
-  items,
-  index,
-  used,
-  withBoard,
-  headingRef,
-  track,
-  onSwipe,
-}: DetailViewProps) {
-  const start = useRef<{ x: number; y: number } | undefined>(undefined);
-  const shownRoutes = useShownRoutes((now) => now.shown);
-  const exploring = useShownRoutes((now) => now.exploration);
-  const item = items[index];
-
-  if (item === undefined) {
-    return null;
-  }
-
-  return (
-    <div
-      className="flex touch-pan-y touch-pinch-zoom flex-col gap-2"
-      data-detail
-      onPointerDown={(event) => {
-        start.current =
-          event.pointerType === 'mouse' ? undefined : { x: event.clientX, y: event.clientY };
-      }}
-      onPointerUp={(event) => {
-        const from = start.current;
-        start.current = undefined;
-        const delta =
-          from === undefined ? 0 : swipeStep(event.clientX - from.x, event.clientY - from.y);
-
-        if (delta !== 0) {
-          onSwipe(delta);
-        }
-      }}
-    >
-      {!withBoard ? null : isReady(item) ? (
-        <div className="relative" key={item.n}>
-          <Board
-            className="h-auto w-full"
-            label={`Maze #${index + 1}, seed ${item.seed}`}
-            maze={measureItem(item).maze}
-            overlays={{
-              routes: routesShown(measureItem(item).maze, shownRoutes),
-              exploration: explorationShown(measureItem(item).maze, exploring),
-            }}
-          />
-          {item.builtAt === undefined ? null : (
-            <LoadingCanvas
-              builtAt={item.builtAt}
-              className="absolute inset-0 w-full"
-              scale="board"
-              size={item.size}
-              track={() => track(item.n)}
-            />
-          )}
-        </div>
-      ) : item.status === 'pending' ? (
-        <div aria-busy key={item.n}>
-          <LoadingCanvas
-            className="w-full"
-            scale="board"
-            size={item.size}
-            track={() => track(item.n)}
-          />
-        </div>
-      ) : (
-        <div className="aspect-square w-full rounded-[6px] bg-muted" />
-      )}
-      <Details
-        headingRef={headingRef}
-        item={item}
-        place={index + 1}
-        total={items.length}
-        track={() => track(item.n)}
-        used={item.n === used}
-      />
-    </div>
-  );
-}
 
 /**
  * The Generate dialog (beta) of New maze and of the editor, in its own chunk with the generator:

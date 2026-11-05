@@ -16,6 +16,7 @@
  */
 
 import { horizontalEdgeIndex, verticalEdgeIndex, type Cell, type Maze } from './maze';
+import { mazeMemo } from './maze-memo';
 
 /** A point of a route in cells: `u` east from the west border, `v` north from the south border. */
 export interface RoutePoint {
@@ -38,9 +39,6 @@ export interface ShortestRoutes {
   readonly withoutDiagonals: Route;
   readonly withDiagonals: Route;
 }
-
-/** Whether each of the two routes is drawn. */
-export type RouteSwitches = Readonly<Record<keyof ShortestRoutes, boolean>>;
 
 const DX = [0, 1, 1, 1, 0, -1, -1, -1];
 const DY = [1, 1, 0, -1, -1, -1, 0, 1];
@@ -219,8 +217,6 @@ function routeOf(nodes: readonly number[], span: number): Route {
   return { points: doubled.map(([a, b]) => ({ u: a / 2, v: b / 2 })), cells, length };
 }
 
-const memo = new WeakMap<Maze, ShortestRoutes | null | undefined>();
-
 function routesOf(maze: Maze): ShortestRoutes | null | undefined {
   const { start } = maze;
 
@@ -235,45 +231,13 @@ function routesOf(maze: Maze): ShortestRoutes | null | undefined {
     : { withoutDiagonals, withDiagonals };
 }
 
+/** The routes remembered per maze. */
+export const routesMemo = mazeMemo(routesOf);
+
 /**
  * The shortest routes of `maze`: `undefined` when it has no start or no goal, `null` when no goal
  * is in reach of the start. Remembered per maze, which never changes.
  */
 export function shortestRoutes(maze: Maze): ShortestRoutes | null | undefined {
-  if (!memo.has(maze)) {
-    memo.set(maze, routesOf(maze));
-  }
-
-  return memo.get(maze);
-}
-
-/** Remembers `routes` as those of `maze`, searched elsewhere, as in a worker. */
-export function rememberRoutes(maze: Maze, routes: ShortestRoutes | null | undefined): void {
-  memo.set(maze, routes);
-}
-
-/** Whether the routes of `maze` are searched already, so {@link shortestRoutes} returns at once. */
-export function routesKnown(maze: Maze): boolean {
-  return memo.has(maze);
-}
-
-/**
- * The routes of `maze` that `switches` turn on, or `undefined` when none is on, which searches
- * nothing, and when the maze has no routes.
- */
-export function routesShown(
-  maze: Maze,
-  switches: RouteSwitches | undefined
-): Partial<ShortestRoutes> | undefined {
-  if (switches === undefined || (!switches.withoutDiagonals && !switches.withDiagonals)) {
-    return undefined;
-  }
-
-  const routes = shortestRoutes(maze) ?? undefined;
-  return (
-    routes && {
-      withoutDiagonals: switches.withoutDiagonals ? routes.withoutDiagonals : undefined,
-      withDiagonals: switches.withDiagonals ? routes.withDiagonals : undefined,
-    }
-  );
+  return routesMemo.get(maze);
 }

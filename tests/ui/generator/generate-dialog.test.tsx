@@ -9,7 +9,7 @@ import type { Generated } from '@/ui/editor/edit-session';
 import { Batch } from '@/ui/generator/batch-run';
 import GenerateDialog, { type GeneratorPreview } from '@/ui/generator/generate-dialog';
 import type { NewMazeRequest } from '@/ui/new-maze';
-import { NO_ROUTES, stopExploration, useShownRoutes } from '@/ui/route-switches';
+import { NO_OVERLAYS, stopExploration, useOverlaySwitches } from '@/ui/route-switches';
 import { TooltipProvider } from '@/ui/primitives/tooltip';
 import '@/ui/styles.css';
 import { axeViolations } from '@tests/support/axe-check';
@@ -62,7 +62,7 @@ function routesOnMaze(): number {
 }
 
 afterEach(async () => {
-  useShownRoutes.setState({ shown: NO_ROUTES, exploration: false });
+  useOverlaySwitches.setState(NO_OVERLAYS, true);
   stopExploration();
   await page.viewport(1440, 900);
 });

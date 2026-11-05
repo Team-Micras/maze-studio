@@ -58,6 +58,9 @@ export interface BoardOverlays {
   readonly cursor?: Cell;
 }
 
+/** The shortest routes and the flood-fill search drawn over a maze, as the session's switches pick. */
+export type RouteOverlays = Pick<BoardOverlays, 'routes' | 'exploration'>;
+
 /** Path data of the diff: walls put, marks set, and what was taken or unmarked. */
 export interface DiffLayers {
   /** Walls put, outlined and lightly filled. */

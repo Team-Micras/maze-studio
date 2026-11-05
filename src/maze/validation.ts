@@ -22,6 +22,7 @@ import {
 } from './validation-types';
 
 export {
+  CELL_SIZES,
   RULES,
   type Finding,
   type Post,

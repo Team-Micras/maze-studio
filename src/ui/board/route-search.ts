@@ -11,22 +11,18 @@
 import {
   encodeMazeCode,
   explore,
-  rememberExploration,
-  rememberRoutes,
-  routesKnown,
+  rememberSearches,
+  searchesKnown,
   shortestRoutes,
-  type Exploration,
   type Maze,
-  type ShortestRoutes,
+  type MazeSearches,
 } from '@/maze';
 
 import { schedulePaint } from './paint-queue';
 
 /** What the worker answers: the routes and search of the maze of `code`, or that they `failed`. */
-export interface RoutesFound {
+export interface RoutesFound extends MazeSearches {
   readonly code: string;
-  readonly routes: ShortestRoutes | null | undefined;
-  readonly exploration: Exploration | null | undefined;
   readonly failed?: true;
 }
 
@@ -69,7 +65,7 @@ function next(): Request | undefined {
   }
 
   for (let step = prefetched?.next(); step !== undefined && !step.done; step = prefetched?.next()) {
-    if (!routesKnown(step.value)) {
+    if (!searchesKnown(step.value)) {
       return { maze: step.value, urgent: false, waiting: new Set() };
     }
   }
@@ -89,8 +85,7 @@ function answer(found: RoutesFound): void {
     if (found.failed === true) {
       searchInIdle(request);
     } else {
-      rememberRoutes(request.maze, found.routes);
-      rememberExploration(request.maze, found.exploration);
+      rememberSearches(request.maze, found);
       request.waiting.forEach((resume) => resume());
     }
   }

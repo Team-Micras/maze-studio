@@ -7,7 +7,7 @@ import {
   encodeMazeCode,
   explore,
   setStart,
-  routesKnown,
+  searchesKnown,
   shortestRoutes,
   toggleWall,
   type Maze,
@@ -263,9 +263,9 @@ describe('ThumbnailCache', () => {
     const maze = await repoMaze(REPO_MAZES.classic);
     const routes = shortestRoutes(maze);
     const cache = new ThumbnailCache();
-    const both = { ...routes };
-    const one = { withDiagonals: routes?.withDiagonals };
-    const none = { withoutDiagonals: undefined, withDiagonals: undefined };
+    const both = { routes: { ...routes } };
+    const one = { routes: { withDiagonals: routes?.withDiagonals } };
+    const none = { routes: { withoutDiagonals: undefined, withDiagonals: undefined } };
     const plain = cache.thumbnail('a', maze, 128);
     const routed = cache.thumbnail('a', maze, 128, both);
 
@@ -278,7 +278,7 @@ describe('ThumbnailCache', () => {
 
   test('keeps a thumbnail with the search apart from the one with only its routes', async () => {
     const maze = await repoMaze(REPO_MAZES.classic);
-    const routes = { ...shortestRoutes(maze) };
+    const routes = { routes: { ...shortestRoutes(maze) } };
     const cache = new ThumbnailCache();
     const routed = cache.thumbnail('a', maze, 128, routes);
     const explored = cache.thumbnail('a', maze, 128, { ...routes, exploration: explore(maze)! });
@@ -326,14 +326,14 @@ describe('Screenshots of thumbnails', () => {
       repoMaze(REPO_MAZES.classic),
       repoMaze(REPO_MAZES.halfsize),
     ]);
-    const both = { withoutDiagonals: true, withDiagonals: true };
+    const both = { withoutDiagonals: true, withDiagonals: true, exploration: false };
     await render(
       <div
         data-testid="thumbnails"
         style={{ display: 'inline-flex', gap: 16, padding: 16, background: '#191919' }}
       >
-        <ThumbnailCanvas cached={false} height={160} maze={classic} routes={both} width={160} />
-        <ThumbnailCanvas cached={false} height={160} maze={halfsize} routes={both} width={160} />
+        <ThumbnailCanvas cached={false} height={160} maze={classic} overlays={both} width={160} />
+        <ThumbnailCanvas cached={false} height={160} maze={halfsize} overlays={both} width={160} />
       </div>
     );
 
@@ -477,17 +477,17 @@ describe('ThumbnailCanvas', () => {
       <ThumbnailCanvas
         height={200}
         maze={maze}
-        routes={{ withoutDiagonals: true, withDiagonals: true }}
+        overlays={{ withoutDiagonals: true, withDiagonals: true, exploration: false }}
         width={200}
       />
     );
     const canvas = document.querySelector('canvas');
 
     expect(canvas?.hasAttribute('data-painted')).toBe(true);
-    expect(routesKnown(maze)).toBe(false);
+    expect(searchesKnown(maze)).toBe(false);
     expect(showsAmberRoute(canvas)).toBe(false);
     await expect.poll(() => showsAmberRoute(canvas)).toBe(true);
-    expect(routesKnown(maze)).toBe(true);
+    expect(searchesKnown(maze)).toBe(true);
   });
 
   test('paints the routes of a flung thumbnail, once searched, as its preview first and sharp once it stops', async () => {
@@ -502,7 +502,7 @@ describe('ThumbnailCanvas', () => {
         flung={() => moving}
         height={200}
         maze={maze}
-        routes={{ withoutDiagonals: true, withDiagonals: true }}
+        overlays={{ withoutDiagonals: true, withDiagonals: true, exploration: false }}
         width={200}
       />
     );

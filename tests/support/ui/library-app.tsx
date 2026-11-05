@@ -8,7 +8,7 @@ import { expect } from 'vitest';
 import { render } from 'vitest-browser-react';
 
 import { App } from '@/ui/app';
-import { NO_ROUTES, stopExploration, useShownRoutes } from '@/ui/route-switches';
+import { NO_OVERLAYS, stopExploration, useOverlaySwitches } from '@/ui/route-switches';
 import { settled } from '@tests/support/ui/animations';
 
 /** The artboards in the DOM. */
@@ -21,7 +21,7 @@ export function artboards(): HTMLAnchorElement[] {
  * artboards.
  */
 export async function mountApp(hash = '#/'): Promise<void> {
-  useShownRoutes.setState({ shown: NO_ROUTES, exploration: false });
+  useOverlaySwitches.setState(NO_OVERLAYS, true);
   stopExploration();
   window.history.replaceState(
     null,

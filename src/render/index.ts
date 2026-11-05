@@ -103,6 +103,7 @@ export {
   overlayLayers,
   overlayStrokes,
   type BoardOverlays,
+  type RouteOverlays,
   type Dash,
   type DiffLayers,
   type EdgePreview,
@@ -133,7 +134,6 @@ export {
   thumbnailSize,
   type Canvas2D,
   type ThumbnailBand,
-  type ThumbnailRoutes,
   type ThumbnailSize,
 } from './thumbnails';
 export { EXPLORATION_COLOR, ROUTE_COLORS, TRACK_COLORS, TRACK_OPACITY } from './track-colors';
