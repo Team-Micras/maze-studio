@@ -317,9 +317,9 @@ function RoutesShell({ phone, open, onOpenChange, trigger, children }: RoutesShe
  * The Routes panel (DESIGN.md 6): the shortest route without diagonals and the one with them,
  * each with its cells, its length and a switch that shows it on the board, and the flood-fill
  * search, with its moves, cells and walls seen, its switch and a ▶ that plays it on the board; the
- * routes stay on the board after the panel closes, until their switches turn them off. On a notebook it opens from
- * the Routes button as a popover that stays open while the board is edited; on a phone, from the
- * ⋯ menu, as a sheet as tall as its rows.
+ * routes stay on the board after the panel closes, until their switches turn them off. On a
+ * notebook it opens from the Routes button as a popover that stays open while the board is
+ * edited; on a phone, from the ⋯ menu, as a sheet as tall as its rows, which ▶ closes.
  */
 export function Routes({ phone, open, onOpenChange, ...body }: RoutesProps) {
   return (

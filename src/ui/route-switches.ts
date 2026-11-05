@@ -2,8 +2,7 @@
  * Which shortest routes and whether the flood-fill search the app draws (DESIGN.md 6), one choice
  * for the session that the editor's board and Routes panel, the generator's gallery and maze, and
  * the library's thumbnails share. All start off; each switch turns its drawing on or off
- * everywhere, and opening a Routes panel changes nothing. The search is never drawn on a
- * thumbnail.
+ * everywhere, and opening a Routes panel changes nothing.
  *
  * The editor's ▶ plays the search on its board: {@link useExplorationPlayback} holds how far.
  *

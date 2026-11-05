@@ -144,7 +144,10 @@ function paintRoutes(
 /** What a thumbnail draws over the track; anything left out is not drawn. */
 export interface ThumbnailOverlays {
   readonly diff?: MazeDiff;
-  /** The routes drawn on top of all, the search's trail under them; what is left out is not drawn. */
+  /**
+   * The routes drawn on top of all, the search's trail under them; what is left out is not
+   * drawn.
+   */
   readonly routes?: ThumbnailRoutes;
 }
 

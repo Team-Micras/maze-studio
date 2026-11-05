@@ -408,9 +408,13 @@ describe('The flood-fill search', () => {
     await expect.poll(robot).toBe(true);
     expect(document.querySelector('[data-open-board] [data-layer="unseen"]')).not.toBeNull();
     expect(routesOpacity()).toBe('0.3');
-    expect(
-      document.querySelector('[data-open-board] [data-group="routes"] ~ [data-route="exploration"]')
-    ).not.toBeNull();
+    await expect
+      .poll(() =>
+        document.querySelector(
+          '[data-open-board] [data-group="routes"] ~ [data-route="exploration"]'
+        )
+      )
+      .not.toBeNull();
     const playing = useExplorationPlayback.getState()!;
     useExplorationPlayback.setState({ ...playing, at: playing.exploration.moves - 0.01 }, true);
     await expect.poll(robot).toBe(false);

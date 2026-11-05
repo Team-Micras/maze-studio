@@ -53,6 +53,9 @@ export const TRACK_OPACITY = {
   previewFill: 0.5,
   previewOutline: 0.6,
   routeCasing: 0.9,
-  /** The shortest routes while the flood-fill search plays, drawn under its trail so it stands out. */
+  /**
+   * The shortest routes while the flood-fill search plays, drawn under its trail so it stands
+   * out.
+   */
   routesWhilePlaying: 0.3,
 } as const;

@@ -59,6 +59,27 @@ describe('explore', () => {
     expect(exploration.seen).toBeCloseTo(22 / 24, 9);
   });
 
+  test('goes left on a tie between left and right', () => {
+    const tee = [
+      'o---o---o---o',
+      '|     G     |',
+      'o   o---o   o',
+      '|           |',
+      'o---o   o---o',
+      '|   | S |   |',
+      'o---o---o---o',
+      '',
+    ].join('\n');
+
+    expect(explore(textMaze(tee))!.steps).toEqual([
+      { x: 1, y: 0, heading: 'north' },
+      { x: 1, y: 1, heading: 'north' },
+      { x: 0, y: 1, heading: 'west' },
+      { x: 0, y: 2, heading: 'north' },
+      { x: 1, y: 2, heading: 'east' },
+    ]);
+  });
+
   test('records the step at which each wall became known', () => {
     expect(seenAt('horizontal', 0, 0)).toBe(0);
     expect(seenAt('vertical', 1, 0)).toBe(0);

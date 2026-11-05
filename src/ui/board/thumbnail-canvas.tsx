@@ -3,7 +3,6 @@ import { useEffect, useRef } from 'react';
 import {
   encodeMazeCode,
   explorationKnown,
-  explore,
   routesKnown,
   routesShown,
   type Maze,
@@ -19,7 +18,7 @@ import {
   type ThumbnailRoutes,
 } from '@/render';
 import { cn } from '@/ui/primitives/utils';
-import { anyRouteShown } from '@/ui/route-switches';
+import { anyRouteShown, explorationShown } from '@/ui/route-switches';
 
 import { schedulePaint } from './paint-queue';
 import { requestRoutes } from './route-search';
@@ -53,7 +52,10 @@ export interface ThumbnailCanvasProps {
    * not searched yet shows without them, and with them once a worker has searched them.
    */
   readonly routes?: RouteSwitches;
-  /** Whether the flood-fill search's trail is drawn under the routes, unless a diff is; off by default. */
+  /**
+   * Whether the flood-fill search's trail is drawn under the routes, unless a diff is; off by
+   * default.
+   */
   readonly exploration?: boolean;
   /**
    * Whether a missing bitmap paints at the next frame when no idle time comes first, as through a
@@ -187,7 +189,7 @@ function shownOf(
   exploring: boolean
 ): ThumbnailRoutes | undefined {
   const routes = routesShown(maze, switches);
-  const exploration = exploring ? (explore(maze) ?? undefined) : undefined;
+  const exploration = explorationShown(maze, exploring);
   return exploration === undefined ? routes : { ...routes, exploration };
 }
 

@@ -1,7 +1,8 @@
 /**
  * The maze core: the model, its edits and their history, the diff between two mazes, the
- * mazefiles text format, the compact code, validation, the shortest routes and the flood-fill search. Pure TypeScript, with
- * no React, no browser API beyond text encoding, and no other module of maze-studio.
+ * mazefiles text format, the compact code, validation, the shortest routes and the flood-fill
+ * search. Pure TypeScript, with no React, no browser API beyond text encoding, and no other
+ * module of maze-studio.
  *
  * @module
  */

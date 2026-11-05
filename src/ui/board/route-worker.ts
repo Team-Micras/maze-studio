@@ -1,7 +1,7 @@
 /**
- * The worker that searches the shortest routes and the flood-fill search of thumbnails, so a search never takes a frame's
- * or an idle period's time on the page: one maze per message, as its compact code, and its routes
- * and search back, or that the search failed.
+ * The worker that searches the shortest routes and the flood-fill search of thumbnails, so a
+ * search never takes a frame's or an idle period's time on the page: one maze per message, as its
+ * compact code, and its routes and search back, or that the search failed.
  *
  * @module
  */
