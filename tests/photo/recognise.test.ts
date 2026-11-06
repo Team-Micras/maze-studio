@@ -6,6 +6,7 @@ import {
   lensOf,
   lightness,
   locateBoard,
+  lowered,
   project,
   recogniseMaze,
   refinePosts,
@@ -15,7 +16,7 @@ import {
   type Plane,
   type Point,
 } from '@/photo';
-import { drawBoard } from '@tests/support/photo/draw-board';
+import { drawBoard, drawStandingBoard } from '@tests/support/photo/draw-board';
 import { randomMaze } from '@tests/support/photo/random-maze';
 
 const SIZE = 8;
@@ -161,11 +162,108 @@ describe('finding the posts from corners all shifted the same way', () => {
   });
 });
 
+describe('finding the posts of a board seen at a slant', () => {
+  test('keeps the far posts on their tops, not on the lit sides below them', () => {
+    const { photo, tops } = drawStandingBoard(
+      randomMaze(16, 5),
+      { width: 960, height: 720, focal: 1000, tilt: 60, distance: 28 },
+      { top: 120, side: 230 }
+    );
+    const truth = { homography: tops, lens: lensOf(960, 720) };
+    const corners = [
+      { x: 0, y: 0 },
+      { x: 16, y: 0 },
+      { x: 16, y: 16 },
+      { x: 0, y: 16 },
+    ].map((corner) => project(truth, corner));
+    const found = locateBoard(lightness(photo), corners, 16);
+    const far = Array.from({ length: 17 }, (_, x) => {
+      const a = project(found, { x, y: 0 });
+      const b = project(truth, { x, y: 0 });
+      return Math.hypot(a.x - b.x, a.y - b.y);
+    });
+    expect(far.reduce((sum, error) => sum + error, 0) / far.length).toBeLessThan(3);
+  });
+});
+
+/** The largest distance between where two cameras show the posts of a 16 × 16 board. */
+function miss(from: Camera, to: Camera): number {
+  let worst = 0;
+
+  for (let y = 0; y <= 16; y++) {
+    for (let x = 0; x <= 16; x++) {
+      const a = project(from, { x, y });
+      const b = project(to, { x, y });
+      worst = Math.max(worst, Math.hypot(a.x - b.x, a.y - b.y));
+    }
+  }
+
+  return worst;
+}
+
+describe('lowering the board along its normal', () => {
+  const STANDING = { width: 960, height: 720, focal: 1000, distance: 28 };
+  const BOARD = [
+    { x: 0, y: 0 },
+    { x: 16, y: 0 },
+    { x: 16, y: 16 },
+    { x: 0, y: 16 },
+  ];
+
+  test('puts the tops of a board seen at a slant on its floor', () => {
+    const { tops, floor } = drawStandingBoard(
+      randomMaze(16, 5),
+      { ...STANDING, tilt: 60 },
+      { top: 120, side: 230 }
+    );
+    const lens = lensOf(960, 720);
+    expect(miss(lowered({ homography: tops, lens }, 1), { homography: floor, lens })).toBeLessThan(
+      0.01
+    );
+  });
+
+  test('lowers a board seen nearly straight down, from corners a pixel or two off, closer to its floor', () => {
+    const { tops, floor } = drawStandingBoard(
+      randomMaze(16, 5),
+      { ...STANDING, tilt: 1 },
+      { top: 120, side: 230 }
+    );
+    const lens = lensOf(960, 720);
+    const corners = BOARD.map((corner, index) => {
+      const at = project({ homography: tops, lens }, corner);
+      const [dx, dy] = [
+        [2, -1],
+        [-1, -2],
+        [1, 2],
+        [-2, 1],
+      ][index];
+      return { x: at.x + dx, y: at.y + dy };
+    });
+    const seen = { homography: fitHomography(BOARD, corners), lens };
+    const truth = { homography: floor, lens };
+    expect(miss(lowered(seen, 1), truth)).toBeLessThan(miss(seen, truth));
+  });
+
+  test('reads every wall of a board seen at a slant, below the tops', () => {
+    const maze = randomMaze(16, 5);
+    const { photo, tops } = drawStandingBoard(
+      maze,
+      { ...STANDING, tilt: 60 },
+      { top: 200, side: 230 }
+    );
+    const [nw, ne, se, sw] = BOARD.map((corner) =>
+      project({ homography: tops, lens: lensOf(960, 720) }, corner)
+    );
+    const corners: [Point, Point, Point, Point] = [nw, ne, se, sw];
+    expect(wrongEdges(recogniseMaze(photo, { size: 16, corners }).maze, maze)).toEqual([]);
+  });
+});
+
 describe('recognising a maze', () => {
-  test('moves the board onto the posts when the corners are a little off', () => {
+  test('moves the board onto the posts of a flat drawing when the corners are a little off', () => {
     const truth = cameraOf(CORNERS);
     const off = cameraOf(OFF);
-    const refined = refinePosts(lightness(PHOTO), off, SIZE);
+    const refined = refinePosts(lightness(PHOTO), off, SIZE, { reach: 0.15, step: 0.025 });
     expect(worstError(off, truth)).toBeGreaterThan(7);
     expect(worstError(refined, truth)).toBeLessThan(5.5);
   });
@@ -188,17 +286,15 @@ describe('recognising a maze', () => {
     expect(found.confidence.horizontal[0]).toBe(1);
   });
 
-  test('walls the posts left with no wall and reports the rules the maze still breaks', () => {
+  test('leaves the clearly lone posts of a clean photo unwalled and reports them', () => {
     const found = recogniseMaze(drawBoard(LONELY, fitHomography(SQUARE, CORNERS), 600, 460), {
       size: SIZE,
       corners: OFF,
     });
-    expect(found.walled.length).toBeGreaterThan(0);
     expect(wrongEdges(found.maze, LONELY).map(key).toSorted()).toEqual(
       found.walled.map(key).toSorted()
     );
-    expect(found.broken.length).toBeGreaterThan(0);
-    expect(found.broken.flatMap((entry) => entry.rules)).not.toContain('lonePost');
+    expect(found.broken.flatMap((entry) => entry.rules)).toContain('lonePost');
     expect(found.broken.every((entry) => entry.rules.length > 0)).toBe(true);
   });
 

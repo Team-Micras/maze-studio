@@ -9,7 +9,7 @@ import { Bits, createMaze, type Cell, type Edge, type Maze } from '@/maze';
 import { otsuThreshold, scoreEdges, type EdgeScores } from './classify';
 import type { Point } from './homography';
 import { lightness, type Photo } from './image';
-import { locateBoard } from './posts';
+import { locateBoard, lowered, seesSides } from './posts';
 import { rectify } from './rectify';
 import { brokenRules, HALF_SIZE, repairClassic, type BrokenRule } from './rules';
 
@@ -43,8 +43,8 @@ export interface Recognition {
   readonly confidence: EdgeScores;
   /**
    * The walls added by the repair of a classic maze: one on the highest-scoring edge of each post
-   * with no wall, and on the start's open sides but its lowest-scoring one; none for a half-size
-   * maze.
+   * with no wall, when that edge lies close to the threshold and stands out from the post's others,
+   * and on the start's open sides but its lowest-scoring one; none for a half-size maze.
    */
   readonly walled: readonly Edge[];
   /** Every edge at which the maze breaks a rule of a runnable maze, with the rules it breaks. */
@@ -53,6 +53,15 @@ export interface Recognition {
 
 /** Board pixels a cell: a wall top, a fifteenth of a cell, covers one or two. */
 const SCALE = 24;
+
+/**
+ * The share of the wall height below the tops at which the board is straightened and its walls
+ * read, when its cells are big enough to tell the tops from the sides. On the tops themselves the
+ * lit side of a crossing wall, which faces the camera, covers the middle of the edges next to it.
+ * Tuned on the open frames: a quarter of the way down leaves 41 of 62 with no wrong edge, against
+ * 39 at 0.35, 30 halfway down and about 23 on the tops.
+ */
+const READ_DEPTH = 0.25;
 
 function convexInOrder(corners: readonly Point[]): boolean {
   const turns = corners.map((corner, index) => {
@@ -69,9 +78,10 @@ function convexInOrder(corners: readonly Point[]): boolean {
 
 /**
  * Recognises the walls of a maze from `photo` and its `outline`: fits the board and the lens to
- * the posts found from the four corners, straightens the board through them, scores every edge by
- * how much lighter its wall top is than the floor, splits the scores at Otsu's threshold, walls
- * the posts left with no wall, and reports the rules the maze still breaks.
+ * the post tops found from the four corners, straightens the board through them a little below
+ * the tops, scores every edge by how much lighter its wall is than the floor, splits the scores at
+ * Otsu's threshold, walls the posts left with no wall where one edge stands out, and reports the
+ * rules the maze still breaks.
  *
  * The corners may run either way round the board: the reverse order reads the maze mirrored.
  *
@@ -87,7 +97,11 @@ export function recogniseMaze(photo: Photo, outline: MazeOutline): Recognition {
 
   const plane = lightness(photo);
   const camera = locateBoard(plane, corners, size);
-  const scores = scoreEdges(rectify(plane, camera, size, SCALE), size, SCALE);
+  const scores = scoreEdges(
+    rectify(plane, seesSides(camera, size) ? lowered(camera, READ_DEPTH) : camera, size, SCALE),
+    size,
+    SCALE
+  );
   const horizontalBorder = (index: number) => index < size || index >= size * size;
   const verticalBorder = (index: number) => index % (size + 1) === 0 || index % (size + 1) === size;
   const internal = [
@@ -101,6 +115,7 @@ export function recogniseMaze(photo: Photo, outline: MazeOutline): Recognition {
     2;
   const sure = (value: number) =>
     Number.isNaN(value) || !(spread > 0) ? 0 : Math.min(1, Math.abs(value - threshold) / spread);
+  const margin = (value: number) => (value - threshold) / spread;
 
   const { maze, walled } = repairClassic(
     createMaze({
@@ -117,7 +132,7 @@ export function recogniseMaze(photo: Photo, outline: MazeOutline): Recognition {
       start: outline.start,
       goals: outline.goals ?? middleGoals(size),
     }),
-    scores
+    { horizontal: scores.horizontal.map(margin), vertical: scores.vertical.map(margin) }
   );
   const rules = brokenRules(maze);
 
