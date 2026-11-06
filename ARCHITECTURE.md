@@ -56,7 +56,7 @@ Each of `src/maze`, `src/library`, `src/render`, `src/generator` and `src/photo`
   the board on the plane of the wall tops through the camera; `posts.ts` fits the camera to the posts found from the
   corners, coarse to fine; `classify.ts` scores each edge by how much lighter its thin wall top is than the floor,
   against its neighbours' scores, and splits the scores at Otsu's threshold; `rules.ts` finds the rules a maze breaks
-  and walls a classic maze's lone posts; `recognise.ts` is the entry point, `recogniseMaze`, and `score.ts` compares a
+  and repairs a classic maze's lone posts and start; `recognise.ts` is the entry point, `recogniseMaze`, and `score.ts` compares a
   recognition with the true maze. Only `scripts/eval.ts` imports it yet: it scores
   `recogniseMaze` on a folder of `maze-label/1` files (`scripts/maze-label.ts`, its type and validator), decoding the
   photos in Chromium through Playwright, with the measures of `scripts/evaluation.ts`.

@@ -16,6 +16,10 @@ function scores(size: number, score: (edge: Edge) => number): EdgeScores {
   };
 }
 
+function pick(edge: Edge, direction: Edge['direction'], x: number, y: number): boolean {
+  return edge.direction === direction && edge.x === x && edge.y === y;
+}
+
 describe('the rules a maze breaks at an edge', () => {
   test('a post with no wall and the start open on two sides', () => {
     const edge: Edge = { direction: 'vertical', x: 1, y: 0 };
@@ -48,14 +52,20 @@ describe('the rules a maze breaks at an edge', () => {
     expect(brokenRules(goals)(edge)).not.toContain('goalWall');
   });
 
-  test('allows posts with no wall in a half-size maze', () => {
+  test('flags posts with no wall at every size', () => {
     const edge: Edge = { direction: 'vertical', x: 1, y: 5 };
-    expect(brokenRules(borderedMaze(32, 32))(edge)).not.toContain('lonePost');
+    expect(brokenRules(borderedMaze(32, 32))(edge)).toContain('lonePost');
     expect(brokenRules(borderedMaze(16, 16))(edge)).toContain('lonePost');
+  });
+
+  test('flags only the open sides of a start open on more than one side', () => {
+    const maze = setWall(borderedMaze(3, 3), { direction: 'horizontal', x: 1, y: 1 }, true);
+    expect(brokenRules(maze)({ direction: 'vertical', x: 1, y: 0 })).toContain('startOpen');
+    expect(brokenRules(maze)({ direction: 'horizontal', x: 0, y: 0 })).not.toContain('startOpen');
   });
 });
 
-describe('the repair of the posts with no wall', () => {
+describe('the repair of a classic maze', () => {
   test('walls the highest-scoring edge of each lone post, outside the middle of the goal', () => {
     const maze = setGoals(borderedMaze(4, 4), [
       { x: 1, y: 1 },
@@ -86,7 +96,27 @@ describe('the repair of the posts with no wall', () => {
         edge.direction === shared.direction && edge.x === shared.x && edge.y === shared.y ? 1 : 0
       )
     );
-    expect(walled).toEqual([shared]);
+    expect(walled[0]).toEqual(shared);
+    expect(walled.filter((edge) => edge.x !== 0)).toEqual([shared]);
+  });
+
+  test('walls every open side of the start but its lowest-scoring one', () => {
+    const { walled } = repairLonePosts(
+      borderedMaze(2, 2),
+      scores(2, (edge) =>
+        pick(edge, 'horizontal', 1, 1)
+          ? 0.9
+          : pick(edge, 'horizontal', 0, 1)
+            ? 0.3
+            : pick(edge, 'vertical', 1, 0)
+              ? 0.2
+              : 0.1
+      )
+    );
+    expect(walled).toEqual([
+      { direction: 'horizontal', x: 1, y: 1 },
+      { direction: 'horizontal', x: 0, y: 1 },
+    ]);
   });
 
   test('leaves a half-size maze as it is', () => {

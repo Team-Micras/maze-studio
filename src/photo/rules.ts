@@ -41,15 +41,13 @@ function reachable(maze: Maze, start: Cell): Set<number> {
 
 /**
  * The rules `maze` breaks at an edge, judged with its start (the south-west corner when it has
- * none) and goals: a post at either end with no wall, outside the middle of the goal, unless the
- * maze is half size; a cell on either side that the start cannot reach; the start, open on more
- * than one side, on either side; a wall between two goal cells.
+ * none) and goals: a post at either end with no wall, outside the middle of the goal, which the
+ * app warns of at every size; a cell on either side that the start cannot reach; the start, open
+ * on more than one side, on either side of an open edge; a wall between two goal cells.
  */
 export function brokenRules(maze: Maze): (edge: Edge) => BrokenRule[] {
   const start = maze.start ?? { x: 0, y: 0 };
-  const lone = new Set(
-    maze.width >= HALF_SIZE ? [] : loosePosts(maze).map((post) => `${post.x},${post.y}`)
-  );
+  const lone = new Set(loosePosts(maze).map((post) => `${post.x},${post.y}`));
   const seen = reachable(maze, start);
   const startOpen = openNeighbours(maze, start).length > 1;
   const goals = new Set(maze.goals.map((goal) => cellIndex(maze.width, goal)));
@@ -82,7 +80,11 @@ export function brokenRules(maze: Maze): (edge: Edge) => BrokenRule[] {
       broken.push('unreachable');
     }
 
-    if (startOpen && inside.some((cell) => cell.x === start.x && cell.y === start.y)) {
+    if (
+      startOpen &&
+      !hasWall(maze, edge) &&
+      inside.some((cell) => cell.x === start.x && cell.y === start.y)
+    ) {
       broken.push('startOpen');
     }
 
@@ -106,17 +108,25 @@ function scoreOf(scores: EdgeScores, width: number, edge: Edge): number {
 }
 
 /**
- * `maze` with a wall on the highest-scoring edge of each post that has none, outside the middle
- * of the goal, and the edges walled; a half-size maze, whose rules allow such posts, is returned
- * as it is.
+ * `maze` repaired by the rules of a classic maze, and the edges walled: a wall on the
+ * highest-scoring edge of each post that has none, outside the middle of the goal, and on every
+ * open side of the start but its lowest-scoring one. A half-size maze, whose rules allow posts
+ * with no wall, is returned as it is.
  */
 export function repairLonePosts(maze: Maze, scores: EdgeScores): { maze: Maze; walled: Edge[] } {
   if (maze.width >= HALF_SIZE) {
     return { maze, walled: [] };
   }
 
+  const score = (edge: Edge) => scoreOf(scores, maze.width, edge);
+  const highestFirst = (edges: readonly Edge[]) =>
+    edges.filter((edge) => !Number.isNaN(score(edge))).toSorted((a, b) => score(b) - score(a));
   let repaired = maze;
   const walled: Edge[] = [];
+  const wall = (edge: Edge) => {
+    repaired = setWall(repaired, edge, true);
+    walled.push(edge);
+  };
 
   for (const { x, y } of loosePosts(maze)) {
     const edges: Edge[] = [
@@ -125,15 +135,25 @@ export function repairLonePosts(maze: Maze, scores: EdgeScores): { maze: Maze; w
       { direction: 'vertical', x, y: y - 1 },
       { direction: 'vertical', x, y },
     ];
-    const best = edges
-      .filter((edge) => !Number.isNaN(scoreOf(scores, maze.width, edge)))
-      .toSorted((a, b) => scoreOf(scores, maze.width, b) - scoreOf(scores, maze.width, a))[0];
+    const best = highestFirst(edges)[0];
 
     if (best !== undefined && edges.every((edge) => !hasWall(repaired, edge))) {
-      repaired = setWall(repaired, best, true);
-      walled.push(best);
+      wall(best);
     }
   }
+
+  const start = repaired.start ?? { x: 0, y: 0 };
+  const exits = openNeighbours(repaired, start).map((next): Edge =>
+    next.x === start.x
+      ? { direction: 'horizontal', x: start.x, y: Math.max(start.y, next.y) }
+      : { direction: 'vertical', x: Math.max(start.x, next.x), y: start.y }
+  );
+
+  const rank = (edge: Edge) => (Number.isNaN(score(edge)) ? Number.NEGATIVE_INFINITY : score(edge));
+  exits
+    .toSorted((a, b) => rank(b) - rank(a))
+    .slice(0, -1)
+    .forEach(wall);
 
   return { maze: repaired, walled };
 }

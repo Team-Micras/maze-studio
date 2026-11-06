@@ -34,7 +34,7 @@ export interface MazeOutline {
 
 /** A recognised maze and how sure the recogniser is of each edge. */
 export interface Recognition {
-  /** The walls found, the border always walled; no start and no goals. */
+  /** The walls found, the border always walled, with the start and goals the rules were judged with. */
   readonly maze: Maze;
   /**
    * From 0 (a coin toss) to 1 (sure) per edge, in the order of the maze's wall sets; the border
@@ -42,8 +42,9 @@ export interface Recognition {
    */
   readonly confidence: EdgeScores;
   /**
-   * The walls added by the repair of the posts with no wall, each on the post's highest-scoring
-   * edge; none for a half-size maze, whose rules allow such posts.
+   * The walls added by the repair of a classic maze: one on the highest-scoring edge of each post
+   * with no wall, and on the start's open sides but its lowest-scoring one; none for a half-size
+   * maze.
    */
   readonly walled: readonly Edge[];
   /** Every edge at which the maze breaks a rule of a runnable maze, with the rules it breaks. */
@@ -121,12 +122,7 @@ export function recogniseMaze(photo: Photo, outline: MazeOutline): Recognition {
   const rules = brokenRules(maze);
 
   return {
-    maze: createMaze({
-      width: size,
-      height: size,
-      horizontal: maze.horizontal,
-      vertical: maze.vertical,
-    }),
+    maze,
     confidence: {
       horizontal: scores.horizontal.map((value, index) =>
         horizontalBorder(index) ? 1 : sure(value)

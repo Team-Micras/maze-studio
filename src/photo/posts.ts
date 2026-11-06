@@ -9,18 +9,33 @@ import { fitHomography, type Point } from './homography';
 import { sampleBilinear, type Plane } from './image';
 import { K1_RANGE, lensOf, project, undistort, type Camera } from './lens';
 
-/** A search for each post near its predicted spot: how far and in what steps, as shares of a cell. */
-interface Search {
+/**
+ * A search for each post near its predicted spot: how far and in what steps, as shares of a cell,
+ * and how much a spot gains for walls leaving it both east–west and north–south.
+ */
+export interface Search {
   readonly reach: number;
   readonly step: number;
+  readonly crossing?: number;
 }
 
+/** How far along the walls from a post they are read, as a share of a cell. */
+const ARM = 0.3;
+
 /**
- * The post searches after the lens is chosen, coarse to fine: the first reaches half a cell, so
- * corners a third of a cell off still find their own posts and not the next ones.
+ * The weight of walls leaving a spot both east–west and north–south: a point on a straight wall
+ * looks as much like a post as the post itself, and with corners all shifted along the walls the
+ * nearest such point would win.
+ */
+const CROSSING = 0.5;
+
+/**
+ * The post searches, coarse to fine: the first reaches half a cell and favours spots where walls
+ * cross, so corners a third of a cell off still find their own posts and not the next ones or a
+ * point on a wall.
  */
 const SEARCHES: readonly Search[] = [
-  { reach: 0.5, step: 0.05 },
+  { reach: 0.5, step: 0.05, crossing: CROSSING },
   { reach: 0.15, step: 0.025 },
   { reach: 0.15, step: 0.025 },
 ];
@@ -34,9 +49,11 @@ const CORNER_K1_STEPS = [0.05, 0.01] as const;
 /**
  * The share of the posts' distance with no lens under which the lens's must fall, after the last
  * search, for the lens to be kept: a slight bend is left to the homography, since a lens fitted
- * to it costs undistorted photos more than it gains.
+ * to it costs undistorted photos frames with no wrong edge. Tuned on the open frames (6 distorted
+ * ones from 3 events fall to 0.05–0.6, undistorted ones stay at 0.75–1) and set high, since
+ * dropping a lens that is needed costs far more than keeping one that is not.
  */
-const LENS_SHARE = 0.7;
+const LENS_SHARE = 0.85;
 
 /** How far `k1` may move in one refit to the posts. */
 const POST_K1_REACH = 0.05;
@@ -79,25 +96,32 @@ function near(camera: Camera, post: Point): ((dx: number, dy: number) => Point) 
   });
 }
 
-/** How post-like the photo looks `(dx, dy)` cells from a post: light there, dark on the diagonals. */
+/**
+ * How post-like the photo looks `(dx, dy)` cells from a post: light there, dark on the diagonals,
+ * and, weighted by `crossing`, light both east or west and north or south.
+ */
 function postResponse(
   photo: Plane,
   at: (dx: number, dy: number) => Point,
   dx: number,
-  dy: number
+  dy: number,
+  crossing: number
 ): number {
   const read = (x: number, y: number) => {
     const p = at(dx + x, dy + y);
     return sampleBilinear(photo, p.x, p.y);
   };
-  return (
-    read(0, 0) -
+  const floor =
     (read(-DIAGONAL, -DIAGONAL) +
       read(DIAGONAL, -DIAGONAL) +
       read(-DIAGONAL, DIAGONAL) +
       read(DIAGONAL, DIAGONAL)) /
-      4
+    4;
+  const across = Math.min(
+    Math.max(read(-ARM, 0), read(ARM, 0)),
+    Math.max(read(0, -ARM), read(0, ARM))
   );
+  return read(0, 0) - floor + crossing * (across - floor);
 }
 
 function distance(a: Point, b: Point): number {
@@ -167,7 +191,7 @@ function searchPosts(
   photo: Plane,
   camera: Camera,
   size: number,
-  { reach, step }: Search
+  { reach, step, crossing = 0 }: Search
 ): { grid: Point[]; found: Point[]; total: number } {
   const grid: Point[] = [];
   const found: Point[] = [];
@@ -188,7 +212,8 @@ function searchPosts(
         for (let column = -steps; column <= steps; column++) {
           const [dx, dy] = [column * step, row * step];
           const response =
-            postResponse(photo, at, dx, dy) - DISTANCE_COST * Math.sqrt(dx * dx + dy * dy);
+            postResponse(photo, at, dx, dy, crossing) -
+            DISTANCE_COST * Math.sqrt(dx * dx + dy * dy);
 
           if (response > best.response) {
             best = { response, dx, dy };
@@ -295,20 +320,42 @@ export function refinePosts(
           const error = distance(project(candidate, point), found[index]) ** 2;
           return sum + (error < cap ? error : cap);
         }, 0);
-  const k1 = bestK1(camera.lens.k1, POST_K1_REACH, POST_K1_STEPS, (value) =>
-    cost(fitToPosts(photo, grid, found, size, value))
-  );
+  const k1 =
+    lensShare > 0
+      ? bestK1(camera.lens.k1, POST_K1_REACH, POST_K1_STEPS, (value) =>
+          cost(fitToPosts(photo, grid, found, size, value))
+        )
+      : 0;
   const fitted = fitToPosts(photo, grid, found, size, k1);
   const lens = fitted !== undefined && cost(fitted) < cost(camera) ? fitted : camera;
   const plain = fitToPosts(photo, grid, found, size, 0);
   return plain === undefined || cost(lens) <= lensShare * cost(plain) ? lens : plain;
 }
 
+/** `camera` refitted to the posts through every search, the lens kept as {@link refinePosts} does. */
+function fitThroughSearches(photo: Plane, camera: Camera, size: number, lensShare: number): Camera {
+  let fitted = camera;
+
+  for (const [index, search] of SEARCHES.entries()) {
+    fitted = refinePosts(
+      photo,
+      fitted,
+      size,
+      search,
+      index === SEARCHES.length - 1 || lensShare === 0 ? lensShare : 1
+    );
+  }
+
+  return fitted;
+}
+
 /**
  * The camera of a `size × size` board whose corner posts are seen at `corners`: first the lens
  * that best shows posts where the board, held to the corners, puts them; then the board and the
- * lens refitted to the posts, from a search half a cell wide to a fine one; and the lens dropped
- * at the end unless it brings the posts clearly closer than no lens.
+ * lens refitted to the posts, from a search half a cell wide to a fine one, the lens dropped at
+ * the end unless it brings the posts clearly closer than no lens. A lens chosen that way may only
+ * make up for corners shifted the same way, so the board is also fitted with no lens at all, and
+ * the one whose posts look more like posts is kept.
  *
  * @throws {RangeError} When the corners do not determine a homography.
  */
@@ -319,21 +366,22 @@ export function locateBoard(photo: Plane, corners: readonly Point[], size: numbe
       ? Number.POSITIVE_INFINITY
       : -searchPosts(photo, candidate, size, LENS_SEARCH).total;
   });
-  let camera = throughCorners(photo, corners, size, k1);
+  const start = throughCorners(photo, corners, size, k1);
+  const flat = throughCorners(photo, corners, size, 0);
 
-  if (camera === undefined) {
+  if (start === undefined || flat === undefined) {
     throw new RangeError('the corners do not determine a homography');
   }
 
-  for (const [index, search] of SEARCHES.entries()) {
-    camera = refinePosts(
-      photo,
-      camera,
-      size,
-      search,
-      index === SEARCHES.length - 1 ? LENS_SHARE : 1
-    );
+  const lensed = fitThroughSearches(photo, start, size, LENS_SHARE);
+
+  if (k1 === 0) {
+    return lensed;
   }
 
-  return camera;
+  const plain = fitThroughSearches(photo, flat, size, 0);
+  const fine = SEARCHES[SEARCHES.length - 1];
+  return searchPosts(photo, lensed, size, fine).total > searchPosts(photo, plain, size, fine).total
+    ? lensed
+    : plain;
 }

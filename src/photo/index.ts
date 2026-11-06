@@ -26,7 +26,7 @@ export {
   type Camera,
   type Lens,
 } from './lens';
-export { locateBoard, refinePosts } from './posts';
+export { locateBoard, refinePosts, type Search } from './posts';
 export { recogniseMaze, type MazeOutline, type Recognition } from './recognise';
 export { rectify } from './rectify';
 export { brokenRules, HALF_SIZE, repairLonePosts, type BrokenRule } from './rules';

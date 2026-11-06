@@ -12,6 +12,7 @@ import {
   scoreRecognition,
   wrongEdges,
   type Camera,
+  type Plane,
   type Point,
 } from '@/photo';
 import { drawBoard } from '@tests/support/photo/draw-board';
@@ -69,37 +70,67 @@ const OFF: [Point, Point, Point, Point] = [
   { x: 44, y: 376 },
 ];
 
-describe('recognising a maze', () => {
-  test('moves the board onto the posts when the corners are a little off', () => {
-    const truth = cameraOf(CORNERS);
-    const off = cameraOf(OFF);
-    const refined = refinePosts(lightness(PHOTO), off, SIZE);
-    expect(worstError(off, truth)).toBeGreaterThan(7);
-    expect(worstError(refined, truth)).toBeLessThan(5.5);
-  });
+/** A 960 × 720 photo of a `size × size` board, undistorted, and its camera. */
+function shiftBoard(size: number): { photo: Plane; truth: Camera; cell: number } {
+  const square = [
+    { x: 0, y: 0 },
+    { x: size, y: 0 },
+    { x: size, y: size },
+    { x: 0, y: size },
+  ];
+  const seen = [
+    { x: 160, y: 40 },
+    { x: 820, y: 60 },
+    { x: 920, y: 700 },
+    { x: 50, y: 680 },
+  ];
+  const truth = { homography: fitHomography(square, seen), lens: lensOf(960, 720) };
+  const cell =
+    seen.reduce(
+      (sum, corner, index) =>
+        sum + Math.hypot(seen[(index + 1) % 4].x - corner.x, seen[(index + 1) % 4].y - corner.y),
+      0
+    ) /
+    (4 * size);
+  return {
+    photo: lightness(drawBoard(randomMaze(size, 5), truth.homography, 960, 720)),
+    truth,
+    cell,
+  };
+}
 
-  test('finds the posts of a half-size board from corners a third of a cell off', () => {
-    const size = 32;
-    const square = [
+const SHIFTED = { 16: shiftBoard(16), 32: shiftBoard(32) };
+
+const DIRECTIONS = [
+  ['east', 1, 0],
+  ['west', -1, 0],
+  ['south', 0, 1],
+  ['north', 0, -1],
+] as const;
+
+describe('finding the posts from corners all shifted the same way', () => {
+  test.each(
+    ([16, 32] as const).flatMap((size) =>
+      (
+        [
+          ['a third', 1 / 3],
+          ['a quarter', 1 / 4],
+          ['0.15', 0.15],
+        ] as const
+      ).flatMap(([amount, share]) =>
+        DIRECTIONS.map(([name, dx, dy]) => ({ size, amount, share, name, dx, dy }))
+      )
+    )
+  )('$size × $size, $amount of a cell $name', ({ size, share, dx, dy }) => {
+    const { photo, truth, cell } = SHIFTED[size];
+    const corners = [
       { x: 0, y: 0 },
       { x: size, y: 0 },
       { x: size, y: size },
       { x: 0, y: size },
-    ];
-    const truth = {
-      homography: fitHomography(square, [
-        { x: 160, y: 40 },
-        { x: 820, y: 60 },
-        { x: 920, y: 700 },
-        { x: 50, y: 680 },
-      ]),
-      lens: lensOf(960, 720),
-    };
-    const photo = lightness(drawBoard(randomMaze(size, 5), truth.homography, 960, 720));
-    const cell = 25;
-    const corners = square.map((corner, index) => {
-      const seen = project(truth, corner);
-      return { x: seen.x + 0.35 * cell, y: seen.y + (index % 2 === 0 ? 0.2 : -0.2) * cell };
+    ].map((corner) => {
+      const at = project(truth, corner);
+      return { x: at.x + dx * share * cell, y: at.y + dy * share * cell };
     });
     const found = locateBoard(photo, corners, size);
     let worst = 0;
@@ -113,6 +144,16 @@ describe('recognising a maze', () => {
     }
 
     expect(worst).toBeLessThan(0.1 * cell);
+  });
+});
+
+describe('recognising a maze', () => {
+  test('moves the board onto the posts when the corners are a little off', () => {
+    const truth = cameraOf(CORNERS);
+    const off = cameraOf(OFF);
+    const refined = refinePosts(lightness(PHOTO), off, SIZE);
+    expect(worstError(off, truth)).toBeGreaterThan(7);
+    expect(worstError(refined, truth)).toBeLessThan(5.5);
   });
 
   test('keeps the board when no post is there to fit', () => {
