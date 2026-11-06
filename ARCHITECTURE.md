@@ -54,8 +54,8 @@ Each of `src/maze`, `src/library`, `src/render`, `src/generator` and `src/photo`
   photos. `homography.ts` fits the board to the photo by the normalised DLT, four pairs or many by least squares;
   `rectify.ts` straightens the board on the plane of the wall tops; `posts.ts` refits it to the posts found near where
   it puts them; `classify.ts` scores each edge by how much lighter its thin wall top is than the floor, against its
-  neighbours' scores, and splits the scores at Otsu's threshold; `recognise.ts` is the entry point, `recogniseMaze`, and `score.ts` compares a
-  recognition with the true maze. Nothing imports it yet.
+  neighbours' scores, and splits the scores at Otsu's threshold; `recognise.ts` is the entry point, `recogniseMaze`,
+  and `score.ts` compares a recognition with the true maze. Nothing imports it yet.
 - **`src/ui`** is the app:
   - `app.tsx`, the shell: the route from the hash (`routes.ts`, `navigation.ts`), the library (`library/use-library.ts`),
     the maze the route opens (`open-maze.ts`), the editing session, toasts and theme.

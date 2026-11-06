@@ -6,7 +6,7 @@
  * @module
  */
 
-export { normaliseLocally, otsuThreshold, scoreEdges, type EdgeScores } from './classify';
+export { normaliseLocally, otsuThreshold, scoreEdges, topHat, type EdgeScores } from './classify';
 export {
   applyHomography,
   fitHomography,

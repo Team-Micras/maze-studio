@@ -59,8 +59,10 @@ function convexInOrder(corners: readonly Point[]): boolean {
  * four corners, fits the homography to the posts found near where it puts them, scores every edge
  * by how much lighter its wall top is than the floor, and splits the scores at Otsu's threshold.
  *
+ * The corners may run either way round the board: the reverse order reads the maze mirrored.
+ *
  * @throws {RangeError} When the corners are not finite or do not outline a convex quadrilateral in
- * order, as when two coincide, three lie on a line, or two are swapped.
+ * order, as when two coincide, three lie on a line, or two adjacent ones are swapped.
  */
 export function recogniseMaze(photo: Photo, outline: MazeOutline): Recognition {
   const { size, corners } = outline;

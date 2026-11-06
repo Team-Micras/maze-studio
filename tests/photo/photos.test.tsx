@@ -26,7 +26,10 @@ interface Annotation {
 
 const FIXTURES: readonly Annotation[] = fixtureFile;
 
-/** The lowest score each photo of the repository may reach, just under what it reaches now. */
+/**
+ * The lowest score each photo of the repository may reach, just under what it reaches now:
+ * 0.995, at most 2 wrong edges of 480.
+ */
 const FLOORS: Record<string, number> = {
   'rcx-2026-classic-2.jpg': 0.995,
   'rcx-2026-classic-day1-1.jpg': 0.995,

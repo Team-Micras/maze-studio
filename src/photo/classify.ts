@@ -55,9 +55,9 @@ function range(from: number, to: number): number[] {
 }
 
 /** `board` read along and across the edges of one direction, `NaN` outside it. */
-function readerOf(board: Plane, across: 'rows' | 'columns'): Reader {
+function readerOf(board: Plane, lines: 'rows' | 'columns'): Reader {
   return (along, crossing) => {
-    const [column, row] = across === 'rows' ? [along, crossing] : [crossing, along];
+    const [column, row] = lines === 'rows' ? [along, crossing] : [crossing, along];
     return column < 0 || row < 0 || column >= board.width || row >= board.height
       ? Number.NaN
       : board.data[row * board.width + column];
@@ -66,7 +66,7 @@ function readerOf(board: Plane, across: 'rows' | 'columns'): Reader {
 
 /**
  * The median, along every edge of a `size × size` board at `scale` pixels a cell, of what
- * `column(pixel, along, line)` measures at each position along it, `line` being the edge's pixel
+ * `measure(pixel, along, line)` measures at each position along it, `line` being the edge's pixel
  * boundary; east–west edges read `rows`, north–south ones `columns`, both with `(0, 0)` of the
  * board at the north-west corner.
  */
@@ -75,13 +75,13 @@ function alongEdges(
   columns: Reader,
   size: number,
   scale: number,
-  column: (pixel: Reader, along: number, line: number) => number
+  measure: (pixel: Reader, along: number, line: number) => number
 ): EdgeScores {
   const trim = Math.round(END_TRIM * scale);
   const median = (pixel: Reader, line: number, segment: number) =>
     quantile(
       range(segment * scale + trim, (segment + 1) * scale - trim).map((along) =>
-        column(pixel, along, line * scale)
+        measure(pixel, along, line * scale)
       ),
       0.5
     );
@@ -97,30 +97,79 @@ function alongEdges(
 }
 
 /**
+ * The smallest value of `padded` in each window of `span` values, written to `out`, by the van
+ * Herk and Gil-Werman method: two prefix and suffix passes over blocks of `span`, so the cost does
+ * not grow with the window. `before` and `after` are scratch arrays as long as `padded`.
+ */
+function windowMinimum(
+  padded: Float64Array,
+  span: number,
+  before: Float64Array,
+  after: Float64Array,
+  out: Float64Array
+): void {
+  const length = padded.length;
+
+  for (let index = 0; index < length; index++) {
+    before[index] = index % span === 0 ? padded[index] : Math.min(before[index - 1], padded[index]);
+  }
+
+  for (let index = length - 1; index >= 0; index--) {
+    after[index] =
+      index === length - 1 || (index + 1) % span === 0
+        ? padded[index]
+        : Math.min(after[index + 1], padded[index]);
+  }
+
+  for (let index = 0; index < out.length; index++) {
+    out[index] = Math.min(after[index], before[index + span - 1]);
+  }
+}
+
+/**
  * The white top-hat of `board` across one direction: each pixel less the opening (the largest of
  * the smallest values) over a window `width` pixels long, which keeps the light bands narrower
  * than the window, the wall tops, and drops broad light regions, the sides of walls and glare.
+ * `NaN` pixels are skipped, and a window of only `NaN` ones gives `NaN`.
  */
-function topHat(board: Plane, width: number, across: 'rows' | 'columns'): Plane {
+export function topHat(board: Plane, width: number, across: 'rows' | 'columns'): Plane {
   const half = Math.floor(width / 2);
-  const [step, count] = across === 'rows' ? [board.width, board.height] : [1, board.width];
-  const slide = (data: Float32Array, pick: (a: number, b: number) => number) =>
-    data.map((_, index) => {
-      const position = across === 'rows' ? Math.floor(index / board.width) : index % board.width;
-      let picked = Number.NaN;
+  const span = 2 * half + 1;
+  const [step, count, lines, lineStep] =
+    across === 'rows'
+      ? [board.width, board.height, board.width, 1]
+      : [1, board.width, board.height, board.width];
+  const padded = new Float64Array(count + 2 * half);
+  const before = new Float64Array(padded.length);
+  const after = new Float64Array(padded.length);
+  const smallest = new Float64Array(count);
+  const opened = new Float32Array(board.data.length);
 
-      for (
-        let offset = Math.max(-half, -position);
-        offset <= Math.min(half, count - 1 - position);
-        offset++
-      ) {
-        const value = data[index + offset * step];
-        picked = Number.isNaN(picked) ? value : Number.isNaN(value) ? picked : pick(picked, value);
-      }
+  for (let line = 0; line < lines; line++) {
+    const start = line * lineStep;
+    padded.fill(Number.POSITIVE_INFINITY);
 
-      return picked;
-    });
-  const opened = slide(slide(board.data, Math.min), Math.max);
+    for (let index = 0; index < count; index++) {
+      const value = board.data[start + index * step];
+      padded[half + index] = Number.isNaN(value) ? Number.POSITIVE_INFINITY : value;
+    }
+
+    windowMinimum(padded, span, before, after, smallest);
+    padded.fill(Number.POSITIVE_INFINITY);
+
+    for (let index = 0; index < count; index++) {
+      padded[half + index] =
+        smallest[index] === Number.POSITIVE_INFINITY ? smallest[index] : -smallest[index];
+    }
+
+    windowMinimum(padded, span, before, after, smallest);
+
+    for (let index = 0; index < count; index++) {
+      opened[start + index * step] =
+        smallest[index] === Number.POSITIVE_INFINITY ? Number.NaN : -smallest[index];
+    }
+  }
+
   return { ...board, data: board.data.map((value, index) => value - opened[index]) };
 }
 
@@ -138,11 +187,9 @@ export function scoreEdges(board: Plane, size: number, scale: number): EdgeScore
   const top = (pixel: Reader, along: number, line: number) =>
     lightest(range(line - reach, line + reach).map((across) => pixel(along, across)));
   const floor = (pixel: Reader, along: number, line: number) => {
-    const sides = [
-      darkest(range(line - far, line - reach).map((across) => pixel(along, across))),
-      darkest(range(line + reach, line + far).map((across) => pixel(along, across))),
-    ];
-    return darkest(sides);
+    const side = (from: number, to: number) =>
+      darkest(range(from, to).map((across) => pixel(along, across)));
+    return Math.min(side(line - far, line - reach), side(line + reach, line + far));
   };
   const width = Math.round(TOP_HAT_WIDTH * scale) | 1;
   const contrast = normaliseLocally(
