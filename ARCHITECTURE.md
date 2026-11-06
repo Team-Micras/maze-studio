@@ -15,7 +15,7 @@ server. The reasons behind the choices below are in [`decisions.md`](decisions.m
 | `src/ui/`          | The React interface; `src/ui/primitives/` holds the shadcn components.                                 |
 | `src/main.tsx`     | The entry point: loads the app, or the embed with `?embed`, and registers the app's service worker.    |
 | `sw/`              | The service worker (Workbox, `injectManifest`): precaches the build and serves it offline.             |
-| `scripts/`         | Bun tools: the snapshot, the icons, the bundle size report.                                            |
+| `scripts/`         | Bun tools: the snapshot, the icons, the bundle size report, the recogniser's evaluation.               |
 | `tests/`           | Mirrors `src/`: `src/maze/x.ts` is tested by `tests/maze/x.test.ts`.                                   |
 | `vendor/mazefiles` | The mazefiles repository as a submodule; `bun run snapshot` turns it into `src/library/snapshot.json`. |
 
@@ -55,7 +55,9 @@ Each of `src/maze`, `src/library`, `src/render`, `src/generator` and `src/photo`
   `rectify.ts` straightens the board on the plane of the wall tops; `posts.ts` refits it to the posts found near where
   it puts them; `classify.ts` scores each edge by how much lighter its thin wall top is than the floor, against its
   neighbours' scores, and splits the scores at Otsu's threshold; `recognise.ts` is the entry point, `recogniseMaze`,
-  and `score.ts` compares a recognition with the true maze. Nothing imports it yet.
+  and `score.ts` compares a recognition with the true maze. Only `scripts/eval.ts` imports it yet: it scores
+  `recogniseMaze` on a folder of `maze-label/1` files (`scripts/maze-label.ts`, its type and validator), decoding the
+  photos in Chromium through Playwright, with the measures of `scripts/evaluation.ts`.
 - **`src/ui`** is the app:
   - `app.tsx`, the shell: the route from the hash (`routes.ts`, `navigation.ts`), the library (`library/use-library.ts`),
     the maze the route opens (`open-maze.ts`), the editing session, toasts and theme.
@@ -99,7 +101,7 @@ Checked by `bun run lint` through `no-restricted-imports` in `.oxlintrc.json`, a
 | `src/photo/`     | `src/maze`, its own files                         | every other folder of `src/`, React, `node:` modules                       |
 | `src/ui/`        | all of `src/` but `src/main.tsx`                  | any `@phosphor-icons/` package                                             |
 | `src/main.tsx`   | `src/maze`, `src/library`, `src/render`, `src/ui` | `src/generator`, `src/photo`                                               |
-| `scripts/`       | `src/maze`, `src/library`                         | `src/render`, `src/generator`, `src/photo`, `src/ui`, tests, React         |
+| `scripts/`       | `src/maze`, `src/library`, `src/photo`            | `src/render`, `src/generator`, `src/ui`, tests, React                      |
 | any of `src/`    |                                                   | `tests/`, `scripts/`, `vendor/`                                            |
 
 ## Tests

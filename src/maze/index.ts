@@ -30,6 +30,7 @@ export {
   type ExplorationStep,
   type SeenWall,
 } from './exploration';
+export { loosePosts, openNeighbours } from './maze-proofs';
 export { borderedMaze, presetMaze, presetProfile, type MazePreset } from './new-maze';
 export {
   beginGesture,

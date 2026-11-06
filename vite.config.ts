@@ -6,7 +6,6 @@ import { VitePWA } from 'vite-plugin-pwa';
 import { configDefaults, defineConfig } from 'vitest/config';
 
 import { deflateZeros } from './tests/support/library/browser-deflate.ts';
-import { readMazePhoto } from './tests/support/photo/browser-photos.ts';
 
 const PERFORMANCE_TESTS = ['tests/**/*-performance.test.{ts,tsx}'];
 
@@ -35,7 +34,7 @@ function chromium() {
     provider: playwright({ contextOptions: { viewport: BROWSER_VIEWPORT } }),
     viewport: BROWSER_VIEWPORT,
     instances: [{ browser: 'chromium' as const }],
-    commands: { deflateZeros, readMazePhoto },
+    commands: { deflateZeros },
     expect: {
       toMatchScreenshot: {
         comparatorName: 'pixelmatch' as const,

@@ -1,0 +1,29 @@
+{
+  "schema": "maze-label/1",
+  "id": "rcx-2026-classic-day1-1",
+  "image": {
+    "file": "rcx-2026-classic-day1-1.jpg",
+    "sha256": "07a800ce7922fcb45da35426a8495ed738ae7c0c74290e32b599e61833aecb8a",
+    "width": 1600,
+    "height": 1200
+  },
+  "pixelConvention": "centre-integer",
+  "maze": {
+    "file": "classic/br2026-rcx-day1.txt",
+    "size": 16
+  },
+  "corners": {
+    "clicked": {
+      "image": [
+        [106.5, 206.0],
+        [977.5, 100.5],
+        [1759.5, 522.5],
+        [198.5, 1104.0]
+      ],
+      "inFrame": [true, true, false, true]
+    }
+  },
+  "provenance": {
+    "corners.clicked": "the owner, by hand"
+  }
+}

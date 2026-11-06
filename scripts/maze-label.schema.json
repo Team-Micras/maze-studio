@@ -1,0 +1,105 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "maze-label/1",
+  "title": "maze-label/1",
+  "description": "One photo of a maze and what the recogniser is measured against; scripts/maze-label.ts is its type and validator. The walls come from the maze file.",
+  "type": "object",
+  "required": ["schema", "id", "image", "pixelConvention", "maze", "corners"],
+  "properties": {
+    "schema": { "const": "maze-label/1" },
+    "id": { "type": "string", "minLength": 1 },
+    "image": {
+      "type": "object",
+      "required": ["file", "sha256", "width", "height"],
+      "properties": {
+        "file": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Relative to the label's folder."
+        },
+        "sha256": { "type": "string", "minLength": 1 },
+        "width": { "type": "integer", "minimum": 1 },
+        "height": { "type": "integer", "minimum": 1 }
+      }
+    },
+    "pixelConvention": {
+      "enum": ["centre-integer", "corner-integer"],
+      "description": "centre-integer: pixel centres at whole numbers; corner-integer: at halves, as a browser click."
+    },
+    "maze": {
+      "type": "object",
+      "required": ["file", "size"],
+      "properties": {
+        "file": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Relative to vendor/mazefiles."
+        },
+        "size": { "type": "integer", "minimum": 1 }
+      }
+    },
+    "corners": {
+      "type": "object",
+      "minProperties": 1,
+      "propertyNames": { "enum": ["clicked", "projected", "lensfit", "oracle"] },
+      "additionalProperties": { "$ref": "#/$defs/cornerSet" }
+    },
+    "homography": { "$ref": "#/$defs/matrix3" },
+    "camera": {
+      "type": "object",
+      "required": ["model", "K", "dist", "R", "t", "provenance", "validRadius"],
+      "properties": {
+        "model": { "enum": ["opencv", "opencv-fisheye", "none"] },
+        "K": { "$ref": "#/$defs/matrix3" },
+        "dist": { "type": "array", "items": { "type": "number" } },
+        "R": { "$ref": "#/$defs/matrix3" },
+        "t": { "type": "array", "items": { "type": "number" }, "minItems": 3, "maxItems": 3 },
+        "provenance": { "enum": ["exact", "fit"] },
+        "validRadius": { "type": "number" }
+      }
+    },
+    "lensFitApp": {
+      "type": "object",
+      "required": ["model", "k1", "centre"],
+      "properties": {
+        "model": { "const": "radial-halfdiag" },
+        "k1": { "type": "number" },
+        "centre": { "$ref": "#/$defs/pixel" }
+      }
+    },
+    "posts": {
+      "type": "object",
+      "required": ["image", "visible"],
+      "properties": {
+        "image": { "type": "array", "items": { "$ref": "#/$defs/pixelOrNull" } },
+        "visible": { "type": "array", "items": { "type": "boolean" } }
+      }
+    },
+    "edges": {
+      "type": "object",
+      "required": ["visibleFraction"],
+      "properties": { "visibleFraction": { "type": "array", "items": { "type": "number" } } }
+    },
+    "masks": { "type": "object", "additionalProperties": { "type": "string", "minLength": 1 } },
+    "factors": { "type": "object", "additionalProperties": { "type": ["string", "number"] } },
+    "provenance": { "type": "object", "additionalProperties": { "type": "string", "minLength": 1 } }
+  },
+  "$defs": {
+    "pixel": { "type": "array", "items": { "type": "number" }, "minItems": 2, "maxItems": 2 },
+    "pixelOrNull": { "oneOf": [{ "$ref": "#/$defs/pixel" }, { "type": "null" }] },
+    "matrix3": { "type": "array", "items": { "type": "number" }, "minItems": 9, "maxItems": 9 },
+    "cornerSet": {
+      "type": "object",
+      "required": ["image", "inFrame"],
+      "properties": {
+        "image": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/pixelOrNull" },
+          "minItems": 4,
+          "maxItems": 4
+        },
+        "inFrame": { "type": "array", "items": { "type": "boolean" }, "minItems": 4, "maxItems": 4 }
+      }
+    }
+  }
+}
