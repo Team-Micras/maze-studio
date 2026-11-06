@@ -86,7 +86,7 @@ const RAY_STEPS = 32;
  * length `focal` pixels at the photo's centre, from `tilt` degrees off the vertical and `distance`
  * cells from the middle of the board, to its south: wall tops of grey `top`, the sides the camera
  * sees of grey `side`, on a floor of grey 40. Also returns where the photo shows each board point
- * of the wall tops.
+ * of the wall tops and of the floor.
  */
 export function drawStandingBoard(
   maze: Maze,
@@ -104,7 +104,7 @@ export function drawStandingBoard(
     distance: number;
   },
   { top, side }: { top: number; side: number }
-): { photo: Photo; tops: Homography } {
+): { photo: Photo; tops: Homography; floor: Homography } {
   const size = maze.width;
   const angle = (tilt * Math.PI) / 180;
   const eye = [size / 2, size / 2 + distance * Math.sin(angle), distance * Math.cos(angle)];
@@ -124,8 +124,8 @@ export function drawStandingBoard(
     );
     return h.map((value) => value / h[8]);
   };
-  const tops = plane(0);
-  const [fromTop, fromFloor] = [invertHomography(tops), invertHomography(plane(-WALL_HEIGHT))];
+  const [tops, floor] = [plane(0), plane(-WALL_HEIGHT)];
+  const [fromTop, fromFloor] = [invertHomography(tops), invertHomography(floor)];
   const shares = Array.from({ length: RAY_STEPS + 1 }, (_, step) => step / RAY_STEPS);
   const data = new Uint8ClampedArray(width * height * 4);
 
@@ -141,5 +141,5 @@ export function drawStandingBoard(
     }
   }
 
-  return { photo: { width, height, data }, tops };
+  return { photo: { width, height, data }, tops, floor };
 }

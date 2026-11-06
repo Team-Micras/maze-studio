@@ -89,15 +89,27 @@ const POST_WIDTH = 12 / 180;
 const SIDE_SHARE = 0.3;
 
 /**
- * The focal lengths a photo may be taken at, as shares of half its diagonal: about 120° to 25°
- * wide; the first is also taken when the board, seen square on, does not determine it.
+ * The pixels a cell must span, on average along the border, for the post search to look for the
+ * tops rather than the posts as a whole and for the walls to be read below the tops. Tuned on the
+ * open frames: the half-size boards at 22 pixels a cell lost more than they gained, those at 28
+ * gained.
  */
+const SIDE_CELL_PIXELS = 25;
+
+/** The focal lengths a photo may be taken at, as shares of half its diagonal: about 120° to 25° wide. */
 const FOCAL_RANGE = [0.45, 4] as const;
 
 /**
+ * The focal length taken when the board does not determine one in {@link FOCAL_RANGE}, as when
+ * it is seen nearly straight down: a phone's main camera, about 70° wide.
+ */
+const PHONE_FOCAL = 1.2;
+
+/**
  * `camera` moved to the plane `share` of the wall height below the tops: the pose recovered from
- * the homography, with the photo's centre as the principal point and the focal length under which
- * the board is square, its plane lowered along its normal, away from the camera.
+ * the homography, the principal point assumed at the photo's centre and the focal length the one
+ * under which the board is square (or {@link PHONE_FOCAL} when that one is out of
+ * {@link FOCAL_RANGE}), its plane lowered along its normal, away from the camera.
  */
 export function lowered(camera: Camera, share: number): Camera {
   const { centre, radius } = camera.lens;
@@ -112,10 +124,8 @@ export function lowered(camera: Camera, share: number): Camera {
   const equal = [a[0] ** 2 + a[1] ** 2 - b[0] ** 2 - b[1] ** 2, a[2] ** 2 - b[2] ** 2];
   const inverse =
     -(orthogonal[0] * orthogonal[1] + equal[0] * equal[1]) / (orthogonal[0] ** 2 + equal[0] ** 2);
-  const focal =
-    inverse > 0
-      ? Math.min(Math.max(1 / Math.sqrt(inverse), FOCAL_RANGE[0]), FOCAL_RANGE[1])
-      : FOCAL_RANGE[0];
+  const estimate = 1 / Math.sqrt(inverse);
+  const focal = estimate >= FOCAL_RANGE[0] && estimate <= FOCAL_RANGE[1] ? estimate : PHONE_FOCAL;
   const ray = (v: number[]) => [v[0] / focal, v[1] / focal, v[2]];
   const [east, south, origin] = [ray(a), ray(b), ray(c)];
   const normal = [
@@ -136,10 +146,13 @@ export function lowered(camera: Camera, share: number): Camera {
   return { homography: homography.map((value) => value / homography[8]), lens: camera.lens };
 }
 
-/** The photo near a post, read in cells from it, and the spot just past its top, away from the camera. */
+/**
+ * The photo near a post, read in cells from it, and the spot just past its top, away from the
+ * camera; `undefined` when the camera sees no side.
+ */
 interface Near {
   readonly at: (dx: number, dy: number) => Point;
-  readonly beyond: Point;
+  readonly beyond?: Point;
 }
 
 /**
@@ -167,11 +180,11 @@ function near(camera: Camera, feet: Camera, post: Point): Near | undefined {
   const determinant = ax * by - bx * ay;
   const down = { x: (vx * by - bx * vy) / determinant, y: (ax * vy - vx * ay) / determinant };
   const length = Math.hypot(down.x, down.y);
-  const past = length > 0 ? POST_WIDTH / length + SIDE_SHARE : 0;
+  const past = POST_WIDTH / length + SIDE_SHARE;
 
   return {
     at: (dx, dy) => ({ x: origin.x + ax * dx + bx * dy, y: origin.y + ay * dx + by * dy }),
-    beyond: { x: -past * down.x, y: -past * down.y },
+    beyond: length > 0 ? { x: -past * down.x, y: -past * down.y } : undefined,
   };
 }
 
@@ -201,7 +214,11 @@ function postResponse(
     Math.max(read(-ARM, 0), read(ARM, 0)),
     Math.max(read(0, -ARM), read(0, ARM))
   );
-  return read(0, 0) - (top ? read(beyond.x, beyond.y) : floor) + crossing * (across - floor);
+  return (
+    read(0, 0) -
+    (top && beyond !== undefined ? read(beyond.x, beyond.y) : floor) +
+    crossing * (across - floor)
+  );
 }
 
 function distance(a: Point, b: Point): number {
@@ -277,6 +294,7 @@ function searchPosts(
   const found: Point[] = [];
   const responses: number[] = Array.from({ length: (size + 1) * (size + 1) }, () => Number.NaN);
   const { reach, step } = search;
+  const scored = { ...search, top: search.top === true && seesSides(camera, size) };
   const steps = Math.round(reach / step);
   const feet = lowered(camera, 1);
   let total = 0;
@@ -295,7 +313,7 @@ function searchPosts(
         for (let column = -steps; column <= steps; column++) {
           const [dx, dy] = [column * step, row * step];
           const response =
-            postResponse(photo, view, dx, dy, search) -
+            postResponse(photo, view, dx, dy, scored) -
             DISTANCE_COST * Math.sqrt(dx * dx + dy * dy);
 
           if (response > best.response) {
@@ -414,6 +432,15 @@ export function refinePosts(
   const lens = fitted !== undefined && cost(fitted) < cost(camera) ? fitted : camera;
   const plain = fitToPosts(photo, grid, found, size, 0);
   return plain === undefined || cost(lens) <= lensShare * cost(plain) ? lens : plain;
+}
+
+/**
+ * Whether the cells of `camera`'s `size × size` board are big enough in the photo for the top of
+ * a post to be told from its side: under {@link SIDE_CELL_PIXELS} the top is a pixel or two and
+ * the side a few, within what the fit moves under corners off by 1 %.
+ */
+export function seesSides(camera: Camera, size: number): boolean {
+  return cellPixels(camera, size) >= SIDE_CELL_PIXELS;
 }
 
 /** `camera` refitted to the posts through every search, the lens kept as {@link refinePosts} does. */

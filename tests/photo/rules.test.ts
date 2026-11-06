@@ -183,6 +183,19 @@ describe('the repair of a classic maze', () => {
     expect(walled).toEqual([missed]);
   });
 
+  test('leaves a lone post whose best edge stands out but lies far below the threshold', () => {
+    const truth = mazeFile('classic/japan2.txt');
+    const missed: Edge = { direction: 'horizontal', x: 6, y: 4 };
+    const maze = setWall(truth, missed, false);
+    const { walled } = repairClassic(
+      maze,
+      scores(16, (edge) =>
+        hasWall(maze, edge) ? 1 : pick(edge, missed.direction, missed.x, missed.y) ? -0.8 : -1.6
+      )
+    );
+    expect(walled).toEqual([]);
+  });
+
   test('leaves a half-size maze as it is', () => {
     const maze = borderedMaze(32, 32);
     const { maze: repaired, walled } = repairClassic(

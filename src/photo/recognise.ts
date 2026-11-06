@@ -9,7 +9,7 @@ import { Bits, createMaze, type Cell, type Edge, type Maze } from '@/maze';
 import { otsuThreshold, scoreEdges, type EdgeScores } from './classify';
 import type { Point } from './homography';
 import { lightness, type Photo } from './image';
-import { locateBoard, lowered } from './posts';
+import { locateBoard, lowered, seesSides } from './posts';
 import { rectify } from './rectify';
 import { brokenRules, HALF_SIZE, repairClassic, type BrokenRule } from './rules';
 
@@ -56,9 +56,10 @@ const SCALE = 24;
 
 /**
  * The share of the wall height below the tops at which the board is straightened and its walls
- * read. On the tops themselves the lit side of a crossing wall, which faces the camera, covers the
- * middle of the edges next to it; a quarter of the way down gives the open frames the most with no
- * wrong edge (41 of 62, against 29 halfway down and 23 on the tops).
+ * read, when its cells are big enough to tell the tops from the sides. On the tops themselves the
+ * lit side of a crossing wall, which faces the camera, covers the middle of the edges next to it.
+ * Tuned on the open frames: a quarter of the way down leaves 41 of 62 with no wrong edge, against
+ * 39 at 0.35, 30 halfway down and about 23 on the tops.
  */
 const READ_DEPTH = 0.25;
 
@@ -96,7 +97,11 @@ export function recogniseMaze(photo: Photo, outline: MazeOutline): Recognition {
 
   const plane = lightness(photo);
   const camera = locateBoard(plane, corners, size);
-  const scores = scoreEdges(rectify(plane, lowered(camera, READ_DEPTH), size, SCALE), size, SCALE);
+  const scores = scoreEdges(
+    rectify(plane, seesSides(camera, size) ? lowered(camera, READ_DEPTH) : camera, size, SCALE),
+    size,
+    SCALE
+  );
   const horizontalBorder = (index: number) => index < size || index >= size * size;
   const verticalBorder = (index: number) => index % (size + 1) === 0 || index % (size + 1) === size;
   const internal = [

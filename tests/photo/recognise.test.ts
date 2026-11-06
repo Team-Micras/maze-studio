@@ -6,6 +6,7 @@ import {
   lensOf,
   lightness,
   locateBoard,
+  lowered,
   project,
   recogniseMaze,
   refinePosts,
@@ -182,6 +183,79 @@ describe('finding the posts of a board seen at a slant', () => {
       return Math.hypot(a.x - b.x, a.y - b.y);
     });
     expect(far.reduce((sum, error) => sum + error, 0) / far.length).toBeLessThan(3);
+  });
+});
+
+/** The largest distance between where two cameras show the posts of a 16 × 16 board. */
+function miss(from: Camera, to: Camera): number {
+  let worst = 0;
+
+  for (let y = 0; y <= 16; y++) {
+    for (let x = 0; x <= 16; x++) {
+      const a = project(from, { x, y });
+      const b = project(to, { x, y });
+      worst = Math.max(worst, Math.hypot(a.x - b.x, a.y - b.y));
+    }
+  }
+
+  return worst;
+}
+
+describe('lowering the board along its normal', () => {
+  const STANDING = { width: 960, height: 720, focal: 1000, distance: 28 };
+  const BOARD = [
+    { x: 0, y: 0 },
+    { x: 16, y: 0 },
+    { x: 16, y: 16 },
+    { x: 0, y: 16 },
+  ];
+
+  test('puts the tops of a board seen at a slant on its floor', () => {
+    const { tops, floor } = drawStandingBoard(
+      randomMaze(16, 5),
+      { ...STANDING, tilt: 60 },
+      { top: 120, side: 230 }
+    );
+    const lens = lensOf(960, 720);
+    expect(miss(lowered({ homography: tops, lens }, 1), { homography: floor, lens })).toBeLessThan(
+      0.01
+    );
+  });
+
+  test('lowers a board seen nearly straight down, from corners a pixel or two off, closer to its floor', () => {
+    const { tops, floor } = drawStandingBoard(
+      randomMaze(16, 5),
+      { ...STANDING, tilt: 1 },
+      { top: 120, side: 230 }
+    );
+    const lens = lensOf(960, 720);
+    const corners = BOARD.map((corner, index) => {
+      const at = project({ homography: tops, lens }, corner);
+      const [dx, dy] = [
+        [2, -1],
+        [-1, -2],
+        [1, 2],
+        [-2, 1],
+      ][index];
+      return { x: at.x + dx, y: at.y + dy };
+    });
+    const seen = { homography: fitHomography(BOARD, corners), lens };
+    const truth = { homography: floor, lens };
+    expect(miss(lowered(seen, 1), truth)).toBeLessThan(miss(seen, truth));
+  });
+
+  test('reads every wall of a board seen at a slant, below the tops', () => {
+    const maze = randomMaze(16, 5);
+    const { photo, tops } = drawStandingBoard(
+      maze,
+      { ...STANDING, tilt: 60 },
+      { top: 200, side: 230 }
+    );
+    const [nw, ne, se, sw] = BOARD.map((corner) =>
+      project({ homography: tops, lens: lensOf(960, 720) }, corner)
+    );
+    const corners: [Point, Point, Point, Point] = [nw, ne, se, sw];
+    expect(wrongEdges(recogniseMaze(photo, { size: 16, corners }).maze, maze)).toEqual([]);
   });
 });
 
