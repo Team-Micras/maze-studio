@@ -294,8 +294,7 @@
         "*.config.ts",
         "tests/e2e/**",
         "tests/config/**",
-        "tests/support/library/browser-deflate.ts",
-        "tests/support/photo/browser-photos.ts"
+        "tests/support/library/browser-deflate.ts"
       ],
       "env": {
         "node": true
@@ -314,8 +313,8 @@
                 "message": "Scripts never import tests."
               },
               {
-                "regex": "^(@/(generator|photo|render|ui|main)|(\\.\\./)+src/(generator|photo|render|ui|main))(/|$)",
-                "message": "Scripts may only depend on src/maze and src/library."
+                "regex": "^(@/(generator|render|ui|main)|(\\.\\./)+src/(generator|render|ui|main))(/|$)",
+                "message": "Scripts may only depend on src/maze, src/library and src/photo."
               },
               {
                 "regex": "^react(-dom)?(/.*)?$",

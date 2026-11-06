@@ -392,9 +392,20 @@ reached, and the measurements of the day, are in the git history of this file.
   diagonals, less a small cost for moving away; the refit drops posts past 2.5 times the median residual and is kept
   only when it lies closer to the posts found. It recovers corners off by about 1 % of the side.
 - **The test set stays out of the repository** but the owner's RCX photos: `tests/photo/photos.test.tsx` holds those
-  above a floor of score, and scores `MAZE_PHOTOS` (`~/.cache/maze-photos`) when the variable is set, reading it
-  through a browser command, since the browser may not read outside the repository. JPEGs decode with
-  `createImageBitmap` in the browser project, so no decoder dependency.
+  above a floor of score. JPEGs decode with `createImageBitmap` in the browser project, so no decoder dependency.
+- **One label format, `maze-label/1`**: one JSON file per photo (`scripts/maze-label.schema.json`; the type and a
+  hand-written validator in `scripts/maze-label.ts`, no schema library). The walls are not stored but read from the
+  maze file. A label carries several corner sets as one object keyed by source (`clicked`, `projected`, `lensfit`,
+  `oracle`), each with its four corners (or `null`) and `inFrame`, so the evaluator picks a source by name; the
+  dataset's review, match and licence stay in its index, not in the labels.
+- **One evaluator, `bun run eval`** (`scripts/eval.ts`), replacing the local-set test of `photos.test.tsx` and its
+  browser command. It decodes with Chromium's `createImageBitmap` through Playwright, the app's decoder (byte for byte
+  the same as OpenCV's on the frames compared), and runs `recogniseMaze` in Bun. The headline is the share of photos
+  with no wrong edge, since one wrong edge already sends a mouse astray, with its range when one event (one maze, so one
+  contest) is left out and its 90 % bootstrap interval over events, since the photos of one event are not independent.
+  The user's corners are the clicked ones, else the lens-fit corner posts, else projected ones; the jitter moves them by
+  up to 1 % of the side with the Park–Miller seeds of the first reports, so their numbers can be met again. About 30 %
+  of the held-out events are locked by a seed in the dataset's index, reported apart and never tuned on.
 
 ## Tests and performance
 

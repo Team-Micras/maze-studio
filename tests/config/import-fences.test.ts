@@ -36,7 +36,7 @@ const MAY_IMPORT: Record<Layer | 'scripts', { any: readonly Layer[]; relative: r
     photo: { any: ['maze'], relative: ['photo'] },
     ui: { any: ['maze', 'library', 'render', 'generator', 'photo', 'ui'], relative: [] },
     main: { any: ['maze', 'library', 'render', 'ui'], relative: [] },
-    scripts: { any: ['maze', 'library'], relative: [] },
+    scripts: { any: ['maze', 'library', 'photo'], relative: [] },
   };
 
 /** Where each folder's probes sit and the prefixes that reach `src/` from them, alias first. */

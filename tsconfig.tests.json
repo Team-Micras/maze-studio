@@ -17,7 +17,6 @@
     "tests/**/*.tsx",
     "tests/support/ui",
     "tests/support/axe-check.ts",
-    "tests/support/library/browser-deflate.ts",
-    "tests/support/photo/browser-photos.ts"
+    "tests/support/library/browser-deflate.ts"
   ]
 }

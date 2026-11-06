@@ -30,6 +30,7 @@
     "size": "bun scripts/bundle-size.ts",
     "snapshot": "bun scripts/snapshot-mazefiles.ts",
     "icons": "bun scripts/icons.ts",
+    "eval": "bun scripts/eval.ts",
     "check": "bun run lint && bun run format:check && bun run typecheck && bun run test && bun run test:e2e && bun run build && bun run size"
   },
   "dependencies": {

@@ -6,9 +6,5 @@
     "allowImportingTsExtensions": true,
     "types": ["node"]
   },
-  "include": [
-    "vite.config.ts",
-    "tests/support/library/browser-deflate.ts",
-    "tests/support/photo/browser-photos.ts"
-  ]
+  "include": ["vite.config.ts", "tests/support/library/browser-deflate.ts"]
 }

@@ -126,7 +126,7 @@ maze-studio" to work.
 - **.github/** - CI, deploy and preview workflows, the mazefiles auto-merge and Dependabot.
 - **docs/** - Images for this README.
 - **public/** - Icons and static files.
-- **scripts/** - Bun scripts: the maze snapshot, the icons, the bundle size.
+- **scripts/** - Bun scripts: the maze snapshot, the icons, the bundle size, the recogniser's evaluation.
 - **src/** - The app: maze core, library, renderer, generator and React UI.
 - **sw/** - The service worker that serves the app offline.
 - **tests/** - Tests mirroring `src/`, with the end-to-end tests in `tests/e2e/`.
@@ -156,9 +156,18 @@ In a clone without `--recurse-submodules`, run `git submodule update --init` onc
 | `bun run preview`  | Serve the build                                                       |
 | `bun run size`     | Gzip size of the build                                                |
 | `bun run snapshot` | Write `src/library/snapshot.json` from `vendor/mazefiles`             |
+| `bun run eval`     | Score the photo recogniser on a folder of labelled photos (below)     |
 
 The snapshot is generated, not committed: `dev`, `build`, `lint`, `typecheck` and the tests write it
 first when it is missing or stale.
+
+`bun run eval <folder> [--split <name>] [--out <file>]` scores the photo recogniser on a folder of
+labels in `maze-label/1` (`scripts/maze-label.schema.json`), one JSON file per photo, with the
+image path relative to the folder and the maze file relative to `vendor/mazefiles`. An optional
+`index.json` gives each photo's `split` and `event` and the locked events; `--split` keeps one
+split. It prints the share of photos with no wrong edge per corner set (oracle, clicked, clicked
+±1 %) and group, and writes every photo's wrong edges to `results.json` in the folder or `--out`.
+The images decode in Chromium, as in the app: run `bunx playwright install chromium` once.
 
 ## 🧪 Testing
 
