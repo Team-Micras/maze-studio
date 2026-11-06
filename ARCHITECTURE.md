@@ -11,7 +11,7 @@ server. The reasons behind the choices below are in [`decisions.md`](decisions.m
 | `src/library/`     | The catalog, the built-in snapshot, updates from GitHub, My mazes, backup and IndexedDB.               |
 | `src/render/`      | Geometry, the camera as pure functions, SVG path data and canvas thumbnails.                           |
 | `src/generator/`   | The maze generator: settings, presets, styles, the time model, recipes, features and the batch pick.   |
-| `src/photo/`       | Photo to maze: the homography of the board, its straightened view, the posts, the wall scores.         |
+| `src/photo/`       | Photo to maze: the board and lens, its straightened view, the posts, the wall scores, the rules.       |
 | `src/ui/`          | The React interface; `src/ui/primitives/` holds the shadcn components.                                 |
 | `src/main.tsx`     | The entry point: loads the app, or the embed with `?embed`, and registers the app's service worker.    |
 | `sw/`              | The service worker (Workbox, `injectManifest`): precaches the build and serves it offline.             |
@@ -52,10 +52,12 @@ Each of `src/maze`, `src/library`, `src/render`, `src/generator` and `src/photo`
   `exp`, `atan2` and `hypot`, which engines round differently (`expOf`, `logOf`, `angleOf`).
 - **`src/photo`** reads a maze from a photo and its four outer corners, in pure TypeScript over `ImageData`-like
   photos. `homography.ts` fits the board to the photo by the normalised DLT, four pairs or many by least squares;
-  `rectify.ts` straightens the board on the plane of the wall tops; `posts.ts` refits it to the posts found near where
-  it puts them; `classify.ts` scores each edge by how much lighter its thin wall top is than the floor, against its
-  neighbours' scores, and splits the scores at Otsu's threshold; `recognise.ts` is the entry point, `recogniseMaze`,
-  and `score.ts` compares a recognition with the true maze. Only `scripts/eval.ts` imports it yet: it scores
+  `lens.ts` is the radial lens and the `Camera`, homography then lens, from board to photo; `rectify.ts` straightens
+  the board on the plane of the wall tops through the camera; `posts.ts` fits the camera to the posts found from the
+  corners, coarse to fine; `classify.ts` scores each edge by how much lighter its thin wall top is than the floor,
+  against its neighbours' scores, and splits the scores at Otsu's threshold; `rules.ts` finds the rules a maze breaks
+  and repairs a classic maze's lone posts and start; `recognise.ts` is the entry point, `recogniseMaze`, and `score.ts` compares a
+  recognition with the true maze. Only `scripts/eval.ts` imports it yet: it scores
   `recogniseMaze` on a folder of `maze-label/1` files (`scripts/maze-label.ts`, its type and validator), decoding the
   photos in Chromium through Playwright, with the measures of `scripts/evaluation.ts`.
 - **`src/ui`** is the app:

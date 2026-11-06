@@ -6,20 +6,8 @@
  * @module
  */
 
-import {
-  cellIndex,
-  createMaze,
-  hasWall,
-  loosePosts,
-  openNeighbours,
-  type Cell,
-  type Edge,
-  type Maze,
-} from '@/maze';
-import type { Point, Recognition } from '@/photo';
-
-/** A rule of a runnable maze that a recognised maze breaks at an edge. */
-export type BrokenRule = 'lonePost' | 'unreachable' | 'startOpen' | 'goalWall';
+import type { Edge } from '@/maze';
+import type { BrokenRule, Point, Recognition } from '@/photo';
 
 /** How far a jittered corner may move, as a share of the side that starts at it. */
 export const JITTER = 0.01;
@@ -64,78 +52,16 @@ export function edgeConfidence(recognition: Recognition, edge: Edge): number {
     : recognition.confidence.vertical[edge.y * (width + 1) + edge.x];
 }
 
-function reachable(maze: Maze, start: Cell): Set<number> {
-  const seen = new Set([cellIndex(maze.width, start)]);
-  const queue = [start];
-
-  for (let cell = queue.pop(); cell !== undefined; cell = queue.pop()) {
-    for (const next of openNeighbours(maze, cell)) {
-      if (!seen.has(cellIndex(maze.width, next))) {
-        seen.add(cellIndex(maze.width, next));
-        queue.push(next);
-      }
-    }
-  }
-
-  return seen;
-}
-
-/**
- * The rules `found` breaks at an edge, judged with the start and goals of `truth` (the south-west
- * corner when it has no start): a post at either end with no wall, outside the middle of the goal;
- * a cell on either side that the start cannot reach; the start, open on more than one side, on
- * either side; a wall between two goal cells.
- */
-export function brokenRules(found: Maze, truth: Maze): (edge: Edge) => BrokenRule[] {
-  const start = truth.start ?? { x: 0, y: 0 };
-  const judged = createMaze({ ...found, start, goals: truth.goals });
-  const lone = new Set(loosePosts(judged).map((post) => `${post.x},${post.y}`));
-  const seen = reachable(judged, start);
-  const startOpen = openNeighbours(judged, start).length > 1;
-  const goals = new Set(truth.goals.map((goal) => cellIndex(truth.width, goal)));
-
-  return (edge) => {
-    const sides: [Cell, Cell] =
-      edge.direction === 'horizontal'
-        ? [
-            { x: edge.x, y: edge.y - 1 },
-            { x: edge.x, y: edge.y },
-          ]
-        : [
-            { x: edge.x - 1, y: edge.y },
-            { x: edge.x, y: edge.y },
-          ];
-    const ends =
-      edge.direction === 'horizontal'
-        ? [`${edge.x},${edge.y}`, `${edge.x + 1},${edge.y}`]
-        : [`${edge.x},${edge.y}`, `${edge.x},${edge.y + 1}`];
-    const inside = sides.filter(
-      (cell) => cell.x >= 0 && cell.y >= 0 && cell.x < found.width && cell.y < found.height
-    );
-    const broken: BrokenRule[] = [];
-
-    if (ends.some((end) => lone.has(end))) {
-      broken.push('lonePost');
-    }
-
-    if (inside.some((cell) => !seen.has(cellIndex(found.width, cell)))) {
-      broken.push('unreachable');
-    }
-
-    if (startOpen && inside.some((cell) => cell.x === start.x && cell.y === start.y)) {
-      broken.push('startOpen');
-    }
-
-    if (
-      hasWall(found, edge) &&
-      inside.length === 2 &&
-      inside.every((cell) => goals.has(cellIndex(found.width, cell)))
-    ) {
-      broken.push('goalWall');
-    }
-
-    return broken;
-  };
+/** The rules `recognition` reports broken at `edge`. */
+export function edgeRules(recognition: Recognition, edge: Edge): readonly BrokenRule[] {
+  return (
+    recognition.broken.find(
+      (entry) =>
+        entry.edge.direction === edge.direction &&
+        entry.edge.x === edge.x &&
+        entry.edge.y === edge.y
+    )?.rules ?? []
+  );
 }
 
 /** A scored frame, as the summary needs it. */

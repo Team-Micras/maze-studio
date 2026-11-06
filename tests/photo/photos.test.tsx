@@ -25,12 +25,12 @@ const LABELS: readonly MazeLabel[] = Object.entries(
 });
 
 /**
- * The lowest score each photo of the repository may reach, just under what it reaches now:
- * 0.995, at most 2 wrong edges of 480.
+ * The lowest score each photo of the repository may reach: one wrong edge of slack (0.9979) below
+ * what each reaches now, one wrong edge and none.
  */
 const FLOORS: Record<string, number> = {
   'rcx-2026-classic-2': 0.995,
-  'rcx-2026-classic-day1-1': 0.995,
+  'rcx-2026-classic-day1-1': 0.997,
 };
 
 function fromBase64(text: string): Uint8Array<ArrayBuffer> {

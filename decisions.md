@@ -388,9 +388,46 @@ reached, and the measurements of the day, are in the git history of this file.
   the risk of a coloured floor. The top-hat and the darkest floor came from an OpenCV experiment on the same frames,
   ported here without OpenCV.
 
-- **Posts refit the board twice**: each post is the spot within 0.4 of a cell that is lightest against its four
-  diagonals, less a small cost for moving away; the refit drops posts past 2.5 times the median residual and is kept
-  only when it lies closer to the posts found. It recovers corners off by about 1 % of the side.
+- **A radial lens, `k1` only**: a point is seen at `c + (q − c)(1 + k1 r²)`, `c` the middle pixel
+  `((w − 1) / 2, (h − 1) / 2)` and `r` over half the diagonal, as the dataset's `lens.py` fit (OpenCV's `k1` is this
+  one times `(f / r)²`). The broadcast frames span `k1` −0.37 to +0.05; `k2` was not needed. The fit refuses `k1`
+  outside −0.5 to 0.2 and any lens that puts a board corner past the fold radius (`1 + 3 k1 r² = 0`), where a farther
+  point is seen nearer and an off-photo corner would fold back in.
+- **The board is fitted to the posts, from the corners, coarse to fine.** First `k1`, with the board held to the
+  clicked corner posts: the one under which the most post-like spots lie near the posts (a homography fitted to the
+  corners alone bends a fisheye board a cell off in the middle). Then three rounds: each post is the spot most like a
+  post (light against its four diagonals, less a small cost for moving away) within half a cell, then 0.15 of a cell
+  twice; the homography and `k1` are fitted to the posts found, dropping posts past 2.5 times the median residual,
+  with each post's distance capped at a quarter of a cell. Half a cell lets half-size corners off by a third of a cell
+  find their own posts and not the next ones (±1 % jitter on half size: 742 wrong edges with two 0.4-cell rounds, 131
+  with these).
+- **Corners shifted all the same way, on an undistorted board.** A point on a straight wall looks as much like a post
+  as the post, so with the four corners shifted along the walls (a touch offset) the nearest such point won, and the lens search, held to
+  those corners, bent the board to make up for the shift (on synthetic boards shifted by a third of a cell, 7 of 24
+  fits ended up to 1.5 cells off). The half-cell search now also rewards walls leaving a spot both east–west and
+  north–south (weight 0.5, read 0.3 of a cell out), which a point on a straight wall lacks; and when the corners chose
+  a lens, the board is also fitted with none, keeping whichever puts its posts on more post-like spots. All 24 shifted
+  boards end within 0.1 of a cell; on the real open frames the change is within noise (zero-error frames 35 → 37 of
+  62 with the lens-fit corners, jittered runs 147 → 142 of 248). Known limit: this holds for undistorted boards. Drawn through a lens (`k1` −0.06
+  to −0.3) and shifted a third of a cell, 23 of 48 boards end 0.7–1.6 cells off; at a quarter of a cell 7 do, mostly fisheye (a 16×16 at `k1` −0.3
+  shifted south comes back with `k1` 0, 1.19 cells off); at 0.15 none. A `test.fails` case holds that one.
+- **The lens gate is tuned, and set to keep.** After the last round the lens stays only when it brings the posts under
+  0.85 of the distance with no lens. On the open frames, the 6 distorted ones (3 events) fall to 0.05–0.6 and the
+  undistorted ones stay at 0.75–1, and a lens fitted to those slight bends cost them frames with no wrong edge. 0.7
+  and 0.85 give the same results there; 0.85 errs toward keeping, since dropping a needed lens costs a half-size
+  board some 250 wrong edges and keeping an unneeded one a few. japan2016-ef-2, labelled mild at `k1` −0.06, scores
+  0.92 and loses its lens, with no change in its wrong edges.
+- **Rules after recognition**: `recogniseMaze` reports every edge at which the maze breaks a rule (a post with no wall,
+  a cell the start cannot reach, the start open on more than one side, a wall inside the goal), judged with the start
+  and goals given or, by default, the south-west start and the middle four cells, which the returned maze carries.
+  Posts with no wall are flagged at every size, as the app's own validation warns of them. Only a classic maze is
+  repaired: a wall on the highest-scoring edge of each post with none, then on each open side of the start but its
+  lowest-scoring measured one (an edge off the photo is walled first); half-size rules allow posts with no wall, so a maze of 32 cells or more is left as it is.
+- **The floor of an edge needs both sides, a near-tie.** `Math.min` of the two sides' darkest floor is `NaN` when one
+  lies off the board or the photo, which keeps the border and cut edges out of their neighbours' scale. Reading the
+  floor from the side that is there instead gave the open frames 2 fewer zero-error frames with the lens-fit corners
+  (33 vs 35 of 62) and 5 fewer jittered runs (142 vs 147 of 248), for about the same wrong edges (62 vs 61, 254 vs
+  256): too close to call on these frames, so the simpler rule stays.
 - **The test set stays out of the repository** but the owner's RCX photos: `tests/photo/photos.test.tsx` holds those
   above a floor of score. JPEGs decode with `createImageBitmap` in the browser project, so no decoder dependency.
 - **One label format, `maze-label/1`**: one JSON file per photo (`scripts/maze-label.schema.json`; the type and a

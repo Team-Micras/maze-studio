@@ -4,8 +4,8 @@
  * @module
  */
 
-import { applyHomography, type Homography } from './homography';
 import { sampleBilinear, type Plane } from './image';
+import { project, type Camera } from './lens';
 
 const SUBSAMPLES = [
   [0.25, 0.25],
@@ -16,11 +16,11 @@ const SUBSAMPLES = [
 
 /**
  * The square board of `cells × scale` pixels on the plane of the wall tops, sampled from `photo`
- * through `board`, the homography from board coordinates (cells, `(0, 0)` at the north-west
- * corner, x east and y south) to photo pixels. Each board pixel averages four samples, so a photo
- * finer than the board does not alias.
+ * through `camera`, from board coordinates (cells, `(0, 0)` at the north-west corner, x east and
+ * y south) through its homography and lens to photo pixels. Each board pixel averages four
+ * samples, so a photo finer than the board does not alias.
  */
-export function rectify(photo: Plane, board: Homography, cells: number, scale: number): Plane {
+export function rectify(photo: Plane, camera: Camera, cells: number, scale: number): Plane {
   const side = cells * scale;
   const data = new Float32Array(side * side);
 
@@ -29,7 +29,7 @@ export function rectify(photo: Plane, board: Homography, cells: number, scale: n
       let sum = 0;
 
       for (const [dx, dy] of SUBSAMPLES) {
-        const at = applyHomography(board, {
+        const at = project(camera, {
           x: (column + dx) / scale,
           y: (row + dy) / scale,
         });

@@ -1,58 +1,37 @@
 import { describe, expect, test } from 'vitest';
 
-import { borderedMaze, setGoals, setStart, setWall, type Edge } from '@/maze';
+import { borderedMaze } from '@/maze';
 import type { Recognition } from '@/photo';
 import {
-  brokenRules,
   edgeConfidence,
+  edgeRules,
   jitterCorners,
   summarise,
   type ScoredFrame,
 } from '@scripts/evaluation';
 
-const truth2 = setStart(borderedMaze(2, 2), { x: 0, y: 0 });
+describe('the confidence and the rules of an edge', () => {
+  const recognition: Recognition = {
+    maze: borderedMaze(2, 2),
+    confidence: {
+      horizontal: Float32Array.of(0, 1, 2, 3, 4, 5),
+      vertical: Float32Array.of(10, 11, 12, 13, 14, 15),
+    },
+    walled: [],
+    broken: [{ edge: { direction: 'vertical', x: 1, y: 0 }, rules: ['lonePost', 'startOpen'] }],
+  };
 
-describe('the rules a wrong edge breaks', () => {
-  test('a post with no wall and the start open on two sides', () => {
-    const edge: Edge = { direction: 'vertical', x: 1, y: 0 };
-    const truth = setWall(truth2, edge, true);
-    expect(brokenRules(truth2, truth)(edge)).toEqual(['lonePost', 'startOpen']);
-    expect(brokenRules(truth, truth)(edge)).toEqual([]);
-  });
-
-  test('a cell the start cannot reach', () => {
-    const found = setWall(
-      setWall(truth2, { direction: 'horizontal', x: 1, y: 1 }, true),
-      { direction: 'vertical', x: 1, y: 1 },
-      true
-    );
-    expect(brokenRules(found, truth2)({ direction: 'vertical', x: 1, y: 1 })).toEqual([
-      'unreachable',
-    ]);
-  });
-
-  test('a wall between two goal cells', () => {
-    const truth = setGoals(truth2, [
-      { x: 0, y: 1 },
-      { x: 1, y: 1 },
-    ]);
-    const edge: Edge = { direction: 'vertical', x: 1, y: 1 };
-    expect(brokenRules(setWall(truth, edge, true), truth)(edge)).toContain('goalWall');
-    expect(brokenRules(truth, truth)(edge)).not.toContain('goalWall');
-  });
-});
-
-describe('the confidence of an edge', () => {
   test('reads the wall sets in their index order', () => {
-    const recognition: Recognition = {
-      maze: borderedMaze(2, 2),
-      confidence: {
-        horizontal: Float32Array.of(0, 1, 2, 3, 4, 5),
-        vertical: Float32Array.of(10, 11, 12, 13, 14, 15),
-      },
-    };
     expect(edgeConfidence(recognition, { direction: 'horizontal', x: 1, y: 1 })).toBe(3);
     expect(edgeConfidence(recognition, { direction: 'vertical', x: 1, y: 1 })).toBe(14);
+  });
+
+  test('finds the rules the recognition reports at the edge', () => {
+    expect(edgeRules(recognition, { direction: 'vertical', x: 1, y: 0 })).toEqual([
+      'lonePost',
+      'startOpen',
+    ]);
+    expect(edgeRules(recognition, { direction: 'horizontal', x: 1, y: 0 })).toEqual([]);
   });
 });
 

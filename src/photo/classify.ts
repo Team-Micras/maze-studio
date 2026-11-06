@@ -179,7 +179,10 @@ export function topHat(board: Plane, width: number, across: 'rows' | 'columns'):
  * photo did not reach. It is the mean of two scores, each set against its neighbours' by
  * {@link normaliseLocally}: at each position along the edge, the lightest pixel near the line
  * less the darkest floor on either side, which holds under glare; and the lightest pixel of the
- * board's top-hat across the edge, which ignores the broad side of a nearer wall.
+ * board's top-hat across the edge, which ignores the broad side of a nearer wall. The floor is
+ * `NaN` when either side lies off the board or the photo, so the border, always walled, and
+ * edges the photo cuts are left out of their neighbours' scale: on the real photos this gives
+ * more frames with no wrong edge than reading the floor from one side.
  */
 export function scoreEdges(board: Plane, size: number, scale: number): EdgeScores {
   const reach = Math.max(1, Math.round(TOP_REACH * scale));
