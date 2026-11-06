@@ -11,6 +11,7 @@ server. The reasons behind the choices below are in [`decisions.md`](decisions.m
 | `src/library/`     | The catalog, the built-in snapshot, updates from GitHub, My mazes, backup and IndexedDB.               |
 | `src/render/`      | Geometry, the camera as pure functions, SVG path data and canvas thumbnails.                           |
 | `src/generator/`   | The maze generator: settings, presets, styles, the time model, recipes, features and the batch pick.   |
+| `src/photo/`       | Photo to maze: the homography of the board, its straightened view, the posts, the wall scores.         |
 | `src/ui/`          | The React interface; `src/ui/primitives/` holds the shadcn components.                                 |
 | `src/main.tsx`     | The entry point: loads the app, or the embed with `?embed`, and registers the app's service worker.    |
 | `sw/`              | The service worker (Workbox, `injectManifest`): precaches the build and serves it offline.             |
@@ -20,8 +21,8 @@ server. The reasons behind the choices below are in [`decisions.md`](decisions.m
 
 ## Layers
 
-Each of `src/maze`, `src/library`, `src/render` and `src/generator` has an `index.ts` as its public face; `src/render`
-has a second one, `loading.ts` (`@/render/loading`), which only the generator's chunk imports.
+Each of `src/maze`, `src/library`, `src/render`, `src/generator` and `src/photo` has an `index.ts` as its public face;
+`src/render` has a second one, `loading.ts` (`@/render/loading`), which only the generator's chunk imports.
 
 - **`src/maze`** is pure: no React, no browser API. `Maze` holds walls as two immutable `Bits` sets, `(0, 0)` in the
   south-west corner. The text format reads into a `MazeText` of grid and trailer, reporting what the canonical text
@@ -49,6 +50,12 @@ has a second one, `loading.ts` (`@/render/loading`), which only the generator's 
   numbers and board rules. `presets.ts`, `features.ts`, `diversity.ts` and `batch.ts` give the presets, the sentences
   and tags of a maze, the varied pick of a batch and recipes read back from text. Decisions avoid `Math.pow`, `log`,
   `exp`, `atan2` and `hypot`, which engines round differently (`expOf`, `logOf`, `angleOf`).
+- **`src/photo`** reads a maze from a photo and its four outer corners, in pure TypeScript over `ImageData`-like
+  photos. `homography.ts` fits the board to the photo by the normalised DLT, four pairs or many by least squares;
+  `rectify.ts` straightens the board on the plane of the wall tops; `posts.ts` refits it to the posts found near where
+  it puts them; `classify.ts` scores each edge by how much lighter its thin wall top is than the floor, against its
+  neighbours' scores, and splits the scores at Otsu's threshold; `recognise.ts` is the entry point, `recogniseMaze`, and `score.ts` compares a
+  recognition with the true maze. Nothing imports it yet.
 - **`src/ui`** is the app:
   - `app.tsx`, the shell: the route from the hash (`routes.ts`, `navigation.ts`), the library (`library/use-library.ts`),
     the maze the route opens (`open-maze.ts`), the editing session, toasts and theme.
@@ -83,16 +90,17 @@ has a second one, `loading.ts` (`@/render/loading`), which only the generator's 
 Checked by `bun run lint` through `no-restricted-imports` in `.oxlintrc.json`, and the rules themselves by
 `tests/config/import-fences.test.ts`.
 
-| Folder           | May import                                        | Never imports                                                 |
-| ---------------- | ------------------------------------------------- | ------------------------------------------------------------- |
-| `src/maze/`      | its own files, by relative path                   | anything else of the project, React, `node:` modules          |
-| `src/library/`   | `src/maze`, its own files                         | `src/render`, `src/generator`, `src/ui`, React                |
-| `src/render/`    | `src/maze`, its own files                         | `src/library`, `src/generator`, `src/ui`, React               |
-| `src/generator/` | `src/maze`, its own files                         | `src/library`, `src/render`, `src/ui`, React, `node:` modules |
-| `src/ui/`        | all of `src/` but `src/main.tsx`                  | any `@phosphor-icons/` package                                |
-| `src/main.tsx`   | `src/maze`, `src/library`, `src/render`, `src/ui` | `src/generator`                                               |
-| `scripts/`       | `src/maze`, `src/library`                         | `src/render`, `src/generator`, `src/ui`, tests, React         |
-| any of `src/`    |                                                   | `tests/`, `scripts/`, `vendor/`                               |
+| Folder           | May import                                        | Never imports                                                              |
+| ---------------- | ------------------------------------------------- | -------------------------------------------------------------------------- |
+| `src/maze/`      | its own files, by relative path                   | anything else of the project, React, `node:` modules                       |
+| `src/library/`   | `src/maze`, its own files                         | `src/render`, `src/generator`, `src/photo`, `src/ui`, React                |
+| `src/render/`    | `src/maze`, its own files                         | `src/library`, `src/generator`, `src/photo`, `src/ui`, React               |
+| `src/generator/` | `src/maze`, its own files                         | `src/library`, `src/render`, `src/photo`, `src/ui`, React, `node:` modules |
+| `src/photo/`     | `src/maze`, its own files                         | every other folder of `src/`, React, `node:` modules                       |
+| `src/ui/`        | all of `src/` but `src/main.tsx`                  | any `@phosphor-icons/` package                                             |
+| `src/main.tsx`   | `src/maze`, `src/library`, `src/render`, `src/ui` | `src/generator`, `src/photo`                                               |
+| `scripts/`       | `src/maze`, `src/library`                         | `src/render`, `src/generator`, `src/photo`, `src/ui`, tests, React         |
+| any of `src/`    |                                                   | `tests/`, `scripts/`, `vendor/`                                            |
 
 ## Tests
 
