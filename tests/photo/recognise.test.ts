@@ -70,8 +70,8 @@ const OFF: [Point, Point, Point, Point] = [
   { x: 44, y: 376 },
 ];
 
-/** A 960 × 720 photo of a `size × size` board, undistorted, and its camera. */
-function shiftBoard(size: number): { photo: Plane; truth: Camera; cell: number } {
+/** A 960 × 720 photo of a `size × size` board seen through a lens of `k1`, and its camera. */
+function shiftBoard(size: number, k1 = 0): { photo: Plane; truth: Camera; cell: number } {
   const square = [
     { x: 0, y: 0 },
     { x: size, y: 0 },
@@ -84,7 +84,7 @@ function shiftBoard(size: number): { photo: Plane; truth: Camera; cell: number }
     { x: 920, y: 700 },
     { x: 50, y: 680 },
   ];
-  const truth = { homography: fitHomography(square, seen), lens: lensOf(960, 720) };
+  const truth = { homography: fitHomography(square, seen), lens: lensOf(960, 720, k1) };
   const cell =
     seen.reduce(
       (sum, corner, index) =>
@@ -93,7 +93,7 @@ function shiftBoard(size: number): { photo: Plane; truth: Camera; cell: number }
     ) /
     (4 * size);
   return {
-    photo: lightness(drawBoard(randomMaze(size, 5), truth.homography, 960, 720)),
+    photo: lightness(drawBoard(randomMaze(size, 5), truth.homography, 960, 720, k1)),
     truth,
     cell,
   };
@@ -107,6 +107,37 @@ const DIRECTIONS = [
   ['south', 0, 1],
   ['north', 0, -1],
 ] as const;
+
+/** The largest distance, in cells, between the posts found from corners shifted and the true ones. */
+function shiftError(
+  { photo, truth, cell }: ReturnType<typeof shiftBoard>,
+  size: number,
+  share: number,
+  dx: number,
+  dy: number
+): number {
+  const corners = [
+    { x: 0, y: 0 },
+    { x: size, y: 0 },
+    { x: size, y: size },
+    { x: 0, y: size },
+  ].map((corner) => {
+    const at = project(truth, corner);
+    return { x: at.x + dx * share * cell, y: at.y + dy * share * cell };
+  });
+  const found = locateBoard(photo, corners, size);
+  let worst = 0;
+
+  for (let y = 0; y <= size; y++) {
+    for (let x = 0; x <= size; x++) {
+      const a = project(found, { x, y });
+      const b = project(truth, { x, y });
+      worst = Math.max(worst, Math.hypot(a.x - b.x, a.y - b.y));
+    }
+  }
+
+  return worst / cell;
+}
 
 describe('finding the posts from corners all shifted the same way', () => {
   test.each(
@@ -122,28 +153,11 @@ describe('finding the posts from corners all shifted the same way', () => {
       )
     )
   )('$size × $size, $amount of a cell $name', ({ size, share, dx, dy }) => {
-    const { photo, truth, cell } = SHIFTED[size];
-    const corners = [
-      { x: 0, y: 0 },
-      { x: size, y: 0 },
-      { x: size, y: size },
-      { x: 0, y: size },
-    ].map((corner) => {
-      const at = project(truth, corner);
-      return { x: at.x + dx * share * cell, y: at.y + dy * share * cell };
-    });
-    const found = locateBoard(photo, corners, size);
-    let worst = 0;
+    expect(shiftError(SHIFTED[size], size, share, dx, dy)).toBeLessThan(0.1);
+  });
 
-    for (let y = 0; y <= size; y++) {
-      for (let x = 0; x <= size; x++) {
-        const a = project(found, { x, y });
-        const b = project(truth, { x, y });
-        worst = Math.max(worst, Math.hypot(a.x - b.x, a.y - b.y));
-      }
-    }
-
-    expect(worst).toBeLessThan(0.1 * cell);
+  test.fails('a fisheye board, 16 × 16 at k1 −0.3, shifted a third of a cell south (known limit)', () => {
+    expect(shiftError(shiftBoard(16, -0.3), 16, 1 / 3, 0, 1)).toBeLessThan(0.1);
   });
 });
 
@@ -186,6 +200,21 @@ describe('recognising a maze', () => {
     expect(found.broken.length).toBeGreaterThan(0);
     expect(found.broken.flatMap((entry) => entry.rules)).not.toContain('lonePost');
     expect(found.broken.every((entry) => entry.rules.length > 0)).toBe(true);
+  });
+
+  test('gives the maze the middle four goals when none are given, and keeps those given', () => {
+    const found = recogniseMaze(PHOTO, { size: SIZE, corners: OFF });
+    expect(found.maze.goals).toEqual([
+      { x: 3, y: 3 },
+      { x: 4, y: 3 },
+      { x: 3, y: 4 },
+      { x: 4, y: 4 },
+    ]);
+    const start = { x: 1, y: 0 };
+    const goals = [{ x: 6, y: 6 }];
+    const given = recogniseMaze(PHOTO, { size: SIZE, corners: OFF, start, goals });
+    expect(given.maze.start).toEqual(start);
+    expect(given.maze.goals).toEqual(goals);
   });
 
   test.each([

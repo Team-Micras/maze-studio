@@ -192,9 +192,10 @@ function searchPosts(
   camera: Camera,
   size: number,
   { reach, step, crossing = 0 }: Search
-): { grid: Point[]; found: Point[]; total: number } {
+): { grid: Point[]; found: Point[]; total: number; responses: number[] } {
   const grid: Point[] = [];
   const found: Point[] = [];
+  const responses: number[] = Array.from({ length: (size + 1) * (size + 1) }, () => Number.NaN);
   const steps = Math.round(reach / step);
   let total = 0;
 
@@ -225,11 +226,12 @@ function searchPosts(
         grid.push({ x, y });
         found.push(at(best.dx, best.dy));
         total += best.response;
+        responses[y * (size + 1) + x] = best.response;
       }
     }
   }
 
-  return { grid, found, total };
+  return { grid, found, total, responses };
 }
 
 /**
@@ -355,7 +357,7 @@ function fitThroughSearches(photo: Plane, camera: Camera, size: number, lensShar
  * lens refitted to the posts, from a search half a cell wide to a fine one, the lens dropped at
  * the end unless it brings the posts clearly closer than no lens. A lens chosen that way may only
  * make up for corners shifted the same way, so the board is also fitted with no lens at all, and
- * the one whose posts look more like posts is kept.
+ * the one whose posts, over those both can sample, look more like posts on average is kept.
  *
  * @throws {RangeError} When the corners do not determine a homography.
  */
@@ -381,7 +383,14 @@ export function locateBoard(photo: Plane, corners: readonly Point[], size: numbe
 
   const plain = fitThroughSearches(photo, flat, size, 0);
   const fine = SEARCHES[SEARCHES.length - 1];
-  return searchPosts(photo, lensed, size, fine).total > searchPosts(photo, plain, size, fine).total
-    ? lensed
-    : plain;
+  const withLens = searchPosts(photo, lensed, size, fine).responses;
+  const without = searchPosts(photo, plain, size, fine).responses;
+  const gain = withLens.reduce(
+    (sum, response, index) =>
+      Number.isNaN(response) || Number.isNaN(without[index])
+        ? sum
+        : sum + response - without[index],
+    0
+  );
+  return gain > 0 ? lensed : plain;
 }

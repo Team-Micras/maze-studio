@@ -11,7 +11,7 @@ import type { Point } from './homography';
 import { lightness, type Photo } from './image';
 import { locateBoard } from './posts';
 import { rectify } from './rectify';
-import { brokenRules, HALF_SIZE, repairLonePosts, type BrokenRule } from './rules';
+import { brokenRules, HALF_SIZE, repairClassic, type BrokenRule } from './rules';
 
 /** Where the maze is in the photo. */
 export interface MazeOutline {
@@ -102,7 +102,7 @@ export function recogniseMaze(photo: Photo, outline: MazeOutline): Recognition {
   const sure = (value: number) =>
     Number.isNaN(value) || !(spread > 0) ? 0 : Math.min(1, Math.abs(value - threshold) / spread);
 
-  const { maze, walled } = repairLonePosts(
+  const { maze, walled } = repairClassic(
     createMaze({
       width: size,
       height: size,

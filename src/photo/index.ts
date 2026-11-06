@@ -29,5 +29,5 @@ export {
 export { locateBoard, refinePosts, type Search } from './posts';
 export { recogniseMaze, type MazeOutline, type Recognition } from './recognise';
 export { rectify } from './rectify';
-export { brokenRules, HALF_SIZE, repairLonePosts, type BrokenRule } from './rules';
+export { brokenRules, HALF_SIZE, repairClassic, type BrokenRule } from './rules';
 export { scoreRecognition, wrongEdges } from './score';

@@ -1,7 +1,7 @@
 import { describe, expect, test } from 'vitest';
 
 import { borderedMaze, hasWall, setGoals, setStart, setWall, type Edge } from '@/maze';
-import { brokenRules, repairLonePosts, type EdgeScores } from '@/photo';
+import { brokenRules, repairClassic, type EdgeScores } from '@/photo';
 
 const open2 = setStart(borderedMaze(2, 2), { x: 0, y: 0 });
 
@@ -74,7 +74,7 @@ describe('the repair of a classic maze', () => {
       { x: 2, y: 2 },
     ]);
     const best: Edge = { direction: 'vertical', x: 1, y: 0 };
-    const { maze: repaired, walled } = repairLonePosts(
+    const { maze: repaired, walled } = repairClassic(
       maze,
       scores(4, (edge) =>
         edge.direction === best.direction && edge.x === best.x && edge.y === best.y ? 0.9 : 0.1
@@ -90,7 +90,7 @@ describe('the repair of a classic maze', () => {
   test('walls one edge for two lone posts that share it', () => {
     const maze = setWall(borderedMaze(3, 3), { direction: 'horizontal', x: 1, y: 2 }, true);
     const shared: Edge = { direction: 'horizontal', x: 1, y: 1 };
-    const { walled } = repairLonePosts(
+    const { walled } = repairClassic(
       maze,
       scores(3, (edge) =>
         edge.direction === shared.direction && edge.x === shared.x && edge.y === shared.y ? 1 : 0
@@ -101,7 +101,7 @@ describe('the repair of a classic maze', () => {
   });
 
   test('walls every open side of the start but its lowest-scoring one', () => {
-    const { walled } = repairLonePosts(
+    const { walled } = repairClassic(
       borderedMaze(2, 2),
       scores(2, (edge) =>
         pick(edge, 'horizontal', 1, 1)
@@ -119,9 +119,20 @@ describe('the repair of a classic maze', () => {
     ]);
   });
 
+  test('keeps a measured side of the start open, not one off the photo', () => {
+    const { walled } = repairClassic(
+      borderedMaze(2, 2),
+      scores(2, (edge) =>
+        pick(edge, 'horizontal', 0, 1) ? Number.NaN : pick(edge, 'horizontal', 1, 1) ? 0.9 : 0.1
+      )
+    );
+    expect(walled).toContainEqual({ direction: 'horizontal', x: 0, y: 1 });
+    expect(walled).not.toContainEqual({ direction: 'vertical', x: 1, y: 0 });
+  });
+
   test('leaves a half-size maze as it is', () => {
     const maze = borderedMaze(32, 32);
-    const { maze: repaired, walled } = repairLonePosts(
+    const { maze: repaired, walled } = repairClassic(
       maze,
       scores(32, () => 1)
     );

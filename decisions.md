@@ -401,14 +401,16 @@ reached, and the measurements of the day, are in the git history of this file.
   with each post's distance capped at a quarter of a cell. Half a cell lets half-size corners off by a third of a cell
   find their own posts and not the next ones (±1 % jitter on half size: 742 wrong edges with two 0.4-cell rounds, 131
   with these).
-- **Corners shifted all the same way.** A point on a straight wall looks as much like a post as the post, so with the
-  four corners shifted along the walls (a touch offset) the nearest such point won, and the lens search, held to
+- **Corners shifted all the same way, on an undistorted board.** A point on a straight wall looks as much like a post
+  as the post, so with the four corners shifted along the walls (a touch offset) the nearest such point won, and the lens search, held to
   those corners, bent the board to make up for the shift (on synthetic boards shifted by a third of a cell, 7 of 24
   fits ended up to 1.5 cells off). The half-cell search now also rewards walls leaving a spot both east–west and
   north–south (weight 0.5, read 0.3 of a cell out), which a point on a straight wall lacks; and when the corners chose
   a lens, the board is also fitted with none, keeping whichever puts its posts on more post-like spots. All 24 shifted
   boards end within 0.1 of a cell; on the real open frames the change is within noise (zero-error frames 35 → 37 of
-  62 with the lens-fit corners, jittered runs 147 → 142 of 248).
+  62 with the lens-fit corners, jittered runs 147 → 142 of 248). Known limit: this holds for undistorted boards. Drawn through a lens (`k1` −0.06
+  to −0.3) and shifted a third of a cell, 23 of 48 boards end 0.7–1.6 cells off; at a quarter of a cell 7 do, mostly fisheye (a 16×16 at `k1` −0.3
+  shifted south comes back with `k1` 0, 1.19 cells off); at 0.15 none. A `test.fails` case holds that one.
 - **The lens gate is tuned, and set to keep.** After the last round the lens stays only when it brings the posts under
   0.85 of the distance with no lens. On the open frames, the 6 distorted ones (3 events) fall to 0.05–0.6 and the
   undistorted ones stay at 0.75–1, and a lens fitted to those slight bends cost them frames with no wrong edge. 0.7
@@ -420,7 +422,7 @@ reached, and the measurements of the day, are in the git history of this file.
   and goals given or, by default, the south-west start and the middle four cells, which the returned maze carries.
   Posts with no wall are flagged at every size, as the app's own validation warns of them. Only a classic maze is
   repaired: a wall on the highest-scoring edge of each post with none, then on each open side of the start but its
-  lowest-scoring one; half-size rules allow posts with no wall, so a maze of 32 cells or more is left as it is.
+  lowest-scoring measured one (an edge off the photo is walled first); half-size rules allow posts with no wall, so a maze of 32 cells or more is left as it is.
 - **The floor of an edge needs both sides, a near-tie.** `Math.min` of the two sides' darkest floor is `NaN` when one
   lies off the board or the photo, which keeps the border and cut edges out of their neighbours' scale. Reading the
   floor from the side that is there instead gave the open frames 2 fewer zero-error frames with the lens-fit corners

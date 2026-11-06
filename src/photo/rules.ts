@@ -110,10 +110,10 @@ function scoreOf(scores: EdgeScores, width: number, edge: Edge): number {
 /**
  * `maze` repaired by the rules of a classic maze, and the edges walled: a wall on the
  * highest-scoring edge of each post that has none, outside the middle of the goal, and on every
- * open side of the start but its lowest-scoring one. A half-size maze, whose rules allow posts
+ * open side of the start but its lowest-scoring measured one (an edge off the photo is walled first). A half-size maze, whose rules allow posts
  * with no wall, is returned as it is.
  */
-export function repairLonePosts(maze: Maze, scores: EdgeScores): { maze: Maze; walled: Edge[] } {
+export function repairClassic(maze: Maze, scores: EdgeScores): { maze: Maze; walled: Edge[] } {
   if (maze.width >= HALF_SIZE) {
     return { maze, walled: [] };
   }
@@ -149,7 +149,7 @@ export function repairLonePosts(maze: Maze, scores: EdgeScores): { maze: Maze; w
       : { direction: 'vertical', x: Math.max(start.x, next.x), y: start.y }
   );
 
-  const rank = (edge: Edge) => (Number.isNaN(score(edge)) ? Number.NEGATIVE_INFINITY : score(edge));
+  const rank = (edge: Edge) => (Number.isNaN(score(edge)) ? Number.POSITIVE_INFINITY : score(edge));
   exits
     .toSorted((a, b) => rank(b) - rank(a))
     .slice(0, -1)
