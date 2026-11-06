@@ -31,8 +31,8 @@ import { hasWall, parseMazeText, type Edge, type Maze } from '@/maze';
 import { recogniseMaze, wrongEdges, type Photo, type Point, type Recognition } from '@/photo';
 
 import {
-  brokenRules,
   edgeConfidence,
+  edgeRules,
   JITTER,
   JITTER_SEEDS,
   jitterCorners,
@@ -59,7 +59,7 @@ interface Run {
   readonly wrongEdges?: readonly (Edge & {
     truth: boolean;
     confidence: number;
-    rules: string[];
+    rules: readonly string[];
   })[];
 }
 
@@ -186,7 +186,12 @@ function run(
   let recognition: Recognition;
 
   try {
-    recognition = recogniseMaze(photo, { size, corners });
+    recognition = recogniseMaze(photo, {
+      size,
+      corners,
+      ...(truth.start !== undefined && { start: truth.start }),
+      goals: truth.goals,
+    });
   } catch (error) {
     if (!(error instanceof RangeError)) {
       throw error;
@@ -197,7 +202,6 @@ function run(
 
   const milliseconds = performance.now() - started;
   const wrong = wrongEdges(recognition.maze, truth);
-  const rules = brokenRules(recognition.maze, truth);
 
   return {
     score: 1 - wrong.length / internal,
@@ -210,7 +214,7 @@ function run(
         y: edge.y,
         truth: hasWall(truth, edge),
         confidence: Number(edgeConfidence(recognition, edge).toFixed(3)),
-        rules: rules(edge),
+        rules: edgeRules(recognition, edge),
       })),
     }),
   };

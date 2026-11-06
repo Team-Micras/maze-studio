@@ -1,6 +1,6 @@
 import { expect, test } from 'vitest';
 
-import { fitHomography, rectify } from '@/photo';
+import { fitHomography, lensOf, rectify } from '@/photo';
 
 test('straightens the board out of the photo, NaN where the photo stops', () => {
   const width = 40;
@@ -23,7 +23,7 @@ test('straightens the board out of the photo, NaN where the photo stops', () => 
       { x: 0, y: 19 },
     ]
   );
-  const straight = rectify(photo, board, 2, 4);
+  const straight = rectify(photo, { homography: board, lens: lensOf(width, 20) }, 2, 4);
   expect(straight.width).toBe(8);
   expect(straight.height).toBe(8);
   expect(straight.data[3 * 8]).toBeCloseTo(1 / 16, 5);
@@ -43,5 +43,5 @@ test('straightens the board out of the photo, NaN where the photo stops', () => 
       { x: 0, y: 19 },
     ]
   );
-  expect(rectify(photo, wider, 2, 4).data[7]).toBeNaN();
+  expect(rectify(photo, { homography: wider, lens: lensOf(width, 20) }, 2, 4).data[7]).toBeNaN();
 });

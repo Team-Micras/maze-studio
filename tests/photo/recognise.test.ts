@@ -1,12 +1,17 @@
 import { describe, expect, test } from 'vitest';
 
+import type { Edge } from '@/maze';
 import {
   fitHomography,
+  lensOf,
+  lightness,
+  locateBoard,
+  project,
   recogniseMaze,
   refinePosts,
-  lightness,
-  applyHomography,
   scoreRecognition,
+  wrongEdges,
+  type Camera,
   type Point,
 } from '@/photo';
 import { drawBoard } from '@tests/support/photo/draw-board';
@@ -28,17 +33,28 @@ const SQUARE = [
   { x: 0, y: SIZE },
 ];
 
-const MAZE = randomMaze(SIZE, 42);
+/** A maze with a wall at every post, which the repair of lone posts leaves as it is. */
+const MAZE = randomMaze(SIZE, 901);
 
 const PHOTO = drawBoard(MAZE, fitHomography(SQUARE, CORNERS), 600, 460);
 
-function worstError(board: readonly number[], truth: readonly number[]): number {
+const LONELY = randomMaze(SIZE, 42);
+
+function key(edge: Edge): string {
+  return `${edge.direction} ${edge.x} ${edge.y}`;
+}
+
+function cameraOf(corners: readonly Point[]): Camera {
+  return { homography: fitHomography(SQUARE, corners), lens: lensOf(600, 460) };
+}
+
+function worstError(board: Camera, truth: Camera): number {
   let worst = 0;
 
   for (let y = 0; y <= SIZE; y++) {
     for (let x = 0; x <= SIZE; x++) {
-      const a = applyHomography(board, { x, y });
-      const b = applyHomography(truth, { x, y });
+      const a = project(board, { x, y });
+      const b = project(truth, { x, y });
       worst = Math.max(worst, Math.hypot(a.x - b.x, a.y - b.y));
     }
   }
@@ -55,16 +71,53 @@ const OFF: [Point, Point, Point, Point] = [
 
 describe('recognising a maze', () => {
   test('moves the board onto the posts when the corners are a little off', () => {
-    const truth = fitHomography(SQUARE, CORNERS);
-    const off = fitHomography(SQUARE, OFF);
+    const truth = cameraOf(CORNERS);
+    const off = cameraOf(OFF);
     const refined = refinePosts(lightness(PHOTO), off, SIZE);
     expect(worstError(off, truth)).toBeGreaterThan(7);
     expect(worstError(refined, truth)).toBeLessThan(5.5);
   });
 
+  test('finds the posts of a half-size board from corners a third of a cell off', () => {
+    const size = 32;
+    const square = [
+      { x: 0, y: 0 },
+      { x: size, y: 0 },
+      { x: size, y: size },
+      { x: 0, y: size },
+    ];
+    const truth = {
+      homography: fitHomography(square, [
+        { x: 160, y: 40 },
+        { x: 820, y: 60 },
+        { x: 920, y: 700 },
+        { x: 50, y: 680 },
+      ]),
+      lens: lensOf(960, 720),
+    };
+    const photo = lightness(drawBoard(randomMaze(size, 5), truth.homography, 960, 720));
+    const cell = 25;
+    const corners = square.map((corner, index) => {
+      const seen = project(truth, corner);
+      return { x: seen.x + 0.35 * cell, y: seen.y + (index % 2 === 0 ? 0.2 : -0.2) * cell };
+    });
+    const found = locateBoard(photo, corners, size);
+    let worst = 0;
+
+    for (let y = 0; y <= size; y++) {
+      for (let x = 0; x <= size; x++) {
+        const a = project(found, { x, y });
+        const b = project(truth, { x, y });
+        worst = Math.max(worst, Math.hypot(a.x - b.x, a.y - b.y));
+      }
+    }
+
+    expect(worst).toBeLessThan(0.1 * cell);
+  });
+
   test('keeps the board when no post is there to fit', () => {
     const dark = { width: 600, height: 460, data: new Uint8ClampedArray(600 * 460 * 4) };
-    const off = fitHomography(SQUARE, OFF);
+    const off = cameraOf(OFF);
     expect(refinePosts(lightness(dark), off, SIZE)).toBe(off);
   });
 
@@ -78,6 +131,20 @@ describe('recognising a maze', () => {
     expect(Math.min(...confidence)).toBeGreaterThanOrEqual(0);
     expect(Math.max(...confidence)).toBeLessThanOrEqual(1);
     expect(found.confidence.horizontal[0]).toBe(1);
+  });
+
+  test('walls the posts left with no wall and reports the rules the maze still breaks', () => {
+    const found = recogniseMaze(drawBoard(LONELY, fitHomography(SQUARE, CORNERS), 600, 460), {
+      size: SIZE,
+      corners: OFF,
+    });
+    expect(found.walled.length).toBeGreaterThan(0);
+    expect(wrongEdges(found.maze, LONELY).map(key).toSorted()).toEqual(
+      found.walled.map(key).toSorted()
+    );
+    expect(found.broken.length).toBeGreaterThan(0);
+    expect(found.broken.flatMap((entry) => entry.rules)).not.toContain('lonePost');
+    expect(found.broken.every((entry) => entry.rules.length > 0)).toBe(true);
   });
 
   test.each([

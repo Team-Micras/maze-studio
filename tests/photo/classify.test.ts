@@ -2,6 +2,7 @@ import { describe, expect, test } from 'vitest';
 
 import {
   fitHomography,
+  lensOf,
   lightness,
   normaliseLocally,
   otsuThreshold,
@@ -164,7 +165,7 @@ describe('classifying edges', () => {
     expect(otsuThreshold([])).toBeNaN();
   });
 
-  test('scores walls high and gaps low, in the order of the wall sets', () => {
+  test('scores walls high and gaps low in the order of the wall sets, and not the border, half off the board', () => {
     const maze = randomMaze(4, 3);
     const scale = 16;
     const square = [
@@ -178,7 +179,11 @@ describe('classifying edges', () => {
       square.map((point) => ({ x: 10 + point.x * 40, y: 10 + point.y * 40 }))
     );
     const plane = lightness(drawBoard(maze, board, 180, 180));
-    const scores = scoreEdges(rectify(plane, board, 4, scale), 4, scale);
+    const scores = scoreEdges(
+      rectify(plane, { homography: board, lens: lensOf(180, 180) }, 4, scale),
+      4,
+      scale
+    );
 
     const walls: number[] = [];
     const gaps: number[] = [];
@@ -198,6 +203,9 @@ describe('classifying edges', () => {
     expect(walls.length).toBeGreaterThan(2);
     expect(gaps.length).toBeGreaterThan(2);
     expect(Math.min(...walls)).toBeGreaterThan(Math.max(...gaps) + 0.2);
+    expect(scores.horizontal[0]).toBeNaN();
+    expect(scores.vertical[0]).toBeNaN();
+    expect(scores.vertical[4]).toBeNaN();
   });
 
   test('splits a glared half and a clear half at one threshold once each is set against its neighbours', () => {
