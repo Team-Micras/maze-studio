@@ -11,12 +11,15 @@ import { K1_RANGE, lensOf, project, undistort, type Camera } from './lens';
 
 /**
  * A search for each post near its predicted spot: how far and in what steps, as shares of a cell,
- * and how much a spot gains for walls leaving it both east–west and north–south.
+ * how much a spot gains for walls leaving it both east–west and north–south, and whether it is
+ * set against the floor just past the post's top, away from the camera, rather than on the
+ * diagonals, so that it lands on the top and not on the lit side the camera sees below it.
  */
 export interface Search {
   readonly reach: number;
   readonly step: number;
   readonly crossing?: number;
+  readonly top?: boolean;
 }
 
 /** How far along the walls from a post they are read, as a share of a cell. */
@@ -32,12 +35,12 @@ const CROSSING = 0.5;
 /**
  * The post searches, coarse to fine: the first reaches half a cell and favours spots where walls
  * cross, so corners a third of a cell off still find their own posts and not the next ones or a
- * point on a wall.
+ * point on a wall; the fine ones then move each post onto its top.
  */
 const SEARCHES: readonly Search[] = [
   { reach: 0.5, step: 0.05, crossing: CROSSING },
-  { reach: 0.15, step: 0.025 },
-  { reach: 0.15, step: 0.025 },
+  { reach: 0.15, step: 0.025, top: true },
+  { reach: 0.15, step: 0.025, top: true },
 ];
 
 /** The search that scores each lens of the first guess, held to the clicked corners. */
@@ -73,11 +76,79 @@ const OUTLIER_FACTOR = 2.5;
 /** The residual past which a post counts the same however far it is, as a share of a cell. */
 const TRUNCATION = 0.25;
 
+/** The height of the walls and posts as a share of a cell: 50 mm on 180, and 25 on 90 at half size. */
+const WALL_HEIGHT = 50 / 180;
+
+/** The width of a post as a share of a cell: 12 mm on 180, and 6 on 90 at half size. */
+const POST_WIDTH = 12 / 180;
+
+/**
+ * How far past a post's top, away from the camera, the floor is read: a post's width, and this
+ * share of the length its side is seen at.
+ */
+const SIDE_SHARE = 0.3;
+
+/**
+ * The focal lengths a photo may be taken at, as shares of half its diagonal: about 120° to 25°
+ * wide; the first is also taken when the board, seen square on, does not determine it.
+ */
+const FOCAL_RANGE = [0.45, 4] as const;
+
+/**
+ * `camera` moved to the plane `share` of the wall height below the tops: the pose recovered from
+ * the homography, with the photo's centre as the principal point and the focal length under which
+ * the board is square, its plane lowered along its normal, away from the camera.
+ */
+export function lowered(camera: Camera, share: number): Camera {
+  const { centre, radius } = camera.lens;
+  const h = camera.homography;
+  const column = (k: number) => [
+    (h[k] - centre.x * h[6 + k]) / radius,
+    (h[3 + k] - centre.y * h[6 + k]) / radius,
+    h[6 + k],
+  ];
+  const [a, b, c] = [column(0), column(1), column(2)];
+  const orthogonal = [a[0] * b[0] + a[1] * b[1], a[2] * b[2]];
+  const equal = [a[0] ** 2 + a[1] ** 2 - b[0] ** 2 - b[1] ** 2, a[2] ** 2 - b[2] ** 2];
+  const inverse =
+    -(orthogonal[0] * orthogonal[1] + equal[0] * equal[1]) / (orthogonal[0] ** 2 + equal[0] ** 2);
+  const focal =
+    inverse > 0
+      ? Math.min(Math.max(1 / Math.sqrt(inverse), FOCAL_RANGE[0]), FOCAL_RANGE[1])
+      : FOCAL_RANGE[0];
+  const ray = (v: number[]) => [v[0] / focal, v[1] / focal, v[2]];
+  const [east, south, origin] = [ray(a), ray(b), ray(c)];
+  const normal = [
+    east[1] * south[2] - east[2] * south[1],
+    east[2] * south[0] - east[0] * south[2],
+    east[0] * south[1] - east[1] * south[0],
+  ];
+  const away =
+    (Math.sign(normal[0] * origin[0] + normal[1] * origin[1] + normal[2] * origin[2]) *
+      share *
+      WALL_HEIGHT *
+      (Math.hypot(...east) + Math.hypot(...south))) /
+    (2 * Math.hypot(...normal));
+  const columns = [east, south, origin.map((value, index) => value + away * normal[index])];
+  const homography = [centre.x, centre.y, 1].flatMap((shift, row) =>
+    columns.map((v) => (row === 2 ? v[2] : radius * focal * v[row] + shift * v[2]))
+  );
+  return { homography: homography.map((value) => value / homography[8]), lens: camera.lens };
+}
+
+/** The photo near a post, read in cells from it, and the spot just past its top, away from the camera. */
+interface Near {
+  readonly at: (dx: number, dy: number) => Point;
+  readonly beyond: Point;
+}
+
 /**
  * The photo pixels near the board point `post`, `camera` taken as affine there: a step of `(dx,
- * dy)` cells from `post`, or `undefined` when the neighbourhood crosses the fold radius.
+ * dy)` cells from `post`, and the step to the spot just past its top, away from the camera, that
+ * neither the top nor the side the camera sees covers; `undefined` when the neighbourhood crosses
+ * the fold radius.
  */
-function near(camera: Camera, post: Point): ((dx: number, dy: number) => Point) | undefined {
+function near(camera: Camera, feet: Camera, post: Point): Near | undefined {
   const [origin, east, west, south, north] = [
     [0, 0],
     [0.5, 0],
@@ -85,27 +156,36 @@ function near(camera: Camera, post: Point): ((dx: number, dy: number) => Point) 
     [0, 0.5],
     [0, -0.5],
   ].map(([dx, dy]) => project(camera, { x: post.x + dx, y: post.y + dy }));
+  const bottom = project(feet, post);
 
-  if (![origin, east, west, south, north].every(finite)) {
+  if (![origin, east, west, south, north, bottom].every(finite)) {
     return undefined;
   }
 
-  return (dx, dy) => ({
-    x: origin.x + (east.x - west.x) * dx + (south.x - north.x) * dy,
-    y: origin.y + (east.y - west.y) * dx + (south.y - north.y) * dy,
-  });
+  const [ax, ay, bx, by] = [east.x - west.x, east.y - west.y, south.x - north.x, south.y - north.y];
+  const [vx, vy] = [bottom.x - origin.x, bottom.y - origin.y];
+  const determinant = ax * by - bx * ay;
+  const down = { x: (vx * by - bx * vy) / determinant, y: (ax * vy - vx * ay) / determinant };
+  const length = Math.hypot(down.x, down.y);
+  const past = length > 0 ? POST_WIDTH / length + SIDE_SHARE : 0;
+
+  return {
+    at: (dx, dy) => ({ x: origin.x + ax * dx + bx * dy, y: origin.y + ay * dx + by * dy }),
+    beyond: { x: -past * down.x, y: -past * down.y },
+  };
 }
 
 /**
- * How post-like the photo looks `(dx, dy)` cells from a post: light there, dark on the diagonals,
+ * How post-like the photo looks `(dx, dy)` cells from a post: lighter there than the floor, read
+ * just past the post's top away from the camera when `top` is set and on the diagonals otherwise,
  * and, weighted by `crossing`, light both east or west and north or south.
  */
 function postResponse(
   photo: Plane,
-  at: (dx: number, dy: number) => Point,
+  { at, beyond }: Near,
   dx: number,
   dy: number,
-  crossing: number
+  { crossing = 0, top = false }: Search
 ): number {
   const read = (x: number, y: number) => {
     const p = at(dx + x, dy + y);
@@ -121,7 +201,7 @@ function postResponse(
     Math.max(read(-ARM, 0), read(ARM, 0)),
     Math.max(read(0, -ARM), read(0, ARM))
   );
-  return read(0, 0) - floor + crossing * (across - floor);
+  return read(0, 0) - (top ? read(beyond.x, beyond.y) : floor) + crossing * (across - floor);
 }
 
 function distance(a: Point, b: Point): number {
@@ -191,19 +271,21 @@ function searchPosts(
   photo: Plane,
   camera: Camera,
   size: number,
-  { reach, step, crossing = 0 }: Search
+  search: Search
 ): { grid: Point[]; found: Point[]; total: number; responses: number[] } {
   const grid: Point[] = [];
   const found: Point[] = [];
   const responses: number[] = Array.from({ length: (size + 1) * (size + 1) }, () => Number.NaN);
+  const { reach, step } = search;
   const steps = Math.round(reach / step);
+  const feet = lowered(camera, 1);
   let total = 0;
 
   for (let y = 0; y <= size; y++) {
     for (let x = 0; x <= size; x++) {
-      const at = near(camera, { x, y });
+      const view = near(camera, feet, { x, y });
 
-      if (at === undefined) {
+      if (view === undefined) {
         continue;
       }
 
@@ -213,7 +295,7 @@ function searchPosts(
         for (let column = -steps; column <= steps; column++) {
           const [dx, dy] = [column * step, row * step];
           const response =
-            postResponse(photo, at, dx, dy, crossing) -
+            postResponse(photo, view, dx, dy, search) -
             DISTANCE_COST * Math.sqrt(dx * dx + dy * dy);
 
           if (response > best.response) {
@@ -224,7 +306,7 @@ function searchPosts(
 
       if (Number.isFinite(best.response)) {
         grid.push({ x, y });
-        found.push(at(best.dx, best.dy));
+        found.push(view.at(best.dx, best.dy));
         total += best.response;
         responses[y * (size + 1) + x] = best.response;
       }

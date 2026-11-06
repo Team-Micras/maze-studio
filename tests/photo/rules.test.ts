@@ -1,6 +1,19 @@
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
+
 import { describe, expect, test } from 'vitest';
 
-import { borderedMaze, hasWall, setGoals, setStart, setWall, type Edge } from '@/maze';
+import {
+  borderedMaze,
+  hasWall,
+  loosePosts,
+  parseMazeText,
+  setGoals,
+  setStart,
+  setWall,
+  type Edge,
+  type Maze,
+} from '@/maze';
 import { brokenRules, repairClassic, type EdgeScores } from '@/photo';
 
 const open2 = setStart(borderedMaze(2, 2), { x: 0, y: 0 });
@@ -14,6 +27,19 @@ function scores(size: number, score: (edge: Edge) => number): EdgeScores {
       score({ direction: 'vertical', x: index % (size + 1), y: Math.floor(index / (size + 1)) })
     ),
   };
+}
+
+function mazeFile(file: string): Maze {
+  const parsed = parseMazeText(
+    readFileSync(join(import.meta.dirname, '..', '..', 'vendor', 'mazefiles', file), 'utf8'),
+    file
+  );
+
+  if (!parsed.ok) {
+    throw new Error(parsed.error.message);
+  }
+
+  return parsed.value.maze;
 }
 
 function pick(edge: Edge, direction: Edge['direction'], x: number, y: number): boolean {
@@ -77,14 +103,16 @@ describe('the repair of a classic maze', () => {
     const { maze: repaired, walled } = repairClassic(
       maze,
       scores(4, (edge) =>
-        edge.direction === best.direction && edge.x === best.x && edge.y === best.y ? 0.9 : 0.1
+        pick(edge, best.direction, best.x, best.y)
+          ? 9
+          : (edge.x * 5 + edge.y + (edge.direction === 'vertical' ? 25 : 0)) / 5
       )
     );
     expect(walled).toContainEqual(best);
     expect(hasWall(repaired, best)).toBe(true);
     expect(walled.every((edge) => hasWall(repaired, edge))).toBe(true);
     expect(brokenRules(repaired)(best)).not.toContain('lonePost');
-    expect(walled).toHaveLength(8);
+    expect(loosePosts(repaired)).toEqual([]);
   });
 
   test('walls one edge for two lone posts that share it', () => {
@@ -128,6 +156,31 @@ describe('the repair of a classic maze', () => {
     );
     expect(walled).toContainEqual({ direction: 'horizontal', x: 0, y: 1 });
     expect(walled).not.toContainEqual({ direction: 'vertical', x: 1, y: 0 });
+  });
+
+  test('leaves the lone posts of an open area, whose edges all score alike', () => {
+    const maze = mazeFile('classic/japan2.txt');
+    const { maze: repaired, walled } = repairClassic(
+      maze,
+      scores(16, (edge) => (hasWall(maze, edge) ? 1 : -1 + ((edge.x * 7 + edge.y * 3) % 5) / 100))
+    );
+    expect(loosePosts(maze).length).toBeGreaterThan(0);
+    expect(walled).toEqual([]);
+    expect(repaired).toBe(maze);
+  });
+
+  test('walls a lone post whose best edge stands out, among lone posts that do not', () => {
+    const truth = mazeFile('classic/japan2.txt');
+    const missed: Edge = { direction: 'horizontal', x: 6, y: 4 };
+    const maze = setWall(truth, missed, false);
+    const { walled } = repairClassic(
+      maze,
+      scores(16, (edge) =>
+        hasWall(maze, edge) ? 1 : pick(edge, missed.direction, missed.x, missed.y) ? -0.3 : -1
+      )
+    );
+    expect(hasWall(truth, missed)).toBe(true);
+    expect(walled).toEqual([missed]);
   });
 
   test('leaves a half-size maze as it is', () => {
