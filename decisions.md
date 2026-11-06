@@ -366,6 +366,36 @@ reached, and the measurements of the day, are in the git history of this file.
   `src/render/loading.ts`, kept out of `src/render/index.ts`: the first screen imports that index, and a module it
   re-exports lands in a chunk the first screen loads even when only the Generate chunk uses it.
 
+## Photo to maze
+
+- **Pure TypeScript, no OpenCV.** `src/photo` works on lightness, the largest of red, green and blue, so white and
+  coloured wall tops both read light on a black floor. The board is straightened on the plane of the wall tops, the
+  same for every wall, so a tilted photo works and the walls' sides stay off the edge lines.
+- **Corners in the maze file's order**, north-west, north-east, south-east, south-west, at the top of the corner posts;
+  the orientation of the photo is folded into which corner is which, and a corner may lie outside the photo.
+- **Two scores per edge, each against its neighbours, averaged.** Along the edge, without a quarter of a cell at
+  each end, take at each position the lightest pixel within a tenth of a cell of the line, and:
+  - less the darkest floor within 0.45 of a cell on either side, at that same position; a dark spot of floor is
+    found even under glare;
+  - or read on the board's white top-hat across the edge (each pixel less its opening over 0.75 of a cell), which
+    keeps the thin light band of a wall top and drops broad light regions, such as the white side of a nearer wall
+    covering the gap behind it in an oblique photo.
+
+  Each score is the median along the edge, divided by the 90th percentile of the scores within two cells (never less
+  than half the board's own, nor 0.1), so a glared or shadowed part splits at the same threshold as the rest. The two
+  are averaged, one Otsu threshold per photo splits them, and confidence is the distance to it over half the gap
+  between the two classes' means. A red cue (chroma) also helped, but this pair does better without it and without
+  the risk of a coloured floor. The top-hat and the darkest floor came from an OpenCV experiment on the same frames,
+  ported here without OpenCV.
+
+- **Posts refit the board twice**: each post is the spot within 0.4 of a cell that is lightest against its four
+  diagonals, less a small cost for moving away; the refit drops posts past 2.5 times the median residual and is kept
+  only when it lies closer to the posts found. It recovers corners off by about 1 % of the side.
+- **The test set stays out of the repository** but the owner's RCX photos: `tests/photo/photos.test.tsx` holds those
+  above a floor of score, and scores `MAZE_PHOTOS` (`~/.cache/maze-photos`) when the variable is set, reading it
+  through a browser command, since the browser may not read outside the repository. JPEGs decode with
+  `createImageBitmap` in the browser project, so no decoder dependency.
+
 ## Tests and performance
 
 - **Four Vitest projects**: `unit` (Node), `browser` (Chromium), `performance` (outside the check, one file at a time)

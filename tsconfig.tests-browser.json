@@ -16,6 +16,7 @@
     "tests/**/*.tsx",
     "tests/support/ui",
     "tests/support/axe-check.ts",
-    "tests/support/library/browser-commands.ts"
+    "tests/support/library/browser-commands.ts",
+    "tests/support/photo/photo-commands.ts"
   ]
 }

@@ -19,7 +19,7 @@ type Fence = readonly [
   form?: 'dynamic' | 'named',
 ];
 
-const LAYERS = ['maze', 'library', 'render', 'generator', 'ui', 'main'] as const;
+const LAYERS = ['maze', 'library', 'render', 'generator', 'photo', 'ui', 'main'] as const;
 
 type Layer = (typeof LAYERS)[number];
 
@@ -33,7 +33,8 @@ const MAY_IMPORT: Record<Layer | 'scripts', { any: readonly Layer[]; relative: r
     library: { any: ['maze'], relative: ['library'] },
     render: { any: ['maze'], relative: ['render'] },
     generator: { any: ['maze'], relative: ['generator'] },
-    ui: { any: ['maze', 'library', 'render', 'generator', 'ui'], relative: [] },
+    photo: { any: ['maze'], relative: ['photo'] },
+    ui: { any: ['maze', 'library', 'render', 'generator', 'photo', 'ui'], relative: [] },
     main: { any: ['maze', 'library', 'render', 'ui'], relative: [] },
     scripts: { any: ['maze', 'library'], relative: [] },
   };
@@ -59,6 +60,11 @@ const PROBES: Record<Layer | 'scripts', readonly (readonly [file: string, prefix
     ['src/generator/probe.ts', '@/'],
     ['src/generator/probe.ts', '../'],
     ['src/generator/deep/probe.ts', '../../'],
+  ],
+  photo: [
+    ['src/photo/probe.ts', '@/'],
+    ['src/photo/probe.ts', '../'],
+    ['src/photo/deep/probe.ts', '../../'],
   ],
   ui: [
     ['src/ui/probe.ts', '@/'],
@@ -111,6 +117,11 @@ const OTHER_FENCES: readonly Fence[] = [
   ['src/generator/named-probe.ts', '@phosphor-icons/react', true, 'named'],
   ['src/generator/lazy-probe.ts', '../ui/app', true, 'dynamic'],
   ['src/generator/lazy-probe.ts', './racing', false, 'dynamic'],
+
+  ['src/photo/probe.ts', 'react', true],
+  ['src/photo/probe.ts', 'node:fs', true],
+  ['src/photo/lazy-probe.ts', '../ui/app', true, 'dynamic'],
+  ['src/photo/lazy-probe.ts', './posts', false, 'dynamic'],
 
   ['src/ui/probe.ts', 'react', false],
   ['src/ui/probe.ts', '../../tests/support/axe-check', true],
