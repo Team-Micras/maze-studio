@@ -11,6 +11,7 @@ import {
   recogniseMaze,
   refinePosts,
   scoreRecognition,
+  seesSides,
   wrongEdges,
   type Camera,
   type Plane,
@@ -242,6 +243,28 @@ describe('lowering the board along its normal', () => {
     const seen = { homography: fitHomography(BOARD, corners), lens };
     const truth = { homography: floor, lens };
     expect(miss(lowered(seen, 1), truth)).toBeLessThan(miss(seen, truth));
+  });
+
+  test('puts the tops on the floor from corners given the other way round', () => {
+    const { tops, floor } = drawStandingBoard(
+      randomMaze(16, 5),
+      { ...STANDING, tilt: 60 },
+      { top: 120, side: 230 }
+    );
+    const lens = lensOf(960, 720);
+    const mirrored = (homography: number[]) =>
+      fitHomography(
+        BOARD,
+        [0, 3, 2, 1].map((index) => project({ homography, lens }, BOARD[index]))
+      );
+    expect(
+      miss(lowered({ homography: mirrored(tops), lens }, 1), { homography: mirrored(floor), lens })
+    ).toBeLessThan(0.01);
+  });
+
+  test('lowers only boards whose cells are big enough to show the sides of the posts', () => {
+    expect(seesSides(SHIFTED[16].truth, 16)).toBe(true);
+    expect(seesSides(SHIFTED[32].truth, 32)).toBe(false);
   });
 
   test('reads every wall of a board seen at a slant, below the tops', () => {

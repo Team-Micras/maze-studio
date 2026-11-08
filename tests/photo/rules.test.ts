@@ -162,7 +162,7 @@ describe('the repair of a classic maze', () => {
     const maze = mazeFile('classic/japan2.txt');
     const { maze: repaired, walled } = repairClassic(
       maze,
-      scores(16, (edge) => (hasWall(maze, edge) ? 1 : -1 + ((edge.x * 7 + edge.y * 3) % 5) / 100))
+      scores(16, (edge) => (hasWall(maze, edge) ? 1 : -0.2 + ((edge.x * 7 + edge.y * 3) % 5) / 100))
     );
     expect(loosePosts(maze).length).toBeGreaterThan(0);
     expect(walled).toEqual([]);
