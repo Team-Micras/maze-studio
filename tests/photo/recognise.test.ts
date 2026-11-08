@@ -252,7 +252,7 @@ describe('lowering the board along its normal', () => {
       { top: 120, side: 230 }
     );
     const lens = lensOf(960, 720);
-    const mirrored = (homography: number[]) =>
+    const mirrored = (homography: Camera['homography']) =>
       fitHomography(
         BOARD,
         [0, 3, 2, 1].map((index) => project({ homography, lens }, BOARD[index]))
