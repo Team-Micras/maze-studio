@@ -100,6 +100,20 @@ export function brokenRules(maze: Maze): (edge: Edge) => BrokenRule[] {
   };
 }
 
+/**
+ * How far, in spreads, a lone post's best edge must score above its next one to be walled: the
+ * posts of an open area, lone on purpose, score their edges alike (within 0.07 on the synthetic
+ * sweep), while a missed wall stands out (by 0.6 at the median on the open frames).
+ */
+const STANDOUT = 0.1;
+
+/**
+ * How far below the threshold, in spreads, a lone post's best edge may score and still be
+ * walled: a missed wall lies close to it (under 0.31 for nine in ten on the open frames), while
+ * the empty areas of a board seen from low can let one edge stand out far below it.
+ */
+const CLOSE = 0.5;
+
 /** The score of `edge` in `scores`, in the order of the maze's wall sets. */
 function scoreOf(scores: EdgeScores, width: number, edge: Edge): number {
   return edge.direction === 'horizontal'
@@ -108,10 +122,13 @@ function scoreOf(scores: EdgeScores, width: number, edge: Edge): number {
 }
 
 /**
- * `maze` repaired by the rules of a classic maze, and the edges walled: a wall on the
- * highest-scoring edge of each post that has none, outside the middle of the goal, and on every
- * open side of the start but its lowest-scoring measured one (an edge off the photo is walled first). A half-size maze, whose rules allow posts
- * with no wall, is returned as it is.
+ * `maze` repaired by the rules of a classic maze, and the edges walled, `scores` being how far each
+ * edge lies above the wall threshold in spreads between walls and gaps: a wall on the
+ * highest-scoring edge of each post that has none, outside the middle of the goal, when it lies
+ * within {@link CLOSE} of the threshold and {@link STANDOUT} above the post's next edge, so that
+ * the lone posts of an open area are left; and on every open side of the start but its
+ * lowest-scoring measured one (an edge off the photo is walled first). A half-size maze, whose
+ * rules allow posts with no wall, is returned as it is.
  */
 export function repairClassic(maze: Maze, scores: EdgeScores): { maze: Maze; walled: Edge[] } {
   if (maze.width >= HALF_SIZE) {
@@ -135,9 +152,14 @@ export function repairClassic(maze: Maze, scores: EdgeScores): { maze: Maze; wal
       { direction: 'vertical', x, y: y - 1 },
       { direction: 'vertical', x, y },
     ];
-    const best = highestFirst(edges)[0];
+    const [best, next] = highestFirst(edges);
 
-    if (best !== undefined && edges.every((edge) => !hasWall(repaired, edge))) {
+    if (
+      best !== undefined &&
+      score(best) > -CLOSE &&
+      (next === undefined || score(best) - score(next) > STANDOUT) &&
+      edges.every((edge) => !hasWall(repaired, edge))
+    ) {
       wall(best);
     }
   }
